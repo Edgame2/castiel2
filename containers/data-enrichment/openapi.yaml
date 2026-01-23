@@ -1,0 +1,116 @@
+openapi: 3.0.3
+info:
+  title: Data Enrichment Service API
+  description: |
+    Data enrichment and vectorization pipeline for shards.
+    
+    Provides AI enrichment, vectorization, shard embedding management, shard linking, and ACL management.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: API Version 1
+tags:
+  - name: Enrichment
+    description: Data enrichment operations
+  - name: Vectorization
+    description: Vectorization operations
+  - name: Health
+    description: Health check endpoints
+paths:
+  /enrichment/jobs/{jobId}:
+    get:
+      tags:
+        - Enrichment
+      summary: Get enrichment job status
+      description: Get status of an enrichment job
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Enrichment job status
+        '401':
+          description: Unauthorized
+        '404':
+          description: Job not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /enrichment/trigger:
+    post:
+      tags:
+        - Enrichment
+      summary: Trigger enrichment for a shard
+      description: Manually trigger enrichment for a specific shard
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - shardId
+              properties:
+                shardId:
+                  type: string
+      responses:
+        '202':
+          description: Enrichment job started
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      responses:
+        '200':
+          description: Service readiness status
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string

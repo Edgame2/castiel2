@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["server", "cosmos_db"],
+  "properties": {
+    "module": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "server": {
+      "type": "object",
+      "required": ["port"],
+      "properties": {
+        "port": { "type": "number" },
+        "host": { "type": "string" }
+      }
+    },
+    "cosmos_db": {
+      "type": "object",
+      "required": ["endpoint", "key", "database_id"],
+      "properties": {
+        "endpoint": { "type": "string" },
+        "key": { "type": "string" },
+        "database_id": { "type": "string" },
+        "containers": {
+          "type": "object",
+          "properties": {
+            "enrichment_jobs": { "type": "string" },
+            "enrichment_results": { "type": "string" },
+            "vectorization_jobs": { "type": "string" },
+            "shard_relationships": { "type": "string" },
+            "shard_acls": { "type": "string" }
+          },
+          "required": ["enrichment_jobs", "enrichment_results", "vectorization_jobs", "shard_relationships", "shard_acls"]
+        }
+      }
+    },
+    "jwt": {
+      "type": "object",
+      "required": ["secret"],
+      "properties": {
+        "secret": { "type": "string" }
+      }
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" }
+        }
+      }
+    },
+    "rabbitmq": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "exchange": { "type": "string" },
+        "queue": { "type": "string" }
+      }
+    }
+  }
+}

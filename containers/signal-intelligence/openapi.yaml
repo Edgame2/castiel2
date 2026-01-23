@@ -1,0 +1,48 @@
+openapi: 3.0.3
+info:
+  title: Signal Intelligence Service API
+  description: |
+    Signal Intelligence service.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: API Version 1
+tags:
+  - name: Signal Intelligence
+    description: Signal Intelligence operations
+  - name: Health
+    description: Health check endpoints
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      responses:
+        '200':
+          description: Service readiness status
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string

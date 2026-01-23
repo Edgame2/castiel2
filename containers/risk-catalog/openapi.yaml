@@ -1,0 +1,290 @@
+openapi: 3.0.3
+info:
+  title: Risk Catalog Service API
+  description: |
+    Risk catalog management with global, industry, and tenant-specific risk definitions.
+    
+    Provides risk catalog CRUD operations, risk ponderation (weighting), and risk enable/disable functionality.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: API Version 1
+tags:
+  - name: Risk Catalog
+    description: Risk catalog management
+  - name: Health
+    description: Health check endpoints
+paths:
+  /risk-catalog/catalog/{tenantId}:
+    get:
+      tags:
+        - Risk Catalog
+      summary: Get applicable risk catalog
+      description: |
+        Get applicable risk catalog for tenant (global + industry + tenant-specific).
+        Merges global, industry-specific (if applicable), and tenant-specific risks.
+        Filters disabled risks per tenant.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: industryId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Risk catalog retrieved successfully
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /risk-catalog/risks:
+    post:
+      tags:
+        - Risk Catalog
+      summary: Create risk
+      description: Create custom risk (global, industry, or tenant-specific based on role)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Risk created successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /risk-catalog/risks/{riskId}:
+    put:
+      tags:
+        - Risk Catalog
+      summary: Update risk
+      description: Update risk catalog entry
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: riskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Risk updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Risk not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Risk Catalog
+      summary: Delete tenant-specific risk
+      description: Delete tenant-specific risk (only tenant-specific risks can be deleted)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: riskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Risk deleted successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Cannot delete global/industry risk
+        '404':
+          description: Risk not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /risk-catalog/risks/{riskId}/duplicate:
+    post:
+      tags:
+        - Risk Catalog
+      summary: Duplicate risk
+      description: Duplicate risk (global/industry → tenant-specific)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: riskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Risk duplicated successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: Risk not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /risk-catalog/risks/{riskId}/enable:
+    put:
+      tags:
+        - Risk Catalog
+      summary: Enable risk for tenant
+      description: Enable risk for tenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: riskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Risk enabled successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: Risk not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /risk-catalog/risks/{riskId}/disable:
+    put:
+      tags:
+        - Risk Catalog
+      summary: Disable risk for tenant
+      description: Disable risk for tenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: riskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Risk disabled successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: Risk not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /risk-catalog/risks/{riskId}/ponderation:
+    get:
+      tags:
+        - Risk Catalog
+      summary: Get risk weights
+      description: Get risk weights (ponderation) per tenant/industry
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: riskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Risk weights retrieved successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: Risk not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags:
+        - Risk Catalog
+      summary: Set risk weights
+      description: Set risk weights (ponderation) per tenant/industry
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: riskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                weights:
+                  type: object
+      responses:
+        '200':
+          description: Risk weights updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Risk not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      responses:
+        '200':
+          description: Service readiness status
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object

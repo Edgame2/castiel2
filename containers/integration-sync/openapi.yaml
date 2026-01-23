@@ -1,0 +1,114 @@
+openapi: 3.0.3
+info:
+  title: Integration Sync Service API
+  description: |
+    Integration synchronization and adapter management.
+    
+    Provides sync task management, bidirectional synchronization, webhook management, and conflict resolution.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: API Version 1
+tags:
+  - name: Sync
+    description: Synchronization operations
+  - name: Health
+    description: Health check endpoints
+paths:
+  /sync/tasks/{taskId}:
+    get:
+      tags:
+        - Sync
+      summary: Get sync task status
+      description: Get status of a synchronization task
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sync task status
+        '401':
+          description: Unauthorized
+        '404':
+          description: Task not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /sync/trigger:
+    post:
+      tags:
+        - Sync
+      summary: Trigger synchronization
+      description: Manually trigger synchronization for an integration
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - integrationId
+              properties:
+                integrationId:
+                  type: string
+      responses:
+        '202':
+          description: Sync task started
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      responses:
+        '200':
+          description: Service readiness status
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string

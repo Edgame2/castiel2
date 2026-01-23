@@ -1,0 +1,127 @@
+openapi: 3.0.3
+info:
+  title: Forecasting Service API
+  description: |
+    Asynchronous forecasting and prediction services with CAIS integration.
+    
+    Provides forecast decomposition, consensus forecasting, forecast commitment analysis, and pipeline health.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: API Version 1
+tags:
+  - name: Forecasting
+    description: Forecasting operations
+  - name: Health
+    description: Health check endpoints
+paths:
+  /forecasts/{forecastId}:
+    get:
+      tags:
+        - Forecasting
+      summary: Get forecast status
+      description: Get status and results of a forecast
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: forecastId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Forecast status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  forecastId:
+                    type: string
+                  status:
+                    type: string
+                    enum: [pending, in_progress, completed, failed]
+                  revenueForecast:
+                    type: number
+                  confidence:
+                    type: number
+                  decomposedForecast:
+                    type: object
+                  consensusForecast:
+                    type: number
+                  commitmentLevel:
+                    type: string
+        '401':
+          description: Unauthorized
+        '404':
+          description: Forecast not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /forecasts:
+    get:
+      tags:
+        - Forecasting
+      summary: Get forecasts for opportunity
+      description: Get all forecasts for a specific opportunity
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Forecasts retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      responses:
+        '200':
+          description: Service readiness status
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string

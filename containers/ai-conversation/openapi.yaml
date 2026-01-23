@@ -1,0 +1,98 @@
+openapi: 3.0.3
+info:
+  title: AI Conversation Service API
+  description: |
+    AI conversation and context management service for Coder IDE.
+    
+    Provides conversation management, context assembly, grounding, intent analysis, and related AI conversation features.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: API Version 1
+tags:
+  - name: Conversations
+    description: Conversation management
+  - name: Messages
+    description: Message handling
+  - name: Context
+    description: Context assembly and management
+  - name: Grounding
+    description: Response grounding and citation
+  - name: Intent
+    description: Intent analysis
+  - name: Health
+    description: Health check endpoints
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Returns service health status
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  timestamp:
+                    type: string
+                    format: date-time
+                  service:
+                    type: string
+                    example: ai-conversation
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      description: Returns service readiness status including database connectivity
+      responses:
+        '200':
+          description: Service readiness status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ready, not_ready]
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+                  service:
+                    type: string
+                    example: ai-conversation
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object

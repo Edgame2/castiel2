@@ -1,66 +1,85 @@
-# Coder IDE - System Documentation
+# Castiel - System Documentation
 
-Comprehensive documentation for the Coder IDE application, an AI-powered Integrated Development Environment with advanced planning, execution, and project management capabilities.
+Comprehensive documentation for the Castiel platform, an AI-native business intelligence platform that unifies business data from multiple sources and provides intelligent, predictive insights to help businesses make better decisions.
 
 ## System Overview
 
-Coder IDE is a three-tier application architecture:
+Castiel is a three-tier application architecture:
 
 1. **Next.js Web Application** - React 19 web application (UI container)
 2. **Fastify API Server** - RESTful API with microservices architecture
 3. **Cosmos DB NoSQL Database** - Shared database with containers per module
 
-**UI Component Reuse**: The Next.js application reuses components and pages from `old_code/apps/web/` to maintain existing UI patterns and functionality.
+The system has been refactored into a microservices architecture with 38+ independent services communicating via REST APIs and RabbitMQ event bus.
 
-The system has been refactored into a microservices architecture with 20+ independent services communicating via REST APIs and RabbitMQ event bus.
+## Critical ML Enhancement
+
+The platform is being enhanced with a **Machine Learning system** focused on three priority use cases that provide the highest business value:
+
+1. **Risk Scoring** - ML-powered risk prediction to identify opportunities at risk
+2. **Revenue Forecasting** - Predictive revenue forecasting across multiple levels
+3. **Recommendations** - Intelligent next-best-action recommendations
+
+This ML enhancement transforms the platform from reactive (analyzing what happened) to predictive (anticipating what will happen), enabling businesses to proactively identify risks, forecast revenue accurately, and make data-driven decisions.
+
+The system uses a **Compound AI System (CAIS)** architecture that orchestrates ML models, LLMs, rules, memory, and feedback loops to deliver explainable, actionable intelligence.
 
 ## Architecture Diagram
 
 ```mermaid
 graph TB
     subgraph Client["Client Layer"]
-        NextJS[Next.js Web App<br/>React 19 + Monaco]
+        NextJS[Next.js Web App<br/>React 19]
     end
     
-    subgraph MainApp["Main Application (Port 3000)"]
+    subgraph MainApp["Main Application (Port 3001)"]
         Gateway[API Gateway]
         Auth[Authentication]
         UserMgmt[User Management]
     end
     
-    subgraph Microservices["Microservices"]
+    subgraph BIServices["Business Intelligence Services"]
+        Pipeline[Pipeline Manager<br/>Port 3025]
+        AIInsights[AI Insights<br/>Port 3027]
+        MLService[ML Service<br/>Port 3033]
+        Analytics[Analytics Service<br/>Port 3030]
+        Shard[Shard Manager<br/>Port 3023]
+    end
+    
+    subgraph AIServices["AI & Intelligence Services"]
+        AISvc[AI Service<br/>Port 3006]
+        Embed[Embeddings<br/>Port 3005]
+        Adaptive[Adaptive Learning<br/>Port 3032]
+        Search[Search Service<br/>Port 3029]
+    end
+    
+    subgraph Foundation["Foundation Services"]
         Secret[Secret Management<br/>Port 3003]
         Usage[Usage Tracking<br/>Port 3004]
-        Embed[Embeddings<br/>Port 3005]
-        AI[AI Service<br/>Port 3006]
-        Planning[Planning<br/>Port 3007]
-        Exec[Execution<br/>Port 3008]
-        MCP[MCP Server<br/>Port 3009]
-        KB[Knowledge Base<br/>Port 3010]
-        Dashboard[Dashboard<br/>Port 3011]
-        Calendar[Calendar<br/>Port 3012]
-        Msg[Messaging<br/>Port 3013]
+        Notif[Notification Manager<br/>Port 3001]
         Log[Logging<br/>Port 3014]
-        Learn[Learning & Dev<br/>Port 3015]
-        Collab[Collaboration<br/>Port 3016]
-        Quality[Quality<br/>Port 3017]
-        Resource[Resource Mgmt<br/>Port 3018]
-        Workflow[Workflow<br/>Port 3019]
-        Obs[Observability<br/>Port 3020]
     end
     
     subgraph Infrastructure["Infrastructure"]
         DB[(Cosmos DB<br/>NoSQL Database)]
         RabbitMQ[RabbitMQ<br/>Event Bus]
         Redis[Redis<br/>Cache]
+        AzureML[Azure ML Workspace<br/>ML Training & Serving]
     end
     
     NextJS -->|HTTP/WebSocket| Gateway
-    Gateway -->|REST API| Microservices
-    Microservices -->|Events| RabbitMQ
-    Microservices -->|Data| DB
+    Gateway -->|REST API| BIServices
+    Gateway -->|REST API| AIServices
+    Gateway -->|REST API| Foundation
+    
+    BIServices -->|ML Predictions| MLService
+    MLService -->|Training/Serving| AzureML
+    AIInsights -->|Uses| MLService
+    Pipeline -->|Uses| MLService
+    
+    All[All Services] -->|Events| RabbitMQ
+    All -->|Data| DB
     Gateway -->|Cache| Redis
-    Usage -->|Consumes| RabbitMQ
 ```
 
 ## Documentation Structure
@@ -71,57 +90,48 @@ Core modules that are always required for the system to function. Each module co
 - [Authentication](./modules/core/authentication/) - User authentication, OAuth, and session management (Port 3021)
 - [User Management](./modules/core/user-management/) - User profiles, organizations, teams, RBAC (Port 3022)
 - [Logging](./modules/core/logging/) - Audit logging and compliance (Port 3014)
+- [Application Log Monitoring](./modules/core/application-log-monitoring/) - Unified log monitoring abstraction (Application Insights, Sentry) (Port 3015)
 - [Notification](./modules/core/notification/) - Multi-channel notification delivery (Port 3001)
 - [Secret Management](./modules/core/secret-management/) - Centralized secret storage (Port 3003)
 
 ### [Extension Modules](./modules/extensions/)
 Optional extension modules that provide additional functionality. Each module consolidates backend, frontend, and microservice documentation.
 
+#### Business Intelligence Core
+- [Pipeline Manager](./modules/extensions/pipeline-manager/) - Sales pipeline and opportunity management (Port 3025)
+- [AI Insights](./modules/extensions/ai-insights/) - AI-powered insights and risk analysis (Port 3027)
+- [ML Service](./modules/extensions/ml-service/) - Machine learning model management and predictions (Port 3033)
+- [Analytics Service](./modules/extensions/analytics-service/) - Analytics and reporting (Port 3030)
+- [Shard Manager](./modules/extensions/shard-manager/) - Core data model management (Port 3023)
+
+#### AI & Intelligence
 - [AI Service](./modules/extensions/ai-service/) - LLM completions and model routing (Port 3006)
 - [Embeddings](./modules/extensions/embeddings/) - Vector embeddings and semantic search (Port 3005)
 - [Adaptive Learning](./modules/extensions/adaptive-learning/) - CAIS adaptive learning system (Port 3032)
-- [ML Service](./modules/extensions/ml-service/) - Machine learning model management (Port 3033)
-- [Shard Manager](./modules/extensions/shard-manager/) - Core data model management (Port 3023)
-- [Document Manager](./modules/extensions/document-manager/) - Document and file management (Port 3024)
-- [Pipeline Manager](./modules/extensions/pipeline-manager/) - Sales pipeline and opportunity management (Port 3025)
-- [Integration Manager](./modules/extensions/integration-manager/) - Third-party integrations and webhooks (Port 3026)
-- [AI Insights](./modules/extensions/ai-insights/) - AI-powered insights and recommendations (Port 3027)
-- [Content Generation](./modules/extensions/content-generation/) - AI-powered content generation (Port 3028)
 - [Search Service](./modules/extensions/search-service/) - Advanced search and vector search (Port 3029)
-- [Analytics Service](./modules/extensions/analytics-service/) - Analytics and reporting (Port 3030)
+
+#### Integration & Content
+- [Integration Manager](./modules/extensions/integration-manager/) - Third-party integrations and webhooks (Port 3026)
+- [Document Manager](./modules/extensions/document-manager/) - Document and file management (Port 3024)
+- [Content Generation](./modules/extensions/content-generation/) - AI-powered content generation (Port 3028)
+- [Template Service](./modules/extensions/template-service/) - Template management (Port 3037)
+
+#### Platform Services
+- [Dashboard](./modules/extensions/dashboard/) - Dashboard configuration (Port 3011)
 - [Collaboration Service](./modules/extensions/collaboration-service/) - Real-time collaboration features (Port 3031)
 - [Configuration Service](./modules/extensions/configuration-service/) - Centralized configuration management (Port 3034)
 - [Cache Service](./modules/extensions/cache-service/) - Caching and cache management (Port 3035)
 - [Prompt Service](./modules/extensions/prompt-service/) - Prompt management and A/B testing (Port 3036)
-- [Template Service](./modules/extensions/template-service/) - Template management (Port 3037)
-- [Planning](./modules/extensions/planning/) - Planning service with 13 sub-modules (Port 3007)
-- [Execution Service](./modules/extensions/execution-service/) - Plan execution engine (Port 3008)
-- [MCP Server](./modules/extensions/mcp-server/) - Model Context Protocol server (Port 3009)
-- [Knowledge Base](./modules/extensions/knowledge-base/) - Documentation management (Port 3010)
-- [Dashboard](./modules/extensions/dashboard/) - Dashboard configuration (Port 3011)
-- [Calendar](./modules/extensions/calendar/) - Event management (Port 3012)
-- [Messaging](./modules/extensions/messaging/) - Conversations and messaging (Port 3013)
-- [Learning & Development](./modules/extensions/learning-development/) - Learning paths (Port 3015)
-- [Collaboration](./modules/extensions/collaboration/) - Pairing and innovation (Port 3016)
-- [Quality](./modules/extensions/quality/) - Experiments and compliance (Port 3017)
-- [Resource Management](./modules/extensions/resource-management/) - Capacity planning (Port 3018)
-- [Workflow](./modules/extensions/workflow/) - Workflow orchestration (Port 3019)
-- [Observability](./modules/extensions/observability/) - Telemetry and tracing (Port 3020)
-- [Prompt Management](./modules/extensions/prompt-management/) - Prompt templates (Port 3002)
-- [Usage Tracking](./modules/extensions/usage-tracking/) - Usage metering (Port 3004)
-- [Context Service](./modules/extensions/context-service/) - Context orchestration (Port 3034)
-- [Agent Registry](./modules/extensions/agent-registry/) - Specialized AI agent management (Port 3035)
-- [Validation Engine](./modules/extensions/validation-engine/) - Comprehensive validation pipeline (Port 3036)
-- [Pattern Recognition](./modules/extensions/pattern-recognition/) - Pattern learning and enforcement (Port 3037)
-- [Migration Service](./modules/extensions/migration-service/) - Code migration and refactoring (Port 3038)
-- [Bug Detection](./modules/extensions/bug-detection/) - Proactive bug finding and fixing (Port 3039)
-- [Code Generation](./modules/extensions/code-generation/) - Specialized code generation (Port 3040)
-- [Performance Optimization](./modules/extensions/performance-optimization/) - Code performance optimization (Port 3041)
+
+#### Security & Compliance
 - [Security Service](./modules/extensions/security-service/) - Security analysis and protection (Port 3042)
 - [Compliance Service](./modules/extensions/compliance-service/) - Regulatory compliance (Port 3043)
+
+#### Additional Services
 - [Multi-Modal Service](./modules/extensions/multi-modal-service/) - Multi-modal understanding (Port 3044)
 - [Reasoning Engine](./modules/extensions/reasoning-engine/) - Advanced reasoning capabilities (Port 3045)
-- [Developer Experience](./modules/extensions/developer-experience/) - Developer UX optimization (Port 3046)
+- [Agent Registry](./modules/extensions/agent-registry/) - Specialized AI agent management (Port 3035)
+- [Migration Service](./modules/extensions/migration-service/) - Code migration and refactoring (Port 3038)
 
 ### [Infrastructure](./global/Infrastructure.md)
 Infrastructure components that support the application but are not business logic modules. These are documented in a single consolidated file.
@@ -134,7 +144,7 @@ Infrastructure components that support the application but are not business logi
 - Routes - API route definitions
 - Services - Shared business logic services
 - Utils - Utility functions
-- Next.js Web Application - React UI with component reuse from old_code
+- Next.js Web Application - React UI
 
 ## Technology Stack
 
@@ -146,7 +156,6 @@ Infrastructure components that support the application but are not business logi
 - **TanStack Query**: State management and data fetching
 - **React Hook Form + Zod**: Form handling and validation
 - **Axios**: HTTP client for API communication
-- **Component Reuse**: Components and pages from `old_code/apps/web/` are reused
 
 ### Backend
 - **Fastify**: High-performance web framework
@@ -156,12 +165,18 @@ Infrastructure components that support the application but are not business logi
 - **RabbitMQ**: Event-driven communication
 - **Redis**: Caching and sessions
 
-### Core Services
-- **Planning System**: AI-assisted plan generation
-- **Execution Engine**: Automated code execution
-- **Context Aggregation**: Advanced code analysis
-- **Issue Anticipation**: Proactive issue detection
-- **Recommendation Engine**: Personalized suggestions
+### Machine Learning
+- **Azure ML Workspace**: Managed ML training and model management
+- **Azure ML Managed Endpoints**: Model serving infrastructure
+- **AutoML**: Automated model selection and training
+- **XGBoost/LightGBM**: ML models for predictions
+
+### Core Capabilities
+- **Compound AI System (CAIS)**: Orchestrates ML + LLM + Rules + Memory + Feedback
+- **Risk Scoring**: ML-powered risk prediction for opportunities
+- **Revenue Forecasting**: Predictive revenue forecasting at multiple levels
+- **Recommendations**: Intelligent next-best-action recommendations
+- **Data Unification**: Integrates data from Salesforce, Google Drive, Slack, Zoom, Gong, Microsoft 365, and more
 
 ## Global Documentation
 
@@ -169,6 +184,7 @@ Comprehensive global documentation covering system architecture, purpose, and mo
 
 - [Global Architecture Documentation](./global/README.md) - Complete system overview
   - [Architecture](./global/Architecture.md) - System architecture
+  - [CAIS Overview](./global/CAIS_OVERVIEW.md) - Compound AI System architecture
   - [Infrastructure](./global/Infrastructure.md) - Infrastructure components (API Gateway, Database, Middleware, etc.)
   - [System Purpose](./global/SystemPurpose.md) - System goals and vision
   - [Module Overview](./global/ModuleOverview.md) - High-level module purposes
@@ -179,7 +195,7 @@ Comprehensive global documentation covering system architecture, purpose, and mo
 
 ## Guides
 
-Setup and user guides for getting started with Coder IDE:
+Setup and user guides for getting started with Castiel:
 
 - [Setup Guide](./guides/setup-guide.md) - Complete setup instructions
 - [Docker Setup Guide](./guides/docker-setup.md) - Containerized deployment
@@ -217,11 +233,13 @@ Historical documentation and implementation history:
 ## Quick Links
 
 - [System Architecture Overview](./global/Architecture.md)
+- [CAIS Architecture](./global/CAIS_OVERVIEW.md) - Compound AI System overview
 - [Infrastructure Components](./global/Infrastructure.md) - API Gateway, Database, Middleware, etc.
 - [Module Overview](./global/ModuleOverview.md) - High-level module purposes and dependencies
 - [Module Implementation Guide](./global/ModuleImplementationGuide.md) - Module development standards
 - [Core Modules](./modules/core/) - Core module documentation
 - [Extension Modules](./modules/extensions/) - Extension module documentation
+- [ML Service](./modules/extensions/ml-service/) - Machine learning capabilities
 - [Documentation Status](./DOCUMENTATION_STATUS.md)
 - [Expansion Summary](./EXPANSION_SUMMARY.md)
 
@@ -257,10 +275,12 @@ documentation/
 │   │   ├── notification/      # Consolidated notification docs
 │   │   └── secret-management/  # Consolidated secret mgmt docs
 │   └── extensions/              # Extension modules (optional)
-│       ├── ai-service/          # Consolidated AI service docs
-│       ├── planning/            # Consolidated planning docs
+│       ├── ml-service/          # ML service with CAIS architecture
+│       ├── ai-insights/         # AI insights and risk analysis
+│       ├── pipeline-manager/    # Sales pipeline management
 │       └── [other extensions]   # Other extension modules
 ├── global/                      # Global architecture and system documentation
+│   ├── CAIS_OVERVIEW.md        # Compound AI System overview
 │   ├── Infrastructure.md       # Infrastructure components (consolidated)
 │   ├── ModuleOverview.md        # High-level module overview
 │   └── ModuleImplementationGuide.md  # Module development standards

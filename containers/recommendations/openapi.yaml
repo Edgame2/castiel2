@@ -1,0 +1,157 @@
+openapi: 3.0.3
+info:
+  title: Recommendations Service API
+  description: |
+    Asynchronous recommendation generation service with CAIS integration and user feedback loop.
+    
+    Provides multi-factor recommendations (vector search, collaborative filtering, temporal, content-based) with ML enhancement.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: API Version 1
+tags:
+  - name: Recommendations
+    description: Recommendation operations
+  - name: Feedback
+    description: User feedback on recommendations
+  - name: Health
+    description: Health check endpoints
+paths:
+  /recommendations:
+    get:
+      tags:
+        - Recommendations
+      summary: Get recommendations for opportunity
+      description: Get recommendations for a specific opportunity
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Recommendations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recommendations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        type:
+                          type: string
+                          enum: [action, warning, info]
+                        priority:
+                          type: string
+                          enum: [high, medium, low]
+                        title:
+                          type: string
+                        description:
+                          type: string
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /recommendations/{id}/feedback:
+    post:
+      tags:
+        - Feedback
+      summary: Submit feedback on recommendation
+      description: |
+        Submit user feedback on a recommendation (accept/ignore/irrelevant).
+        This feedback is critical for CAIS learning and continuous improvement.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+              properties:
+                action:
+                  type: string
+                  enum: [accept, ignore, irrelevant]
+                  description: User action on the recommendation
+      responses:
+        '200':
+          description: Feedback received successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  recommendationId:
+                    type: string
+                  action:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      responses:
+        '200':
+          description: Service readiness status
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string

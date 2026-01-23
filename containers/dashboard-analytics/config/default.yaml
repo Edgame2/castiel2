@@ -1,0 +1,48 @@
+# dashboard-analytics Module Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: dashboard-analytics
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3055}
+  host: ${HOST:-0.0.0.0}
+
+# Cosmos DB Configuration (shared database, prefixed containers)
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    admin_data: dashboard_admin_data
+    widget_cache: dashboard_widget_cache
+
+# JWT Configuration (shared with auth service)
+jwt:
+  secret: ${JWT_SECRET}
+
+# External Service URLs (from config, not hardcoded)
+services:
+  auth:
+    url: ${AUTH_URL:-http://localhost:3021}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+  dashboard:
+    url: ${DASHBOARD_URL:-http://localhost:3013}
+  analytics_service:
+    url: ${ANALYTICS_SERVICE_URL:-http://localhost:3010}
+  cache_service:
+    url: ${CACHE_SERVICE_URL:-http://localhost:3004}
+
+# RabbitMQ Configuration
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: dashboard-analytics_service
+  bindings: []
+
+# Feature Flags
+features: {}

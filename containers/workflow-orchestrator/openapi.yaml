@@ -1,0 +1,142 @@
+openapi: 3.0.3
+info:
+  title: Workflow Orchestrator Service API
+  description: |
+    Orchestrates asynchronous workflows for opportunity change events.
+    
+    Coordinates parallel execution of risk analysis, risk scoring, forecasting, and recommendations.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: API Version 1
+tags:
+  - name: Workflows
+    description: Workflow management
+  - name: Health
+    description: Health check endpoints
+paths:
+  /workflows/{workflowId}:
+    get:
+      tags:
+        - Workflows
+      summary: Get workflow status
+      description: Get workflow execution status and results
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workflow status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workflowId:
+                    type: string
+                  status:
+                    type: string
+                    enum: [pending, in_progress, completed, failed]
+                  results:
+                    type: object
+        '401':
+          description: Unauthorized
+        '404':
+          description: Workflow not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /workflows:
+    get:
+      tags:
+        - Workflows
+      summary: Get workflows for opportunity
+      description: Get all workflows for a specific opportunity
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workflows retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /workflows/{workflowId}/retry:
+    post:
+      tags:
+        - Workflows
+      summary: Retry failed workflow
+      description: Retry a failed workflow execution
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Workflow retry initiated
+        '401':
+          description: Unauthorized
+        '404':
+          description: Workflow not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness check
+      responses:
+        '200':
+          description: Service readiness status
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string

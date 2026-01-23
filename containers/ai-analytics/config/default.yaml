@@ -1,0 +1,49 @@
+# ai-analytics Module Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: ai-analytics
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3057}
+  host: ${HOST:-0.0.0.0}
+
+# Cosmos DB Configuration (shared database, prefixed containers)
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    events: ai_analytics_events
+    models: ai_analytics_models
+    feedback: ai_analytics_feedback
+
+# JWT Configuration (shared with auth service)
+jwt:
+  secret: ${JWT_SECRET}
+
+# External Service URLs (from config, not hardcoded)
+services:
+  auth:
+    url: ${AUTH_URL:-http://localhost:3021}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+  ai_service:
+    url: ${AI_SERVICE_URL:-http://localhost:3006}
+  ai_insights:
+    url: ${AI_INSIGHTS_URL:-http://localhost:3007}
+  analytics_service:
+    url: ${ANALYTICS_SERVICE_URL:-http://localhost:3010}
+
+# RabbitMQ Configuration
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: ai-analytics_service
+  bindings: []
+
+# Feature Flags
+features: {}

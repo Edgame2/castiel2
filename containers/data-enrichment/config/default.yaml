@@ -1,0 +1,53 @@
+# data-enrichment Module Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: data-enrichment
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3046}
+  host: ${HOST:-0.0.0.0}
+
+# Cosmos DB Configuration (shared database, prefixed containers)
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    enrichment_jobs: enrichment_jobs
+    enrichment_results: enrichment_results
+    vectorization_jobs: vectorization_jobs
+    shard_relationships: shard_relationships
+    shard_acls: shard_acls
+
+# JWT Configuration (shared with auth service)
+jwt:
+  secret: ${JWT_SECRET}
+
+# External Service URLs (from config, not hardcoded)
+services:
+  auth:
+    url: ${AUTH_URL:-http://localhost:3021}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3002}
+  embeddings:
+    url: ${EMBEDDINGS_URL:-http://localhost:3035}
+  ai_service:
+    url: ${AI_SERVICE_URL:-http://localhost:3006}
+
+# RabbitMQ Configuration
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: data_enrichment_service
+  bindings:
+    - "shard.created"
+    - "shard.updated"
+
+# Feature Flags
+features: {}

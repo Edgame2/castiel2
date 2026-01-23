@@ -1,0 +1,58 @@
+# forecasting Module Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: forecasting
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3050}
+  host: ${HOST:-0.0.0.0}
+
+# Cosmos DB Configuration (shared database, prefixed containers)
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    decompositions: forecast_decompositions
+    consensus: forecast_consensus
+    commitments: forecast_commitments
+    pipeline_health: forecast_pipeline_health
+
+# JWT Configuration (shared with auth service)
+jwt:
+  secret: ${JWT_SECRET}
+
+# External Service URLs (from config, not hardcoded)
+services:
+  auth:
+    url: ${AUTH_URL:-http://localhost:3021}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+  risk_analytics:
+    url: ${RISK_ANALYTICS_URL:-http://localhost:3048}
+  analytics_service:
+    url: ${ANALYTICS_SERVICE_URL:-http://localhost:3010}
+  ml_service:
+    url: ${ML_SERVICE_URL:-http://localhost:3033}
+  adaptive_learning:
+    url: ${ADAPTIVE_LEARNING_URL:-http://localhost:3032}
+  pipeline_manager:
+    url: ${PIPELINE_MANAGER_URL:-http://localhost:3011}
+
+# RabbitMQ Configuration
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: forecasting_service
+  bindings:
+    - "opportunity.updated"
+    - "risk.evaluation.completed"
+    - "integration.sync.completed"
+    - "workflow.forecast.requested"
+
+# Feature Flags
+features: {}

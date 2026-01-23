@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the data flows and communication patterns used throughout the Coder IDE system. The system uses multiple communication mechanisms optimized for different use cases.
+This document describes the data flows and communication patterns used throughout the Castiel platform. The system uses multiple communication mechanisms optimized for different use cases, including ML prediction flows that transform the platform from reactive to predictive intelligence.
 
 ## Communication Mechanisms
 
@@ -484,8 +484,95 @@ sequenceDiagram
     G-->>C: Response
 ```
 
+## ML Prediction Data Flow
+
+### ML Prediction Flow
+
+The ML Service provides predictions that flow through the system as part of the Compound AI System (CAIS) architecture:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API as API Service
+    participant RiskSvc as RiskEvaluationService
+    participant ML as ML Service
+    participant FeatureStore as FeatureStoreService
+    participant AzureML as Azure ML Endpoint
+    participant Explain as Explanation Layer
+    participant LLM as LLM Reasoning
+    participant Feedback as Feedback Loop
+    
+    User->>API: Request Risk Analysis
+    API->>RiskSvc: Evaluate Opportunity
+    RiskSvc->>FeatureStore: Extract Features
+    FeatureStore->>FeatureStore: Feature Engineering
+    FeatureStore->>RiskSvc: Feature Vector
+    RiskSvc->>ML: Predict Risk Score
+    ML->>ML: Select Model (Global/Industry)
+    ML->>AzureML: Call Managed Endpoint
+    AzureML->>AzureML: Model Inference
+    AzureML->>ML: Return Prediction
+    ML->>RiskSvc: Risk Score + Confidence
+    RiskSvc->>Explain: Calculate SHAP Values
+    Explain->>LLM: Structured Explanation
+    LLM->>LLM: Generate Natural Language
+    LLM->>RiskSvc: Explanation + Recommendations
+    RiskSvc->>API: Risk Analysis Result
+    API->>User: Return Result
+    User->>Feedback: Provide Feedback
+    Feedback->>ML: Update Training Data
+```
+
+### Revenue Forecasting Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API as API Service
+    participant ForecastSvc as ForecastingService
+    participant ML as ML Service
+    participant FeatureStore as FeatureStoreService
+    participant AzureML as Azure ML Endpoint
+    
+    User->>API: Request Forecast
+    API->>ForecastSvc: Get Forecast
+    ForecastSvc->>FeatureStore: Extract Features
+    FeatureStore->>ForecastSvc: Feature Vector
+    ForecastSvc->>ML: Predict Forecast
+    ML->>AzureML: Call Managed Endpoint
+    AzureML->>ML: Return Forecast (P10/P50/P90)
+    ML->>ForecastSvc: Forecast + Uncertainty
+    ForecastSvc->>API: Forecast Result
+    API->>User: Return Forecast
+```
+
+### Feedback Loop Flow
+
+ML predictions are continuously improved through feedback:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant System
+    participant ML as ML Service
+    participant Feedback as Feedback Loop
+    participant Training as Training Service
+    participant AzureML as Azure ML Workspace
+    
+    User->>System: Use Prediction
+    System->>Feedback: Record Outcome
+    Feedback->>Feedback: Track Accuracy
+    Feedback->>Training: Trigger Retraining (if needed)
+    Training->>AzureML: Retrain Model
+    AzureML->>Training: New Model Version
+    Training->>ML: Deploy Updated Model
+    ML->>System: Improved Predictions
+```
+
 ## Related Documentation
 
 - [Architecture](./Architecture.md) - System architecture
+- [CAIS Overview](./CAIS_OVERVIEW.md) - Compound AI System architecture
 - [Module Overview](./ModuleOverview.md) - Module purposes
 - [Technology Stack](./TechnologyStack.md) - Technologies used
+- [ML Service](../modules/extensions/ml-service/) - ML capabilities documentation

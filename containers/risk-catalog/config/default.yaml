@@ -1,0 +1,46 @@
+# risk-catalog Module Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: risk-catalog
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3047}
+  host: ${HOST:-0.0.0.0}
+
+# Cosmos DB Configuration (shared database, prefixed containers)
+# Note: Risk catalog uses shard-manager containers (shards with shardTypeId = risk_catalog)
+# Global risks stored in 'system' tenant, industry risks with industryId, tenant-specific in tenant shards
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    # Uses shard-manager containers, not separate containers
+    main: shards
+
+# JWT Configuration (shared with auth service)
+jwt:
+  secret: ${JWT_SECRET}
+
+# External Service URLs (from config, not hardcoded)
+services:
+  auth:
+    url: ${AUTH_URL:-http://localhost:3021}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3002}
+
+# RabbitMQ Configuration
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: risk_catalog_service
+  bindings: []
+
+# Feature Flags
+features: {}

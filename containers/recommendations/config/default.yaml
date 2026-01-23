@@ -1,0 +1,60 @@
+# recommendations Module Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: recommendations
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3049}
+  host: ${HOST:-0.0.0.0}
+
+# Cosmos DB Configuration (shared database, prefixed containers)
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    recommendations: recommendation_recommendations
+    feedback: recommendation_feedback
+    metrics: recommendation_metrics
+
+# JWT Configuration (shared with auth service)
+jwt:
+  secret: ${JWT_SECRET}
+
+# External Service URLs (from config, not hardcoded)
+services:
+  auth:
+    url: ${AUTH_URL:-http://localhost:3021}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+  ml_service:
+    url: ${ML_SERVICE_URL:-http://localhost:3033}
+  ai_service:
+    url: ${AI_SERVICE_URL:-http://localhost:3006}
+  embeddings:
+    url: ${EMBEDDINGS_URL:-http://localhost:3035}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3002}
+  adaptive_learning:
+    url: ${ADAPTIVE_LEARNING_URL:-http://localhost:3032}
+  analytics_service:
+    url: ${ANALYTICS_SERVICE_URL:-http://localhost:3010}
+
+# RabbitMQ Configuration
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: recommendations_service
+  bindings:
+    - "opportunity.updated"
+    - "risk.evaluation.completed"
+    - "forecast.completed"
+    - "shard.updated"
+    - "workflow.recommendation.requested"
+
+# Feature Flags
+features: {}

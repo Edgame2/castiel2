@@ -1,0 +1,63 @@
+# workflow-orchestrator Module Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: workflow-orchestrator
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3051}
+  host: ${HOST:-0.0.0.0}
+
+# Cosmos DB Configuration (shared database, prefixed containers)
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    workflows: workflow_workflows
+    steps: workflow_steps
+    executions: workflow_executions
+
+# JWT Configuration (shared with auth service)
+jwt:
+  secret: ${JWT_SECRET}
+
+# External Service URLs (from config, not hardcoded)
+services:
+  auth:
+    url: ${AUTH_URL:-http://localhost:3021}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+  integration_manager:
+    url: ${INTEGRATION_MANAGER_URL:-http://localhost:3012}
+  risk_analytics:
+    url: ${RISK_ANALYTICS_URL:-http://localhost:3048}
+  ml_service:
+    url: ${ML_SERVICE_URL:-http://localhost:3033}
+  forecasting:
+    url: ${FORECASTING_URL:-http://localhost:3050}
+  recommendations:
+    url: ${RECOMMENDATIONS_URL:-http://localhost:3049}
+  adaptive_learning:
+    url: ${ADAPTIVE_LEARNING_URL:-http://localhost:3032}
+
+# RabbitMQ Configuration
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: workflow_orchestrator_service
+  bindings:
+    - "integration.opportunity.updated"
+    - "shard.updated"
+    - "risk.evaluation.completed"
+    - "risk.scoring.completed"
+    - "risk.evaluation.failed"
+    - "forecast.completed"
+    - "recommendation.generation.completed"
+    - "recommendation.generation.failed"
+
+# Feature Flags
+features: {}

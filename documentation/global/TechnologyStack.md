@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides a comprehensive overview of the technology stack used in Coder IDE, organized by layer and purpose.
+This document provides a comprehensive overview of the technology stack used in Castiel, organized by layer and purpose.
 
 ## Frontend Technologies
 
@@ -201,16 +201,54 @@ This document provides a comprehensive overview of the technology stack used in 
 ### AI/ML
 
 **OpenAI API**
-- **Purpose**: GPT models
-- **Usage**: Code generation, planning
+- **Purpose**: GPT models (GPT-4, GPT-3.5)
+- **Usage**: LLM completions, natural language explanations, reasoning
 
 **Anthropic API**
 - **Purpose**: Claude models
-- **Usage**: AI completions
+- **Usage**: AI completions, natural language explanations
 
 **Ollama**
 - **Purpose**: Local LLM models
 - **Usage**: Local AI inference
+
+### Machine Learning
+
+**Azure ML Workspace** ⭐
+- **Purpose**: Managed ML training and model management
+- **Usage**: Model training, model registry, training orchestration
+- **Subscription**: `main`
+- **Resource Group**: `castiel-ml-{environment}-rg`
+- **Region**: `eastus`
+
+**Azure ML Compute Clusters**
+- **Purpose**: Managed, auto-scaling compute for training jobs
+- **Usage**: Training ML models (XGBoost, LightGBM via AutoML)
+- **Features**: Auto-scaling, pay-per-use, scale to zero
+
+**Azure ML AutoML**
+- **Purpose**: Automated model selection, feature engineering, and hyperparameter tuning
+- **Usage**: Training Risk Scoring, Revenue Forecasting, and Recommendations models
+- **Features**: Full AutoML, automated model selection, best model selection
+
+**Azure ML Managed Endpoints** ⭐
+- **Purpose**: Real-time model serving
+- **Usage**: ML prediction inference (Risk Scoring, Revenue Forecasting, Recommendations)
+- **Features**: Auto-scaling (0-10 instances), high availability, public endpoints
+- **Authentication**: Managed Identity (system-assigned)
+
+**Azure ML Model Registry**
+- **Purpose**: Model versioning and management
+- **Usage**: Model versioning, A/B testing, model metadata sync
+
+**Azure ML Datastores**
+- **Purpose**: Training data management
+- **Usage**: Versioned datasets, training data exports
+
+**XGBoost / LightGBM**
+- **Purpose**: ML algorithms for predictions
+- **Usage**: Risk Scoring (regression), Revenue Forecasting (regression/time series), Recommendations (ranking)
+- **Training**: Via Azure ML AutoML
 
 ### Code Analysis
 
@@ -388,8 +426,30 @@ This document provides a comprehensive overview of the technology stack used in 
 - **Purpose**: Version control
 - **Usage**: Source code management
 
+## ML Infrastructure
+
+### Azure ML Services
+
+**Azure ML Workspace**
+- Managed ML platform for training
+- Subscription: `main`
+- Resource Group: `castiel-ml-{environment}-rg`
+- Region: `eastus`
+
+**Azure ML SDK**
+- **Library**: `@azure/ai-inference`, `@azure/ml-inference`
+- **Purpose**: Azure ML integration
+- **Usage**: Model training, model serving, model management
+
+**Application Insights**
+- **Purpose**: Unified monitoring for ML metrics
+- **Usage**: ML performance metrics, model drift detection, custom dashboards
+- **Integration**: All ML metrics in Application Insights (no separate ML monitoring)
+
 ## Related Documentation
 
 - [Architecture](./Architecture.md) - System architecture
+- [CAIS Overview](./CAIS_OVERVIEW.md) - Compound AI System architecture
 - [Deployment](./Deployment.md) - Deployment technologies
 - [Module Overview](./ModuleOverview.md) - Module technologies
+- [ML Service](../modules/extensions/ml-service/) - ML capabilities documentation

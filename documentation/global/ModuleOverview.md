@@ -2,7 +2,9 @@
 
 ## Overview
 
-This document defines the module architecture, responsibilities, and implementation standards for the Coder IDE system. All modules are designed to be **reusable**, **configurable**, and **independently deployable**.
+This document defines the module architecture, responsibilities, and implementation standards for the Castiel platform. All modules are designed to be **reusable**, **configurable**, and **independently deployable**.
+
+Castiel is an AI-native business intelligence platform that unifies business data from multiple sources and provides intelligent, predictive insights. The platform is being enhanced with a Machine Learning system focused on three priority use cases: **Risk Scoring**, **Revenue Forecasting**, and **Recommendations**.
 
 ---
 
@@ -24,25 +26,58 @@ Core modules provide foundational functionality that all applications need. They
 
 Extension modules add specialized functionality. Applications can enable/disable them based on needs.
 
+#### Business Intelligence Core Modules
+
+| Module | Port | Purpose | Dependencies |
+|--------|------|---------|--------------|
+| **Pipeline Manager** | 3025 | Sales pipeline and opportunity management | Shard Manager, Logging, User Management |
+| **AI Insights** | 3027 | AI-powered insights and risk analysis | AI Service, Shard Manager, Embeddings, ML Service, Logging |
+| **ML Service** | 3033 | Machine learning model management and predictions | AI Service, Logging |
+| **Analytics Service** | 3030 | Analytics and reporting | Shard Manager, Logging, User Management |
+| **Shard Manager** | 3023 | Core data model management, shard CRUD | Logging, User Management |
+
+#### AI & Intelligence Modules
+
 | Module | Port | Purpose | Dependencies |
 |--------|------|---------|--------------|
 | **AI Service** | 3006 | LLM completions, model routing | Secret Management |
 | **Embeddings** | 3005 | Vector embeddings, semantic search | AI Service |
-| **Shard Manager** | 3023 | Core data model management, shard CRUD | Logging, User Management |
-| **Document Manager** | 3024 | Document/file management and storage | Shard Manager, Logging, User Management |
-| **Pipeline Manager** | 3025 | Sales pipeline and opportunity management | Shard Manager, Logging, User Management |
-| **Integration Manager** | 3026 | Third-party integrations and webhooks | Shard Manager, Logging, User Management, Secret Management |
-| **AI Insights** | 3027 | AI-powered insights and recommendations | AI Service, Shard Manager, Embeddings, Logging |
-| **Content Generation** | 3028 | AI-powered content generation | AI Service, Shard Manager, Logging |
+| **Adaptive Learning** | 3032 | CAIS adaptive learning system | AI Service, Shard Manager, Logging |
 | **Search Service** | 3029 | Advanced search and vector search | Embeddings, Shard Manager, Logging |
-| **Analytics Service** | 3030 | Analytics and reporting | Shard Manager, Logging, User Management |
+
+#### Integration & Content Modules
+
+| Module | Port | Purpose | Dependencies |
+|--------|------|---------|--------------|
+| **Integration Manager** | 3026 | Third-party integrations and webhooks | Shard Manager, Logging, User Management, Secret Management |
+| **Document Manager** | 3024 | Document/file management and storage | Shard Manager, Logging, User Management |
+| **Content Generation** | 3028 | AI-powered content generation | AI Service, Shard Manager, Logging |
+| **Template Service** | 3037 | Template management | Logging |
+
+#### Platform Services
+
+| Module | Port | Purpose | Dependencies |
+|--------|------|---------|--------------|
 | **Collaboration Service** | 3031 | Real-time collaboration features | Shard Manager, Logging, User Management |
 | **Configuration Service** | 3034 | Centralized configuration management | Logging, Secret Management |
 | **Cache Service** | 3035 | Caching and cache management | Logging |
 | **Prompt Service** | 3036 | Prompt management and A/B testing | AI Service, Logging |
-| **Template Service** | 3037 | Template management | Logging |
-| **Adaptive Learning** | 3032 | CAIS adaptive learning system (22 services) | AI Service, Shard Manager, Logging |
-| **ML Service** | 3033 | Machine learning model management | AI Service, Logging |
+| **Dashboard** | 3011 | Dashboard configuration | Shard Manager, Logging, User Management |
+
+#### Optional/Secondary Modules
+
+The following modules provide specialized functionality that may be used in specific contexts:
+
+| Module | Port | Purpose | Dependencies |
+|--------|------|---------|--------------|
+| **Context Service** | 3034 | Context orchestration | Embeddings, AI Service |
+| **Pattern Recognition** | 3037 | Pattern learning and enforcement | Context Service, AI Service |
+| **Validation Engine** | 3036 | Comprehensive validation pipeline | AI Service, Logging |
+| **Bug Detection** | 3039 | Proactive bug finding and fixing | Context Service, AI Service |
+| **Code Generation** | 3040 | Specialized code generation | AI Service, Context Service |
+| **Performance Optimization** | 3041 | Code performance optimization | Context Service, Observability |
+| **Planning** | 3007 | Planning service | AI Service, Embeddings |
+| **Execution** | 3008 | Plan execution engine | Planning, AI Service |
 
 
 ---
@@ -167,28 +202,21 @@ Extension modules add specialized functionality. Applications can enable/disable
 **API Base**: `/api/v1/observability`  
 **Dependencies**: Logging, Quality, Usage Tracking, Dashboard
 
-#### Planning
-**Responsibility**: Project and task management
+#### Planning (Optional)
+**Responsibility**: Planning service for specialized use cases
 
 - Plan creation and validation
 - Project management
 - Task management and dependencies
 - Roadmap and milestone tracking
-- Issue tracking
-- Architecture and technical debt
-
-**Enhanced Capabilities:**
-- **Intent Understanding**: Natural language requirement parsing, code intent extraction, ambiguity resolution, goal inference
-- **Planning & Decomposition**: Task decomposition, dependency ordering, parallel execution planning, risk assessment, impact analysis
-- **Predictive Capabilities**: Issue prediction, maintenance prediction, performance bottleneck prediction, code evolution prediction
 
 **Service**: `containers/planning/`  
 **Port**: 3007  
 **API Base**: `/api/v1/planning`  
-**Dependencies**: Embeddings, AI Service, Execution, Knowledge Base
+**Dependencies**: Embeddings, AI Service
 
-#### Execution
-**Responsibility**: Plan execution engine
+#### Execution (Optional)
+**Responsibility**: Plan execution engine for specialized use cases
 
 - Step-by-step execution
 - Checkpoint and rollback
@@ -196,15 +224,10 @@ Extension modules add specialized functionality. Applications can enable/disable
 - Progress tracking
 - Error recovery
 
-**Enhanced Capabilities:**
-- **Safe Execution Environment**: Sandboxed execution, checkpoint & restore, rollback mechanisms, dry-run mode, diff preview
-- **Continuous Verification**: Real-time type checking, incremental compilation, live testing, runtime monitoring, performance profiling
-- **Self-Correction & Learning**: Error detection & recovery, iterative refinement, feedback loop integration, confidence scoring
-
 **Service**: `containers/execution-service/`  
 **Port**: 3008  
 **API Base**: `/api/v1/execution`  
-**Dependencies**: Planning, Quality, Observability, Workflow
+**Dependencies**: Planning, AI Service
 
 #### Embeddings
 **Responsibility**: Vector embeddings and semantic search
@@ -413,14 +436,16 @@ Extension modules add specialized functionality. Applications can enable/disable
 
 - Pipeline views and visualization
 - Opportunity CRUD operations
-- Pipeline analytics and forecasting
+- **Pipeline analytics and ML-powered revenue forecasting** (enhanced with ML Service)
 - Opportunity auto-linking
+- **Multi-level revenue forecasting** (opportunity, team, tenant levels)
+- **ML-enhanced forecasting** with uncertainty quantification and scenario analysis
 
 **Service**: `containers/pipeline-manager/`  
 **Port**: 3025  
 **API Base**: `/api/v1/pipelines`, `/api/v1/opportunities`  
 **Database**: Cosmos DB NoSQL (containers: `pipeline_opportunities`, `pipeline_views`)  
-**Dependencies**: Shard Manager, Logging, User Management
+**Dependencies**: Shard Manager, Logging, User Management, ML Service (for forecasting)
 
 #### Integration Manager
 **Responsibility**: Third-party integrations and webhooks
@@ -438,18 +463,25 @@ Extension modules add specialized functionality. Applications can enable/disable
 **Dependencies**: Shard Manager, Logging, User Management, Secret Management
 
 #### AI Insights
-**Responsibility**: AI-powered insights and recommendations
+**Responsibility**: AI-powered insights and risk analysis
 
-- AI insight generation
-- Proactive insights
-- Collaborative insights
-- Risk analysis
+- AI insight generation from business data
+- Proactive insights (automated insight generation)
+- Collaborative insights (shared insights and collaboration)
+- **Comprehensive risk analysis** with ML-powered risk scoring
+  - RiskEvaluationService integration
+  - **ML-based risk score predictions** (from ML Service)
+  - Multiple risk detection methods with adaptive weights (rule-based, historical, AI, ML)
+  - Risk analysis tools for AI integration
+  - Revenue at risk calculations
+  - Early warning system
+- **Natural language explanations** of ML predictions via LLMs
 
 **Service**: `containers/ai-insights/`  
 **Port**: 3027  
 **API Base**: `/api/v1/insights`  
 **Database**: Cosmos DB NoSQL (containers: `ai_insights`, `ai_proactive_insights`, `ai_collaborative_insights`, `ai_risk_analysis`)  
-**Dependencies**: AI Service, Shard Manager, Embeddings, Logging
+**Dependencies**: AI Service, Shard Manager, Embeddings, ML Service, Logging
 
 #### Content Generation
 **Responsibility**: AI-powered content generation
@@ -572,44 +604,55 @@ Extension modules add specialized functionality. Applications can enable/disable
 **Database**: Cosmos DB NoSQL (containers: `adaptive_weights`, `adaptive_model_selections`, `adaptive_outcomes`, `adaptive_performance`, `adaptive_validations`, `adaptive_rollouts`)  
 **Dependencies**: AI Service, Shard Manager, Logging
 
-#### ML Service
-**Responsibility**: Machine learning model management
+#### ML Service ⭐
+**Responsibility**: Machine learning model management and predictions
 
-- Feature store management
-- Model versioning and deployment
-- Training job management
-- Model evaluation and metrics
-- Model calibration
-- Synthetic data generation
-- Risk scoring predictions
-- Revenue forecasting
-- ML-based recommendations
+**Critical ML Enhancement**: The ML Service is the core of Castiel's critical ML enhancement, providing ML-powered predictions for three priority use cases:
+
+1. **Risk Scoring** ⭐ - ML-powered risk score predictions (0-1 scale) for opportunities
+2. **Revenue Forecasting** ⭐ - Predictive revenue forecasting at multiple levels (opportunity, team, tenant)
+3. **Recommendations** ⭐ - ML-enhanced recommendation system for better personalization
+
+**CAIS Integration**: The ML Service is a component within Castiel's Compound AI System (CAIS) architecture, operating primarily in Layer 3 (Predictive Model Layer) but integrating with all CAIS layers.
+
+**Capabilities**:
+- Feature store management (CAIS Layer 2: Feature Engineering)
+- Model versioning and deployment via Azure ML
+- Training job management via Azure ML Workspace
+- Model evaluation and metrics tracking
+- Model calibration for accurate predictions
+- Synthetic data generation for initial training
+- **Risk scoring predictions** - ML-powered risk scores with confidence intervals
+- **Revenue forecasting** - Multi-level forecasting with uncertainty quantification
+- **ML-based recommendations** - Personalized recommendation ranking
+
+**Architecture**:
+- **Azure ML Workspace** for managed training (Subscription: `main`, Resource Group: `castiel-ml-dev-rg`, Region: `eastus`)
+- **Azure ML Managed Endpoints** for model serving (auto-scaling, high availability)
+- **AutoML** for automated model selection and training
+- **Global models** with industry fine-tuning when justified
 
 **Service**: `containers/ml-service/`  
 **Port**: 3033  
 **API Base**: `/api/v1/ml`  
 **Database**: Cosmos DB NoSQL (containers: `ml_models`, `ml_features`, `ml_training_jobs`, `ml_evaluations`, `ml_predictions`)  
-**Dependencies**: AI Service, Logging
+**Dependencies**: AI Service, Shard Manager, Logging  
+**See**: [ML Service Documentation](../modules/extensions/ml-service/) for detailed documentation
 
 ### New Extension Module Details
 
-#### Context Service
-**Responsibility**: Centralized context management and assembly
+#### Context Service (Optional)
+**Responsibility**: Context orchestration for specialized use cases
 
-- Full codebase graph analysis
-- AST extraction
+- Context management and assembly
+- AST analysis
 - Dependency trees
 - Call graphs
-- Runtime behavior analysis
-
-**Features Handled:**
-- **Multi-Level Context Analysis**: Full codebase graph analysis, AST extraction, dependency trees, call graphs, runtime behavior analysis
-- **Dynamic Context Assembly**: Smart context window management, just-in-time context loading, token budgeting, context compression
 
 **Service**: `containers/context-service/`  
 **Port**: 3034  
 **API Base**: `/api/v1/context`  
-**Dependencies**: Embeddings, Planning, Knowledge Base, AI Service
+**Dependencies**: Embeddings, AI Service
 
 **Architecture Sub-Modules:**
 - AST analyzer
@@ -644,25 +687,19 @@ Extension modules add specialized functionality. Applications can enable/disable
 - Agent monitor
 - Agent updater
 
-#### Validation Engine
-**Responsibility**: Comprehensive validation across all dimensions
+#### Validation Engine (Optional)
+**Responsibility**: Comprehensive validation pipeline for specialized use cases
 
 - Syntax validation
 - Semantic validation
 - Architecture validation
 - Security validation
 - Performance validation
-- Cross-module consistency checking
-
-**Features Handled:**
-- **Multi-Stage Validation Pipeline**: Syntax, semantic, architecture, security, performance validation
-- **Standards & Conventions**: Coding standards enforcement
-- **Cross-Module Consistency**: Consistency checking across modules
 
 **Service**: `containers/validation-engine/`  
 **Port**: 3036  
 **API Base**: `/api/v1/validation`  
-**Dependencies**: Quality, Context Service, Knowledge Base, Compliance Service
+**Dependencies**: AI Service, Logging
 
 **Architecture Sub-Modules:**
 - Syntax validator
@@ -675,21 +712,18 @@ Extension modules add specialized functionality. Applications can enable/disable
 - Policy validator
 - Custom rules
 
-#### Pattern Recognition
-**Responsibility**: Learn and enforce codebase patterns
+#### Pattern Recognition (Optional)
+**Responsibility**: Pattern learning and enforcement for specialized use cases
 
-- Codebase pattern learning
+- Pattern learning
 - Style consistency
 - Design pattern detection
 - Anti-pattern detection
 
-**Features Handled:**
-- **Pattern Recognition & Enforcement**: Codebase pattern learning, style consistency, design pattern detection, anti-pattern detection
-
 **Service**: `containers/pattern-recognition/`  
 **Port**: 3037  
 **API Base**: `/api/v1/patterns`  
-**Dependencies**: Context Service, Embeddings, Knowledge Base, Quality
+**Dependencies**: Context Service, Embeddings, AI Service
 
 **Architecture Sub-Modules:**
 - Pattern learner
@@ -726,21 +760,18 @@ Extension modules add specialized functionality. Applications can enable/disable
 - API migrator
 - Migration validator
 
-#### Bug Detection
-**Responsibility**: Detect and fix bugs proactively
+#### Bug Detection (Optional)
+**Responsibility**: Proactive bug finding and fixing for specialized use cases
 
 - Anomaly detection
 - Bug prediction
 - Root cause analysis
 - Auto-fix suggestions
 
-**Features Handled:**
-- **Bug Detection & Fixing**: Anomaly detection, bug prediction, root cause analysis, auto-fix suggestions
-
 **Service**: `containers/bug-detection/`  
 **Port**: 3039  
 **API Base**: `/api/v1/bugs`  
-**Dependencies**: Context Service, Quality, Observability, AI Service
+**Dependencies**: Context Service, AI Service
 
 **Architecture Sub-Modules:**
 - Anomaly detector

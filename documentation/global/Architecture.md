@@ -2,7 +2,9 @@
 
 ## Overview
 
-Coder IDE follows a **three-tier microservices architecture** designed for scalability, maintainability, and separation of concerns. The system consists of a Next.js web application, an API gateway, and 20+ independent microservices.
+Castiel follows a **three-tier microservices architecture** designed for scalability, maintainability, and separation of concerns. The system consists of a Next.js web application, an API gateway, and 38+ independent microservices that provide AI-native business intelligence capabilities.
+
+The platform is architected as a **Compound AI System (CAIS)** that orchestrates ML models, LLMs, rules, memory, and feedback loops to deliver predictive intelligence for business decision-making.
 
 ## Architecture Layers
 
@@ -83,20 +85,22 @@ Each microservice:
 ```mermaid
 graph TB
     subgraph Microservices["Microservices Layer"]
+        Pipeline[Pipeline Manager<br/>3025]
+        AIInsights[AI Insights<br/>3027]
+        MLService[ML Service<br/>3033]
+        Shard[Shard Manager<br/>3023]
+        Analytics[Analytics<br/>3030]
         Secret[Secret Management<br/>3003]
-        Usage[Usage Tracking<br/>3004]
-        Embed[Embeddings<br/>3005]
         AI[AI Service<br/>3006]
-        Planning[Planning<br/>3007]
-        Exec[Execution<br/>3008]
-        MCP[MCP Server<br/>3009]
-        KB[Knowledge Base<br/>3010]
+        Embed[Embeddings<br/>3005]
         Other[Other Services...]
     end
     
     Gateway -->|REST| Microservices
     Microservices -->|Events| RabbitMQ[RabbitMQ]
     Microservices -->|Data| DB[(Cosmos DB)]
+    MLService -->|ML Predictions| AIInsights
+    MLService -->|ML Predictions| Pipeline
 ```
 
 ## Complete System Architecture
@@ -113,53 +117,51 @@ graph TB
         Proxy[Request Proxy]
     end
     
+    subgraph BI["Business Intelligence Services"]
+        Pipeline[Pipeline Manager<br/>3025]
+        AIInsights[AI Insights<br/>3027]
+        MLService[ML Service<br/>3033]
+        Analytics[Analytics Service<br/>3030]
+        Shard[Shard Manager<br/>3023]
+    end
+    
+    subgraph AI["AI & Intelligence Services"]
+        AISvc[AI Service<br/>3006]
+        Embed[Embeddings<br/>3005]
+        Adaptive[Adaptive Learning<br/>3032]
+        Search[Search Service<br/>3029]
+    end
+    
     subgraph Foundation["Foundation Services"]
         Secret[Secret Management<br/>3003]
         Usage[Usage Tracking<br/>3004]
         Notif[Notification Manager<br/>3001]
-        Prompt[Prompt Management<br/>3002]
-    end
-    
-    subgraph AI["AI Services"]
-        Embed[Embeddings<br/>3005]
-        AISvc[AI Service<br/>3006]
-        MCP[MCP Server<br/>3009]
-    end
-    
-    subgraph Planning["Planning Services"]
-        PlanningSvc[Planning<br/>3007]
-        Exec[Execution<br/>3008]
-        KB[Knowledge Base<br/>3010]
-    end
-    
-    subgraph Productivity["Productivity Services"]
-        Dashboard[Dashboard<br/>3011]
-        Calendar[Calendar<br/>3012]
-        Msg[Messaging<br/>3013]
         Log[Logging<br/>3014]
-        Learn[Learning & Dev<br/>3015]
-        Collab[Collaboration<br/>3016]
-        Quality[Quality<br/>3017]
-        Resource[Resource Mgmt<br/>3018]
-        Workflow[Workflow<br/>3019]
-        Obs[Observability<br/>3020]
+    end
+    
+    subgraph Integration["Integration Services"]
+        IntegrationMgr[Integration Manager<br/>3026]
+        DocumentMgr[Document Manager<br/>3024]
+        ContentGen[Content Generation<br/>3028]
     end
     
     subgraph Infrastructure["Infrastructure"]
-        DB[(PostgreSQL)]
-        RabbitMQ[RabbitMQ]
-        Redis[Redis]
+        DB[(Cosmos DB<br/>NoSQL)]
+        RabbitMQ[RabbitMQ<br/>Event Bus]
+        Redis[Redis<br/>Cache]
+        AzureML[Azure ML Workspace<br/>ML Training & Serving]
     end
     
-    Electron -->|HTTP/WebSocket| Gateway
-    Gateway -->|REST| Foundation
+    NextJS -->|HTTP/WebSocket| Gateway
+    Gateway -->|REST| BI
     Gateway -->|REST| AI
-    Gateway -->|REST| Planning
-    Gateway -->|REST| Productivity
+    Gateway -->|REST| Foundation
+    Gateway -->|REST| Integration
     
-    Foundation -->|REST| Secret
-    AI -->|REST| AISvc
-    Planning -->|REST| PlanningSvc
+    BI -->|ML Predictions| MLService
+    MLService -->|Training/Serving| AzureML
+    AIInsights -->|Uses| MLService
+    Pipeline -->|Uses| MLService
     
     All[All Services] -->|Events| RabbitMQ
     All -->|Data| DB
@@ -167,33 +169,83 @@ graph TB
     Usage -->|Consumes| RabbitMQ
 ```
 
+## Compound AI System (CAIS) Architecture
+
+Castiel uses a **Compound AI System (CAIS)** architecture that orchestrates multiple AI components working together in a decision loop. See [CAIS Overview](./CAIS_OVERVIEW.md) for detailed documentation.
+
+### CAIS Components
+
+- **ML Models** - Learn patterns from historical data and make predictions (Risk Scoring, Revenue Forecasting, Recommendations)
+- **LLMs** - Explain predictions, generate natural language, provide reasoning
+- **Rules/Heuristics** - Enforce business logic and constraints
+- **Memory/Historical Data** - Past outcomes, patterns, context
+- **Feedback Loops** - Continuously improve through user feedback and outcome tracking
+- **Tools** - CRM integrations, email, calendar, analytics
+
+### CAIS Decision Loop
+
+**Prediction → Reasoning → Action → Feedback → Learning**
+
+1. **ML Models** predict (risk scores, revenue forecasts)
+2. **LLMs** explain (why the prediction, what to do next)
+3. **Rules** constrain (business policies, guardrails)
+4. **System** acts (recommendations, notifications)
+5. **Users** provide feedback (approve actions, outcomes)
+6. **System** learns (improves from outcomes)
+
 ## Microservices Architecture
 
 ### Service Overview
 
+#### Business Intelligence Core Services
+
 | Service | Port | Purpose | Communication |
 |---------|------|---------|---------------|
-| **Main App** | 3000 | API Gateway, Auth, User Management | REST + WebSocket |
+| **Pipeline Manager** | 3025 | Sales pipeline and opportunity management | REST + RabbitMQ |
+| **AI Insights** | 3027 | AI-powered insights and risk analysis | REST + RabbitMQ |
+| **ML Service** | 3033 | Machine learning model management and predictions | REST + RabbitMQ |
+| **Analytics Service** | 3030 | Analytics and reporting | REST |
+| **Shard Manager** | 3023 | Core data model management | REST + RabbitMQ |
+
+#### AI & Intelligence Services
+
+| Service | Port | Purpose | Communication |
+|---------|------|---------|---------------|
+| **AI Service** | 3006 | LLM completions and model routing | REST + RabbitMQ (publisher) |
+| **Embeddings** | 3005 | Vector embeddings and semantic search | REST + RabbitMQ (publisher) |
+| **Adaptive Learning** | 3032 | CAIS adaptive learning system | REST + RabbitMQ |
+| **Search Service** | 3029 | Advanced search and vector search | REST |
+
+#### Foundation Services
+
+| Service | Port | Purpose | Communication |
+|---------|------|---------|---------------|
+| **API Gateway** | 3001 | Request routing, authentication, authorization | REST + WebSocket |
 | **Notification Manager** | 3001 | Notification system | REST + RabbitMQ (consumer) |
-| **Prompt Management** | 3002 | Prompt templates | REST + RabbitMQ (publisher) |
 | **Secret Management** | 3003 | Centralized secrets | REST |
 | **Usage Tracking** | 3004 | Usage metering | REST + RabbitMQ (consumer) |
-| **Embeddings** | 3005 | Vector embeddings | REST + RabbitMQ (publisher) |
-| **AI Service** | 3006 | LLM completions | REST + RabbitMQ (publisher) |
-| **Planning** | 3007 | Planning & project management | REST + RabbitMQ (publisher) |
-| **Execution** | 3008 | Plan execution engine | REST |
-| **MCP Server** | 3009 | Model Context Protocol | REST + RabbitMQ (publisher) |
-| **Knowledge Base** | 3010 | Documentation management | REST + RabbitMQ (publisher) |
+| **Logging** | 3014 | Audit logging and compliance | REST |
+| **Authentication** | 3021 | User authentication, OAuth, sessions | REST |
+| **User Management** | 3022 | User profiles, organizations, teams, RBAC | REST |
+
+#### Integration Services
+
+| Service | Port | Purpose | Communication |
+|---------|------|---------|---------------|
+| **Integration Manager** | 3026 | Third-party integrations and webhooks | REST + RabbitMQ |
+| **Document Manager** | 3024 | Document and file management | REST |
+| **Content Generation** | 3028 | AI-powered content generation | REST + RabbitMQ |
+
+#### Platform Services
+
+| Service | Port | Purpose | Communication |
+|---------|------|---------|---------------|
 | **Dashboard** | 3011 | Dashboard configuration | REST |
-| **Calendar** | 3012 | Event management | REST |
-| **Messaging** | 3013 | Conversations | REST + RabbitMQ |
-| **Logging** | 3014 | Log ingestion | REST |
-| **Learning & Development** | 3015 | Learning paths | REST |
-| **Collaboration** | 3016 | Pairing & innovation | REST |
-| **Quality** | 3017 | Experiments & compliance | REST |
-| **Resource Management** | 3018 | Capacity planning | REST |
-| **Workflow** | 3019 | Workflow orchestration | REST |
-| **Observability** | 3020 | Telemetry & tracing | REST |
+| **Collaboration Service** | 3031 | Real-time collaboration features | REST + RabbitMQ |
+| **Configuration Service** | 3034 | Centralized configuration management | REST |
+| **Cache Service** | 3035 | Caching and cache management | REST |
+| **Prompt Service** | 3036 | Prompt management and A/B testing | REST + RabbitMQ |
+| **Template Service** | 3037 | Template management | REST |
 
 ## Communication Patterns
 
@@ -281,19 +333,24 @@ All services use Azure Cosmos DB with container-based isolation:
 ### Database Structure
 
 ```
-Azure Cosmos DB (coder_ide)
+Azure Cosmos DB (castiel)
 ├── Core Containers
 │   ├── users
 │   ├── organizations
 │   ├── teams
-│   ├── projects
 │   └── ...
 │
-├── Microservice Containers (prefixed)
+├── Business Intelligence Containers
+│   ├── pipeline_* (Pipeline Manager)
+│   ├── ai_insights_* (AI Insights)
+│   ├── ml_* (ML Service)
+│   ├── analytics_* (Analytics)
+│   └── shard_* (Shard Manager)
+│
+├── AI Service Containers (prefixed)
 │   ├── ai_* (AI Service)
-│   ├── kb_* (Knowledge Base)
-│   ├── mcp_* (MCP Server)
 │   ├── emb_* (Embeddings)
+│   ├── adaptive_* (Adaptive Learning)
 │   └── ...
 │
 └── Features
@@ -383,9 +440,24 @@ Azure Cosmos DB (coder_ide)
 7. **Scalability**: Designed for horizontal scaling
 8. **Maintainability**: Clear separation of concerns
 
+## ML Prediction Pipeline
+
+The ML Service provides predictions that flow through the system:
+
+1. **Data Collection**: Opportunities and historical data stored in Cosmos DB
+2. **Feature Engineering**: Features extracted from signals (planned: FeatureStoreService)
+3. **ML Prediction**: Azure ML Managed Endpoints provide predictions (Risk Scoring, Revenue Forecasting, Recommendations)
+4. **Explanation**: SHAP values and feature importance explain predictions
+5. **LLM Reasoning**: LLMs generate natural language explanations
+6. **Decision & Action**: RiskEvaluationService and RecommendationsService combine rules + AI
+7. **Feedback**: User feedback and outcomes collected for continuous learning
+
+See [CAIS Overview](./CAIS_OVERVIEW.md) for detailed CAIS architecture documentation.
+
 ## Related Documentation
 
 - [System Purpose](./SystemPurpose.md) - System goals and vision
+- [CAIS Overview](./CAIS_OVERVIEW.md) - Compound AI System architecture
 - [Module Overview](./ModuleOverview.md) - Module purposes
 - [Data Flow](./DataFlow.md) - Communication patterns
 - [Technology Stack](./TechnologyStack.md) - Technologies used

@@ -1,0 +1,338 @@
+openapi: 3.0.3
+info:
+  title: Code Generation API
+  version: 1.0.0
+  description: |
+    Specialized code generation tasks service.
+    
+    ## Authentication
+    All endpoints require JWT authentication via Bearer token.
+    
+    ## Generation Types
+    - UI Component: React/Vue/Angular components
+    - API Endpoint: REST API endpoints
+    - Database Schema: Database schemas
+    - Test Data: Test data and fixtures
+    - Configuration: Configuration files
+    - Migration: Database migrations
+    - IaC: Infrastructure as Code
+
+servers:
+  - url: /api/v1
+    description: API Version 1
+
+tags:
+  - name: Code Generation
+    description: Code generation job management
+  - name: Templates
+    description: Generation template management
+  - name: Health
+    description: Health check endpoints
+
+paths:
+  /generate/jobs:
+    post:
+      summary: Create generation job
+      description: Create a new code generation job
+      tags: [Code Generation]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, input]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                type:
+                  type: string
+                  enum: [ui_component, api_endpoint, database_schema, test_data, configuration, migration, iac, custom]
+                templateId:
+                  type: string
+                  format: uuid
+                input:
+                  type: object
+                  properties:
+                    specification:
+                      type: string
+                    requirements:
+                      type: object
+                    context:
+                      type: array
+                      items:
+                        type: string
+                    examples:
+                      type: array
+                      items:
+                        type: string
+                metadata:
+                  type: object
+      responses:
+        '201':
+          description: Generation job created
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+    
+    get:
+      summary: List generation jobs
+      description: List generation jobs with filtering
+      tags: [Code Generation]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, generating, completed, failed, cancelled]
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 100
+        - name: continuationToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of generation jobs
+        '401':
+          description: Unauthorized
+  
+  /generate/jobs/{id}:
+    get:
+      summary: Get generation job
+      description: Get generation job by ID
+      tags: [Code Generation]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Generation job details
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /generate/jobs/{id}/cancel:
+    post:
+      summary: Cancel generation job
+      description: Cancel a generation job
+      tags: [Code Generation]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Generation job cancelled
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /generate/templates:
+    post:
+      summary: Create generation template
+      description: Create a new generation template
+      tags: [Templates]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type, template]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                type:
+                  type: string
+                  enum: [ui_component, api_endpoint, database_schema, test_data, configuration, migration, iac, custom]
+                template:
+                  type: object
+                examples:
+                  type: array
+                metadata:
+                  type: object
+                enabled:
+                  type: boolean
+      responses:
+        '201':
+          description: Template created
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+    
+    get:
+      summary: List generation templates
+      description: List generation templates with filtering
+      tags: [Templates]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: enabled
+          in: query
+          schema:
+            type: boolean
+        - name: language
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 100
+        - name: continuationToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of templates
+        '401':
+          description: Unauthorized
+  
+  /generate/templates/{id}:
+    get:
+      summary: Get generation template
+      description: Get generation template by ID
+      tags: [Templates]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Template details
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+    
+    put:
+      summary: Update generation template
+      description: Update generation template
+      tags: [Templates]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                template:
+                  type: object
+                examples:
+                  type: array
+                metadata:
+                  type: object
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Template updated
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+    
+    delete:
+      summary: Delete generation template
+      description: Delete generation template
+      tags: [Templates]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Template deleted
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /health:
+    get:
+      summary: Health check
+      description: Liveness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+  
+  /ready:
+    get:
+      summary: Readiness check
+      description: Readiness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+

@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.6",
-    "@types/bcrypt": "^5.0.2",
+    "@types/bcrypt": "^6.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^25.0.5",

@@ -1,0 +1,32 @@
+# Compliance Service Module Configuration
+
+module:
+  name: compliance-service
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3043}
+  host: ${HOST:-0.0.0.0}
+
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+
+services:
+  quality:
+    url: ${QUALITY_URL:-http://localhost:3017}
+  security_service:
+    url: ${SECURITY_SERVICE_URL:-http://localhost:3042}
+  validation_engine:
+    url: ${VALIDATION_ENGINE_URL:-http://localhost:3036}
+  workflow:
+    url: ${WORKFLOW_URL:-http://localhost:3020}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: compliance_service
+

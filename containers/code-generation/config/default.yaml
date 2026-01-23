@@ -1,0 +1,32 @@
+# Code Generation Module Configuration
+
+module:
+  name: code-generation
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3040}
+  host: ${HOST:-0.0.0.0}
+
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+
+services:
+  ai_service:
+    url: ${AI_SERVICE_URL:-http://localhost:3006}
+  context_service:
+    url: ${CONTEXT_SERVICE_URL:-http://localhost:3034}
+  quality:
+    url: ${QUALITY_URL:-http://localhost:3017}
+  pattern_recognition:
+    url: ${PATTERN_RECOGNITION_URL:-http://localhost:3037}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: code_generation
+

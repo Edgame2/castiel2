@@ -5,7 +5,7 @@ import { load } from 'yaml';
 export interface AgentRegistryConfig {
   module: { name: string; version: string };
   server: { port: number; host: string };
-  cosmos_db: { endpoint: string; key: string; database_id: string };
+  cosmos_db: { endpoint: string; key: string; database_id: string; containers?: Record<string, string> };
   services: {
     ai_service: { url: string };
     prompt_service: { url: string };

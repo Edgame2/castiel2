@@ -1,0 +1,188 @@
+openapi: 3.0.3
+info:
+  title: AI Service API
+  version: 1.0.0
+  description: |
+    Centralized LLM completion service.
+    
+    ## Authentication
+    All endpoints require JWT authentication via Bearer token.
+    
+    ## Features
+    - LLM completions (OpenAI, Anthropic, Ollama)
+    - Model routing and selection
+    - Agent management
+    - Completion tracking
+
+servers:
+  - url: /api/ai
+    description: AI Service API
+
+tags:
+  - name: Completions
+    description: LLM completion management
+  - name: Models
+    description: Model management
+  - name: Agents
+    description: Agent management
+  - name: Health
+    description: Health check endpoints
+
+paths:
+  /completions:
+    post:
+      summary: Create completion
+      description: Create a new LLM completion
+      tags: [Completions]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages]
+              properties:
+                messages:
+                  type: array
+                  items:
+                    type: object
+                model:
+                  type: string
+                temperature:
+                  type: number
+                maxTokens:
+                  type: number
+      responses:
+        '200':
+          description: Completion created
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+  
+  /models:
+    get:
+      summary: List models
+      description: List available models
+      tags: [Models]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of models
+        '401':
+          description: Unauthorized
+  
+  /models/{id}:
+    get:
+      summary: Get model
+      description: Get model details
+      tags: [Models]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model details
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /agents:
+    get:
+      summary: List agents
+      description: List available agents
+      tags: [Agents]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of agents
+        '401':
+          description: Unauthorized
+  
+  /agents/{id}:
+    get:
+      summary: Get agent
+      description: Get agent details
+      tags: [Agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent details
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /agents/{id}/execute:
+    post:
+      summary: Execute agent
+      description: Execute an agent
+      tags: [Agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                input:
+                  type: object
+      responses:
+        '200':
+          description: Agent executed
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /health:
+    get:
+      summary: Health check
+      description: Liveness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+  
+  /ready:
+    get:
+      summary: Readiness check
+      description: Readiness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+

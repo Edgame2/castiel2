@@ -4,7 +4,7 @@
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { getDatabaseClient } from '@coder/shared';
+import { PrismaClient } from '.prisma/logging-client';
 import { log } from '../utils/logger';
 
 export interface AuthenticatedUser {
@@ -40,24 +40,19 @@ export async function authenticateRequest(
       return;
     }
     
-    // Get user from database
-    const db = getDatabaseClient();
-    const user = await db.user.findUnique({
-      where: { id: decoded.userId },
-      select: { id: true, email: true, name: true },
-    });
-
-    if (!user) {
-      log.warn('User not found in database', { userId: decoded.userId });
-      reply.code(401).send({ error: 'User not found' });
-      return;
-    }
-
-    // Attach user to request
+    // Get Prisma client from app (attached in server.ts)
+    const prisma = (request.server as any).prisma as PrismaClient;
+    
+    // Note: Logging service doesn't have a user table - user data comes from JWT
+    // In a production system, you might want to call user-management service to verify user
+    // For now, we trust the JWT token (already verified above)
+    // If Prisma is not available, we still proceed with JWT data
+    
+    // Attach user to request from JWT (trusted after verification)
     (request as any).user = {
-      id: user.id,
-      email: user.email,
-      name: user.name || undefined,
+      id: decoded.userId,
+      email: decoded.email,
+      name: undefined, // Not available in JWT, would need to call user-management service
       organizationId: decoded.organizationId,
     } as AuthenticatedUser;
   } catch (error: any) {

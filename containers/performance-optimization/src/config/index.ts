@@ -5,7 +5,7 @@ import { load } from 'yaml';
 export interface PerformanceOptimizationConfig {
   module: { name: string; version: string };
   server: { port: number; host: string };
-  cosmos_db: { endpoint: string; key: string; database_id: string };
+  cosmos_db: { endpoint: string; key: string; database_id: string; containers?: Record<string, string> };
   services: {
     context_service: { url: string };
     observability: { url: string };

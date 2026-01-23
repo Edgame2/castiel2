@@ -60,6 +60,23 @@ services:
       - coder-network
     restart: unless-stopped
 
+  # UI Container
+  ui:
+    build:
+      context: ./containers/ui
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3000
+      - NEXT_PUBLIC_API_BASE_URL=http://api-gateway:3001
+    depends_on:
+      - api-gateway
+    networks:
+      - coder-network
+    restart: unless-stopped
+
   # Core Services
   auth:
     build:

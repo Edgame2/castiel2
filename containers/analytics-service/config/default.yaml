@@ -12,6 +12,10 @@ cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
   key: ${COSMOS_DB_KEY}
   database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    events: analytics_events
+    metrics: analytics_metrics
+    reports: analytics_reports
 
 services:
   shard_manager:

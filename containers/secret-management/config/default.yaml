@@ -10,6 +10,18 @@ server:
   host: ${HOST:-0.0.0.0}
   env: ${NODE_ENV:-development}
 
+# Cosmos DB Configuration
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    secrets: secret_secrets
+    vaults: secret_vaults
+    audit_logs: secret_audit_logs
+    encryption_keys: secret_encryption_keys
+
+# Legacy database.url for backward compatibility
 database:
   url: ${DATABASE_URL}
 

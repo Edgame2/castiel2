@@ -50,23 +50,14 @@ export async function buildApp(): Promise<FastifyInstance> {
     endpoint: config.cosmos_db.endpoint,
     key: config.cosmos_db.key,
     database: config.cosmos_db.database_id,
-    containers: {
-      providers: 'integration_providers',
-      integrations: 'integration_integrations',
-      webhooks: 'integration_webhooks',
-      syncTasks: 'integration_sync_tasks',
-    },
+    containers: config.cosmos_db.containers,
   });
 
   await setupJWT(fastify, { secret: process.env.JWT_SECRET || '' });
   setupHealthCheck(fastify);
 
   try {
-    await connectDatabase({
-      endpoint: config.cosmos_db.endpoint,
-      key: config.cosmos_db.key,
-      databaseId: config.cosmos_db.database_id,
-    });
+    await connectDatabase();
   } catch (error) {
     console.error('Failed to connect to database:', error);
     throw error;

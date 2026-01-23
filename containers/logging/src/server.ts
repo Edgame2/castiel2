@@ -6,7 +6,7 @@
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
 import { PrismaClient } from '.prisma/logging-client';
-import { setupJWT } from '@coder/shared';
+import { setupJWT, initializeDatabase, connectDatabase } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import { writeFileSync, mkdirSync } from 'fs';
@@ -111,7 +111,19 @@ export async function buildApp(): Promise<FastifyInstance> {
     transformStaticCSP: (header) => header,
   });
   
-  // Initialize Prisma
+  // Initialize Cosmos DB if configured (for future migration)
+  if (config.cosmos_db?.endpoint && config.cosmos_db?.key) {
+    initializeDatabase({
+      endpoint: config.cosmos_db.endpoint,
+      key: config.cosmos_db.key,
+      database: config.cosmos_db.database_id,
+      containers: config.cosmos_db.containers,
+    });
+    await connectDatabase();
+    log.info('Cosmos DB initialized (for future migration)');
+  }
+  
+  // Initialize Prisma (current storage)
   prisma = new PrismaClient({
     datasources: {
       db: {

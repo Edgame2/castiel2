@@ -1,0 +1,53 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { load } from 'yaml';
+
+export interface AIServiceConfig {
+  module: { name: string; version: string };
+  server: { port: number; host: string };
+  cosmos_db: {
+    endpoint: string;
+    key: string;
+    database_id: string;
+    containers?: Record<string, string>;
+  };
+  services: {
+    secret_management?: { url: string };
+    logging?: { url: string };
+  };
+  rabbitmq: { url: string; exchange: string; queue: string };
+  redis: {
+    url?: string;
+    host: string;
+    port: number;
+    password?: string;
+    db: number;
+  };
+}
+
+export function loadConfig(): AIServiceConfig {
+  const configPath = join(__dirname, '../../config/default.yaml');
+  const config = load(readFileSync(configPath, 'utf-8')) as AIServiceConfig;
+  
+  // Override with environment variables if provided
+  if (process.env.PORT) config.server.port = parseInt(process.env.PORT, 10);
+  if (process.env.HOST) config.server.host = process.env.HOST;
+  if (process.env.COSMOS_DB_ENDPOINT) config.cosmos_db.endpoint = process.env.COSMOS_DB_ENDPOINT;
+  if (process.env.COSMOS_DB_KEY) config.cosmos_db.key = process.env.COSMOS_DB_KEY;
+  if (process.env.COSMOS_DB_DATABASE_ID) config.cosmos_db.database_id = process.env.COSMOS_DB_DATABASE_ID;
+  if (process.env.SECRET_MANAGEMENT_URL) {
+    config.services.secret_management = { url: process.env.SECRET_MANAGEMENT_URL };
+  }
+  if (process.env.LOGGING_URL) {
+    config.services.logging = { url: process.env.LOGGING_URL };
+  }
+  if (process.env.RABBITMQ_URL) config.rabbitmq.url = process.env.RABBITMQ_URL;
+  if (process.env.REDIS_URL) config.redis.url = process.env.REDIS_URL;
+  if (process.env.REDIS_HOST) config.redis.host = process.env.REDIS_HOST;
+  if (process.env.REDIS_PORT) config.redis.port = parseInt(process.env.REDIS_PORT, 10);
+  if (process.env.REDIS_PASSWORD) config.redis.password = process.env.REDIS_PASSWORD;
+  if (process.env.REDIS_DB) config.redis.db = parseInt(process.env.REDIS_DB, 10);
+  
+  return config;
+}
+

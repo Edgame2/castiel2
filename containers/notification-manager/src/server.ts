@@ -1,14 +1,12 @@
 import Fastify from 'fastify';
-import { connectDatabase, disconnectDatabase, setupHealthCheck, setupJWT, closeConnection } from '@coder/shared';
+import { initializeDatabase, connectDatabase, disconnectDatabase, setupHealthCheck, setupJWT, closeConnection } from '@coder/shared';
 import { notificationRoutes } from './routes/notifications';
 import { preferenceRoutes } from './routes/preferences';
 import { templateRoutes } from './routes/templates';
 import { metricsRoutes } from './routes/metrics';
 import { startEventConsumer } from './consumers/eventConsumer';
 import { ScheduledNotificationJob } from './jobs/ScheduledNotificationJob';
-import { getConfig } from './config';
-
-const config = getConfig();
+import { loadConfig } from './config';
 
 const server = Fastify({
   logger: true,
@@ -25,6 +23,17 @@ setupHealthCheck(server);
 
 const start = async () => {
   try {
+    // Load configuration
+    const config = loadConfig();
+    
+    // Initialize database with config
+    initializeDatabase({
+      endpoint: config.cosmos_db.endpoint,
+      key: config.cosmos_db.key,
+      database: config.cosmos_db.database_id,
+      containers: config.cosmos_db.containers,
+    });
+    
     // Setup JWT for authentication
     await setupJWT(server);
     

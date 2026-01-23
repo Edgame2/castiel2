@@ -1,0 +1,342 @@
+openapi: 3.0.3
+info:
+  title: Agent Registry API
+  version: 1.0.0
+  description: |
+    Management of specialized AI agents.
+    
+    ## Authentication
+    All endpoints require JWT authentication via Bearer token.
+    
+    ## Agent Types
+    - Code Generation: Generate code
+    - Code Review: Review code
+    - Bug Fixing: Fix bugs
+    - Refactoring: Refactor code
+    - Documentation: Generate documentation
+    - Testing: Generate tests
+    - Analysis: Analyze code
+
+servers:
+  - url: /api/v1
+    description: API Version 1
+
+tags:
+  - name: Agents
+    description: Agent management
+  - name: Agent Selection
+    description: Agent selection
+  - name: Agent Execution
+    description: Agent execution tracking
+  - name: Health
+    description: Health check endpoints
+
+paths:
+  /agents:
+    post:
+      summary: Create agent
+      description: Create a new agent
+      tags: [Agents]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type, capabilities]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                type:
+                  type: string
+                  enum: [code_generation, code_review, bug_fixing, refactoring, documentation, testing, analysis, custom]
+                capabilities:
+                  type: array
+                  items:
+                    type: string
+                requirements:
+                  type: object
+                version:
+                  type: string
+                status:
+                  type: string
+                  enum: [active, inactive, deprecated]
+      responses:
+        '201':
+          description: Agent created
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+    
+    get:
+      summary: List agents
+      description: List agents with filtering
+      tags: [Agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, deprecated]
+        - name: capability
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 100
+        - name: continuationToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of agents
+        '401':
+          description: Unauthorized
+  
+  /agents/{id}:
+    get:
+      summary: Get agent
+      description: Get agent by ID
+      tags: [Agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Agent details
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+    
+    put:
+      summary: Update agent
+      description: Update agent
+      tags: [Agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                capabilities:
+                  type: array
+                  items:
+                    type: string
+                requirements:
+                  type: object
+                version:
+                  type: string
+                status:
+                  type: string
+                  enum: [active, inactive, deprecated]
+      responses:
+        '200':
+          description: Agent updated
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+    
+    delete:
+      summary: Delete agent
+      description: Delete agent
+      tags: [Agents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Agent deleted
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /agents/select:
+    post:
+      summary: Select agent
+      description: Select an agent for a task
+      tags: [Agent Selection]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [task, criteria]
+              properties:
+                task:
+                  type: object
+                criteria:
+                  type: object
+                  properties:
+                    requiredCapabilities:
+                      type: array
+                      items:
+                        type: string
+                    preferredType:
+                      type: string
+                    minVersion:
+                      type: string
+      responses:
+        '200':
+          description: Agent selected
+        '404':
+          description: No suitable agent found
+        '401':
+          description: Unauthorized
+  
+  /agent-executions:
+    post:
+      summary: Create agent execution
+      description: Create a new agent execution
+      tags: [Agent Execution]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agentId, task]
+              properties:
+                agentId:
+                  type: string
+                  format: uuid
+                task:
+                  type: object
+                input:
+                  type: object
+      responses:
+        '201':
+          description: Execution created
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+    
+    get:
+      summary: List agent executions
+      description: List agent executions
+      tags: [Agent Execution]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: agentId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, completed, failed, cancelled]
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 100
+        - name: continuationToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of executions
+        '401':
+          description: Unauthorized
+  
+  /agent-executions/{id}:
+    get:
+      summary: Get agent execution
+      description: Get agent execution by ID
+      tags: [Agent Execution]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Execution details
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /health:
+    get:
+      summary: Health check
+      description: Liveness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+  
+  /ready:
+    get:
+      summary: Readiness check
+      description: Readiness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+

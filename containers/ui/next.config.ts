@@ -1,0 +1,105 @@
+import type { NextConfig } from "next";
+
+// Bundle analyzer configuration
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+})
+
+const nextConfig: NextConfig = {
+  // Performance optimizations
+  reactStrictMode: true,
+
+  // Enable Turbopack for Next.js 16 (default bundler)
+  turbopack: {},
+
+  // Image optimization
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 31536000,
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.castiel.app',
+      },
+    ],
+    unoptimized: false,
+  },
+
+  // Compiler options for optimization
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'],
+    } : false,
+  },
+
+  // Experimental features for performance
+  experimental: {
+    optimizePackageImports: [
+      '@/components/ui',
+      'lucide-react',
+      'date-fns',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-select',
+      '@radix-ui/react-tabs',
+      '@tanstack/react-table',
+    ],
+  },
+
+  // Output configuration for better caching
+  output: 'standalone',
+
+  // Headers for caching and security
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+        ],
+      },
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ]
+  },
+
+  // Proxy API requests to API Gateway
+  async rewrites() {
+    const apiGatewayUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${apiGatewayUrl}/api/v1/:path*`,
+      },
+      {
+        source: '/api/profile/:path*',
+        destination: `${apiGatewayUrl}/api/profile/:path*`,
+      },
+      {
+        source: '/api/auth/:path*',
+        destination: `${apiGatewayUrl}/api/auth/:path*`,
+      },
+    ]
+  },
+};
+
+export default withBundleAnalyzer(nextConfig);
+

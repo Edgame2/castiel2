@@ -1,0 +1,321 @@
+openapi: 3.0.3
+info:
+  title: Validation Engine API
+  version: 1.0.0
+  description: |
+    Comprehensive validation service.
+    
+    ## Authentication
+    All endpoints require JWT authentication via Bearer token.
+    
+    ## Validation Types
+    - Syntax: Code syntax validation
+    - Semantic: Code semantics validation
+    - Architecture: Architecture compliance validation
+    - Security: Security requirements validation
+    - Performance: Performance requirements validation
+    - Consistency: Code consistency validation
+
+servers:
+  - url: /api/v1
+    description: API Version 1
+
+tags:
+  - name: Validation Rules
+    description: Validation rule management
+  - name: Validation Runs
+    description: Validation run management
+  - name: Health
+    description: Health check endpoints
+
+paths:
+  /validation/rules:
+    post:
+      summary: Create validation rule
+      description: Create a new validation rule
+      tags: [Validation Rules]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type, category, rule]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                type:
+                  type: string
+                  enum: [syntax, semantic, architecture, security, performance, consistency, custom]
+                category:
+                  type: string
+                  enum: [code_quality, security, performance, architecture, style, custom]
+                rule:
+                  type: object
+                severity:
+                  type: string
+                  enum: [critical, high, medium, low, info]
+                enabled:
+                  type: boolean
+      responses:
+        '201':
+          description: Rule created
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+    
+    get:
+      summary: List validation rules
+      description: List validation rules with filtering
+      tags: [Validation Rules]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: enabled
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 100
+        - name: continuationToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of rules
+        '401':
+          description: Unauthorized
+  
+  /validation/rules/{id}:
+    get:
+      summary: Get validation rule
+      description: Get validation rule by ID
+      tags: [Validation Rules]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rule details
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+    
+    put:
+      summary: Update validation rule
+      description: Update validation rule
+      tags: [Validation Rules]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                rule:
+                  type: object
+                severity:
+                  type: string
+                  enum: [critical, high, medium, low, info]
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Rule updated
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+    
+    delete:
+      summary: Delete validation rule
+      description: Delete validation rule
+      tags: [Validation Rules]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Rule deleted
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /validation/runs:
+    post:
+      summary: Create validation run
+      description: Create a new validation run
+      tags: [Validation Runs]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target, ruleIds]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                target:
+                  type: object
+                  required: [type, path]
+                ruleIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                options:
+                  type: object
+      responses:
+        '201':
+          description: Run created
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+    
+    get:
+      summary: List validation runs
+      description: List validation runs
+      tags: [Validation Runs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, completed, failed, cancelled]
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 100
+        - name: continuationToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of runs
+        '401':
+          description: Unauthorized
+  
+  /validation/runs/{id}:
+    get:
+      summary: Get validation run
+      description: Get validation run by ID
+      tags: [Validation Runs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Run details
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /validation/runs/{id}/run:
+    post:
+      summary: Run validation
+      description: Run a validation
+      tags: [Validation Runs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Validation started
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /health:
+    get:
+      summary: Health check
+      description: Liveness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+  
+  /ready:
+    get:
+      summary: Readiness check
+      description: Readiness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+

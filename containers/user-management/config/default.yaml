@@ -14,6 +14,14 @@ cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
   key: ${COSMOS_DB_KEY}
   database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    users: user_users
+    organizations: user_organizations
+    teams: user_teams
+    roles: user_roles
+    permissions: user_permissions
+    invitations: user_invitations
+    memberships: user_memberships
   
 # Legacy database.url for backward compatibility during migration
 database:

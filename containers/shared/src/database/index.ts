@@ -11,33 +11,83 @@ import { Database, Container } from '@azure/cosmos';
 // Singleton instances
 let dbClient: CosmosDBClient | null = null;
 let connectionPool: ConnectionPool | null = null;
+let containerMappings: Record<string, string> = {}; // Store container mappings
+let dbConfig: InitializeDatabaseConfig | null = null; // Store database config
+
+/**
+ * Initialize database configuration
+ * Sets up container mappings and ensures containers exist
+ */
+export interface InitializeDatabaseConfig {
+  endpoint: string;
+  key: string;
+  database: string;
+  containers?: Record<string, string>; // Map of logical names to container names
+}
+
+/**
+ * Initialize database with container configuration
+ * This function sets up the database connection and ensures containers exist
+ * Note: This is called before connectDatabase() to configure container mappings
+ */
+export function initializeDatabase(config: InitializeDatabaseConfig): void {
+  // Validate configuration
+  if (!config.endpoint || !config.key || !config.database) {
+    throw new Error('Database configuration requires endpoint, key, and database');
+  }
+
+  // Store configuration and container mappings for later use
+  dbConfig = config;
+  containerMappings = config.containers || {};
+}
 
 /**
  * Initialize database connection
  * Must be called before using getDatabaseClient()
+ * Uses config from initializeDatabase() if available, otherwise falls back to environment variables
  */
 export async function connectDatabase(config?: CosmosDBConfig): Promise<void> {
-  if (!config) {
-    // Try to get config from environment variables
+  let cosmosConfig: CosmosDBConfig;
+
+  if (config) {
+    // Use provided config
+    cosmosConfig = config;
+  } else if (dbConfig) {
+    // Use config from initializeDatabase()
+    cosmosConfig = {
+      endpoint: dbConfig.endpoint,
+      key: dbConfig.key,
+      databaseId: dbConfig.database,
+    };
+  } else {
+    // Fall back to environment variables
     const endpoint = process.env.COSMOS_DB_ENDPOINT;
     const key = process.env.COSMOS_DB_KEY;
     const databaseId = process.env.COSMOS_DB_DATABASE_ID || 'castiel';
 
     if (!endpoint || !key) {
       throw new Error(
-        'Cosmos DB configuration required. Set COSMOS_DB_ENDPOINT and COSMOS_DB_KEY environment variables, or pass config to connectDatabase()'
+        'Cosmos DB configuration required. Call initializeDatabase() first, set COSMOS_DB_ENDPOINT and COSMOS_DB_KEY environment variables, or pass config to connectDatabase()'
       );
     }
 
-    config = {
+    cosmosConfig = {
       endpoint,
       key,
       databaseId,
     };
   }
 
-  dbClient = CosmosDBClient.getInstance(config);
+  dbClient = CosmosDBClient.getInstance(cosmosConfig);
   await dbClient.connect();
+
+  // Ensure all configured containers exist
+  if (Object.keys(containerMappings).length > 0) {
+    for (const logicalName in containerMappings) {
+      const physicalName = containerMappings[logicalName];
+      await ensureContainer(physicalName, '/tenantId'); // Default partition key to /tenantId
+    }
+  }
 
   // Initialize connection pool
   connectionPool = ConnectionPool.getInstance({
@@ -55,6 +105,8 @@ export async function disconnectDatabase(): Promise<void> {
     dbClient = null;
   }
   connectionPool = null;
+  containerMappings = {};
+  dbConfig = null;
 }
 
 /**
@@ -99,5 +151,5 @@ export async function healthCheck(): Promise<boolean> {
 }
 
 // Re-export types
-export type { CosmosDBConfig, ConnectionPoolConfig };
+export type { CosmosDBConfig, ConnectionPoolConfig, InitializeDatabaseConfig };
 export { CosmosDBClient, ConnectionPool, ensureContainer };

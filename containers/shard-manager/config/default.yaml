@@ -14,6 +14,10 @@ cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
   key: ${COSMOS_DB_KEY}
   database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    shards: shard_shards
+    shard_types: shard_shard_types
+    relationships: shard_relationships
 
 # Redis Configuration (optional, for caching)
 cache:

@@ -15,6 +15,16 @@ cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
   key: ${COSMOS_DB_KEY}
   database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    sessions: auth_sessions
+    tokens: auth_tokens
+    providers: auth_providers
+    password_resets: auth_password_resets
+    email_verifications: auth_email_verifications
+    login_attempts: auth_login_attempts
+    sso_configs: auth_sso_configs
+    oauth2_clients: auth_oauth2_clients
+    mfa_secrets: auth_mfa_secrets
   
 # Legacy database.url for backward compatibility during migration
 database:

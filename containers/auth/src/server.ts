@@ -5,7 +5,7 @@
 
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
-import { getDatabaseClient, connectDatabase } from '@coder/shared';
+import { initializeDatabase, getDatabaseClient, connectDatabase } from '@coder/shared';
 import { setupJWT } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
@@ -96,6 +96,14 @@ export async function buildApp(): Promise<FastifyInstance> {
   // Setup JWT
   await setupJWT(fastify, {
     secret: config.jwt.secret,
+  });
+  
+  // Initialize database with config
+  initializeDatabase({
+    endpoint: config.cosmos_db.endpoint,
+    key: config.cosmos_db.key,
+    database: config.cosmos_db.database_id,
+    containers: config.cosmos_db.containers,
   });
   
   // Connect to database

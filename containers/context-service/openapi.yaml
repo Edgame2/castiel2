@@ -1,0 +1,296 @@
+openapi: 3.0.3
+info:
+  title: Context Service API
+  version: 1.0.0
+  description: |
+    Centralized context management service.
+    
+    ## Authentication
+    All endpoints require JWT authentication via Bearer token.
+    
+    ## Context Types
+    - File: File-level context
+    - Module: Module-level context
+    - Project: Project-level context
+    - Function: Function-level context
+    - Class: Class-level context
+
+servers:
+  - url: /api/v1
+    description: API Version 1
+
+tags:
+  - name: Contexts
+    description: Context management
+  - name: Context Assembly
+    description: Context assembly
+  - name: Dependencies
+    description: Dependency tree management
+  - name: Call Graphs
+    description: Call graph management
+  - name: Health
+    description: Health check endpoints
+
+paths:
+  /contexts:
+    post:
+      summary: Create context
+      description: Create a new context
+      tags: [Contexts]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, target]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                type:
+                  type: string
+                  enum: [file, module, project, function, class, custom]
+                target:
+                  type: object
+                  required: [type, path]
+                content:
+                  type: string
+                metadata:
+                  type: object
+      responses:
+        '201':
+          description: Context created
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+    
+    get:
+      summary: List contexts
+      description: List contexts with filtering
+      tags: [Contexts]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 100
+        - name: continuationToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of contexts
+        '401':
+          description: Unauthorized
+  
+  /contexts/{id}:
+    get:
+      summary: Get context
+      description: Get context by ID
+      tags: [Contexts]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Context details
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+    
+    put:
+      summary: Update context
+      description: Update context
+      tags: [Contexts]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                content:
+                  type: string
+                metadata:
+                  type: object
+      responses:
+        '200':
+          description: Context updated
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+    
+    delete:
+      summary: Delete context
+      description: Delete context
+      tags: [Contexts]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Context deleted
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /contexts/assemble:
+    post:
+      summary: Assemble context
+      description: Assemble context for a task
+      tags: [Context Assembly]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [task, contextIds]
+              properties:
+                task:
+                  type: string
+                contextIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                maxTokens:
+                  type: number
+                options:
+                  type: object
+      responses:
+        '200':
+          description: Context assembled
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+  
+  /dependencies:
+    post:
+      summary: Build dependency tree
+      description: Build dependency tree for a target
+      tags: [Dependencies]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target]
+              properties:
+                target:
+                  type: object
+                  required: [type, path]
+                depth:
+                  type: number
+                includeTransitive:
+                  type: boolean
+      responses:
+        '200':
+          description: Dependency tree built
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+  
+  /call-graphs:
+    post:
+      summary: Build call graph
+      description: Build call graph for a target
+      tags: [Call Graphs]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target]
+              properties:
+                target:
+                  type: object
+                  required: [type, path]
+                depth:
+                  type: number
+                includeExternal:
+                  type: boolean
+      responses:
+        '200':
+          description: Call graph built
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+  
+  /health:
+    get:
+      summary: Health check
+      description: Liveness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+  
+  /ready:
+    get:
+      summary: Readiness check
+      description: Readiness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+

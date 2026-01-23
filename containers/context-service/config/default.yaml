@@ -12,6 +12,12 @@ cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
   key: ${COSMOS_DB_KEY}
   database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    contexts: context_contexts
+    assemblies: context_assemblies
+    dependency_trees: context_dependency_trees
+    call_graphs: context_call_graphs
+    analyses: context_analyses
 
 services:
   embeddings:

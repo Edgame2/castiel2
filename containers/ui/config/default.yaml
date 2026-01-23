@@ -1,0 +1,22 @@
+# UI Container Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: ui
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3000}
+  host: ${HOST:-0.0.0.0}
+
+# API Gateway Configuration
+api:
+  base_url: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001}
+  timeout: ${API_TIMEOUT:-30000}
+
+# Feature Flags
+features:
+  analytics: ${FEATURE_ANALYTICS:-true}
+  realtime: ${FEATURE_REALTIME:-true}
+  dark_mode: ${FEATURE_DARK_MODE:-true}
+

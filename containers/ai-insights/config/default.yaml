@@ -12,6 +12,11 @@ cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
   key: ${COSMOS_DB_KEY}
   database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    insights: ai_insights
+    proactive_insights: ai_proactive_insights
+    collaborative_insights: ai_collaborative_insights
+    risk_analysis: ai_risk_analysis
 
 services:
   ai_service:

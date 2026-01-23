@@ -8,11 +8,6 @@ server:
   port: ${PORT:-3035}
   host: ${HOST:-0.0.0.0}
 
-cosmos_db:
-  endpoint: ${COSMOS_DB_ENDPOINT}
-  key: ${COSMOS_DB_KEY}
-  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
-
 redis:
   url: ${REDIS_URL:-redis://localhost:6379}
   host: ${REDIS_HOST:-localhost}

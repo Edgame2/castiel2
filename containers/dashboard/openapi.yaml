@@ -1,0 +1,170 @@
+openapi: 3.0.3
+info:
+  title: Dashboard Service API
+  version: 1.0.0
+  description: |
+    Dashboard and widget management service.
+    
+    ## Authentication
+    All endpoints require JWT authentication via Bearer token.
+    
+    ## Features
+    - Dashboard CRUD operations
+    - Widget management
+    - Dashboard customization
+
+servers:
+  - url: /api/dashboards
+    description: Dashboard Service API
+
+tags:
+  - name: Dashboards
+    description: Dashboard management
+  - name: Health
+    description: Health check endpoints
+
+paths:
+  /dashboards:
+    post:
+      summary: Create dashboard
+      description: Create a new dashboard
+      tags: [Dashboards]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                layout:
+                  type: object
+      responses:
+        '201':
+          description: Dashboard created
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+    
+    get:
+      summary: List dashboards
+      description: List dashboards
+      tags: [Dashboards]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of dashboards
+        '401':
+          description: Unauthorized
+  
+  /dashboards/{id}:
+    get:
+      summary: Get dashboard
+      description: Get dashboard by ID
+      tags: [Dashboards]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dashboard details
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+    
+    put:
+      summary: Update dashboard
+      description: Update dashboard
+      tags: [Dashboards]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                layout:
+                  type: object
+      responses:
+        '200':
+          description: Dashboard updated
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+    
+    delete:
+      summary: Delete dashboard
+      description: Delete dashboard
+      tags: [Dashboards]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Dashboard deleted
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /health:
+    get:
+      summary: Health check
+      description: Liveness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+  
+  /ready:
+    get:
+      summary: Readiness check
+      description: Readiness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+

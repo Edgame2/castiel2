@@ -12,6 +12,10 @@ cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
   key: ${COSMOS_DB_KEY}
   database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    migrations: migration_migrations
+    steps: migration_steps
+    plans: migration_plans
 
 services:
   context_service:

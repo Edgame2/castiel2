@@ -24,6 +24,12 @@ export interface Config {
     host: string;
     env: string;
   };
+  cosmos_db: {
+    endpoint: string;
+    key: string;
+    database_id: string;
+    containers?: Record<string, string>;
+  };
   database: {
     url: string;
   };

@@ -11,6 +11,12 @@ export interface ModuleConfig {
     port: number | string;
     host: string;
   };
+  cosmos_db: {
+    endpoint: string;
+    key: string;
+    database_id: string;
+    containers?: Record<string, string>;
+  };
   database: {
     url: string;
   };

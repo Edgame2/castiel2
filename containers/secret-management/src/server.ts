@@ -1,5 +1,5 @@
 import Fastify from 'fastify';
-import { connectDatabase, disconnectDatabase, setupHealthCheck, setupJWT } from '@coder/shared';
+import { initializeDatabase, connectDatabase, disconnectDatabase, setupHealthCheck, setupJWT } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import { secretRoutes } from './routes/secrets';
@@ -9,7 +9,7 @@ import { importExportRoutes } from './routes/import-export';
 import { requestLoggingMiddleware } from './middleware/requestLogging';
 import { errorHandler } from './middleware/errorHandler';
 import { SchedulerService } from './services/scheduler/SchedulerService';
-import { getConfig } from './config';
+import { loadConfig } from './config';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { dump } from 'js-yaml';
@@ -117,10 +117,18 @@ setupHealthCheck(server);
 const start = async () => {
   try {
     // Load configuration (validates required env vars and schema)
-    const config = getConfig();
+    const config = loadConfig();
     
     // Setup JWT for authentication
     await setupJWT(server);
+    
+    // Initialize database with config
+    initializeDatabase({
+      endpoint: config.cosmos_db.endpoint,
+      key: config.cosmos_db.key,
+      database: config.cosmos_db.database_id,
+      containers: config.cosmos_db.containers,
+    });
     
     // Connect to database
     await connectDatabase();

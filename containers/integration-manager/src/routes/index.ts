@@ -22,7 +22,11 @@ import {
 
 export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
   const integrationProviderService = new IntegrationProviderService();
-  const secretManagementUrl = config.services.secret_management?.url || config.services.secret_management?.url || 'http://localhost:3003';
+  // Get secret management URL from config (no hardcoded fallback - must be in config)
+  if (!config.services?.secret_management?.url) {
+    throw new Error('Secret management service URL must be configured in config/services/secret_management/url');
+  }
+  const secretManagementUrl = config.services.secret_management.url;
   const integrationService = new IntegrationService(secretManagementUrl);
   const webhookService = new WebhookService(secretManagementUrl);
   const syncTaskService = new SyncTaskService();

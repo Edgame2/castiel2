@@ -12,6 +12,9 @@ cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
   key: ${COSMOS_DB_KEY}
   database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    jobs: content_generation_jobs
+    templates: content_templates
 
 services:
   ai_service:

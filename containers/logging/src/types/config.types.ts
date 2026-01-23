@@ -13,6 +13,13 @@ export interface LoggingConfig {
     host: string;
   };
   
+  cosmos_db?: {
+    endpoint: string;
+    key: string;
+    database_id: string;
+    containers?: Record<string, string>;
+  };
+  
   database: {
     url: string;
     pool_size: number;

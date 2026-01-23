@@ -12,6 +12,11 @@ cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
   key: ${COSMOS_DB_KEY}
   database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    prompts: prompt_prompts
+    versions: prompt_versions
+    ab_tests: prompt_ab_tests
+    analytics: prompt_analytics
 
 services:
   ai_service:

@@ -5,7 +5,7 @@ import { load } from 'yaml';
 export interface SearchServiceConfig {
   module: { name: string; version: string };
   server: { port: number; host: string };
-  cosmos_db: { endpoint: string; key: string; database_id: string };
+  cosmos_db: { endpoint: string; key: string; database_id: string; containers?: Record<string, string> };
   services: {
     embeddings: { url: string };
     shard_manager: { url: string };

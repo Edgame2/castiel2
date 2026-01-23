@@ -9,6 +9,18 @@ server:
   port: ${PORT:-3001}
   host: ${HOST:-0.0.0.0}
 
+# Cosmos DB Configuration
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    notifications: notification_notifications
+    batches: notification_batches
+    preferences: notification_preferences
+    templates: notification_templates
+
+# Legacy database.url for backward compatibility
 database:
   url: ${DATABASE_URL}
 

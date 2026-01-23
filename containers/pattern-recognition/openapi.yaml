@@ -1,0 +1,319 @@
+openapi: 3.0.3
+info:
+  title: Pattern Recognition API
+  version: 1.0.0
+  description: |
+    Codebase pattern learning and enforcement service.
+    
+    ## Authentication
+    All endpoints require JWT authentication via Bearer token.
+    
+    ## Pattern Types
+    - Design Pattern: Design patterns (Singleton, Factory, etc.)
+    - Anti-Pattern: Anti-patterns to avoid
+    - Style Pattern: Code style patterns
+    - Architectural Pattern: Architectural patterns
+    - Code Smell: Code smells
+    - Best Practice: Best practices
+
+servers:
+  - url: /api/v1
+    description: API Version 1
+
+tags:
+  - name: Patterns
+    description: Pattern management
+  - name: Pattern Scans
+    description: Pattern scan management
+  - name: Health
+    description: Health check endpoints
+
+paths:
+  /patterns:
+    post:
+      summary: Create pattern
+      description: Create a new pattern
+      tags: [Patterns]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type, category, definition]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                type:
+                  type: string
+                  enum: [design_pattern, anti_pattern, style_pattern, architectural_pattern, code_smell, best_practice, custom]
+                category:
+                  type: string
+                  enum: [creational, structural, behavioral, concurrency, performance, security, custom]
+                definition:
+                  type: object
+                examples:
+                  type: array
+                enabled:
+                  type: boolean
+      responses:
+        '201':
+          description: Pattern created
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+    
+    get:
+      summary: List patterns
+      description: List patterns with filtering
+      tags: [Patterns]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: enabled
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 100
+        - name: continuationToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of patterns
+        '401':
+          description: Unauthorized
+  
+  /patterns/{id}:
+    get:
+      summary: Get pattern
+      description: Get pattern by ID
+      tags: [Patterns]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Pattern details
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+    
+    put:
+      summary: Update pattern
+      description: Update pattern
+      tags: [Patterns]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                definition:
+                  type: object
+                examples:
+                  type: array
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Pattern updated
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+    
+    delete:
+      summary: Delete pattern
+      description: Delete pattern
+      tags: [Patterns]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Pattern deleted
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /pattern-scans:
+    post:
+      summary: Create pattern scan
+      description: Create a new pattern scan
+      tags: [Pattern Scans]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target, patternIds]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                target:
+                  type: object
+                  required: [type, path]
+                patternIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                options:
+                  type: object
+      responses:
+        '201':
+          description: Scan created
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+    
+    get:
+      summary: List pattern scans
+      description: List pattern scans
+      tags: [Pattern Scans]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, scanning, completed, failed, cancelled]
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 100
+        - name: continuationToken
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of scans
+        '401':
+          description: Unauthorized
+  
+  /pattern-scans/{id}:
+    get:
+      summary: Get pattern scan
+      description: Get pattern scan by ID
+      tags: [Pattern Scans]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Scan details
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /pattern-scans/{id}/run:
+    post:
+      summary: Run pattern scan
+      description: Run a pattern scan
+      tags: [Pattern Scans]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Scan started
+        '404':
+          description: Not found
+        '401':
+          description: Unauthorized
+  
+  /health:
+    get:
+      summary: Health check
+      description: Liveness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+  
+  /ready:
+    get:
+      summary: Readiness check
+      description: Readiness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+

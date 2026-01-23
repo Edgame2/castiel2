@@ -1,0 +1,67 @@
+openapi: 3.0.3
+info:
+  title: API Gateway
+  version: 1.0.0
+  description: |
+    API Gateway for Coder IDE - Routes requests to microservices with authentication, tenant isolation, and rate limiting.
+    
+    ## Overview
+    The API Gateway acts as the single entry point for all client requests, routing them to appropriate microservices.
+    
+    ## Features
+    - JWT Authentication: Validates JWT tokens and extracts user context
+    - Tenant Validation: Extracts tenantId from JWT and injects X-Tenant-ID header
+    - Request Routing: Routes requests to backend microservices
+    - Rate Limiting: Per-user and per-tenant rate limiting
+    - Circuit Breakers: Automatic circuit breaking for unhealthy services
+    - Error Handling: Graceful error handling and response transformation
+    - CORS Support: Configurable CORS for frontend integration
+    
+    ## Route Mappings
+    - `/api/auth/*` → Auth Service (port 3021)
+    - `/api/users/*` → User Management Service (port 3022)
+    - `/api/secrets/*` → Secret Management Service (port 3003)
+    - `/api/logging/*` → Logging Service (port 3014)
+    - `/api/notifications/*` → Notification Manager Service (port 3001)
+    - `/api/ai/*` → AI Service (port 3006)
+    - `/api/embeddings/*` → Embeddings Service (port 3005)
+    - And all other microservice routes...
+
+servers:
+  - url: /api
+    description: API Gateway
+
+tags:
+  - name: Gateway
+    description: API Gateway endpoints
+  - name: Health
+    description: Health check endpoints
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Liveness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Gateway is healthy
+  
+  /ready:
+    get:
+      summary: Readiness check
+      description: Readiness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Gateway is ready
+        '503':
+          description: Gateway is not ready
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+

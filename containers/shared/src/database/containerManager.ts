@@ -10,41 +10,55 @@ import { CosmosDBClient } from './CosmosDBClient';
 /**
  * Get a container by name
  * Uses caching for performance
+ * Note: Database must be connected first via connectDatabase()
  */
 export function getContainer(containerName: string): Container {
-  const client = CosmosDBClient.getInstance();
-  return client.getContainer(containerName);
+  try {
+    const client = CosmosDBClient.getInstance();
+    return client.getContainer(containerName);
+  } catch (error) {
+    throw new Error(
+      `Database not initialized. Call connectDatabase() first. Original error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
 }
 
 /**
  * Ensure container exists (create if not exists)
  * Note: In production, containers should be created via infrastructure as code
  * This is mainly for development/testing
+ * Note: Database must be connected first via connectDatabase()
  */
 export async function ensureContainer(
   containerName: string,
-  partitionKey: string = '/id'
+  partitionKey: string = '/tenantId' // Default to tenantId for multi-tenancy
 ): Promise<Container> {
-  const client = CosmosDBClient.getInstance();
-  const database = client.getDatabase();
-
   try {
-    // Try to read container (will throw if doesn't exist)
-    const container = database.container(containerName);
-    await container.read();
-    return container;
-  } catch (error: any) {
-    // Container doesn't exist, create it
-    if (error.code === 404) {
-      const { container } = await database.containers.create({
-        id: containerName,
-        partitionKey: {
-          paths: [partitionKey],
-        },
-      });
+    const client = CosmosDBClient.getInstance();
+    const database = client.getDatabase();
+
+    try {
+      // Try to read container (will throw if doesn't exist)
+      const container = database.container(containerName);
+      await container.read();
       return container;
+    } catch (error: any) {
+      // Container doesn't exist, create it
+      if (error.code === 404) {
+        const { container } = await database.containers.create({
+          id: containerName,
+          partitionKey: {
+            paths: [partitionKey],
+          },
+        });
+        return container;
+      }
+      throw error;
     }
-    throw error;
+  } catch (error) {
+    throw new Error(
+      `Database not initialized. Call connectDatabase() first. Original error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 

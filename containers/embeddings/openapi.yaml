@@ -1,0 +1,111 @@
+openapi: 3.0.3
+info:
+  title: Embeddings Service API
+  version: 1.0.0
+  description: |
+    Vector embeddings and semantic search service.
+    
+    ## Authentication
+    All endpoints require JWT authentication via Bearer token.
+    
+    ## Features
+    - Embedding generation
+    - Vector search
+    - Semantic search
+
+servers:
+  - url: /api/embeddings
+    description: Embeddings Service API
+
+tags:
+  - name: Embeddings
+    description: Embedding management
+  - name: Search
+    description: Vector search
+  - name: Health
+    description: Health check endpoints
+
+paths:
+  /embeddings:
+    post:
+      summary: Create embedding
+      description: Create a new embedding
+      tags: [Embeddings]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                model:
+                  type: string
+      responses:
+        '200':
+          description: Embedding created
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+  
+  /search:
+    post:
+      summary: Vector search
+      description: Perform vector search
+      tags: [Search]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                limit:
+                  type: number
+                threshold:
+                  type: number
+      responses:
+        '200':
+          description: Search results
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+  
+  /health:
+    get:
+      summary: Health check
+      description: Liveness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+  
+  /ready:
+    get:
+      summary: Readiness check
+      description: Readiness probe
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+

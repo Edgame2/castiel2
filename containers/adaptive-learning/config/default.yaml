@@ -12,6 +12,12 @@ cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
   key: ${COSMOS_DB_KEY}
   database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    learning_paths: adaptive_learning_paths
+    progress: adaptive_progress
+    skills: adaptive_skills
+    assessments: adaptive_assessments
+    assessment_results: adaptive_assessment_results
 
 services:
   ai_service:

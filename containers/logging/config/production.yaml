@@ -1,0 +1,50 @@
+# Production-specific configuration overrides
+# These override values from default.yaml
+
+server:
+  port: ${PORT} # Must be set via environment variable in production
+  host: 0.0.0.0
+
+logging:
+  level: info
+
+# Ensure sensitive values are always from environment variables in production
+database:
+  url: ${DATABASE_URL}
+
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: logging_service
+
+# Archive settings (if enabled)
+archive:
+  enabled: ${ARCHIVE_ENABLED:-false}
+  provider: ${ARCHIVE_PROVIDER:-s3}
+  s3:
+    bucket: ${S3_ARCHIVE_BUCKET}
+    region: ${AWS_REGION}
+    access_key_id: ${AWS_ACCESS_KEY_ID}
+    secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+  azure:
+    connection_string: ${AZURE_STORAGE_CONNECTION_STRING}
+    container: audit-logs
+
+# SIEM settings (if enabled)
+siem:
+  enabled: ${SIEM_ENABLED:-false}
+  provider: ${SIEM_PROVIDER:-webhook}
+  webhook:
+    url: ${SIEM_WEBHOOK_URL}
+    headers:
+      Authorization: "Bearer ${SIEM_API_KEY}"
+
+# Services
+services:
+  user_management:
+    url: ${USER_MANAGEMENT_URL}
+  notification:
+    url: ${NOTIFICATION_URL}
+
+
+

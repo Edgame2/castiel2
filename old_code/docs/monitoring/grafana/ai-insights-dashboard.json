@@ -1,0 +1,517 @@
+{
+  "dashboard": {
+    "title": "AI Insights Monitoring",
+    "tags": ["ai-insights", "monitoring", "application-insights"],
+    "timezone": "browser",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate (per minute)",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "requests\n| where url contains '/api/v1/insights/'\n| where timestamp > ago(1h)\n| summarize RequestCount = count() by bin(timestamp, 1m)\n| order by timestamp asc",
+              "workspace": "$workspace"
+            }
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Requests/min",
+            "format": "short"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Success Rate (%)",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "requests\n| where url contains '/api/v1/insights/'\n| where timestamp > ago(1h)\n| summarize \n    Total = count(),\n    Success = countif(success == true)\n| extend SuccessRate = (Success * 100.0) / Total\n| project SuccessRate",
+              "workspace": "$workspace"
+            }
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Success Rate (%)",
+            "format": "percent",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        }
+      },
+      {
+        "id": 3,
+        "title": "Response Time - P50, P95, P99",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
+        "targets": [
+          {
+            "refId": "P50",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "requests\n| where url contains '/api/v1/insights/'\n| where timestamp > ago(1h)\n| summarize P50 = percentile(duration, 50) by bin(timestamp, 1m)\n| order by timestamp asc",
+              "workspace": "$workspace"
+            },
+            "legendFormat": "P50"
+          },
+          {
+            "refId": "P95",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "requests\n| where url contains '/api/v1/insights/'\n| where timestamp > ago(1h)\n| summarize P95 = percentile(duration, 95) by bin(timestamp, 1m)\n| order by timestamp asc",
+              "workspace": "$workspace"
+            },
+            "legendFormat": "P95"
+          },
+          {
+            "refId": "P99",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "requests\n| where url contains '/api/v1/insights/'\n| where timestamp > ago(1h)\n| summarize P99 = percentile(duration, 99) by bin(timestamp, 1m)\n| order by timestamp asc",
+              "workspace": "$workspace"
+            },
+            "legendFormat": "P99"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Response Time (ms)",
+            "format": "ms"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        }
+      },
+      {
+        "id": 4,
+        "title": "Error Rate by Type",
+        "type": "piechart",
+        "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "exceptions\n| where timestamp > ago(24h)\n| where customDimensions.operation contains 'insight'\n| summarize ErrorCount = count() by tostring(customDimensions.errorType)\n| order by ErrorCount desc",
+              "workspace": "$workspace"
+            }
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "AI Cost (USD)",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "customMetrics\n| where name == 'ai_insights_cost'\n| where timestamp > ago(24h)\n| summarize TotalCost = sum(value) by bin(timestamp, 1h)\n| order by timestamp asc",
+              "workspace": "$workspace"
+            }
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Cost (USD)",
+            "format": "currencyUSD"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        }
+      },
+      {
+        "id": 6,
+        "title": "Token Usage",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "refId": "Input",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "customMetrics\n| where name == 'ai_insights_input_tokens'\n| where timestamp > ago(24h)\n| summarize InputTokens = sum(value) by bin(timestamp, 1h)\n| order by timestamp asc",
+              "workspace": "$workspace"
+            },
+            "legendFormat": "Input Tokens"
+          },
+          {
+            "refId": "Output",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "customMetrics\n| where name == 'ai_insights_output_tokens'\n| where timestamp > ago(24h)\n| summarize OutputTokens = sum(value) by bin(timestamp, 1h)\n| order by timestamp asc",
+              "workspace": "$workspace"
+            },
+            "legendFormat": "Output Tokens"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Tokens",
+            "format": "short"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        }
+      },
+      {
+        "id": 7,
+        "title": "Cost by Model",
+        "type": "piechart",
+        "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "customMetrics\n| where name == 'ai_insights_cost'\n| where timestamp > ago(24h)\n| extend Model = tostring(customDimensions.model)\n| summarize TotalCost = sum(value) by Model\n| order by TotalCost desc",
+              "workspace": "$workspace"
+            }
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Requests by Insight Type",
+        "type": "bargraph",
+        "gridPos": { "x": 0, "y": 32, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "requests\n| where url contains '/api/v1/insights/'\n| where timestamp > ago(24h)\n| extend InsightType = tostring(customDimensions.insightType)\n| summarize RequestCount = count() by InsightType\n| order by RequestCount desc",
+              "workspace": "$workspace"
+            }
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Requests",
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Cache Hit Rate",
+        "type": "graph",
+        "gridPos": { "x": 12, "y": 32, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "customMetrics\n| where name == 'ai_insights_cache_hit'\n| where timestamp > ago(24h)\n| summarize CacheHits = sum(value) by bin(timestamp, 1h)\n| order by timestamp asc",
+              "workspace": "$workspace"
+            },
+            "legendFormat": "Cache Hits"
+          },
+          {
+            "refId": "B",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "customMetrics\n| where name == 'ai_insights_cache_miss'\n| where timestamp > ago(24h)\n| summarize CacheMisses = sum(value) by bin(timestamp, 1h)\n| order by timestamp asc",
+              "workspace": "$workspace"
+            },
+            "legendFormat": "Cache Misses"
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Count",
+            "format": "short"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        }
+      },
+      {
+        "id": 10,
+        "title": "Rate Limit Violations",
+        "type": "graph",
+        "gridPos": { "x": 0, "y": 40, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "requests\n| where url contains '/api/v1/insights/'\n| where resultCode == 429\n| where timestamp > ago(24h)\n| summarize RateLimitViolations = count() by bin(timestamp, 1h)\n| order by timestamp asc",
+              "workspace": "$workspace"
+            }
+          }
+        ],
+        "yaxes": [
+          {
+            "label": "Violations",
+            "format": "short"
+          }
+        ],
+        "xaxis": {
+          "mode": "time"
+        }
+      },
+      {
+        "id": 11,
+        "title": "Average Latency by Operation",
+        "type": "table",
+        "gridPos": { "x": 12, "y": 40, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "requests\n| where url contains '/api/v1/insights/'\n| where timestamp > ago(24h)\n| extend Operation = tostring(customDimensions.operation)\n| summarize \n    AvgLatency = avg(duration),\n    P95Latency = percentile(duration, 95),\n    RequestCount = count()\n    by Operation\n| order by AvgLatency desc",
+              "workspace": "$workspace"
+            }
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "Operation": "Operation",
+                "AvgLatency": "Avg (ms)",
+                "P95Latency": "P95 (ms)",
+                "RequestCount": "Requests"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Daily Cost Summary",
+        "type": "stat",
+        "gridPos": { "x": 0, "y": 48, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "customMetrics\n| where name == 'ai_insights_cost'\n| where timestamp > ago(24h)\n| summarize TotalCost = sum(value)",
+              "workspace": "$workspace"
+            }
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": null, "color": "green" },
+                { "value": 100, "color": "yellow" },
+                { "value": 500, "color": "red" }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 13,
+        "title": "Total Requests (24h)",
+        "type": "stat",
+        "gridPos": { "x": 6, "y": 48, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "requests\n| where url contains '/api/v1/insights/'\n| where timestamp > ago(24h)\n| summarize TotalRequests = count()",
+              "workspace": "$workspace"
+            }
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": null, "color": "green" }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 14,
+        "title": "Error Rate (24h)",
+        "type": "stat",
+        "gridPos": { "x": 12, "y": 48, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "requests\n| where url contains '/api/v1/insights/'\n| where timestamp > ago(24h)\n| summarize \n    Total = count(),\n    Errors = countif(success == false)\n| extend ErrorRate = (Errors * 100.0) / Total",
+              "workspace": "$workspace"
+            }
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": null, "color": "green" },
+                { "value": 1, "color": "yellow" },
+                { "value": 5, "color": "red" }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 15,
+        "title": "P95 Latency (24h)",
+        "type": "stat",
+        "gridPos": { "x": 18, "y": 48, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "refId": "A",
+            "queryType": "Azure Log Analytics",
+            "azureLogAnalytics": {
+              "query": "requests\n| where url contains '/api/v1/insights/'\n| where timestamp > ago(24h)\n| summarize P95Latency = percentile(duration, 95)",
+              "workspace": "$workspace"
+            }
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": null, "color": "green" },
+                { "value": 2000, "color": "yellow" },
+                { "value": 5000, "color": "red" }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"]
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "workspace",
+          "type": "query",
+          "label": "Log Analytics Workspace",
+          "query": "workspaces()",
+          "current": {
+            "text": "Select workspace",
+            "value": "$__all"
+          },
+          "options": []
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "Azure Log Analytics",
+          "enable": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "query": "traces\n| where message contains 'deployment'\n| where timestamp > ago(7d)"
+        }
+      ]
+    }
+  }
+}
+
+
+
+
+
+
+
+
+

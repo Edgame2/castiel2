@@ -1,0 +1,9 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+ignoredBuiltDependencies:
+  - argon2
+  - esbuild
+  - sharp
+  - unrs-resolver

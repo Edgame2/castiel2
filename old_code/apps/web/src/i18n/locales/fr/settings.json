@@ -1,0 +1,104 @@
+{
+  "title": "Paramètres de l'organisation",
+  "subtitle": "Gérez la configuration et les paramètres de votre organisation",
+  "tabs": {
+    "profile": "Profil",
+    "features": "Fonctionnalités",
+    "apiKeys": "Clés API",
+    "usage": "Utilisation",
+    "security": "Sécurité",
+    "sso": "SSO",
+    "privacy": "Confidentialité",
+    "cookies": "Cookies"
+  },
+  "profile": {
+    "title": "Profil de l'organisation",
+    "description": "Mettez à jour les informations de base de votre organisation",
+    "name": "Nom de l'organisation",
+    "namePlaceholder": "Entrez le nom de l'organisation",
+    "domain": "Domaine",
+    "domainPlaceholder": "entreprise.com",
+    "logo": "Logo",
+    "uploadLogo": "Téléverser le logo",
+    "removeLogo": "Supprimer le logo",
+    "primaryColor": "Couleur principale",
+    "timezone": "Fuseau horaire",
+    "language": "Langue par défaut"
+  },
+  "security": {
+    "title": "Paramètres de sécurité",
+    "sessionSecurity": {
+      "title": "Sécurité des sessions",
+      "description": "Configurez les délais d'expiration et les limites de session pour votre organisation",
+      "idleTimeout": "Délai d'inactivité de session (minutes)",
+      "idleTimeoutHelp": "Les utilisateurs seront déconnectés après cette période d'inactivité",
+      "noTimeout": "0 = pas de délai",
+      "maxSessions": "Sessions simultanées maximum",
+      "maxSessionsHelp": "Les sessions les plus anciennes seront terminées lorsque la limite est atteinte",
+      "unlimited": "0 = illimité",
+      "requireReauth": "Exiger une réauthentification après inactivité",
+      "requireReauthHelp": "Forcer les utilisateurs à se reconnecter après le délai d'inactivité"
+    },
+    "ipAllowlist": {
+      "title": "Liste blanche d'IP",
+      "description": "Restreindre l'accès à des adresses IP spécifiques pour une sécurité renforcée",
+      "enterprise": "Entreprise",
+      "enable": "Activer la liste blanche d'IP",
+      "enableHelp": "Autoriser uniquement l'accès depuis les adresses IP spécifiées",
+      "warning": "Soyez prudent lors de l'activation des restrictions IP. Assurez-vous d'inclure votre adresse IP actuelle pour éviter de vous bloquer.",
+      "addIp": "Ajouter une adresse IP",
+      "addIpPlaceholder": "192.168.1.1 ou 192.168.1.*",
+      "addIpHelp": "Prend en charge les adresses IP exactes et les motifs avec caractères génériques (ex: 192.168.1.*)",
+      "allowedIps": "Adresses IP autorisées",
+      "noIps": "Aucune adresse IP ajoutée. Ajoutez au moins une adresse IP pour activer les restrictions."
+    },
+    "saveSettings": "Enregistrer les paramètres",
+    "saving": "Enregistrement..."
+  },
+  "sso": {
+    "title": "Authentification unique (SSO)",
+    "description": "Configurez le SSO pour votre organisation",
+    "enabled": "SSO activé",
+    "provider": "Fournisseur",
+    "saml": "SAML 2.0",
+    "oidc": "OpenID Connect",
+    "entityId": "ID d'entité",
+    "ssoUrl": "URL SSO",
+    "certificate": "Certificat",
+    "certificatePlaceholder": "Collez votre certificat ici",
+    "attributeMapping": "Mappage des attributs",
+    "emailAttribute": "Attribut e-mail",
+    "firstNameAttribute": "Attribut prénom",
+    "lastNameAttribute": "Attribut nom",
+    "testConnection": "Tester la connexion",
+    "testing": "Test en cours...",
+    "connectionSuccess": "Connexion réussie !",
+    "connectionFailed": "Échec de la connexion"
+  },
+  "apiKeys": {
+    "title": "Clés API",
+    "description": "Gérez les clés API pour l'accès programmatique",
+    "createKey": "Créer une clé API",
+    "noKeys": "Aucune clé API créée",
+    "name": "Nom de la clé",
+    "namePlaceholder": "Ma clé API",
+    "permissions": "Permissions",
+    "expiresAt": "Expire le",
+    "lastUsed": "Dernière utilisation",
+    "never": "Jamais",
+    "revoke": "Révoquer",
+    "revokeConfirm": "Êtes-vous sûr de vouloir révoquer cette clé API ? Cette action est irréversible."
+  },
+  "usage": {
+    "title": "Statistiques d'utilisation",
+    "description": "Consultez les statistiques d'utilisation de votre organisation",
+    "currentPeriod": "Période actuelle",
+    "apiCalls": "Appels API",
+    "storage": "Stockage",
+    "users": "Utilisateurs",
+    "limit": "Limite",
+    "used": "Utilisé",
+    "remaining": "Restant"
+  }
+}
+

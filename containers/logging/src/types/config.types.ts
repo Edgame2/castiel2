@@ -1,0 +1,166 @@
+/**
+ * Configuration Types
+ */
+
+export interface LoggingConfig {
+  module: {
+    name: string;
+    version: string;
+  };
+  
+  server: {
+    port: number;
+    host: string;
+  };
+  
+  database: {
+    url: string;
+    pool_size: number;
+  };
+  
+  rabbitmq: {
+    url: string;
+    exchange: string;
+    queue: string;
+    bindings: string[];
+  };
+  
+  storage: {
+    provider: 'postgres' | 'elasticsearch';
+    postgres?: {
+      partition_by: 'month' | 'week' | 'day';
+    };
+  };
+  
+  archive?: {
+    enabled: boolean;
+    provider: 'local' | 's3' | 'azure';
+    local?: {
+      basePath: string;
+    };
+    s3?: {
+      bucket: string;
+      region: string;
+      prefix?: string;
+      accessKeyId?: string;
+      secretAccessKey?: string;
+    };
+    azure?: {
+      connectionString: string;
+      containerName: string;
+      prefix?: string;
+    };
+  };
+  
+  siem: {
+    enabled: boolean;
+    provider: 'splunk' | 'datadog' | 'webhook';
+    webhook?: {
+      url: string;
+      headers: Record<string, string>;
+    };
+  };
+  
+  defaults: {
+    capture: {
+      ip_address: boolean;
+      user_agent: boolean;
+      geolocation: boolean;
+    };
+    redaction: {
+      enabled: boolean;
+      patterns: string[];
+    };
+    retention: {
+      default_days: number;
+      min_days: number;
+      max_days: number;
+    };
+    hash_chain: {
+      enabled: boolean;
+      algorithm: 'sha256' | 'sha512';
+    };
+    alerts: {
+      enabled: boolean;
+      check_interval_seconds: number;
+    };
+  };
+  
+  ingestion: {
+    batch_size: number;
+    flush_interval_ms: number;
+    buffer: {
+      enabled: boolean;
+      max_size: number;
+      file_path: string;
+    };
+  };
+  
+  rate_limit: {
+    enabled: boolean;
+    max_per_second: number;
+    burst: number;
+  };
+  
+  jobs: {
+    retention: {
+      enabled: boolean;
+      schedule: string;
+    };
+    archive: {
+      enabled: boolean;
+      schedule: string;
+    };
+    partition: {
+      enabled: boolean;
+      schedule: string;
+    };
+    alerts: {
+      enabled: boolean;
+      schedule: string;
+    };
+  };
+  
+  services: {
+    user_management: {
+      url: string;
+    };
+    notification: {
+      url: string;
+    };
+  };
+}
+
+export interface OrganizationConfig {
+  id: string;
+  organizationId?: string; // undefined = global config
+  
+  // Capture settings
+  captureIpAddress: boolean;
+  captureUserAgent: boolean;
+  captureGeolocation: boolean;
+  
+  // Redaction
+  redactSensitiveData: boolean;
+  redactionPatterns: string[];
+  
+  // Hash chain
+  hashChainEnabled: boolean;
+  
+  // Alerts
+  alertsEnabled: boolean;
+  
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UpdateOrganizationConfigInput {
+  captureIpAddress?: boolean;
+  captureUserAgent?: boolean;
+  captureGeolocation?: boolean;
+  redactSensitiveData?: boolean;
+  redactionPatterns?: string[];
+  hashChainEnabled?: boolean;
+  alertsEnabled?: boolean;
+}
+

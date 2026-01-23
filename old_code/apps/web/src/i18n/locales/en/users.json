@@ -1,0 +1,136 @@
+{
+  "title": "Users",
+  "subtitle": "Manage users in your organization",
+  "addUser": "Add User",
+  "inviteUser": "Invite User",
+  "bulkActions": "Bulk Actions",
+  "searchPlaceholder": "Search users...",
+  "noUsers": "No users found",
+  "table": {
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "status": "Status",
+    "lastLogin": "Last Login",
+    "actions": "Actions"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "suspended": "Suspended",
+    "pending": "Pending",
+    "pendingVerification": "Pending Verification",
+    "pendingApproval": "Pending Approval",
+    "deleted": "Deleted"
+  },
+  "roles": {
+    "user": "User",
+    "admin": "Admin",
+    "owner": "Owner",
+    "superAdmin": "Super Admin"
+  },
+  "actions": {
+    "view": "View",
+    "edit": "Edit",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "suspend": "Suspend",
+    "delete": "Delete",
+    "resetPassword": "Reset Password",
+    "impersonate": "Impersonate"
+  },
+  "bulk": {
+    "title": "Bulk Actions",
+    "selected": "{{count}} selected",
+    "activate": "Activate Users",
+    "deactivate": "Deactivate Users",
+    "delete": "Delete Users",
+    "addRole": "Add Role",
+    "removeRole": "Remove Role",
+    "sendPasswordReset": "Send Password Reset",
+    "confirmDelete": "Are you sure you want to delete {{count}} user(s)? This action cannot be undone.",
+    "confirmDeactivate": "Are you sure you want to deactivate {{count}} user(s)? They will not be able to log in.",
+    "success": "Successfully updated {{count}} users",
+    "partialSuccess": "Bulk operation completed: {{success}} succeeded, {{failed}} failed"
+  },
+  "invite": {
+    "title": "Invite User",
+    "description": "Send an invitation to join your organization",
+    "email": "Email address",
+    "emailPlaceholder": "user@example.com",
+    "role": "Role",
+    "message": "Personal message (optional)",
+    "messagePlaceholder": "Add a personal message to the invitation...",
+    "send": "Send Invitation",
+    "sending": "Sending...",
+    "success": "Invitation sent successfully",
+    "error": "Failed to send invitation"
+  },
+  "invitations": {
+    "title": "Invitations",
+    "subtitle": "Manage user invitations to your organization",
+    "refresh": "Refresh",
+    "total": "Total Invitations",
+    "pending": "Pending",
+    "accepted": "Accepted",
+    "expiredRevoked": "Expired/Revoked",
+    "status": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "declined": "Declined",
+      "expired": "Expired",
+      "revoked": "Revoked"
+    },
+    "table": {
+      "email": "Email",
+      "status": "Status",
+      "invitedBy": "Invited By",
+      "roles": "Roles",
+      "expires": "Expires",
+      "created": "Created"
+    },
+    "actions": {
+      "resend": "Resend",
+      "revoke": "Revoke"
+    },
+    "revokeConfirm": "Are you sure you want to revoke the invitation for {{email}}? This action cannot be undone.",
+    "resendSuccess": "Invitation resent successfully",
+    "revokeSuccess": "Invitation revoked successfully",
+    "remaining": "{{time}} remaining",
+    "noInvitations": "No invitations found"
+  },
+  "joinRequests": {
+    "title": "Join Requests",
+    "subtitle": "Review requests to join your organization",
+    "approve": "Approve",
+    "decline": "Decline",
+    "noRequests": "No pending join requests",
+    "approveSuccess": "Join request approved",
+    "declineSuccess": "Join request declined"
+  },
+  "detail": {
+    "title": "User Details",
+    "editUser": "Edit User",
+    "accountInfo": "Account Information",
+    "securityInfo": "Security Information",
+    "sessions": "Active Sessions",
+    "activity": "Activity Log",
+    "lastLogin": "Last Login",
+    "createdAt": "Account Created",
+    "emailVerified": "Email Verified",
+    "mfaEnabled": "MFA Enabled",
+    "terminateSession": "Terminate",
+    "terminateAllSessions": "Terminate All Sessions",
+    "noSessions": "No active sessions"
+  },
+  "form": {
+    "firstName": "First name",
+    "lastName": "Last name",
+    "email": "Email",
+    "role": "Role",
+    "status": "Status",
+    "save": "Save Changes",
+    "saving": "Saving..."
+  }
+}
+

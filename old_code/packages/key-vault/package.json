@@ -1,0 +1,27 @@
+{
+  "name": "@castiel/key-vault",
+  "version": "1.0.0",
+  "description": "Azure Key Vault integration for secure secret management",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "azure",
+    "key-vault",
+    "secrets",
+    "security"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@azure/keyvault-secrets": "^4.10.0",
+    "@azure/identity": "^4.13.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

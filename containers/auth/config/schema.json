@@ -1,0 +1,176 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Authentication Module Configuration",
+  "type": "object",
+  "required": ["module", "server", "cosmos_db", "jwt", "rabbitmq"],
+  "properties": {
+    "module": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "server": {
+      "type": "object",
+      "required": ["port", "host"],
+      "properties": {
+        "port": { "type": ["integer", "string"], "minimum": 1, "maximum": 65535 },
+        "host": { "type": "string" },
+        "base_url": { "type": "string", "format": "uri" }
+      }
+    },
+    "cosmos_db": {
+      "type": "object",
+      "required": ["endpoint", "key"],
+      "properties": {
+        "endpoint": { "type": "string", "format": "uri" },
+        "key": { "type": "string" },
+        "database_id": { "type": "string", "default": "castiel" }
+      }
+    },
+    "database": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "pool_size": { "type": "integer", "minimum": 1, "default": 20 }
+      },
+      "description": "Legacy PostgreSQL config (deprecated, use cosmos_db)"
+    },
+    "jwt": {
+      "type": "object",
+      "required": ["secret"],
+      "properties": {
+        "secret": { "type": "string" },
+        "expiration": { "type": "string", "default": "7d" },
+        "refresh_expiration": { "type": "string", "default": "30d" }
+      }
+    },
+    "oauth": {
+      "type": "object",
+      "properties": {
+        "google": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "client_id": { "type": "string" },
+            "client_secret": { "type": "string" },
+            "redirect_uri": { "type": "string" }
+          }
+        },
+        "github": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "client_id": { "type": "string" },
+            "client_secret": { "type": "string" },
+            "redirect_uri": { "type": "string" }
+          }
+        }
+      }
+    },
+    "sso": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "saml": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "properties": {
+        "max_sessions_per_user": { "type": "integer", "minimum": 1, "default": 10 },
+        "session_timeout": { "type": "integer", "minimum": 0 },
+        "cleanup_interval": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "password": {
+      "type": "object",
+      "properties": {
+        "min_length": { "type": "integer", "minimum": 1, "default": 8 },
+        "require_uppercase": { "type": "boolean", "default": true },
+        "require_lowercase": { "type": "boolean", "default": true },
+        "require_numbers": { "type": "boolean", "default": true },
+        "require_symbols": { "type": "boolean", "default": false },
+        "history_count": { "type": "integer", "minimum": 0, "default": 5 },
+        "max_age_days": { "type": "integer", "minimum": 0, "default": 90 }
+      }
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "max_login_attempts": { "type": "integer", "minimum": 1, "default": 5 },
+        "lockout_duration_ms": { "type": "integer", "minimum": 0 },
+        "require_email_verification": { "type": "boolean", "default": true }
+      }
+    },
+    "services": {
+      "type": "object",
+      "properties": {
+        "user_management": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string" }
+          }
+        },
+        "logging": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string" }
+          }
+        },
+        "notification": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string" }
+          }
+        },
+        "secret_management": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string" }
+          }
+        }
+      }
+    },
+    "redis": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "sentinels": { "type": "string" },
+        "master_name": { "type": "string" }
+      }
+    },
+    "rabbitmq": {
+      "type": "object",
+      "required": ["url", "exchange", "queue"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "exchange": { "type": "string" },
+        "queue": { "type": "string" },
+        "bindings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "oauth_google": { "type": "boolean", "default": true },
+        "oauth_github": { "type": "boolean", "default": true },
+        "saml_sso": { "type": "boolean", "default": false },
+        "password_reset": { "type": "boolean", "default": true },
+        "email_verification": { "type": "boolean", "default": true },
+        "multi_factor_auth": { "type": "boolean", "default": false }
+      }
+    }
+  }
+}
+

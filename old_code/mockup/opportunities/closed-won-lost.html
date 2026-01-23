@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Closed Won/Lost - UI Mockup Catalog</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <style>
+    .page-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .breadcrumb {
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+    .breadcrumb a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+    .chart-wrapper {
+      width: 100%;
+      height: 300px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <div class="breadcrumb">
+      <a href="../index.html">Catalog</a> / <a href="../index.html#opportunities">Opportunities</a> / Closed Won/Lost
+    </div>
+
+    <header style="margin-bottom: 2rem;">
+      <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Closed Won/Lost Metrics</h1>
+      <p class="text-muted-foreground">Analysis of won and lost opportunities</p>
+    </header>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" style="margin-bottom: 2rem;">
+      <div class="card">
+        <div class="card-header" style="flex-direction: row; justify-content: space-between; align-items: center;">
+          <div class="card-title" style="font-size: 0.875rem;">Closed Won</div>
+          <span style="color: #10b981; font-size: 1rem;">✓</span>
+        </div>
+        <div class="card-content">
+          <div style="font-size: 2rem; font-weight: 700; color: #10b981;">24</div>
+          <p class="text-muted-foreground" style="font-size: 0.75rem; margin-top: 0.25rem;">$1,250,000 value</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="flex-direction: row; justify-content: space-between; align-items: center;">
+          <div class="card-title" style="font-size: 0.875rem;">Closed Lost</div>
+          <span style="color: var(--destructive); font-size: 1rem;">✗</span>
+        </div>
+        <div class="card-content">
+          <div style="font-size: 2rem; font-weight: 700; color: var(--destructive);">8</div>
+          <p class="text-muted-foreground" style="font-size: 0.75rem; margin-top: 0.25rem;">$320,000 value</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="flex-direction: row; justify-content: space-between; align-items: center;">
+          <div class="card-title" style="font-size: 0.875rem;">Win Rate</div>
+          <span style="color: var(--muted-foreground); font-size: 1rem;">📈</span>
+        </div>
+        <div class="card-content">
+          <div style="font-size: 2rem; font-weight: 700;">75.0%</div>
+          <p class="text-muted-foreground" style="font-size: 0.75rem; margin-top: 0.25rem;">24 / 32 opportunities</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="flex-direction: row; justify-content: space-between; align-items: center;">
+          <div class="card-title" style="font-size: 0.875rem;">Period</div>
+        </div>
+        <div class="card-content">
+          <div style="font-size: 1rem; font-weight: 500;">Jan 1 - Mar 31</div>
+          <p class="text-muted-foreground" style="font-size: 0.75rem; margin-top: 0.25rem;">Reporting period</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Won vs Lost (Count) -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Won vs Lost (Count)</div>
+          <div class="card-description">Number of opportunities won vs lost</div>
+        </div>
+        <div class="card-content">
+          <div class="chart-wrapper" id="count-chart"></div>
+        </div>
+      </div>
+
+      <!-- Won vs Lost (Value) -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Won vs Lost (Value)</div>
+          <div class="card-description">Total value of won vs lost opportunities</div>
+        </div>
+        <div class="card-content">
+          <div class="chart-wrapper" id="value-chart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/theme.js"></script>
+  <script src="../js/charts.js"></script>
+  <script>
+    // Sample data
+    const wonLostCountData = [
+      { name: 'Won', value: 24, color: '#10b981' },
+      { name: 'Lost', value: 8, color: '#ef4444' }
+    ];
+
+    const wonLostValueData = [
+      { name: 'Won', value: 1250000, color: '#10b981' },
+      { name: 'Lost', value: 320000, color: '#ef4444' }
+    ];
+
+    // Initialize charts
+    function initCharts() {
+      // Count Chart
+      window.renderBarChart('count-chart', wonLostCountData, {
+        width: document.getElementById('count-chart').offsetWidth || 500,
+        height: 300,
+        customColors: wonLostCountData.map(d => d.color),
+        showGrid: true,
+        showTooltip: true
+      });
+
+      // Value Chart
+      window.renderBarChart('value-chart', wonLostValueData, {
+        width: document.getElementById('value-chart').offsetWidth || 500,
+        height: 300,
+        customColors: wonLostValueData.map(d => d.color),
+        showGrid: true,
+        showTooltip: true,
+        valueFormatter: (v) => {
+          if (v >= 1000000) return '$' + (v / 1000000).toFixed(2) + 'M';
+          if (v >= 1000) return '$' + (v / 1000).toFixed(0) + 'K';
+          return '$' + v.toLocaleString();
+        }
+      });
+    }
+
+    // Initialize on load
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initCharts);
+    } else {
+      initCharts();
+    }
+
+    // Re-render on window resize
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(initCharts, 250);
+    });
+  </script>
+</body>
+</html>
+

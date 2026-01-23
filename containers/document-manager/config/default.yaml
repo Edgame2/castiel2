@@ -1,0 +1,34 @@
+# Document Manager Module Configuration
+
+module:
+  name: document-manager
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3024}
+  host: ${HOST:-0.0.0.0}
+
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+
+storage:
+  azure:
+    account_name: ${AZURE_STORAGE_ACCOUNT_NAME}
+    account_key: ${AZURE_STORAGE_ACCOUNT_KEY}
+    container_name: ${AZURE_STORAGE_CONTAINER_NAME:-documents}
+
+services:
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3023}
+
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: document_manager_service
+

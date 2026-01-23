@@ -1,0 +1,32 @@
+# Validation Engine Module Configuration
+
+module:
+  name: validation-engine
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3036}
+  host: ${HOST:-0.0.0.0}
+
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+
+services:
+  quality:
+    url: ${QUALITY_URL:-http://localhost:3017}
+  context_service:
+    url: ${CONTEXT_SERVICE_URL:-http://localhost:3034}
+  knowledge_base:
+    url: ${KNOWLEDGE_BASE_URL:-http://localhost:3010}
+  compliance:
+    url: ${COMPLIANCE_URL:-http://localhost:3043}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: validation_engine
+

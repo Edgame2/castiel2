@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Shard Manager Module Configuration",
+  "type": "object",
+  "required": ["module", "server", "cosmos_db", "rabbitmq"],
+  "properties": {
+    "module": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "server": {
+      "type": "object",
+      "required": ["port", "host"],
+      "properties": {
+        "port": { "type": ["integer", "string"], "minimum": 1, "maximum": 65535 },
+        "host": { "type": "string" }
+      }
+    },
+    "cosmos_db": {
+      "type": "object",
+      "required": ["endpoint", "key"],
+      "properties": {
+        "endpoint": { "type": "string", "format": "uri" },
+        "key": { "type": "string" },
+        "database_id": { "type": "string", "default": "castiel" }
+      }
+    },
+    "cache": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "url": { "type": "string", "format": "uri" },
+        "ttl": { "type": "integer", "minimum": 0, "default": 3600 },
+        "shard_type_ttl": { "type": "integer", "minimum": 0, "default": 86400 }
+      }
+    },
+    "services": {
+      "type": "object",
+      "properties": {
+        "logging": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
+        },
+        "user_management": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
+        }
+      }
+    },
+    "rabbitmq": {
+      "type": "object",
+      "required": ["url", "exchange", "queue"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "exchange": { "type": "string" },
+        "queue": { "type": "string" },
+        "bindings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "bulk_operations": { "type": "boolean", "default": true },
+        "relationships": { "type": "boolean", "default": true },
+        "versioning": { "type": "boolean", "default": true },
+        "caching": { "type": "boolean", "default": true }
+      }
+    },
+    "bulk": {
+      "type": "object",
+      "properties": {
+        "max_batch_size": { "type": "integer", "minimum": 1, "default": 1000 },
+        "timeout_ms": { "type": "integer", "minimum": 0, "default": 30000 }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "strict_schema_validation": { "type": "boolean", "default": true },
+        "allow_unknown_fields": { "type": "boolean", "default": false }
+      }
+    }
+  }
+}
+

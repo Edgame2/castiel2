@@ -1,0 +1,288 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["module", "server", "database", "notification", "services"],
+  "properties": {
+    "module": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "server": {
+      "type": "object",
+      "required": ["port", "host"],
+      "properties": {
+        "port": {
+          "type": ["number", "string"]
+        },
+        "host": {
+          "type": "string"
+        }
+      }
+    },
+    "database": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "rabbitmq": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "redis": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "notification": {
+      "type": "object",
+      "required": ["providers", "defaults"],
+      "properties": {
+        "providers": {
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "provider": {
+                  "type": "string",
+                  "enum": ["sendgrid", "ses", "smtp"]
+                },
+                "secret_id": {
+                  "type": ["string", "null"]
+                },
+                "from_address": {
+                  "type": "string"
+                },
+                "from_name": {
+                  "type": "string"
+                }
+              }
+            },
+            "push": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "provider": {
+                  "type": "string",
+                  "enum": ["firebase", "onesignal"]
+                },
+                "secret_id": {
+                  "type": ["string", "null"]
+                }
+              }
+            },
+            "sms": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "provider": {
+                  "type": "string",
+                  "enum": ["twilio", "aws-sns", "vonage"]
+                },
+                "secret_id": {
+                  "type": ["string", "null"]
+                }
+              }
+            },
+            "whatsapp": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "provider": {
+                  "type": "string",
+                  "enum": ["twilio", "meta"]
+                },
+                "secret_id": {
+                  "type": ["string", "null"]
+                }
+              }
+            },
+            "voice": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "provider": {
+                  "type": "string",
+                  "enum": ["twilio", "vonage"]
+                },
+                "secret_id": {
+                  "type": ["string", "null"]
+                }
+              }
+            },
+            "inapp": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                },
+                "exchange": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "defaults": {
+          "type": "object",
+          "properties": {
+            "retry_attempts": {
+              "type": "number"
+            },
+            "retry_delay_ms": {
+              "type": "number"
+            },
+            "rate_limit_per_user": {
+              "type": "number"
+            },
+            "rate_limit_per_org": {
+              "type": "number"
+            },
+            "max_retry_delay_ms": {
+              "type": "number"
+            },
+            "deduplication_ttl_seconds": {
+              "type": "number"
+            }
+          }
+        },
+        "features": {
+          "type": "object",
+          "properties": {
+            "email_templates": {
+              "type": "boolean"
+            },
+            "delivery_tracking": {
+              "type": "boolean"
+            },
+            "presence_aware": {
+              "type": "boolean"
+            },
+            "escalation_chains": {
+              "type": "boolean"
+            },
+            "quiet_hours": {
+              "type": "boolean"
+            },
+            "batch_digest": {
+              "type": "boolean"
+            },
+            "webhooks": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "required": ["user_management", "secret_management", "logging"],
+      "properties": {
+        "user_management": {
+          "type": "object",
+          "required": ["url"],
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "timeout": {
+              "type": "number"
+            }
+          }
+        },
+        "secret_management": {
+          "type": "object",
+          "required": ["url"],
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "timeout": {
+              "type": "number"
+            }
+          }
+        },
+        "logging": {
+          "type": "object",
+          "required": ["url"],
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "timeout": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "app": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "email_templates": {
+          "type": "boolean"
+        },
+        "delivery_tracking": {
+          "type": "boolean"
+        },
+        "presence_aware": {
+          "type": "boolean"
+        },
+        "escalation_chains": {
+          "type": "boolean"
+        },
+        "quiet_hours": {
+          "type": "boolean"
+        },
+        "batch_digest": {
+          "type": "boolean"
+        },
+        "webhooks": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
+

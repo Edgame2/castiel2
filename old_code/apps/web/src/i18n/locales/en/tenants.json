@@ -1,0 +1,87 @@
+{
+  "title": "Tenants",
+  "subtitle": "Manage all tenants in the system",
+  "createTenant": "Create Tenant",
+  "searchPlaceholder": "Search tenants...",
+  "noTenants": "No tenants found",
+  "table": {
+    "name": "Name",
+    "domain": "Domain",
+    "plan": "Plan",
+    "status": "Status",
+    "users": "Users",
+    "created": "Created",
+    "actions": "Actions"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "suspended": "Suspended",
+    "trial": "Trial"
+  },
+  "plans": {
+    "starter": "Starter",
+    "professional": "Professional",
+    "enterprise": "Enterprise",
+    "custom": "Custom"
+  },
+  "actions": {
+    "view": "View",
+    "edit": "Edit",
+    "activate": "Activate",
+    "suspend": "Suspend",
+    "delete": "Delete"
+  },
+  "create": {
+    "title": "Create New Tenant",
+    "description": "Set up a new tenant organization",
+    "name": "Tenant name",
+    "namePlaceholder": "Acme Inc.",
+    "domain": "Domain",
+    "domainPlaceholder": "acme.com",
+    "plan": "Plan",
+    "adminEmail": "Admin email",
+    "adminEmailPlaceholder": "admin@acme.com",
+    "create": "Create Tenant",
+    "creating": "Creating...",
+    "success": "Tenant created successfully",
+    "error": "Failed to create tenant"
+  },
+  "edit": {
+    "title": "Edit Tenant",
+    "basicInfo": "Basic Information",
+    "name": "Tenant name",
+    "slug": "Slug",
+    "domain": "Domain",
+    "plan": "Plan",
+    "status": "Status",
+    "branding": "Branding",
+    "logo": "Logo URL",
+    "primaryColor": "Primary color",
+    "security": "Security Settings",
+    "mfaRequired": "Require MFA",
+    "sessionDuration": "Session duration (seconds)",
+    "save": "Save Changes",
+    "saving": "Saving..."
+  },
+  "detail": {
+    "title": "Tenant Details",
+    "overview": "Overview",
+    "users": "Users",
+    "settings": "Settings",
+    "billing": "Billing",
+    "createdAt": "Created",
+    "activatedAt": "Activated",
+    "adminContact": "Admin Contact",
+    "region": "Region"
+  },
+  "switcher": {
+    "title": "Switch Tenant",
+    "current": "Current",
+    "switchTo": "Switch to {{name}}",
+    "switching": "Switching...",
+    "success": "Switched to {{name}}"
+  }
+}
+

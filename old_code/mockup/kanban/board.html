@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kanban Board - UI Mockup Catalog</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <style>
+    .page-container {
+      max-width: 1800px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .breadcrumb {
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+    .breadcrumb a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+    .kanban-board {
+      display: flex;
+      gap: 1rem;
+      overflow-x: auto;
+      padding-bottom: 1rem;
+    }
+    .kanban-column {
+      min-width: 300px;
+      max-width: 300px;
+      background-color: var(--muted);
+      border-radius: 0.625rem;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+    }
+    .kanban-column-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .kanban-column-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+    }
+    .kanban-column-count {
+      background-color: var(--background);
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .kanban-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      flex: 1;
+      overflow-y: auto;
+      max-height: calc(100vh - 300px);
+    }
+    .kanban-card {
+      background-color: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .kanban-card:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+    }
+    .kanban-card-title {
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+    .kanban-card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+      margin-top: 0.5rem;
+    }
+    .kanban-card-badges {
+      display: flex;
+      gap: 0.25rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <div class="breadcrumb">
+      <a href="../index.html">Catalog</a> / Kanban / Board
+    </div>
+
+    <header style="margin-bottom: 2rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+        <h1 style="font-size: 2rem; font-weight: 700;">Pipeline Kanban</h1>
+        <button class="button button-default">+ New Opportunity</button>
+      </div>
+      <p class="text-muted-foreground">Drag and drop opportunities between stages</p>
+    </header>
+
+    <div class="kanban-board">
+      <!-- Prospecting Column -->
+      <div class="kanban-column">
+        <div class="kanban-column-header">
+          <div class="kanban-column-title">
+            <span>🔍</span>
+            <span>Prospecting</span>
+            <span class="kanban-column-count">12</span>
+          </div>
+        </div>
+        <div class="kanban-cards">
+          <div class="kanban-card">
+            <div class="kanban-card-title">Acme Corp - Q2 Deal</div>
+            <div class="text-sm text-muted-foreground">$250K • 65% probability</div>
+            <div class="kanban-card-badges">
+              <span class="badge badge-destructive">High Risk</span>
+            </div>
+            <div class="kanban-card-meta">
+              <span>Updated 2h ago</span>
+              <span>👤 John Doe</span>
+            </div>
+          </div>
+          <div class="kanban-card">
+            <div class="kanban-card-title">TechStart Inc</div>
+            <div class="text-sm text-muted-foreground">$180K • 70% probability</div>
+            <div class="kanban-card-meta">
+              <span>Updated 5h ago</span>
+              <span>👤 Jane Smith</span>
+            </div>
+          </div>
+          <div class="kanban-card">
+            <div class="kanban-card-title">Global Solutions</div>
+            <div class="text-sm text-muted-foreground">$150K • 55% probability</div>
+            <div class="kanban-card-meta">
+              <span>Updated 1d ago</span>
+              <span>👤 Bob Johnson</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Qualification Column -->
+      <div class="kanban-column">
+        <div class="kanban-column-header">
+          <div class="kanban-column-title">
+            <span>✅</span>
+            <span>Qualification</span>
+            <span class="kanban-column-count">8</span>
+          </div>
+        </div>
+        <div class="kanban-cards">
+          <div class="kanban-card">
+            <div class="kanban-card-title">Enterprise Co</div>
+            <div class="text-sm text-muted-foreground">$320K • 60% probability</div>
+            <div class="kanban-card-meta">
+              <span>Updated 2d ago</span>
+              <span>👤 Alice Brown</span>
+            </div>
+          </div>
+          <div class="kanban-card">
+            <div class="kanban-card-title">StartupXYZ</div>
+            <div class="text-sm text-muted-foreground">$100K • 50% probability</div>
+            <div class="kanban-card-meta">
+              <span>Updated 3d ago</span>
+              <span>👤 Charlie Wilson</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Proposal Column -->
+      <div class="kanban-column">
+        <div class="kanban-column-header">
+          <div class="kanban-column-title">
+            <span>📄</span>
+            <span>Proposal</span>
+            <span class="kanban-column-count">5</span>
+          </div>
+        </div>
+        <div class="kanban-cards">
+          <div class="kanban-card">
+            <div class="kanban-card-title">MegaCorp Industries</div>
+            <div class="text-sm text-muted-foreground">$480K • 75% probability</div>
+            <div class="kanban-card-badges">
+              <span class="badge badge-default">Hot</span>
+            </div>
+            <div class="kanban-card-meta">
+              <span>Updated 1h ago</span>
+              <span>👤 Diana Prince</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Negotiation Column -->
+      <div class="kanban-column">
+        <div class="kanban-column-header">
+          <div class="kanban-column-title">
+            <span>🤝</span>
+            <span>Negotiation</span>
+            <span class="kanban-column-count">3</span>
+          </div>
+        </div>
+        <div class="kanban-cards">
+          <div class="kanban-card">
+            <div class="kanban-card-title">BigTech Solutions</div>
+            <div class="text-sm text-muted-foreground">$150K • 80% probability</div>
+            <div class="kanban-card-badges">
+              <span class="badge badge-default">Closing</span>
+            </div>
+            <div class="kanban-card-meta">
+              <span>Updated 30m ago</span>
+              <span>👤 Eve Davis</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/theme.js"></script>
+</body>
+</html>
+

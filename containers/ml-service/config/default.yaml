@@ -1,0 +1,27 @@
+# ML Service Module Configuration
+
+module:
+  name: ml-service
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3033}
+  host: ${HOST:-0.0.0.0}
+
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+
+services:
+  ai_service:
+    url: ${AI_SERVICE_URL:-http://localhost:3006}
+  embeddings:
+    url: ${EMBEDDINGS_URL:-http://localhost:3005}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: ml_service

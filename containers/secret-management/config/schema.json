@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["module", "server", "database", "encryption", "service"],
+  "properties": {
+    "module": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "server": {
+      "type": "object",
+      "required": ["port", "host"],
+      "properties": {
+        "port": { "type": ["integer", "string"], "minimum": 1, "maximum": 65535 },
+        "host": { "type": "string" },
+        "env": { "type": "string", "enum": ["development", "test", "production"] }
+      }
+    },
+    "database": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": { "type": "string", "format": "uri", "minLength": 1 },
+        "pool_size": { "type": "integer", "minimum": 1, "default": 10 }
+      }
+    },
+    "encryption": {
+      "type": "object",
+      "required": ["masterKey"],
+      "properties": {
+        "masterKey": { "type": "string", "minLength": 64, "maxLength": 64 },
+        "algorithm": { "type": "string" },
+        "keyRotation": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "intervalDays": { "type": "number", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "required": ["authToken"],
+      "properties": {
+        "authToken": { "type": "string", "minLength": 1 }
+      }
+    },
+    "rabbitmq": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "exchange": { "type": "string" },
+        "queue": { "type": "string" }
+      }
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "serviceUrl": { "type": "string", "format": "uri" },
+        "enabled": { "type": "boolean" },
+        "level": { "type": "string", "enum": ["debug", "info", "warn", "error"] }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "properties": {
+        "defaultBackend": { "type": "string" },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "ttlSeconds": { "type": "number", "minimum": 1 },
+            "maxSize": { "type": "number", "minimum": 1 }
+          }
+        },
+        "softDelete": {
+          "type": "object",
+          "properties": {
+            "recoveryPeriodDays": { "type": "number", "minimum": 1 }
+          }
+        },
+        "rotation": {
+          "type": "object",
+          "properties": {
+            "defaultIntervalDays": { "type": "number", "minimum": 1 }
+          }
+        },
+        "expiration": {
+          "type": "object",
+          "properties": {
+            "notificationDays": {
+              "type": "array",
+              "items": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "properties": {
+        "user_management": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          },
+          "required": ["url"]
+        },
+        "logging": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          },
+          "required": ["url"]
+        },
+        "notification": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          },
+          "required": ["url"]
+        }
+      }
+    }
+  }
+}
+

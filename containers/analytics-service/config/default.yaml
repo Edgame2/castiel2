@@ -1,0 +1,28 @@
+# Analytics Service Module Configuration
+
+module:
+  name: analytics-service
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3030}
+  host: ${HOST:-0.0.0.0}
+
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+
+services:
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3023}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: analytics_service
+

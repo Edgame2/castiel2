@@ -1,0 +1,30 @@
+# Collaboration Service Module Configuration
+
+module:
+  name: collaboration-service
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3031}
+  host: ${HOST:-0.0.0.0}
+
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+
+services:
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3023}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+  notification:
+    url: ${NOTIFICATION_MANAGER_URL:-http://localhost:3001}
+
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: collaboration_service
+

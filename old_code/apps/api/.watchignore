@@ -1,0 +1,15 @@
+node_modules
+.pnpm
+dist
+.turbo
+.next
+coverage
+*.log
+.env.local
+
+
+
+
+
+
+

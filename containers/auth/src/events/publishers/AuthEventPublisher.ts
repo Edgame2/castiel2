@@ -1,0 +1,152 @@
+/**
+ * Authentication Event Publisher
+ * 
+ * Publishes authentication events to RabbitMQ exchange 'coder_events'
+ * Per ModuleImplementationGuide Section 9
+ */
+
+import { randomUUID } from 'crypto';
+import { EventPublisher, getChannel, closeConnection } from '@coder/shared';
+import { log } from '../../utils/logger';
+import { AuthEvent, BaseEvent } from '../../types/events';
+import { getConfig } from '../../config';
+
+let publisher: EventPublisher | null = null;
+
+/**
+ * Initialize event publisher and test connection
+ */
+export async function initializeEventPublisher(): Promise<void> {
+  if (publisher) {
+    return;
+  }
+
+  const config = getConfig();
+  
+  if (!config.rabbitmq?.url) {
+    log.warn('RabbitMQ URL not configured, events will not be published', { service: 'auth' });
+    return;
+  }
+
+  try {
+    // Test connection by getting channel
+    await getChannel();
+    
+    // Create publisher instance
+    publisher = new EventPublisher(config.rabbitmq.exchange || 'coder.events');
+    
+    log.info('Event publisher initialized', { service: 'auth', exchange: config.rabbitmq.exchange || 'coder.events' });
+  } catch (error: any) {
+    log.error('Failed to initialize event publisher', error, { service: 'auth' });
+    // Don't throw - allow service to start without events
+  }
+}
+
+/**
+ * Close event publisher connection
+ */
+export async function closeEventPublisher(): Promise<void> {
+  try {
+    await closeConnection();
+    publisher = null;
+    log.info('Event publisher closed', { service: 'auth' });
+  } catch (error: any) {
+    log.error('Error closing event publisher', error, { service: 'auth' });
+  }
+}
+
+/**
+ * Get event publisher instance
+ */
+function getPublisher(): EventPublisher | null {
+  if (!publisher) {
+    const config = getConfig();
+    publisher = new EventPublisher(config.rabbitmq.exchange || 'coder.events');
+  }
+  return publisher;
+}
+
+/**
+ * Create base event structure
+ */
+export function createBaseEvent(
+  type: string,
+  userId?: string,
+  organizationId?: string,
+  correlationId?: string,
+  data?: any
+): BaseEvent {
+  return {
+    id: randomUUID(),
+    type,
+    timestamp: new Date().toISOString(),
+    version: '1.0',
+    source: 'auth-service',
+    correlationId,
+    organizationId,
+    userId,
+    data: data || {},
+  };
+}
+
+/**
+ * Publish an authentication event
+ * 
+ * @param event - Event to publish
+ * @param routingKey - Optional routing key (defaults to event.type)
+ */
+export async function publishEvent(event: AuthEvent, routingKey?: string): Promise<void> {
+  const pub = getPublisher();
+  if (!pub) {
+    log.debug('Event publisher not initialized, skipping event', { type: event.type, service: 'auth' });
+    return;
+  }
+
+  try {
+    await pub.publish(event, routingKey || event.type);
+    log.debug('Auth event published', { type: event.type, service: 'auth' });
+  } catch (error) {
+    log.error('Failed to publish auth event', error as Error, {
+      eventType: event.type,
+      organizationId: event.organizationId,
+      userId: event.userId,
+      service: 'auth',
+    });
+    // Do not re-throw - event publishing should not block core functionality
+  }
+}
+
+/**
+ * Publish event safely (non-blocking, errors are logged but don't throw)
+ */
+export async function publishEventSafely(event: AuthEvent, routingKey?: string): Promise<void> {
+  try {
+    await publishEvent(event, routingKey);
+  } catch (error) {
+    // Error already logged in publishEvent
+  }
+}
+
+/**
+ * Extract event metadata from request
+ */
+export function extractEventMetadata(request: any): {
+  ipAddress?: string;
+  userAgent?: string;
+  sessionId?: string;
+  deviceName?: string;
+  deviceType?: string;
+  country?: string;
+  city?: string;
+} {
+  return {
+    ipAddress: request.ip || request.headers['x-forwarded-for'] || request.headers['x-real-ip'],
+    userAgent: request.headers['user-agent'],
+    sessionId: (request as any).user?.sessionId,
+    deviceName: (request as any).deviceName,
+    deviceType: (request as any).deviceType,
+    country: (request as any).country,
+    city: (request as any).city,
+  };
+}
+

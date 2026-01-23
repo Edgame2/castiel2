@@ -1,0 +1,84 @@
+openapi: 3.0.3
+info:
+  title: Notification Manager Service API
+  description: |
+    Multi-channel notification service for Coder IDE with delivery tracking, preferences, and templates.
+    
+    ## Authentication
+    All endpoints (except health checks) require JWT authentication via Bearer token:
+    ```
+    Authorization: Bearer <token>
+    ```
+    
+    ## Features
+    - **Multi-Channel**: Email, SMS, Push, In-App, Webhook notifications
+    - **Templates**: Reusable notification templates with variable substitution
+    - **Preferences**: User and organization-level notification preferences
+    - **Delivery Tracking**: Track notification delivery status and history
+    - **Escalation**: Escalation chains for critical notifications
+    - **Batching**: Batch notifications for efficiency
+  version: 1.0.0
+  contact:
+    name: Coder IDE Team
+
+servers:
+  - url: /api/v1
+    description: API Version 1
+
+tags:
+  - name: Notifications
+    description: Notification management
+  - name: Templates
+    description: Notification template management
+  - name: Preferences
+    description: Notification preferences
+  - name: Delivery
+    description: Delivery tracking
+  - name: Health
+    description: Health check endpoints
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Liveness probe
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: Checks if service is ready to handle requests
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+

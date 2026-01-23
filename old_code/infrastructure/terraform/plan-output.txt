@@ -1,0 +1,61 @@
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  [32m+[0m create[0m
+
+Terraform planned the following actions, but then encountered a problem:
+
+[1m  # random_password.jwt_secret[0m will be created
+[0m  [32m+[0m[0m resource "random_password" "jwt_secret" {
+      [32m+[0m[0m bcrypt_hash = (sensitive value)
+      [32m+[0m[0m id          = (known after apply)
+      [32m+[0m[0m length      = 64
+      [32m+[0m[0m lower       = true
+      [32m+[0m[0m min_lower   = 0
+      [32m+[0m[0m min_numeric = 0
+      [32m+[0m[0m min_special = 0
+      [32m+[0m[0m min_upper   = 0
+      [32m+[0m[0m number      = true
+      [32m+[0m[0m numeric     = true
+      [32m+[0m[0m result      = (sensitive value)
+      [32m+[0m[0m special     = true
+      [32m+[0m[0m upper       = true
+    }
+
+[1m  # random_string.suffix[0m will be created
+[0m  [32m+[0m[0m resource "random_string" "suffix" {
+      [32m+[0m[0m id          = (known after apply)
+      [32m+[0m[0m length      = 6
+      [32m+[0m[0m lower       = true
+      [32m+[0m[0m min_lower   = 0
+      [32m+[0m[0m min_numeric = 0
+      [32m+[0m[0m min_special = 0
+      [32m+[0m[0m min_upper   = 0
+      [32m+[0m[0m number      = true
+      [32m+[0m[0m numeric     = true
+      [32m+[0m[0m result      = (known after apply)
+      [32m+[0m[0m special     = false
+      [32m+[0m[0m upper       = false
+    }
+
+[1mPlan:[0m [0m2 to add, 0 to change, 0 to destroy.
+[33m╷[0m[0m
+[33m│[0m [0m[1m[33mWarning: [0m[0m[1mArgument is deprecated[0m
+[33m│[0m [0m
+[33m│[0m [0m[0m  with azurerm_redis_cache.main,
+[33m│[0m [0m  on redis.tf line 10, in resource "azurerm_redis_cache" "main":
+[33m│[0m [0m  10:   enable_non_ssl_port = [4mfalse[0m[0m
+[33m│[0m [0m
+[33m│[0m [0m`enable_non_ssl_port` will be removed in favour of the property
+[33m│[0m [0m`non_ssl_port_enabled` in version 4.0 of the AzureRM Provider.
+[33m│[0m [0m
+[33m│[0m [0m(and 11 more similar warnings elsewhere)
+[33m╵[0m[0m
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mpopulating Resource Provider cache: listing Resource Providers: loading results: Get "https://management.azure.com/subscriptions/90357f88-9f70-4a1b-9ea4-b5b739799237/providers?api-version=2022-09-01": dial tcp: lookup management.azure.com on 127.0.0.53:53: server misbehaving[0m
+[31m│[0m [0m
+[31m│[0m [0m[0m  with provider["registry.terraform.io/hashicorp/azurerm"],
+[31m│[0m [0m  on main.tf line 34, in provider "azurerm":
+[31m│[0m [0m  34: provider "azurerm" [4m{[0m[0m
+[31m│[0m [0m
+[31m╵[0m[0m

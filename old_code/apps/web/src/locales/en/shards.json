@@ -1,0 +1,163 @@
+{
+  "title": "Shards",
+  "subtitle": "Manage your data shards",
+  "create": "Create Shard",
+  "createNew": "Create New Shard",
+  "createSubtitle": "Add a new shard to your collection",
+  "edit": "Edit Shard",
+  "editSubtitle": "Update \"{{name}}\" based on {{type}} schema",
+  "delete": "Delete Shard",
+  "noShards": "No shards found",
+  "searchPlaceholder": "Search shards...",
+  "backToShards": "Back to Shards",
+  "table": {
+    "name": "Name",
+    "description": "Description",
+    "type": "Type",
+    "tags": "Tags",
+    "visibility": "Visibility",
+    "createdAt": "Created",
+    "updatedAt": "Updated",
+    "actions": "Actions"
+  },
+  "visibility": {
+    "public": "Public",
+    "private": "Private"
+  },
+  "form": {
+    "name": "Name",
+    "namePlaceholder": "Enter shard name",
+    "nameDescription": "A unique name for this shard",
+    "description": "Description",
+    "descriptionPlaceholder": "Enter shard description",
+    "descriptionHelp": "Optional description of the shard",
+    "content": "Content",
+    "contentPlaceholder": "Enter shard content",
+    "contentDescription": "The main content of the shard",
+    "type": "Type",
+    "selectType": "Select a type",
+    "typeDescription": "Select the type of shard to create",
+    "tags": "Tags",
+    "tagsPlaceholder": "Add tags (comma separated)",
+    "tagsDescription": "Organize with tags",
+    "visibility": "Visibility",
+    "visibilityDescription": "Control who can access this shard",
+    "isPublic": "Public",
+    "isPublicDescription": "Make this shard accessible to all users",
+    "isPublicLabel": "This shard is public",
+    "isPrivateLabel": "This shard is private",
+    "attachments": "Attachments",
+    "attachmentsDescription": "Upload files to attach to this shard (images, documents, etc.)",
+    "unstructuredData": "Additional Data",
+    "unstructuredDataDescription": "Add any additional JSON data that doesn't fit the shard type schema",
+    "save": "Save Shard",
+    "saving": "Saving...",
+    "update": "Update Shard",
+    "createShard": "Create Shard",
+    "cancel": "Cancel",
+    "step": "Step {{current}} of {{total}}",
+    "next": "Next",
+    "back": "Back",
+    "selectTypeStep": "Select Type",
+    "basicInfoStep": "Basic Info",
+    "schemaFieldsStep": "Schema Fields",
+    "additionalDataStep": "Additional Data",
+    "reviewStep": "Review"
+  },
+  "wizard": {
+    "title": "Create New Shard",
+    "selectType": {
+      "title": "Select Shard Type",
+      "description": "Choose the type of data you want to store",
+      "search": "Search types...",
+      "noTypes": "No shard types available",
+      "system": "System",
+      "custom": "Custom"
+    },
+    "basicInfo": {
+      "title": "Basic Information",
+      "description": "Enter the basic details for your shard"
+    },
+    "schemaFields": {
+      "title": "Schema Fields",
+      "description": "Fill in the required fields for {{type}}"
+    },
+    "additionalData": {
+      "title": "Additional Data",
+      "description": "Add attachments and custom data"
+    },
+    "review": {
+      "title": "Review & Create",
+      "description": "Review your shard before creating",
+      "summary": "Summary",
+      "metadata": "Metadata",
+      "attachments": "Attachments"
+    }
+  },
+  "deleteConfirm": {
+    "title": "Delete Shard",
+    "message": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+    "bulkMessage": "Are you sure you want to delete {{count}} shards? This action cannot be undone.",
+    "confirm": "Delete",
+    "cancel": "Cancel"
+  },
+  "detail": {
+    "notFound": "Shard not found",
+    "notFoundDescription": "The shard you're looking for doesn't exist or has been deleted.",
+    "deleting": "Deleting...",
+    "content": "Content",
+    "contentDescription": "View the shard's content, metadata, and unstructured data",
+    "metadata": "Metadata",
+    "jsonData": "JSON Data",
+    "attachments": "Attachments",
+    "noContent": "No content available",
+    "noMetadata": "No metadata available",
+    "noJsonData": "No unstructured data available",
+    "download": "Download",
+    "details": "Details",
+    "type": "Type",
+    "unknown": "Unknown",
+    "created": "Created",
+    "updated": "Updated",
+    "createdBy": "Created By",
+    "updatedBy": "Updated By",
+    "statistics": "Statistics",
+    "shardId": "Shard ID",
+    "relationships": "Relationships",
+    "noRelationships": "No relationships",
+    "history": "History",
+    "versions": "Versions",
+    "relatedShards": "Related Shards"
+  },
+  "messages": {
+    "createSuccess": "Shard created successfully",
+    "updateSuccess": "Shard updated successfully",
+    "deleteSuccess": "Shard deleted successfully",
+    "bulkDeleteSuccess": "{{count}} shards deleted successfully",
+    "deleteFailed": "Failed to delete shard",
+    "copySuccess": "ID copied to clipboard"
+  },
+  "filters": {
+    "all": "All",
+    "allTypes": "All Types",
+    "allVisibility": "All",
+    "byType": "By Type",
+    "byVisibility": "By Visibility",
+    "byCreated": "By Created Date",
+    "byTags": "By Tags",
+    "clearAll": "Clear all filters"
+  },
+  "export": {
+    "title": "Export Shards",
+    "description": "Export selected shards to a file",
+    "csv": "Export as CSV",
+    "excel": "Export as Excel",
+    "json": "Export as JSON"
+  },
+  "bulk": {
+    "selected": "{{count}} selected",
+    "deleteSelected": "Delete Selected",
+    "exportSelected": "Export Selected"
+  }
+}
+

@@ -1,0 +1,136 @@
+{
+  "title": "Utilisateurs",
+  "subtitle": "Gérez les utilisateurs de votre organisation",
+  "addUser": "Ajouter un utilisateur",
+  "inviteUser": "Inviter un utilisateur",
+  "bulkActions": "Actions groupées",
+  "searchPlaceholder": "Rechercher des utilisateurs...",
+  "noUsers": "Aucun utilisateur trouvé",
+  "table": {
+    "name": "Nom",
+    "email": "E-mail",
+    "role": "Rôle",
+    "status": "Statut",
+    "lastLogin": "Dernière connexion",
+    "actions": "Actions"
+  },
+  "status": {
+    "active": "Actif",
+    "inactive": "Inactif",
+    "suspended": "Suspendu",
+    "pending": "En attente",
+    "pendingVerification": "Vérification en attente",
+    "pendingApproval": "Approbation en attente",
+    "deleted": "Supprimé"
+  },
+  "roles": {
+    "user": "Utilisateur",
+    "admin": "Administrateur",
+    "owner": "Propriétaire",
+    "superAdmin": "Super Admin"
+  },
+  "actions": {
+    "view": "Voir",
+    "edit": "Modifier",
+    "activate": "Activer",
+    "deactivate": "Désactiver",
+    "suspend": "Suspendre",
+    "delete": "Supprimer",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "impersonate": "Usurper l'identité"
+  },
+  "bulk": {
+    "title": "Actions groupées",
+    "selected": "{{count}} sélectionné(s)",
+    "activate": "Activer les utilisateurs",
+    "deactivate": "Désactiver les utilisateurs",
+    "delete": "Supprimer les utilisateurs",
+    "addRole": "Ajouter un rôle",
+    "removeRole": "Retirer un rôle",
+    "sendPasswordReset": "Envoyer la réinitialisation du mot de passe",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer {{count}} utilisateur(s) ? Cette action est irréversible.",
+    "confirmDeactivate": "Êtes-vous sûr de vouloir désactiver {{count}} utilisateur(s) ? Ils ne pourront plus se connecter.",
+    "success": "{{count}} utilisateurs mis à jour avec succès",
+    "partialSuccess": "Opération groupée terminée : {{success}} réussi(s), {{failed}} échoué(s)"
+  },
+  "invite": {
+    "title": "Inviter un utilisateur",
+    "description": "Envoyez une invitation à rejoindre votre organisation",
+    "email": "Adresse e-mail",
+    "emailPlaceholder": "utilisateur@exemple.com",
+    "role": "Rôle",
+    "message": "Message personnel (optionnel)",
+    "messagePlaceholder": "Ajoutez un message personnel à l'invitation...",
+    "send": "Envoyer l'invitation",
+    "sending": "Envoi...",
+    "success": "Invitation envoyée avec succès",
+    "error": "Échec de l'envoi de l'invitation"
+  },
+  "invitations": {
+    "title": "Invitations",
+    "subtitle": "Gérez les invitations d'utilisateurs pour votre organisation",
+    "refresh": "Actualiser",
+    "total": "Total des invitations",
+    "pending": "En attente",
+    "accepted": "Acceptées",
+    "expiredRevoked": "Expirées/Révoquées",
+    "status": {
+      "pending": "En attente",
+      "accepted": "Acceptée",
+      "declined": "Refusée",
+      "expired": "Expirée",
+      "revoked": "Révoquée"
+    },
+    "table": {
+      "email": "E-mail",
+      "status": "Statut",
+      "invitedBy": "Invité par",
+      "roles": "Rôles",
+      "expires": "Expire",
+      "created": "Créée"
+    },
+    "actions": {
+      "resend": "Renvoyer",
+      "revoke": "Révoquer"
+    },
+    "revokeConfirm": "Êtes-vous sûr de vouloir révoquer l'invitation pour {{email}} ? Cette action est irréversible.",
+    "resendSuccess": "Invitation renvoyée avec succès",
+    "revokeSuccess": "Invitation révoquée avec succès",
+    "remaining": "{{time}} restant",
+    "noInvitations": "Aucune invitation trouvée"
+  },
+  "joinRequests": {
+    "title": "Demandes d'adhésion",
+    "subtitle": "Examinez les demandes d'adhésion à votre organisation",
+    "approve": "Approuver",
+    "decline": "Refuser",
+    "noRequests": "Aucune demande d'adhésion en attente",
+    "approveSuccess": "Demande d'adhésion approuvée",
+    "declineSuccess": "Demande d'adhésion refusée"
+  },
+  "detail": {
+    "title": "Détails de l'utilisateur",
+    "editUser": "Modifier l'utilisateur",
+    "accountInfo": "Informations du compte",
+    "securityInfo": "Informations de sécurité",
+    "sessions": "Sessions actives",
+    "activity": "Journal d'activité",
+    "lastLogin": "Dernière connexion",
+    "createdAt": "Compte créé",
+    "emailVerified": "E-mail vérifié",
+    "mfaEnabled": "MFA activé",
+    "terminateSession": "Terminer",
+    "terminateAllSessions": "Terminer toutes les sessions",
+    "noSessions": "Aucune session active"
+  },
+  "form": {
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "email": "E-mail",
+    "role": "Rôle",
+    "status": "Statut",
+    "save": "Enregistrer les modifications",
+    "saving": "Enregistrement..."
+  }
+}
+

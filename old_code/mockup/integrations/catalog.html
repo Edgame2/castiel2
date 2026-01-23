@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integration Catalog - UI Mockup Catalog</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <style>
+    .page-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .breadcrumb {
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+    .breadcrumb a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+    .integration-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.5rem;
+      background-color: var(--muted);
+      font-size: 1.25rem;
+    }
+    .capability-tag {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      background-color: var(--muted);
+      color: var(--muted-foreground);
+      margin-right: 0.25rem;
+      margin-top: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <div class="breadcrumb">
+      <a href="../index.html">Catalog</a> / <a href="../index.html#integrations">Integrations</a> / Catalog
+    </div>
+
+    <header style="margin-bottom: 2rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+        <h1 style="font-size: 2rem; font-weight: 700;">Integration Catalog</h1>
+        <button class="button button-default">Add Integration</button>
+      </div>
+      <p class="text-muted-foreground">Browse available integration providers</p>
+    </header>
+
+    <!-- Search and Filters -->
+    <div style="margin-bottom: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 300px;">
+        <input type="text" class="input" placeholder="Search integrations..." style="width: 100%;">
+      </div>
+      <select class="input" style="width: 200px;">
+        <option>All Categories</option>
+        <option>CRM</option>
+        <option>Email</option>
+        <option>Communication</option>
+      </select>
+      <select class="input" style="width: 150px;">
+        <option>All Status</option>
+        <option>Active</option>
+        <option>Beta</option>
+        <option>Deprecated</option>
+      </select>
+    </div>
+
+    <!-- Integration Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- Integration 1: Salesforce -->
+      <div class="card">
+        <div class="card-header">
+          <div style="display: flex; align-items: start; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div class="integration-icon">🔵</div>
+              <div>
+                <div class="card-title">Salesforce</div>
+                <div class="card-description">Salesforce CRM</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-content">
+          <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
+            <span class="badge badge-default">Active</span>
+            <span class="badge badge-outline">CRM</span>
+          </div>
+          <p class="text-sm text-muted-foreground" style="margin-bottom: 0.75rem;">
+            Connect your Salesforce account to sync opportunities and contacts.
+          </p>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+            <span class="capability-tag">sync</span>
+            <span class="capability-tag">search</span>
+            <span class="capability-tag">webhook</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Integration 2: Gmail -->
+      <div class="card">
+        <div class="card-header">
+          <div style="display: flex; align-items: start; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div class="integration-icon">📧</div>
+              <div>
+                <div class="card-title">Gmail</div>
+                <div class="card-description">Google Workspace</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-content">
+          <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
+            <span class="badge badge-default">Active</span>
+            <span class="badge badge-outline">Email</span>
+          </div>
+          <p class="text-sm text-muted-foreground" style="margin-bottom: 0.75rem;">
+            Integrate Gmail to search emails and sync contacts.
+          </p>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+            <span class="capability-tag">search</span>
+            <span class="capability-tag">sync</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Integration 3: Slack -->
+      <div class="card">
+        <div class="card-header">
+          <div style="display: flex; align-items: start; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div class="integration-icon">💬</div>
+              <div>
+                <div class="card-title">Slack</div>
+                <div class="card-description">Slack Technologies</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-content">
+          <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
+            <span class="badge badge-secondary">Beta</span>
+            <span class="badge badge-outline">Communication</span>
+          </div>
+          <p class="text-sm text-muted-foreground" style="margin-bottom: 0.75rem;">
+            Connect Slack to receive notifications and search messages.
+          </p>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+            <span class="capability-tag">webhook</span>
+            <span class="capability-tag">search</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/theme.js"></script>
+</body>
+</html>
+

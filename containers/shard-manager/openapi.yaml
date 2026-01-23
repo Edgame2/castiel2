@@ -1,0 +1,83 @@
+openapi: 3.0.3
+info:
+  title: Shard Manager Service API
+  description: |
+    Core data model management service for Coder IDE. Shards are the fundamental data entities in the system.
+    
+    ## Authentication
+    All endpoints (except health checks) require JWT authentication via Bearer token:
+    ```
+    Authorization: Bearer <token>
+    ```
+    
+    ## Features
+    - **Shard CRUD**: Create, read, update, delete shards
+    - **ShardType Management**: Define and manage shard schemas
+    - **Relationship Graph**: Manage relationships between shards
+    - **Bulk Operations**: Bulk create, update, delete operations
+    - **Versioning**: Shard revision history and versioning
+  version: 1.0.0
+  contact:
+    name: Coder IDE Team
+
+servers:
+  - url: /api/v1
+    description: API Version 1
+
+tags:
+  - name: Shards
+    description: Shard CRUD operations
+  - name: ShardTypes
+    description: ShardType management
+  - name: Relationships
+    description: Relationship management
+  - name: Bulk
+    description: Bulk operations
+  - name: Health
+    description: Health check endpoints
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Liveness probe
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: Checks if service is ready to handle requests
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+

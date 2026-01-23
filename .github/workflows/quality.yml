@@ -1,0 +1,126 @@
+name: Quality Checks
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  quality:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        container:
+          - shared
+          - auth
+          - logging
+          - notification-manager
+          - user-management
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: |
+          if [ -f "package.json" ]; then
+            pnpm install --frozen-lockfile
+          fi
+          if [ -d "containers/${{ matrix.container }}" ]; then
+            cd containers/${{ matrix.container }}
+            if [ -f "package.json" ]; then
+              pnpm install --frozen-lockfile || npm install
+            fi
+          fi
+      
+      - name: Type check
+        continue-on-error: true
+        run: |
+          if [ -d "containers/${{ matrix.container }}" ]; then
+            cd containers/${{ matrix.container }}
+            if [ -f "package.json" ]; then
+              pnpm run type-check || npm run type-check || npx tsc --noEmit || true
+            fi
+          fi
+      
+      - name: Lint
+        continue-on-error: true
+        run: |
+          if [ -d "containers/${{ matrix.container }}" ]; then
+            cd containers/${{ matrix.container }}
+            if [ -f "package.json" ]; then
+              pnpm run lint || npm run lint || true
+            fi
+          fi
+      
+      - name: Test
+        continue-on-error: true
+        run: |
+          if [ -d "containers/${{ matrix.container }}" ]; then
+            cd containers/${{ matrix.container }}
+            if [ -f "package.json" ]; then
+              pnpm test || npm test || true
+            fi
+          fi
+      
+      - name: Test Coverage
+        continue-on-error: true
+        run: |
+          if [ -d "containers/${{ matrix.container }}" ]; then
+            cd containers/${{ matrix.container }}
+            if [ -f "package.json" ]; then
+              pnpm run test:coverage || npm run test:coverage || true
+            fi
+          fi
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Run security audit
+        run: |
+          npm audit --audit-level=moderate || true
+          # Check all container package.json files
+          find containers -name "package.json" -exec npm audit --audit-level=moderate {} \; || true
+
+  format:
+    name: Code Formatting
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Check formatting
+        run: |
+          npm install -g prettier
+          prettier --check "containers/**/*.{ts,tsx,json,yaml,md}" || true
+

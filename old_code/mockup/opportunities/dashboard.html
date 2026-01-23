@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pipeline Dashboard - UI Mockup Catalog</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <style>
+    .page-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .breadcrumb {
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+    .breadcrumb a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+    .chart-wrapper {
+      width: 100%;
+      height: 300px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <div class="breadcrumb">
+      <a href="../index.html">Catalog</a> / <a href="../index.html#opportunities">Opportunities</a> / Pipeline Dashboard
+    </div>
+
+    <header style="margin-bottom: 2rem;">
+      <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Pipeline Dashboard</h1>
+      <p class="text-muted-foreground">Overview of opportunities by stage and risk distribution</p>
+    </header>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" style="margin-bottom: 2rem;">
+      <div class="card">
+        <div class="card-header" style="flex-direction: row; justify-content: space-between; align-items: center;">
+          <div class="card-title" style="font-size: 0.875rem;">Total Opportunities</div>
+        </div>
+        <div class="card-content">
+          <div style="font-size: 2rem; font-weight: 700;">28</div>
+          <p class="text-muted-foreground" style="font-size: 0.75rem; margin-top: 0.25rem;">Active in pipeline</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="flex-direction: row; justify-content: space-between; align-items: center;">
+          <div class="card-title" style="font-size: 0.875rem;">Expected Revenue</div>
+        </div>
+        <div class="card-content">
+          <div style="font-size: 2rem; font-weight: 700;">$950K</div>
+          <p class="text-muted-foreground" style="font-size: 0.75rem; margin-top: 0.25rem;">Based on probability</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="flex-direction: row; justify-content: space-between; align-items: center;">
+          <div class="card-title" style="font-size: 0.875rem;">Pipeline Value</div>
+        </div>
+        <div class="card-content">
+          <div style="font-size: 2rem; font-weight: 700;">$1.2M</div>
+          <p class="text-muted-foreground" style="font-size: 0.75rem; margin-top: 0.25rem;">Total opportunity value</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="flex-direction: row; justify-content: space-between; align-items: center;">
+          <div class="card-title" style="font-size: 0.875rem;">Quota Attainment</div>
+        </div>
+        <div class="card-content">
+          <div style="font-size: 2rem; font-weight: 700;">47.5%</div>
+          <p class="text-muted-foreground" style="font-size: 0.75rem; margin-top: 0.25rem;">$2M target</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" style="margin-bottom: 2rem;">
+      <!-- Opportunities by Stage -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Opportunities by Stage</div>
+          <div class="card-description">Total value by sales stage</div>
+        </div>
+        <div class="card-content">
+          <div class="chart-wrapper" id="stage-chart"></div>
+        </div>
+      </div>
+
+      <!-- Risk Distribution -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Risk Distribution</div>
+          <div class="card-description">Opportunities by risk level</div>
+        </div>
+        <div class="card-content">
+          <div class="chart-wrapper" id="risk-chart"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team Performance -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Top Performing Teams</div>
+        <div class="card-description">Best performing teams by opportunity value</div>
+      </div>
+      <div class="card-content">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between" style="padding: 0.75rem; border-radius: 0.5rem; background-color: var(--muted);">
+            <div>
+              <p style="font-weight: 500;">Sales Team Alpha</p>
+              <p class="text-muted-foreground" style="font-size: 0.875rem;">12 members • 15 opportunities</p>
+            </div>
+            <div style="text-align: right;">
+              <p style="font-weight: 600;">$450K</p>
+              <p class="text-muted-foreground" style="font-size: 0.875rem;">62.5% quota</p>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between" style="padding: 0.75rem; border-radius: 0.5rem;">
+            <div>
+              <p style="font-weight: 500;">Sales Team Beta</p>
+              <p class="text-muted-foreground" style="font-size: 0.875rem;">8 members • 10 opportunities</p>
+            </div>
+            <div style="text-align: right;">
+              <p style="font-weight: 600;">$320K</p>
+              <p class="text-muted-foreground" style="font-size: 0.875rem;">44.4% quota</p>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between" style="padding: 0.75rem; border-radius: 0.5rem;">
+            <div>
+              <p style="font-weight: 500;">Sales Team Gamma</p>
+              <p class="text-muted-foreground" style="font-size: 0.875rem;">5 members • 3 opportunities</p>
+            </div>
+            <div style="text-align: right;">
+              <p style="font-weight: 600;">$150K</p>
+              <p class="text-muted-foreground" style="font-size: 0.875rem;">20.8% quota</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/theme.js"></script>
+  <script src="../js/charts.js"></script>
+  <script>
+    // Sample data
+    const stageData = [
+      { name: 'Prospecting', value: 250000, count: 12 },
+      { name: 'Qualification', value: 480000, count: 8 },
+      { name: 'Proposal', value: 320000, count: 5 },
+      { name: 'Negotiation', value: 150000, count: 3 }
+    ];
+
+    const riskData = [
+      { name: 'High', value: 8, color: '#ef4444' },
+      { name: 'Medium', value: 12, color: '#f59e0b' },
+      { name: 'Low', value: 8, color: '#10b981' }
+    ];
+
+    // Initialize charts
+    function initCharts() {
+      // Stage Chart
+      window.renderBarChart('stage-chart', stageData, {
+        width: document.getElementById('stage-chart').offsetWidth || 500,
+        height: 300,
+        barColor: window.getChartColors().chart1,
+        showGrid: true,
+        showTooltip: true
+      });
+
+      // Risk Chart with custom colors
+      window.renderBarChart('risk-chart', riskData, {
+        width: document.getElementById('risk-chart').offsetWidth || 500,
+        height: 300,
+        customColors: riskData.map(d => d.color),
+        showGrid: true,
+        showTooltip: true
+      });
+    }
+
+    // Initialize on load
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initCharts);
+    } else {
+      initCharts();
+    }
+
+    // Re-render on window resize
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(initCharts, 250);
+    });
+  </script>
+</body>
+</html>
+

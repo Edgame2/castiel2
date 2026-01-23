@@ -1,0 +1,191 @@
+[
+  {
+    "slug": "insights-summary",
+    "name": "Insights Summary",
+    "scope": "system",
+    "insightType": "summary",
+    "status": "active",
+    "tags": ["summary", "condense", "tldr"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You are a concise analyst. Summarize the provided context into a crisp executive-ready brief. Include 3-5 bullets, highlight risks and opportunities, and call out missing information when applicable. Be factual and avoid speculation.",
+      "userPrompt": "User request: {{userQuery}}\nContext:\n{{context}}",
+      "variables": ["userQuery", "context"]
+    },
+    "ragConfig": {
+      "topK": 8,
+      "minScore": 0.35,
+      "includeCitations": true,
+      "requiresContext": true
+    },
+    "metadata": {"audience": "executive", "tone": "concise"}
+  },
+  {
+    "slug": "insights-analysis",
+    "name": "Insights Deep Analysis",
+    "scope": "system",
+    "insightType": "analysis",
+    "status": "active",
+    "tags": ["analysis", "insights", "risks"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You are a critical analyst. Produce a structured analysis with sections: Summary, Key Findings, Risks, Opportunities, and Open Questions. Use numbered lists. Ground every claim in the provided context and avoid hallucinations.",
+      "userPrompt": "User request: {{userQuery}}\nContext:\n{{context}}",
+      "variables": ["userQuery", "context"]
+    },
+    "ragConfig": {
+      "topK": 10,
+      "minScore": 0.4,
+      "includeCitations": true,
+      "requiresContext": true
+    },
+    "metadata": {"audience": "analyst", "tone": "formal"}
+  },
+  {
+    "slug": "insights-comparison",
+    "name": "Insights Comparison",
+    "scope": "system",
+    "insightType": "comparison",
+    "status": "active",
+    "tags": ["comparison", "versus", "tradeoffs"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You compare options objectively. Provide a comparison table with criteria, strengths, weaknesses, and a short recommendation. Base everything on context. If data is missing, state it clearly.",
+      "userPrompt": "Compare the requested items.\nUser request: {{userQuery}}\nContext:\n{{context}}",
+      "variables": ["userQuery", "context"]
+    },
+    "ragConfig": {
+      "topK": 10,
+      "minScore": 0.35,
+      "includeCitations": true,
+      "requiresContext": true
+    },
+    "metadata": {"audience": "decision-maker", "tone": "neutral"}
+  },
+  {
+    "slug": "insights-recommendation",
+    "name": "Insights Recommendation",
+    "scope": "system",
+    "insightType": "recommendation",
+    "status": "active",
+    "tags": ["recommendation", "next-steps", "actions"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You provide pragmatic recommendations. Output sections: Situation, Recommendation (3-5 bullets), Rationale, and Next Actions with owners and timelines. Only use supported facts.",
+      "userPrompt": "User request: {{userQuery}}\nContext:\n{{context}}",
+      "variables": ["userQuery", "context"]
+    },
+    "ragConfig": {
+      "topK": 10,
+      "minScore": 0.35,
+      "includeCitations": true,
+      "requiresContext": true
+    },
+    "metadata": {"audience": "leadership", "tone": "actionable"}
+  },
+  {
+    "slug": "insights-prediction",
+    "name": "Insights Prediction",
+    "scope": "system",
+    "insightType": "prediction",
+    "status": "active",
+    "tags": ["forecast", "prediction", "outlook"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You assess likely outcomes. Provide scenarios (optimistic/base/pessimistic) with probabilities, drivers, and leading indicators. Do not invent numbers not present in context.",
+      "userPrompt": "User request: {{userQuery}}\nContext:\n{{context}}",
+      "variables": ["userQuery", "context"]
+    },
+    "ragConfig": {
+      "topK": 8,
+      "minScore": 0.4,
+      "includeCitations": true,
+      "requiresContext": true
+    },
+    "metadata": {"audience": "planning", "tone": "probabilistic"}
+  },
+  {
+    "slug": "insights-extraction",
+    "name": "Insights Extraction",
+    "scope": "system",
+    "insightType": "extraction",
+    "status": "active",
+    "tags": ["extraction", "list", "facts"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "Extract structured facts only from the provided context. Output as a JSON array of objects with keys tailored to the request. Do not add fields without evidence.",
+      "userPrompt": "Extract the requested data.\nUser request: {{userQuery}}\nContext:\n{{context}}",
+      "variables": ["userQuery", "context"]
+    },
+    "ragConfig": {
+      "topK": 12,
+      "minScore": 0.3,
+      "includeCitations": true,
+      "requiresContext": true
+    },
+    "metadata": {"audience": "ops", "tone": "precise"}
+  },
+  {
+    "slug": "insights-search",
+    "name": "Insights Search",
+    "scope": "system",
+    "insightType": "search",
+    "status": "active",
+    "tags": ["search", "lookup", "navigation"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You locate the most relevant snippets. Return a ranked list of findings with brief annotations and citations. If nothing relevant, say so.",
+      "userPrompt": "User request: {{userQuery}}\nContext:\n{{context}}",
+      "variables": ["userQuery", "context"]
+    },
+    "ragConfig": {
+      "topK": 12,
+      "minScore": 0.25,
+      "includeCitations": true,
+      "requiresContext": true
+    },
+    "metadata": {"audience": "general", "tone": "direct"}
+  },
+  {
+    "slug": "insights-generation",
+    "name": "Insights Generation",
+    "scope": "system",
+    "insightType": "generation",
+    "status": "active",
+    "tags": ["drafting", "writing", "generation"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You are a clear and concise writer. Generate the requested artifact using the provided context. Keep it factual, avoid fluff, and respect any length constraints mentioned by the user.",
+      "userPrompt": "User request: {{userQuery}}\nContext:\n{{context}}",
+      "variables": ["userQuery", "context"]
+    },
+    "ragConfig": {
+      "topK": 8,
+      "minScore": 0.3,
+      "includeCitations": true,
+      "requiresContext": true
+    },
+    "metadata": {"audience": "general", "tone": "clear"}
+  },
+  {
+    "slug": "insights-chat",
+    "name": "General Chat",
+    "scope": "system",
+    "insightType": "search",
+    "status": "active",
+    "tags": ["chat", "conversation", "qa"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You are Castiel AI, an intelligent assistant for knowledge management and insights.\n\nYou have access to the user's knowledge base and can help with:\n- Answering questions about their documents\n- Summarizing and analyzing content\n- Finding related information\n- Providing insights and recommendations\n\nBe natural, helpful, and conversational. Ground your responses in the provided context. If you don't have enough information, say so clearly.",
+      "userPrompt": "User: {{userQuery}}\n\nContext from knowledge base:\n{{context}}\n\n{{#history}}Previous conversation:\n{{history}}{{/history}}",
+      "variables": ["userQuery", "context", "history"]
+    },
+    "ragConfig": {
+      "topK": 12,
+      "minScore": 0.25,
+      "includeCitations": true,
+      "requiresContext": false
+    },
+    "metadata": {"audience": "general", "tone": "conversational", "description": "System prompt for general chat interactions"}
+  }
+]

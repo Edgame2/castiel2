@@ -1,0 +1,218 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Logging Module Configuration",
+  "type": "object",
+  "required": ["module", "server", "database", "rabbitmq"],
+  "properties": {
+    "module": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "server": {
+      "type": "object",
+      "required": ["port", "host"],
+      "properties": {
+        "port": { "type": ["integer", "string"], "minimum": 1, "maximum": 65535 },
+        "host": { "type": "string" }
+      }
+    },
+    "database": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": { "type": "string" },
+        "pool_size": { "type": "integer", "minimum": 1, "default": 20 }
+      }
+    },
+    "rabbitmq": {
+      "type": "object",
+      "required": ["url", "exchange", "queue"],
+      "properties": {
+        "url": { "type": "string" },
+        "exchange": { "type": "string" },
+        "queue": { "type": "string" },
+        "bindings": { 
+          "type": "array", 
+          "items": { "type": "string" } 
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "properties": {
+        "provider": { 
+          "type": "string", 
+          "enum": ["postgres", "elasticsearch"] 
+        },
+        "postgres": {
+          "type": "object",
+          "properties": {
+            "partition_by": { "type": "string", "enum": ["month", "week", "day"] }
+          }
+        }
+      }
+    },
+    "archive": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "provider": { "type": "string", "enum": ["s3", "azure"] },
+        "s3": {
+          "type": "object",
+          "properties": {
+            "bucket": { "type": "string" },
+            "region": { "type": "string" },
+            "access_key_id": { "type": "string" },
+            "secret_access_key": { "type": "string" }
+          }
+        },
+        "azure": {
+          "type": "object",
+          "properties": {
+            "connection_string": { "type": "string" },
+            "container": { "type": "string" }
+          }
+        }
+      }
+    },
+    "siem": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "provider": { "type": "string", "enum": ["splunk", "datadog", "webhook"] },
+        "webhook": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string" },
+            "headers": { "type": "object" }
+          }
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "capture": {
+          "type": "object",
+          "properties": {
+            "ip_address": { "type": "boolean" },
+            "user_agent": { "type": "boolean" },
+            "geolocation": { "type": "boolean" }
+          }
+        },
+        "redaction": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "patterns": { 
+              "type": "array", 
+              "items": { "type": "string" } 
+            }
+          }
+        },
+        "retention": {
+          "type": "object",
+          "properties": {
+            "default_days": { "type": "integer", "minimum": 1 },
+            "min_days": { "type": "integer", "minimum": 1 },
+            "max_days": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "hash_chain": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "algorithm": { "type": "string", "enum": ["sha256", "sha512"] }
+          }
+        },
+        "alerts": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "check_interval_seconds": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "ingestion": {
+      "type": "object",
+      "properties": {
+        "batch_size": { "type": "integer", "minimum": 1 },
+        "flush_interval_ms": { "type": "integer", "minimum": 100 },
+        "buffer": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "max_size": { "type": "integer", "minimum": 100 },
+            "file_path": { "type": "string" }
+          }
+        }
+      }
+    },
+    "rate_limit": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "max_per_second": { "type": "integer", "minimum": 1 },
+        "burst": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "jobs": {
+      "type": "object",
+      "properties": {
+        "retention": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "schedule": { "type": "string" }
+          }
+        },
+        "archive": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "schedule": { "type": "string" }
+          }
+        },
+        "partition": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "schedule": { "type": "string" }
+          }
+        },
+        "alerts": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "schedule": { "type": "string" }
+          }
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "properties": {
+        "user_management": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
+        },
+        "notification": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+

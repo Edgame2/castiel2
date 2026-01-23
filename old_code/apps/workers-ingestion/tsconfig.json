@@ -1,0 +1,30 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/__tests__/**",
+    "**/__test__/**",
+    "../api/src/services/ai-insights/**",
+    "../api/src/services/ai/**",
+    "../api/src/services/content-generation/**",
+    "../api/src/services/conversation.service.ts",
+    "../api/src/services/notification.service.ts",
+    "../api/src/services/notifications/**",
+    "../api/src/services/email/**",
+    "../api/src/services/queue.service.ts",
+    "../api/src/services/redaction.service.ts"
+  ]
+}
+
+
+

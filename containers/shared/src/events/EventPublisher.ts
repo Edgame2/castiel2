@@ -1,0 +1,153 @@
+/**
+ * Event Publisher
+ * Publishes events to RabbitMQ
+ * @module @coder/shared/events
+ */
+
+import * as amqp from 'amqplib';
+import { DomainEvent, PublishEventOptions } from '../types/events';
+import { createEvent } from './EventSchema';
+
+/**
+ * RabbitMQ configuration
+ */
+export interface RabbitMQConfig {
+  url: string;
+  exchange?: string;
+  exchangeType?: 'topic' | 'direct' | 'fanout';
+}
+
+/**
+ * Event Publisher
+ * Publishes events to RabbitMQ topic exchange
+ */
+export class EventPublisher {
+  private connection: amqp.Connection | null = null;
+  private channel: amqp.Channel | null = null;
+  private config: RabbitMQConfig;
+  private exchange: string;
+  private instanceId: string;
+
+  constructor(config: RabbitMQConfig, serviceName: string) {
+    this.config = {
+      exchange: config.exchange || 'coder.events',
+      exchangeType: config.exchangeType || 'topic',
+      ...config,
+    };
+    this.exchange = this.config.exchange!;
+    this.instanceId = `${serviceName}-${process.pid}-${Date.now()}`;
+  }
+
+  /**
+   * Connect to RabbitMQ
+   */
+  async connect(): Promise<void> {
+    if (this.connection && this.channel) {
+      return;
+    }
+
+    try {
+      this.connection = await amqp.connect(this.config.url);
+      this.channel = await this.connection.createChannel();
+
+      // Assert exchange exists
+      await this.channel.assertExchange(this.exchange, this.config.exchangeType!, {
+        durable: true,
+      });
+
+      // Handle connection errors
+      this.connection.on('error', (error) => {
+        console.error('[EventPublisher] Connection error:', error);
+        this.connection = null;
+        this.channel = null;
+      });
+
+      this.connection.on('close', () => {
+        console.log('[EventPublisher] Connection closed');
+        this.connection = null;
+        this.channel = null;
+      });
+    } catch (error) {
+      this.connection = null;
+      this.channel = null;
+      throw new Error(`Failed to connect to RabbitMQ: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Publish event
+   */
+  async publish<T>(
+    eventType: string,
+    tenantId: string,
+    data: T,
+    options?: PublishEventOptions
+  ): Promise<void> {
+    if (!this.channel) {
+      await this.connect();
+    }
+
+    if (!this.channel) {
+      throw new Error('EventPublisher not connected');
+    }
+
+    // Create event
+    const event = createEvent(
+      eventType,
+      tenantId,
+      data,
+      {
+        service: process.env.SERVICE_NAME || 'unknown',
+        instance: this.instanceId,
+      },
+      options
+    );
+
+    // Routing key: module.resource.action (e.g., auth.user.created)
+    const routingKey = event.type;
+
+    // Publish to exchange
+    const published = this.channel.publish(
+      this.exchange,
+      routingKey,
+      Buffer.from(JSON.stringify(event)),
+      {
+        persistent: true, // Make messages persistent
+        messageId: event.id,
+        timestamp: Date.now(),
+        type: event.type,
+        appId: event.source.service,
+        headers: {
+          tenantId: event.tenantId,
+          version: event.version,
+        },
+      }
+    );
+
+    if (!published) {
+      throw new Error('Failed to publish event - channel buffer full');
+    }
+  }
+
+  /**
+   * Close connection
+   */
+  async close(): Promise<void> {
+    if (this.channel) {
+      await this.channel.close();
+      this.channel = null;
+    }
+    if (this.connection) {
+      await this.connection.close();
+      this.connection = null;
+    }
+  }
+
+  /**
+   * Check if connected
+   */
+  isConnected(): boolean {
+    return this.connection !== null && this.channel !== null;
+  }
+}
+

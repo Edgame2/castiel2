@@ -1,0 +1,28 @@
+# Search Service Module Configuration
+
+module:
+  name: search-service
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3029}
+  host: ${HOST:-0.0.0.0}
+
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+
+services:
+  embeddings:
+    url: ${EMBEDDINGS_URL:-http://localhost:3005}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3023}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: search_service
+

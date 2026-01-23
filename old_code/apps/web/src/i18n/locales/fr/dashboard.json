@@ -1,0 +1,50 @@
+{
+  "title": "Tableau de bord",
+  "welcome": "Bienvenue, {{name}} !",
+  "overview": "Vue d'ensemble",
+  "quickActions": "Actions rapides",
+  "recentActivity": "Activité récente",
+  "stats": {
+    "totalShards": "Total des Shards",
+    "activeUsers": "Utilisateurs actifs",
+    "pendingInvitations": "Invitations en attente",
+    "storageUsed": "Stockage utilisé"
+  },
+  "widgets": {
+    "shardsSummary": {
+      "title": "Résumé des Shards",
+      "byType": "Shards par type",
+      "recentlyModified": "Récemment modifiés",
+      "viewAll": "Voir tous les shards"
+    },
+    "userActivity": {
+      "title": "Activité des utilisateurs",
+      "activeNow": "Actifs maintenant",
+      "lastWeek": "7 derniers jours",
+      "newUsers": "Nouveaux utilisateurs"
+    },
+    "systemHealth": {
+      "title": "État du système",
+      "status": "Statut",
+      "healthy": "Sain",
+      "degraded": "Dégradé",
+      "down": "Hors service",
+      "uptime": "Disponibilité",
+      "responseTime": "Temps de réponse moyen"
+    }
+  },
+  "actions": {
+    "createShard": "Créer un Shard",
+    "inviteUser": "Inviter un utilisateur",
+    "viewReports": "Voir les rapports",
+    "manageSettings": "Gérer les paramètres"
+  },
+  "activity": {
+    "noActivity": "Aucune activité récente",
+    "shardCreated": "{{user}} a créé le shard \"{{shard}}\"",
+    "shardUpdated": "{{user}} a mis à jour le shard \"{{shard}}\"",
+    "userJoined": "{{user}} a rejoint l'organisation",
+    "settingsUpdated": "{{user}} a mis à jour les paramètres de l'organisation"
+  }
+}
+

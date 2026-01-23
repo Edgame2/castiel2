@@ -1,0 +1,39 @@
+openapi: 3.0.3
+info:
+  title: Configuration Service API
+  description: System configuration management service for Coder IDE
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: API Version 1
+tags:
+  - name: Configuration
+  - name: Health
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+  /ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+

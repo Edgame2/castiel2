@@ -1,0 +1,1 @@
+{"version":3,"file":"vectorization.routes.d.ts","sourceRoot":"","sources":["vectorization.routes.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH,OAAO,EAAE,kBAAkB,EAAgC,MAAM,SAAS,CAAC;AAC3E,OAAO,EAAE,oBAAoB,EAAE,MAAM,sCAAsC,CAAC;AA+C5E;;GAEG;AACH,eAAO,MAAM,mBAAmB,EAAE,kBA6UjC,CAAC;AAGF,OAAO,QAAQ,SAAS,CAAC;IACvB,UAAU,eAAe;QACvB,oBAAoB,CAAC,EAAE,oBAAoB,CAAC;KAC7C;CACF"}

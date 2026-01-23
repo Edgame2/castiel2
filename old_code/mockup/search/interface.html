@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search Interface - UI Mockup Catalog</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <style>
+    .page-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .breadcrumb {
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+    .breadcrumb a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+    .search-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .search-input-large {
+      width: 100%;
+      padding: 1rem 1.5rem;
+      font-size: 1.125rem;
+      border-radius: 0.625rem;
+    }
+    .search-filters {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+    .search-results {
+      margin-top: 2rem;
+    }
+    .result-item {
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      margin-bottom: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .result-item:hover {
+      background-color: var(--muted);
+      border-color: var(--primary);
+    }
+    .result-type {
+      font-size: 0.75rem;
+      color: var(--muted-foreground);
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <div class="breadcrumb">
+      <a href="../index.html">Catalog</a> / Search / Interface
+    </div>
+
+    <header style="margin-bottom: 2rem;">
+      <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Global Search</h1>
+      <p class="text-muted-foreground">Search across all shards, documents, and content</p>
+    </header>
+
+    <div class="search-container">
+      <!-- Search Input -->
+      <div style="position: relative;">
+        <input type="text" class="input search-input-large" placeholder="Search everything...">
+        <button class="button button-default" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);">Search</button>
+      </div>
+
+      <!-- Filters -->
+      <div class="search-filters">
+        <button class="button button-outline button-sm">All</button>
+        <button class="button button-outline button-sm">Shards</button>
+        <button class="button button-outline button-sm">Documents</button>
+        <button class="button button-outline button-sm">Opportunities</button>
+        <button class="button button-outline button-sm">Projects</button>
+      </div>
+
+      <!-- Search Results -->
+      <div class="search-results">
+        <div style="margin-bottom: 1rem; font-weight: 500;">28 results found</div>
+
+        <div class="result-item">
+          <div class="result-type">Opportunity</div>
+          <div style="font-weight: 500; margin-bottom: 0.25rem;">Acme Corp - Q2 Deal</div>
+          <div class="text-sm text-muted-foreground">$250K opportunity in Qualification stage. High risk score of 65%.</div>
+          <div class="text-xs text-muted-foreground" style="margin-top: 0.5rem;">Updated 2 hours ago</div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-type">Document</div>
+          <div style="font-weight: 500; margin-bottom: 0.25rem;">Q2 Sales Report.pdf</div>
+          <div class="text-sm text-muted-foreground">Sales report containing revenue forecasts and pipeline analysis.</div>
+          <div class="text-xs text-muted-foreground" style="margin-top: 0.5rem;">Updated 2 hours ago</div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-type">Opportunity</div>
+          <div style="font-weight: 500; margin-bottom: 0.25rem;">TechStart Inc</div>
+          <div class="text-sm text-muted-foreground">$180K opportunity in Prospecting stage. Medium risk.</div>
+          <div class="text-xs text-muted-foreground" style="margin-top: 0.5rem;">Updated 5 hours ago</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/theme.js"></script>
+</body>
+</html>
+

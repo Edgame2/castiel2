@@ -1,0 +1,3 @@
+- Planning module must be able to leverage the agent module
+- Planning module must be able to leverage MCP Server
+- Planning module allow dry run and plan validation, plan validation can leverage agents and mcp server

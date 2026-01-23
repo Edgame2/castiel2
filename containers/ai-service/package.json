@@ -1,0 +1,22 @@
+{
+  "name": "@coder/ai-service",
+  "version": "1.0.0",
+  "description": "AI Service for Coder IDE - LLM completions and model routing",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@coder/shared": "workspace:*",
+    "fastify": "^5.1.0",
+    "zod": "^3.24.1",
+    "axios": "^1.7.9"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
+  }
+}

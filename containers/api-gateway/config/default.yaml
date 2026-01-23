@@ -1,0 +1,44 @@
+# API Gateway Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: api-gateway
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3001}
+  host: ${HOST:-0.0.0.0}
+
+# JWT Configuration (for validating user tokens)
+jwt:
+  secret: ${JWT_SECRET}
+
+# Service routing configuration
+services:
+  auth:
+    url: ${AUTH_URL:-http://localhost:3021}
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+  secret_management:
+    url: ${SECRET_MANAGEMENT_URL:-http://localhost:3003}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  notification:
+    url: ${NOTIFICATION_MANAGER_URL:-http://localhost:3001}
+  ai_service:
+    url: ${AI_SERVICE_URL:-http://localhost:3006}
+  embeddings:
+    url: ${EMBEDDINGS_URL:-http://localhost:3005}
+  dashboard:
+    url: ${DASHBOARD_URL:-http://localhost:3011}
+
+# Rate limiting
+rate_limit:
+  max: ${RATE_LIMIT_MAX:-100}
+  timeWindow: ${RATE_LIMIT_WINDOW:-60000}  # 1 minute
+
+# Circuit breaker
+circuit_breaker:
+  threshold: ${CIRCUIT_BREAKER_THRESHOLD:-5}
+  timeout: ${CIRCUIT_BREAKER_TIMEOUT:-30000}
+

@@ -1,0 +1,32 @@
+# Context Service Module Configuration
+
+module:
+  name: context-service
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3034}
+  host: ${HOST:-0.0.0.0}
+
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+
+services:
+  embeddings:
+    url: ${EMBEDDINGS_URL:-http://localhost:3005}
+  planning:
+    url: ${PLANNING_URL:-http://localhost:3007}
+  knowledge_base:
+    url: ${KNOWLEDGE_BASE_URL:-http://localhost:3010}
+  ai_service:
+    url: ${AI_SERVICE_URL:-http://localhost:3006}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: context_service
+

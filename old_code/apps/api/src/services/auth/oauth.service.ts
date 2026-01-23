@@ -1,0 +1,339 @@
+import crypto from 'crypto';
+import axios from 'axios';
+import type { Redis } from 'ioredis';
+
+export interface OAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  authorizationUrl: string;
+  tokenUrl: string;
+  userInfoUrl: string;
+  scope: string;
+}
+
+export type OAuthProvider = 'google' | 'github' | 'microsoft';
+
+export interface OAuthState {
+  provider: OAuthProvider;
+  tenantId?: string;
+  redirectUrl?: string;
+  createdAt: number;
+}
+
+export interface OAuthUserInfo {
+  id: string;
+  email: string;
+  emailVerified: boolean;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
+  provider: OAuthProvider;
+}
+
+export interface OAuthTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in?: number;
+  refresh_token?: string;
+  scope?: string;
+  id_token?: string;
+}
+
+/**
+ * OAuth service for handling Google, GitHub, and Microsoft OAuth flows
+ * - State management in Redis for CSRF protection
+ * - Token exchange with OAuth providers
+ * - User info retrieval
+ */
+export class OAuthService {
+  private readonly STATE_TTL = 600; // 10 minutes
+  private readonly STATE_PREFIX = 'oauth:state:';
+
+  constructor(
+    private readonly redis: Redis,
+    private readonly googleConfig: OAuthConfig,
+    private readonly githubConfig: OAuthConfig,
+    private readonly microsoftConfig?: OAuthConfig
+  ) {}
+
+  /**
+   * Generate OAuth state and store in Redis
+   */
+  async createState(
+    provider: OAuthProvider,
+    tenantId?: string,
+    redirectUrl?: string
+  ): Promise<string> {
+    const state = crypto.randomBytes(32).toString('hex');
+    const stateData: OAuthState = {
+      provider,
+      tenantId,
+      redirectUrl,
+      createdAt: Date.now(),
+    };
+
+    await this.redis.setex(
+      `${this.STATE_PREFIX}${state}`,
+      this.STATE_TTL,
+      JSON.stringify(stateData)
+    );
+
+    return state;
+  }
+
+  /**
+   * Validate and retrieve OAuth state from Redis
+   */
+  async validateState(state: string): Promise<OAuthState | null> {
+    const key = `${this.STATE_PREFIX}${state}`;
+    const stateJson = await this.redis.get(key);
+
+    if (!stateJson) {
+      return null;
+    }
+
+    // Delete state to prevent reuse
+    await this.redis.del(key);
+
+    try {
+      const stateData = JSON.parse(stateJson) as OAuthState;
+      
+      // Check if state is expired (10 minutes)
+      const age = Date.now() - stateData.createdAt;
+      if (age > this.STATE_TTL * 1000) {
+        return null;
+      }
+
+      return stateData;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get config for provider
+   */
+  private getConfig(provider: OAuthProvider): OAuthConfig {
+    switch (provider) {
+      case 'google':
+        return this.googleConfig;
+      case 'github':
+        return this.githubConfig;
+      case 'microsoft':
+        if (!this.microsoftConfig) {
+          throw new Error('Microsoft OAuth is not configured');
+        }
+        return this.microsoftConfig;
+      default:
+        throw new Error(`Unknown OAuth provider: ${provider}`);
+    }
+  }
+
+  /**
+   * Build authorization URL for OAuth provider
+   */
+  buildAuthorizationUrl(
+    provider: OAuthProvider,
+    state: string,
+    scope?: string
+  ): string {
+    const config = this.getConfig(provider);
+    const params = new URLSearchParams({
+      client_id: config.clientId,
+      redirect_uri: config.redirectUri,
+      response_type: 'code',
+      state,
+      scope: scope || config.scope,
+    });
+
+    // Google requires access_type=offline for refresh token
+    if (provider === 'google') {
+      params.append('access_type', 'offline');
+      params.append('prompt', 'consent');
+    }
+
+    // Microsoft-specific parameters
+    if (provider === 'microsoft') {
+      params.append('response_mode', 'query');
+    }
+
+    return `${config.authorizationUrl}?${params.toString()}`;
+  }
+
+  /**
+   * Exchange authorization code for access token
+   */
+  async exchangeCode(
+    provider: OAuthProvider,
+    code: string
+  ): Promise<OAuthTokenResponse> {
+    const config = this.getConfig(provider);
+
+    try {
+      const response = await axios.post<OAuthTokenResponse>(
+        config.tokenUrl,
+        {
+          client_id: config.clientId,
+          client_secret: config.clientSecret,
+          code,
+          redirect_uri: config.redirectUri,
+          grant_type: 'authorization_code',
+        },
+        {
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          `OAuth token exchange failed: ${error.response?.data?.error_description || error.message}`
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get user information from OAuth provider
+   */
+  async getUserInfo(
+    provider: OAuthProvider,
+    accessToken: string
+  ): Promise<OAuthUserInfo> {
+    const config = this.getConfig(provider);
+
+    try {
+      const response = await axios.get(config.userInfoUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+      });
+
+      switch (provider) {
+        case 'google':
+          return this.parseGoogleUserInfo(response.data);
+        case 'github':
+          return await this.parseGithubUserInfo(response.data, accessToken);
+        case 'microsoft':
+          return this.parseMicrosoftUserInfo(response.data);
+        default:
+          throw new Error(`Unknown OAuth provider: ${provider}`);
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          `Failed to get user info: ${error.response?.data?.error_description || error.message}`
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Parse Google user info response
+   */
+  private parseGoogleUserInfo(data: any): OAuthUserInfo {
+    return {
+      id: data.sub || data.id,
+      email: data.email,
+      emailVerified: data.email_verified ?? false,
+      name: data.name || `${data.given_name || ''} ${data.family_name || ''}`.trim(),
+      firstName: data.given_name,
+      lastName: data.family_name,
+      avatarUrl: data.picture,
+      provider: 'google',
+    };
+  }
+
+  /**
+   * Parse GitHub user info response
+   * GitHub requires separate API call for email
+   */
+  private async parseGithubUserInfo(
+    data: any,
+    accessToken: string
+  ): Promise<OAuthUserInfo> {
+    let email = data.email;
+    let emailVerified = false;
+
+    // If email is not public, fetch from emails endpoint
+    if (!email) {
+      try {
+        const emailResponse = await axios.get(
+          'https://api.github.com/user/emails',
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: 'application/json',
+            },
+          }
+        );
+
+        const primaryEmail = emailResponse.data.find(
+          (e: any) => e.primary && e.verified
+        );
+        if (primaryEmail) {
+          email = primaryEmail.email;
+          emailVerified = primaryEmail.verified;
+        }
+      } catch {
+        // If we can't get email, throw error as email is required
+        throw new Error('GitHub user email is not available');
+      }
+    }
+
+    return {
+      id: String(data.id),
+      email,
+      emailVerified,
+      name: data.name || data.login,
+      firstName: data.name?.split(' ')[0],
+      lastName: data.name?.split(' ').slice(1).join(' '),
+      avatarUrl: data.avatar_url,
+      provider: 'github',
+    };
+  }
+
+  /**
+   * Parse Microsoft user info response (Microsoft Graph API)
+   */
+  private parseMicrosoftUserInfo(data: any): OAuthUserInfo {
+    return {
+      id: data.id,
+      email: data.mail || data.userPrincipalName,
+      emailVerified: true, // Microsoft verifies emails
+      name: data.displayName || `${data.givenName || ''} ${data.surname || ''}`.trim(),
+      firstName: data.givenName,
+      lastName: data.surname,
+      avatarUrl: undefined, // Microsoft Graph requires separate call for photo
+      provider: 'microsoft',
+    };
+  }
+
+  /**
+   * Check if OAuth service is ready for a specific provider
+   */
+  isReady(provider: OAuthProvider): boolean {
+    try {
+      const config = this.getConfig(provider);
+      return !!(
+        config.clientId &&
+        config.clientSecret &&
+        config.redirectUri &&
+        config.authorizationUrl &&
+        config.tokenUrl &&
+        config.userInfoUrl
+      );
+    } catch {
+      return false;
+    }
+  }
+}

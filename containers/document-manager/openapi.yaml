@@ -1,0 +1,83 @@
+openapi: 3.0.3
+info:
+  title: Document Manager Service API
+  description: |
+    Document and file management service for Coder IDE.
+    
+    ## Authentication
+    All endpoints (except health checks) require JWT authentication via Bearer token:
+    ```
+    Authorization: Bearer <token>
+    ```
+    
+    ## Features
+    - **Document CRUD**: Create, read, update, delete document metadata
+    - **File Upload/Download**: Upload files to Azure Blob Storage, generate SAS URLs
+    - **Chunked Upload**: Support for large file uploads
+    - **Document Collections**: Organize documents into collections
+    - **Document Templates**: Template management
+  version: 1.0.0
+  contact:
+    name: Coder IDE Team
+
+servers:
+  - url: /api/v1
+    description: API Version 1
+
+tags:
+  - name: Documents
+    description: Document CRUD operations
+  - name: Files
+    description: File upload/download
+  - name: Collections
+    description: Document collections
+  - name: Templates
+    description: Document templates
+  - name: Health
+    description: Health check endpoints
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Liveness probe
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: Checks if service is ready to handle requests
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+

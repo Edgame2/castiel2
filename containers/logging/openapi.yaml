@@ -1,0 +1,1327 @@
+openapi: 3.0.3
+info:
+  title: Logging Service API
+  description: |
+    Enterprise-grade audit logging service with tamper-evident hash chains, retention policies, and compliance features.
+    
+    ## Authentication
+    All endpoints (except health checks) require JWT authentication via Bearer token:
+    ```
+    Authorization: Bearer <token>
+    ```
+    
+    ## Features
+    - **Multi-tenant**: Organization-isolated logs with Super Admin cross-org access
+    - **Tamper Evidence**: Hash chain verification for audit integrity
+    - **Retention Policies**: Configurable per log type, category, and severity
+    - **Export**: CSV/JSON export for auditors
+    - **Alerts**: Pattern-based alert rules with notifications
+    - **Search**: Full-text search with advanced filtering
+    - **Compliance**: SOC2, GDPR, PCI-DSS compliant
+  version: 1.0.0
+  contact:
+    name: Coder IDE Team
+
+servers:
+  - url: /api/v1
+    description: API Version 1
+
+tags:
+  - name: Logs
+    description: Log ingestion and retrieval
+  - name: Search
+    description: Log search and filtering
+  - name: Export
+    description: Log export functionality
+  - name: Policies
+    description: Retention policy management
+  - name: Configuration
+    description: Organization configuration
+  - name: Alerts
+    description: Alert rule management
+  - name: Verification
+    description: Hash chain verification
+  - name: Health
+    description: Health check endpoints
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Log Entry
+    AuditLog:
+      type: object
+      required:
+        - id
+        - organizationId
+        - timestamp
+        - action
+        - category
+        - severity
+        - message
+        - hash
+      properties:
+        id:
+          type: string
+          format: cuid
+          description: Unique log entry ID
+        organizationId:
+          type: string
+          format: uuid
+          description: Organization ID
+        timestamp:
+          type: string
+          format: date-time
+          description: When the event occurred
+        receivedAt:
+          type: string
+          format: date-time
+          description: When the log was received
+        userId:
+          type: string
+          format: uuid
+          description: User who performed the action
+        sessionId:
+          type: string
+          description: Session ID
+        ipAddress:
+          type: string
+          description: Client IP address
+        userAgent:
+          type: string
+          description: Client user agent
+        geolocation:
+          type: object
+          description: Geolocation data
+        action:
+          type: string
+          description: "Action performed (e.g., 'user.login', 'secret.accessed')"
+        category:
+          $ref: '#/components/schemas/LogCategory'
+        severity:
+          $ref: '#/components/schemas/LogSeverity'
+        resourceType:
+          type: string
+          description: Type of resource affected
+        resourceId:
+          type: string
+          description: ID of resource affected
+        message:
+          type: string
+          description: Human-readable log message
+        metadata:
+          type: object
+          description: Additional structured data
+        previousHash:
+          type: string
+          description: Hash of previous log entry (for tamper evidence)
+        hash:
+          type: string
+          description: SHA-256 hash of this log entry
+        source:
+          type: string
+          description: Source module that generated the log
+
+    LogCategory:
+      type: string
+      enum:
+        - ACTION
+        - ACCESS
+        - SECURITY
+        - SYSTEM
+        - CUSTOM
+      description: Log category
+
+    LogSeverity:
+      type: string
+      enum:
+        - DEBUG
+        - INFO
+        - WARN
+        - ERROR
+        - CRITICAL
+      description: Log severity level
+
+    # Create Log Request
+    CreateLogRequest:
+      type: object
+      required:
+        - action
+        - message
+      properties:
+        action:
+          type: string
+          description: "Action performed (e.g., 'user.login')"
+        category:
+          $ref: '#/components/schemas/LogCategory'
+        severity:
+          $ref: '#/components/schemas/LogSeverity'
+        message:
+          type: string
+          description: Log message
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        metadata:
+          type: object
+        source:
+          type: string
+
+    # Batch Create Request
+    BatchCreateLogRequest:
+      type: object
+      required:
+        - logs
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateLogRequest'
+          maxItems: 1000
+
+    # Retention Policy
+    RetentionPolicy:
+      type: object
+      required:
+        - id
+        - organizationId
+        - retentionDays
+      properties:
+        id:
+          type: string
+          format: cuid
+        organizationId:
+          type: string
+          format: uuid
+        category:
+          $ref: '#/components/schemas/LogCategory'
+        severity:
+          $ref: '#/components/schemas/LogSeverity'
+        retentionDays:
+          type: integer
+          minimum: 1
+          maximum: 3650
+        archiveAfterDays:
+          type: integer
+        deleteAfterDays:
+          type: integer
+        immutable:
+          type: boolean
+          description: If true, logs matching this policy cannot be deleted
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateRetentionPolicyRequest:
+      type: object
+      required:
+        - retentionDays
+      properties:
+        category:
+          $ref: '#/components/schemas/LogCategory'
+        severity:
+          $ref: '#/components/schemas/LogSeverity'
+        retentionDays:
+          type: integer
+          minimum: 1
+          maximum: 3650
+        archiveAfterDays:
+          type: integer
+        deleteAfterDays:
+          type: integer
+        immutable:
+          type: boolean
+
+    # Alert Rule
+    AlertRule:
+      type: object
+      required:
+        - id
+        - organizationId
+        - name
+        - type
+        - enabled
+      properties:
+        id:
+          type: string
+          format: cuid
+        organizationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum:
+            - PATTERN
+            - THRESHOLD
+            - ANOMALY
+        enabled:
+          type: boolean
+        conditions:
+          type: object
+          properties:
+            action:
+              type: string
+              description: Action pattern to match
+            category:
+              $ref: '#/components/schemas/LogCategory'
+            severity:
+              $ref: '#/components/schemas/LogSeverity'
+            count:
+              type: integer
+              description: Threshold count
+            windowMinutes:
+              type: integer
+              description: Time window in minutes
+        notificationChannels:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateAlertRuleRequest:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum:
+            - PATTERN
+            - THRESHOLD
+            - ANOMALY
+        enabled:
+          type: boolean
+          default: true
+        conditions:
+          type: object
+        notificationChannels:
+          type: array
+          items:
+            type: string
+
+    # Export Job
+    ExportJob:
+      type: object
+      required:
+        - id
+        - organizationId
+        - status
+        - format
+      properties:
+        id:
+          type: string
+          format: cuid
+        organizationId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - PENDING
+            - PROCESSING
+            - COMPLETED
+            - FAILED
+            - CANCELLED
+        format:
+          type: string
+          enum:
+            - CSV
+            - JSON
+        filters:
+          type: object
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        totalRecords:
+          type: integer
+        filePath:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        error:
+          type: string
+
+    CreateExportRequest:
+      type: object
+      required:
+        - format
+      properties:
+        format:
+          type: string
+          enum:
+            - CSV
+            - JSON
+        filters:
+          type: object
+          properties:
+            startDate:
+              type: string
+              format: date-time
+            endDate:
+              type: string
+              format: date-time
+            category:
+              $ref: '#/components/schemas/LogCategory'
+            severity:
+              $ref: '#/components/schemas/LogSeverity'
+            userId:
+              type: string
+            action:
+              type: string
+
+    # Verification Result
+    VerificationResult:
+      type: object
+      required:
+        - status
+        - totalVerified
+        - validCount
+        - invalidCount
+      properties:
+        status:
+          type: string
+          enum:
+            - VERIFIED
+            - FAILED
+            - PENDING
+        totalVerified:
+          type: integer
+        validCount:
+          type: integer
+        invalidCount:
+          type: integer
+        invalidLogIds:
+          type: array
+          items:
+            type: string
+        verifiedAt:
+          type: string
+          format: date-time
+
+    # Hash Checkpoint
+    HashCheckpoint:
+      type: object
+      required:
+        - id
+        - organizationId
+        - logId
+        - hash
+      properties:
+        id:
+          type: string
+          format: cuid
+        organizationId:
+          type: string
+          format: uuid
+        logId:
+          type: string
+        hash:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+
+    # Organization Configuration
+    OrganizationConfig:
+      type: object
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        capture:
+          type: object
+          properties:
+            ipAddress:
+              type: boolean
+            userAgent:
+              type: boolean
+            geolocation:
+              type: boolean
+        redaction:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            patterns:
+              type: array
+              items:
+                type: string
+        hashChain:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+        retention:
+          type: object
+          properties:
+            defaultDays:
+              type: integer
+
+    # Standard Responses
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+
+    PaginatedResponse:
+      type: object
+      properties:
+        data:
+          type: array
+        pagination:
+          type: object
+          properties:
+            total:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+            hasMore:
+              type: boolean
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - unhealthy
+        timestamp:
+          type: string
+          format: date-time
+
+    ReadyResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ready
+            - not_ready
+        checks:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+              latency_ms:
+                type: integer
+              message:
+                type: string
+        timestamp:
+          type: string
+          format: date-time
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Health Endpoints
+  /health:
+    get:
+      summary: Liveness probe
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /ready:
+    get:
+      summary: Readiness probe
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyResponse'
+        '503':
+          description: Service is not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyResponse'
+
+  # Log Endpoints
+  /logs:
+    post:
+      summary: Create a log entry
+      tags: [Logs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLogRequest'
+      responses:
+        '201':
+          description: Log created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLog'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: List logs with filters
+      tags: [Logs]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 1000
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: category
+          in: query
+          schema:
+            $ref: '#/components/schemas/LogCategory'
+        - name: severity
+          in: query
+          schema:
+            $ref: '#/components/schemas/LogSeverity'
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: timestamp
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: List of logs
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AuditLog'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /logs/batch:
+    post:
+      summary: Create multiple log entries
+      tags: [Logs]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchCreateLogRequest'
+      responses:
+        '201':
+          description: Logs created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      created:
+                        type: integer
+                      failed:
+                        type: integer
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /logs/{id}:
+    get:
+      summary: Get a specific log entry
+      tags: [Logs]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Log entry
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuditLog'
+        '404':
+          description: Log not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /logs/my-activity:
+    get:
+      summary: Get current user's activity logs
+      tags: [Logs]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: User's activity logs
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+
+  # Search Endpoints
+  /search:
+    get:
+      summary: Full-text search logs
+      tags: [Search]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+
+  /logs/aggregate:
+    get:
+      summary: Get aggregated log statistics
+      tags: [Search]
+      parameters:
+        - name: groupBy
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [category, severity, action, source, userId]
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Aggregation results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        key:
+                          type: string
+                        count:
+                          type: integer
+
+  /logs/stats:
+    get:
+      summary: Get log statistics
+      tags: [Search]
+      responses:
+        '200':
+          description: Statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      byCategory:
+                        type: object
+                      bySeverity:
+                        type: object
+
+  # Export Endpoints
+  /export:
+    post:
+      summary: Create an export job
+      tags: [Export]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExportRequest'
+      responses:
+        '202':
+          description: Export job created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ExportJob'
+
+    get:
+      summary: List export jobs
+      tags: [Export]
+      responses:
+        '200':
+          description: List of export jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExportJob'
+
+  /export/{id}:
+    get:
+      summary: Get export job status
+      tags: [Export]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Export job
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ExportJob'
+
+    delete:
+      summary: Cancel an export job
+      tags: [Export]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Export cancelled
+
+  /export/{id}/download:
+    get:
+      summary: Download export file
+      tags: [Export]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Export file
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                type: array
+        '404':
+          description: Export not found or not ready
+
+  # Retention Policy Endpoints
+  /policies:
+    post:
+      summary: Create a retention policy
+      tags: [Policies]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRetentionPolicyRequest'
+      responses:
+        '201':
+          description: Policy created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RetentionPolicy'
+
+    get:
+      summary: List retention policies
+      tags: [Policies]
+      responses:
+        '200':
+          description: List of policies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RetentionPolicy'
+
+  /policies/{id}:
+    get:
+      summary: Get a retention policy
+      tags: [Policies]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Retention policy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RetentionPolicy'
+
+    put:
+      summary: Update a retention policy
+      tags: [Policies]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRetentionPolicyRequest'
+      responses:
+        '200':
+          description: Policy updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RetentionPolicy'
+
+    delete:
+      summary: Delete a retention policy
+      tags: [Policies]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Policy deleted
+
+  # Configuration Endpoints
+  /configuration:
+    get:
+      summary: Get organization configuration
+      tags: [Configuration]
+      responses:
+        '200':
+          description: Organization configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/OrganizationConfig'
+
+    put:
+      summary: Update organization configuration
+      tags: [Configuration]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationConfig'
+      responses:
+        '200':
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/OrganizationConfig'
+
+    delete:
+      summary: Reset organization configuration to defaults
+      tags: [Configuration]
+      responses:
+        '204':
+          description: Configuration reset
+
+  # Alert Endpoints
+  /alerts:
+    post:
+      summary: Create an alert rule
+      tags: [Alerts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlertRuleRequest'
+      responses:
+        '201':
+          description: Alert rule created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AlertRule'
+
+    get:
+      summary: List alert rules
+      tags: [Alerts]
+      responses:
+        '200':
+          description: List of alert rules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AlertRule'
+
+  /alerts/{id}:
+    get:
+      summary: Get an alert rule
+      tags: [Alerts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Alert rule
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AlertRule'
+
+    put:
+      summary: Update an alert rule
+      tags: [Alerts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlertRuleRequest'
+      responses:
+        '200':
+          description: Alert rule updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AlertRule'
+
+    delete:
+      summary: Delete an alert rule
+      tags: [Alerts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Alert rule deleted
+
+  /alerts/{id}/evaluate:
+    post:
+      summary: Manually evaluate an alert rule
+      tags: [Alerts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Evaluation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      triggered:
+                        type: boolean
+                      matchCount:
+                        type: integer
+
+  # Verification Endpoints
+  /verification/verify:
+    post:
+      summary: Verify hash chain integrity
+      tags: [Verification]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  format: date-time
+                endDate:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/VerificationResult'
+
+  /verification/checkpoint:
+    post:
+      summary: Create a hash checkpoint
+      tags: [Verification]
+      responses:
+        '201':
+          description: Checkpoint created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/HashCheckpoint'
+
+  /verification/checkpoints:
+    get:
+      summary: List hash checkpoints
+      tags: [Verification]
+      responses:
+        '200':
+          description: List of checkpoints
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HashCheckpoint'
+
+  /verification/checkpoint/{id}/verify:
+    post:
+      summary: Verify logs since a checkpoint
+      tags: [Verification]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/VerificationResult'
+
+
+

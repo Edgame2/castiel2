@@ -1,0 +1,85 @@
+openapi: 3.0.3
+info:
+  title: Authentication Service API
+  description: |
+    Authentication service for Coder IDE with multi-provider support.
+    
+    ## Authentication
+    Most endpoints (except health checks and public auth endpoints) require JWT authentication via Bearer token:
+    ```
+    Authorization: Bearer <token>
+    ```
+    
+    ## Features
+    - **Multi-Provider**: Email/password, Google OAuth, GitHub OAuth, SAML/SSO
+    - **JWT Tokens**: Secure token generation, validation, and refresh
+    - **Session Management**: Multi-device session tracking and revocation
+    - **Password Security**: Bcrypt hashing, password history, strength validation
+    - **Account Security**: Login attempt tracking, account lockout, email verification
+  version: 1.0.0
+  contact:
+    name: Coder IDE Team
+
+servers:
+  - url: /api/v1
+    description: API Version 1
+
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: Sessions
+    description: Session management
+  - name: Password
+    description: Password management
+  - name: Providers
+    description: Authentication provider management
+  - name: Health
+    description: Health check endpoints
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Liveness probe
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+                  service:
+                    type: string
+
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: Checks if service is ready to handle requests
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+

@@ -1,0 +1,90 @@
+openapi: 3.0.3
+info:
+  title: User Management Service API
+  description: |
+    User management service for Coder IDE with organizations, teams, roles, and permissions.
+    
+    ## Authentication
+    All endpoints (except health checks) require JWT authentication via Bearer token:
+    ```
+    Authorization: Bearer <token>
+    ```
+    
+    ## Features
+    - **User Profiles**: User profile management and preferences
+    - **Organizations**: Multi-tenant organization management
+    - **Teams**: Team creation, membership, and hierarchy
+    - **RBAC**: Role-based access control with custom roles
+    - **Invitations**: User invitation system
+    - **Memberships**: Organization membership management
+  version: 1.0.0
+  contact:
+    name: Coder IDE Team
+
+servers:
+  - url: /api/v1
+    description: API Version 1
+
+tags:
+  - name: Users
+    description: User profile management
+  - name: Organizations
+    description: Organization management
+  - name: Teams
+    description: Team management
+  - name: Roles
+    description: Role and permission management
+  - name: Invitations
+    description: User invitation management
+  - name: Memberships
+    description: Organization membership management
+  - name: Health
+    description: Health check endpoints
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Liveness probe
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+                  service:
+                    type: string
+
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: Checks if service is ready to handle requests
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+

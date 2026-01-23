@@ -1,0 +1,111 @@
+# Authentication Module Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: auth
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3021}
+  host: ${HOST:-0.0.0.0}
+  base_url: ${BASE_URL:-http://localhost:3021}  # Base URL for OAuth redirects and API documentation
+
+# Cosmos DB Configuration (shared database, prefixed containers)
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  
+# Legacy database.url for backward compatibility during migration
+database:
+  url: ${DATABASE_URL:-}  # Not used with Cosmos DB, kept for migration period
+  pool_size: 20
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:-7d}
+  refresh_expiration: ${JWT_REFRESH_EXPIRATION:-30d}
+
+# OAuth Providers
+oauth:
+  google:
+    enabled: ${GOOGLE_OAUTH_ENABLED:-false}
+    client_id: ${GOOGLE_CLIENT_ID:-}
+    client_secret: ${GOOGLE_CLIENT_SECRET:-}
+    redirect_uri: ${GOOGLE_REDIRECT_URI:-}
+  github:
+    enabled: ${GITHUB_OAUTH_ENABLED:-false}
+    client_id: ${GITHUB_CLIENT_ID:-}
+    client_secret: ${GITHUB_CLIENT_SECRET:-}
+    redirect_uri: ${GITHUB_REDIRECT_URI:-}
+
+# SSO/SAML Configuration
+sso:
+  enabled: ${SSO_ENABLED:-false}
+  saml:
+    enabled: ${SAML_ENABLED:-false}
+
+# Session Configuration
+session:
+  max_sessions_per_user: ${MAX_SESSIONS_PER_USER:-10}
+  session_timeout: ${SESSION_TIMEOUT:-86400000}  # 24 hours in ms
+  cleanup_interval: ${SESSION_CLEANUP_INTERVAL:-3600000}  # 1 hour in ms
+
+# Password Policy
+password:
+  min_length: ${PASSWORD_MIN_LENGTH:-8}
+  require_uppercase: ${PASSWORD_REQUIRE_UPPERCASE:-true}
+  require_lowercase: ${PASSWORD_REQUIRE_LOWERCASE:-true}
+  require_numbers: ${PASSWORD_REQUIRE_NUMBERS:-true}
+  require_symbols: ${PASSWORD_REQUIRE_SYMBOLS:-false}
+  history_count: ${PASSWORD_HISTORY_COUNT:-5}
+  max_age_days: ${PASSWORD_MAX_AGE_DAYS:-90}
+
+# Account Security
+security:
+  max_login_attempts: ${MAX_LOGIN_ATTEMPTS:-5}
+  lockout_duration_ms: ${LOCKOUT_DURATION_MS:-900000}  # 15 minutes
+  require_email_verification: ${REQUIRE_EMAIL_VERIFICATION:-true}
+
+# External Service URLs (from config, not hardcoded)
+services:
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  notification:
+    url: ${NOTIFICATION_MANAGER_URL:-http://localhost:3001}
+  secret_management:
+    url: ${SECRET_MANAGEMENT_URL:-http://localhost:3003}
+  main_app:
+    url: ${MAIN_APP_URL:-http://localhost:3000}
+
+# Service Authentication
+# SERVICE_AUTH_TOKEN is required for service-to-service calls (e.g., secret management)
+# Set via environment variable: SERVICE_AUTH_TOKEN
+
+# Redis Configuration
+redis:
+  url: ${REDIS_URL:-redis://localhost:6379}
+  sentinels: ${REDIS_SENTINELS:-}
+  master_name: ${REDIS_MASTER_NAME:-mymaster}
+
+# RabbitMQ Configuration
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: auth_service
+  bindings:
+    - "user.created"
+    - "user.updated"
+
+# Feature Flags
+features:
+  oauth_google: ${FEATURE_OAUTH_GOOGLE:-true}
+  oauth_github: ${FEATURE_OAUTH_GITHUB:-true}
+  saml_sso: ${FEATURE_SAML_SSO:-false}
+  password_reset: ${FEATURE_PASSWORD_RESET:-true}
+  email_verification: ${FEATURE_EMAIL_VERIFICATION:-true}
+  multi_factor_auth: ${FEATURE_MFA:-false}
+

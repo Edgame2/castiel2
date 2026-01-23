@@ -1,0 +1,297 @@
+/**
+ * Integration Catalog Schema
+ * 
+ * Manages the catalog of available integrations and visibility rules
+ * for different tenants and pricing tiers.
+ * 
+ * Schema:
+ * - integration_catalog: Main integration catalog definitions
+ * - integration_visibility: Visibility rules and access controls
+ * - integration_shard_mappings: Maps integration entities to shard types
+ */
+
+-- ============================================
+-- Integration Catalog Container (Cosmos DB)
+-- ============================================
+-- Partition Key: /catalogId (for sharding)
+-- Index: id (unique)
+
+-- Document Structure for integration_catalog:
+-- {
+--   id: "uuid",
+--   catalogId: "integration_catalog",
+--   integrationId: "salesforce|hubspot|slack|etc",
+--   name: "Salesforce",
+--   displayName: "Salesforce CRM",
+--   description: "Cloud-based CRM system",
+--   category: "crm",
+--   icon: "salesforce",
+--   color: "#00a1e0",
+--   
+--   // Visibility & Access Control
+--   visibility: "public|superadmin_only",
+--   requiresApproval: false,
+--   beta: false,
+--   deprecated: false,
+--   
+--   // Pricing & Tiers
+--   requiredPlan: "free|pro|enterprise|premium",
+--   allowedTenants: ["uuid1", "uuid2"],  // null = all, array = whitelist
+--   blockedTenants: ["uuid3"],           // explicitly blocked
+--   
+--   // Features & Capabilities
+--   capabilities: ["read", "write", "delete", "realtime"],
+--   supportedSyncDirections: ["pull", "push", "bidirectional"],
+--   supportsRealtime: true,
+--   supportsWebhooks: true,
+--   rateLimit: {
+--     requestsPerMinute: 100,
+--     requestsPerHour: 5000
+--   },
+--   
+--   // Authentication
+--   authType: "oauth2|api_key|basic|custom",
+--   oauthConfig: {
+--     authorizationUrl: "https://...",
+--     tokenUrl: "https://...",
+--     revokeUrl: "https://...",
+--     scopes: ["scope1", "scope2"],
+--     pkce: true
+--   },
+--   requiredScopes: ["scope1", "scope2"],
+--   
+--   // Data entities
+--   availableEntities: [{
+--     name: "Account",
+--     displayName: "Account",
+--     description: "Sales Account",
+--     supportsPull: true,
+--     supportsPush: true,
+--     supportsDelete: true,
+--     supportsWebhook: true,
+--     idField: "Id",
+--     modifiedField: "LastModifiedDate",
+--     fields: [...]
+--   }],
+--   
+--   // Shard Type Support
+--   supportedShardTypes: ["contact", "account", "opportunity"],
+--   shardMappings: [{
+--     integrationEntity: "Contact",
+--     supportedShardTypes: ["contact"],
+--     defaultShardType: "contact",
+--     bidirectionalSync: true,
+--     conversionSchemaIds: ["uuid1", "uuid2"]
+--   }],
+--   
+--   // Documentation & Support
+--   documentationUrl: "https://...",
+--   supportUrl: "https://...",
+--   setupGuideUrl: "https://...",
+--   
+--   // Metadata
+--   version: "1.0.0",
+--   status: "active|beta|deprecated|disabled",
+--   createdAt: "2025-12-09T...",
+--   updatedAt: "2025-12-09T...",
+--   createdBy: "super-admin-uuid",
+--   updatedBy: "super-admin-uuid"
+-- }
+
+-- ============================================
+-- Integration Visibility Rules
+-- ============================================
+-- Partition Key: /tenantId
+
+-- Document Structure for integration_visibility:
+-- {
+--   id: "uuid",
+--   tenantId: "tenant-uuid",
+--   integrationId: "salesforce",
+--   
+--   // Visibility state
+--   isVisible: true,
+--   isEnabled: true,
+--   requiresApproval: false,
+--   isApproved: true,
+--   
+--   // Pricing
+--   availableInPlan: "free|pro|enterprise",
+--   billingTierId: "uuid",
+--   
+--   // Custom configuration
+--   customRateLimit: {
+--     requestsPerMinute: 50  // Override default
+--   },
+--   customCapabilities: ["read", "write"],  // Subset of available
+--   customSyncDirections: ["pull"],         // Restrict directions
+--   
+--   // Request/Approval tracking
+--   requestedAt: "2025-12-09T...",
+--   requestedBy: "admin-uuid",
+--   approvedAt: "2025-12-09T...",
+--   approvedBy: "super-admin-uuid",
+--   deniedAt: "2025-12-09T...",
+--   denialReason: "Plan not eligible",
+--   
+--   // Notes
+--   notes: "Custom configuration for enterprise account",
+--   
+--   createdAt: "2025-12-09T...",
+--   updatedAt: "2025-12-09T..."
+-- }
+
+-- ============================================
+-- Integration Shard Type Mappings
+-- ============================================
+-- Partition Key: /integrationId
+
+-- Document Structure for integration_shard_mappings:
+-- {
+--   id: "uuid",
+--   integrationId: "salesforce",
+--   catalogId: "integration_catalog",
+--   
+--   // Entity mappings
+--   mappings: [{
+--     integrationEntity: "Contact",
+--     supportedShardTypes: ["contact", "person"],
+--     defaultShardType: "contact",
+--     bidirectionalSync: true,
+--     description: "Salesforce Contact -> Castiel Contact/Person shard",
+--     conversionSchemaIds: ["uuid1", "uuid2"],
+--     fieldMappings: {
+--       "Id": "externalId",
+--       "FirstName": "firstName",
+--       "LastName": "lastName",
+--       "Email": "email"
+--     }
+--   }],
+--   
+--   // Relationship mappings (preserving data relationships)
+--   relationships: [{
+--     sourceEntity: "Contact",
+--     targetEntity: "Account",
+--     relationshipType: "many-to-one",
+--     sourceField: "AccountId",
+--     targetField: "Id",
+--     cascadeSync: true,
+--     shardRelationshipType: "belongs-to"
+--   }],
+--   
+--   createdAt: "2025-12-09T...",
+--   updatedAt: "2025-12-09T...",
+--   version: "1.0.0"
+-- }
+
+-- SQL Equivalents for Reference (if migrating from SQL)
+
+-- integration_catalog table structure
+-- CREATE TABLE integration_catalog (
+--   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+--   integration_id VARCHAR(100) NOT NULL UNIQUE,
+--   name VARCHAR(255) NOT NULL,
+--   display_name VARCHAR(255) NOT NULL,
+--   description TEXT,
+--   category VARCHAR(50),
+--   icon VARCHAR(100),
+--   color VARCHAR(7),
+--   
+--   visibility VARCHAR(50) DEFAULT 'public',
+--   requires_approval BOOLEAN DEFAULT FALSE,
+--   beta BOOLEAN DEFAULT FALSE,
+--   deprecated BOOLEAN DEFAULT FALSE,
+--   
+--   required_plan VARCHAR(50),
+--   allowed_tenants TEXT,  -- JSON array
+--   blocked_tenants TEXT,  -- JSON array
+--   
+--   capabilities TEXT NOT NULL,  -- JSON array
+--   supported_sync_directions TEXT NOT NULL,  -- JSON array
+--   supports_realtime BOOLEAN DEFAULT FALSE,
+--   supports_webhooks BOOLEAN DEFAULT FALSE,
+--   rate_limit_requests_per_minute INT DEFAULT 100,
+--   rate_limit_requests_per_hour INT DEFAULT 5000,
+--   
+--   auth_type VARCHAR(50),
+--   oauth_config TEXT,  -- JSON
+--   required_scopes TEXT,  -- JSON array
+--   
+--   available_entities TEXT NOT NULL,  -- JSON array
+--   supported_shard_types TEXT,  -- JSON array
+--   shard_mappings TEXT,  -- JSON array
+--   
+--   documentation_url VARCHAR(500),
+--   support_url VARCHAR(500),
+--   setup_guide_url VARCHAR(500),
+--   
+--   version VARCHAR(20) DEFAULT '1.0.0',
+--   status VARCHAR(50) DEFAULT 'active',
+--   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--   created_by UUID NOT NULL,
+--   updated_by UUID NOT NULL,
+--   
+--   CONSTRAINT fk_created_by FOREIGN KEY (created_by) REFERENCES users(id),
+--   CONSTRAINT fk_updated_by FOREIGN KEY (updated_by) REFERENCES users(id)
+-- );
+
+-- integration_visibility table structure
+-- CREATE TABLE integration_visibility (
+--   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+--   tenant_id UUID NOT NULL,
+--   integration_id VARCHAR(100) NOT NULL,
+--   
+--   is_visible BOOLEAN DEFAULT TRUE,
+--   is_enabled BOOLEAN DEFAULT TRUE,
+--   requires_approval BOOLEAN DEFAULT FALSE,
+--   is_approved BOOLEAN DEFAULT TRUE,
+--   
+--   available_in_plan VARCHAR(50),
+--   billing_tier_id UUID,
+--   
+--   custom_rate_limit_requests_per_minute INT,
+--   custom_capabilities TEXT,  -- JSON array
+--   custom_sync_directions TEXT,  -- JSON array
+--   
+--   requested_at TIMESTAMP,
+--   requested_by UUID,
+--   approved_at TIMESTAMP,
+--   approved_by UUID,
+--   denied_at TIMESTAMP,
+--   denial_reason TEXT,
+--   
+--   notes TEXT,
+--   
+--   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--   
+--   CONSTRAINT fk_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+--   CONSTRAINT fk_integration FOREIGN KEY (integration_id) REFERENCES integration_catalog(integration_id),
+--   CONSTRAINT fk_requested_by FOREIGN KEY (requested_by) REFERENCES users(id),
+--   CONSTRAINT fk_approved_by FOREIGN KEY (approved_by) REFERENCES users(id),
+--   UNIQUE(tenant_id, integration_id)
+-- );
+
+-- integration_shard_mappings table structure
+-- CREATE TABLE integration_shard_mappings (
+--   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+--   integration_id VARCHAR(100) NOT NULL,
+--   
+--   entity_mappings TEXT NOT NULL,  -- JSON array
+--   relationships TEXT,  -- JSON array
+--   
+--   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--   version VARCHAR(20) DEFAULT '1.0.0',
+--   
+--   CONSTRAINT fk_integration FOREIGN KEY (integration_id) REFERENCES integration_catalog(integration_id)
+-- );
+
+-- Indexes for performance
+-- CREATE INDEX idx_integration_id ON integration_catalog(integration_id);
+-- CREATE INDEX idx_integration_status ON integration_catalog(status);
+-- CREATE INDEX idx_visibility_tenant ON integration_visibility(tenant_id);
+-- CREATE INDEX idx_visibility_integration ON integration_visibility(integration_id);
+-- CREATE INDEX idx_visibility_tenant_integration ON integration_visibility(tenant_id, integration_id);
+-- CREATE INDEX idx_shard_mappings_integration ON integration_shard_mappings(integration_id);

@@ -1,0 +1,179 @@
+version: '3.8'
+
+services:
+  # Infrastructure Services
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - coder-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-admin}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-admin}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - coder-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./containers/api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTH_URL=http://auth:3021
+      - USER_MANAGEMENT_URL=http://user-management:3022
+      - SECRET_MANAGEMENT_URL=http://secret-management:3003
+      - LOGGING_URL=http://logging:3014
+      - NOTIFICATION_MANAGER_URL=http://notification-manager:3001
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - coder-network
+    restart: unless-stopped
+
+  # Core Services
+  auth:
+    build:
+      context: ./containers/auth
+      dockerfile: Dockerfile
+    ports:
+      - "3021:3021"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3021
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - coder-network
+    restart: unless-stopped
+
+  user-management:
+    build:
+      context: ./containers/user-management
+      dockerfile: Dockerfile
+    ports:
+      - "3022:3022"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3022
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      - redis
+      - rabbitmq
+      - auth
+    networks:
+      - coder-network
+    restart: unless-stopped
+
+  secret-management:
+    build:
+      context: ./containers/secret-management
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3003
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - coder-network
+    restart: unless-stopped
+
+  logging:
+    build:
+      context: ./containers/logging
+      dockerfile: Dockerfile
+    ports:
+      - "3014:3014"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3014
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - coder-network
+    restart: unless-stopped
+
+  notification-manager:
+    build:
+      context: ./containers/notification-manager
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3001
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - coder-network
+    restart: unless-stopped
+
+networks:
+  coder-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  rabbitmq-data:
+

@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: castiel-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - coder-network
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: castiel-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - coder-network
+
+  # Optional: Cosmos DB Emulator (if using Azure Cosmos DB Emulator)
+  # Note: Cosmos DB Emulator requires Windows or Docker Desktop with Linux containers
+  # cosmosdb-emulator:
+  #   image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+  #   container_name: castiel-cosmos-emulator
+  #   ports:
+  #     - "8081:8081"
+  #     - "10250-10255:10250-10255"
+  #   environment:
+  #     - AZURE_COSMOS_EMULATOR_PARTITION_COUNT=10
+  #     - AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE=true
+  #   volumes:
+  #     - cosmosdb-data:/data
+  #   networks:
+  #     - coder-network
+
+volumes:
+  redis-data:
+    driver: local
+  rabbitmq-data:
+    driver: local
+  # cosmosdb-data:
+  #   driver: local
+
+networks:
+  coder-network:
+    driver: bridge
+    name: coder-network
+

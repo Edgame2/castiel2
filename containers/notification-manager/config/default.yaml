@@ -1,0 +1,90 @@
+# Notification Manager Module Configuration
+# Default configuration file
+
+module:
+  name: notification
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3001}
+  host: ${HOST:-0.0.0.0}
+
+database:
+  url: ${DATABASE_URL}
+
+rabbitmq:
+  url: ${RABBITMQ_URL:-amqp://localhost:5672}
+
+redis:
+  url: ${REDIS_URL:-redis://localhost:6379}
+  enabled: ${REDIS_ENABLED:-true}
+
+notification:
+  providers:
+    email:
+      enabled: ${EMAIL_ENABLED:-true}
+      provider: ${EMAIL_PROVIDER:-smtp}  # sendgrid | ses | smtp
+      secret_id: ${SENDGRID_SECRET_ID:-}
+      from_address: ${EMAIL_FROM_ADDRESS:-noreply@coder.ide}
+      from_name: ${EMAIL_FROM_NAME:-Coder IDE}
+    push:
+      enabled: ${PUSH_ENABLED:-false}
+      provider: ${PUSH_PROVIDER:-firebase}  # firebase | onesignal
+      secret_id: ${FCM_SECRET_ID:-}
+    sms:
+      enabled: ${SMS_ENABLED:-false}
+      provider: ${SMS_PROVIDER:-twilio}  # twilio | aws-sns | vonage
+      secret_id: ${TWILIO_SMS_SECRET_ID:-}
+    whatsapp:
+      enabled: ${WHATSAPP_ENABLED:-false}
+      provider: ${WHATSAPP_PROVIDER:-twilio}  # twilio | meta
+      secret_id: ${TWILIO_WHATSAPP_SECRET_ID:-}
+    voice:
+      enabled: ${VOICE_ENABLED:-false}
+      provider: ${VOICE_PROVIDER:-twilio}  # twilio | vonage
+      secret_id: ${TWILIO_VOICE_SECRET_ID:-}
+    inapp:
+      enabled: ${INAPP_ENABLED:-true}
+      exchange: ${INAPP_EXCHANGE:-notification.inapp.deliver}
+
+  defaults:
+    retry_attempts: ${RETRY_ATTEMPTS:-3}
+    retry_delay_ms: ${RETRY_DELAY_MS:-1000}
+    rate_limit_per_user: ${RATE_LIMIT_PER_USER:-100}
+    rate_limit_per_org: ${RATE_LIMIT_PER_ORG:-1000}
+    max_retry_delay_ms: ${MAX_RETRY_DELAY_MS:-30000}
+    deduplication_ttl_seconds: ${DEDUPLICATION_TTL_SECONDS:-3600}
+
+  features:
+    email_templates: ${EMAIL_TEMPLATES_ENABLED:-true}
+    delivery_tracking: ${DELIVERY_TRACKING_ENABLED:-true}
+    presence_aware: ${PRESENCE_AWARE_ENABLED:-true}
+    escalation_chains: ${ESCALATION_CHAINS_ENABLED:-true}
+    quiet_hours: ${QUIET_HOURS_ENABLED:-true}
+    batch_digest: ${BATCH_DIGEST_ENABLED:-true}
+    webhooks: ${WEBHOOKS_ENABLED:-true}
+
+services:
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://user-management:3022}
+    timeout: ${USER_MANAGEMENT_TIMEOUT:-5000}
+  secret_management:
+    url: ${SECRET_MANAGEMENT_URL:-http://secret-management:3003}
+    timeout: ${SECRET_MANAGEMENT_TIMEOUT:-5000}
+  logging:
+    url: ${LOGGING_URL:-http://logging:3014}
+    timeout: ${LOGGING_TIMEOUT:-5000}
+
+app:
+  url: ${APP_URL:-${MAIN_APP_URL:-http://localhost:3000}}
+
+# Feature flags
+features:
+  email_templates: true
+  delivery_tracking: true
+  presence_aware: true
+  escalation_chains: true
+  quiet_hours: true
+  batch_digest: true
+  webhooks: true
+

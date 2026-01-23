@@ -1,0 +1,63 @@
+# Shard Manager Module Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: shard-manager
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3023}
+  host: ${HOST:-0.0.0.0}
+
+# Cosmos DB Configuration (shared database, prefixed containers)
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+
+# Redis Configuration (optional, for caching)
+cache:
+  enabled: ${CACHE_ENABLED:-true}
+  url: ${REDIS_URL:-redis://localhost:6379}
+  ttl: ${CACHE_TTL:-3600}  # 1 hour in seconds
+  shard_type_ttl: ${CACHE_SHARD_TYPE_TTL:-86400}  # 24 hours in seconds
+
+# External Service URLs (from config, not hardcoded)
+services:
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+
+# RabbitMQ Configuration
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: shard_manager_service
+  bindings:
+    - "shard.created"
+    - "shard.updated"
+    - "shard.deleted"
+    - "shard.type.created"
+    - "shard.type.updated"
+    - "shard.type.deleted"
+    - "shard.relationship.created"
+    - "shard.relationship.deleted"
+
+# Feature Flags
+features:
+  bulk_operations: ${FEATURE_BULK_OPERATIONS:-true}
+  relationships: ${FEATURE_RELATIONSHIPS:-true}
+  versioning: ${FEATURE_VERSIONING:-true}
+  caching: ${FEATURE_CACHING:-true}
+
+# Bulk Operations Settings
+bulk:
+  max_batch_size: ${BULK_MAX_BATCH_SIZE:-1000}
+  timeout_ms: ${BULK_TIMEOUT_MS:-30000}  # 30 seconds
+
+# Validation Settings
+validation:
+  strict_schema_validation: ${STRICT_SCHEMA_VALIDATION:-true}
+  allow_unknown_fields: ${ALLOW_UNKNOWN_FIELDS:-false}
+

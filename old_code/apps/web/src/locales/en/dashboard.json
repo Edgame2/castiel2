@@ -1,0 +1,50 @@
+{
+  "title": "Dashboard",
+  "welcome": "Welcome back, {{name}}!",
+  "overview": "Overview",
+  "quickActions": "Quick Actions",
+  "recentActivity": "Recent Activity",
+  "stats": {
+    "totalShards": "Total Shards",
+    "activeUsers": "Active Users",
+    "pendingInvitations": "Pending Invitations",
+    "storageUsed": "Storage Used"
+  },
+  "widgets": {
+    "shardsSummary": {
+      "title": "Shards Summary",
+      "byType": "Shards by Type",
+      "recentlyModified": "Recently Modified",
+      "viewAll": "View all shards"
+    },
+    "userActivity": {
+      "title": "User Activity",
+      "activeNow": "Active Now",
+      "lastWeek": "Last 7 Days",
+      "newUsers": "New Users"
+    },
+    "systemHealth": {
+      "title": "System Health",
+      "status": "Status",
+      "healthy": "Healthy",
+      "degraded": "Degraded",
+      "down": "Down",
+      "uptime": "Uptime",
+      "responseTime": "Avg Response Time"
+    }
+  },
+  "actions": {
+    "createShard": "Create Shard",
+    "inviteUser": "Invite User",
+    "viewReports": "View Reports",
+    "manageSettings": "Manage Settings"
+  },
+  "activity": {
+    "noActivity": "No recent activity",
+    "shardCreated": "{{user}} created shard \"{{shard}}\"",
+    "shardUpdated": "{{user}} updated shard \"{{shard}}\"",
+    "userJoined": "{{user}} joined the organization",
+    "settingsUpdated": "{{user}} updated organization settings"
+  }
+}
+

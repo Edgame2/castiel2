@@ -1,0 +1,473 @@
+# Castiel GraphQL Schema
+# Main API GraphQL schema for Shards, ShardTypes, and Revisions
+
+"""
+ISO 8601 date-time string
+"""
+scalar DateTime
+
+"""
+JSON scalar for arbitrary structured data
+"""
+scalar JSON
+
+"""
+Pagination cursor (Base64 encoded)
+"""
+scalar Cursor
+
+"""
+Shard status enum
+"""
+enum ShardStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+  DRAFT
+}
+
+"""
+Permission level enum
+"""
+enum PermissionLevel {
+  READ
+  WRITE
+  ADMIN
+}
+
+"""
+Sort direction
+"""
+enum SortDirection {
+  ASC
+  DESC
+}
+
+"""
+Revision operation type
+"""
+enum RevisionOperation {
+  CREATE
+  UPDATE
+  DELETE
+  RESTORE
+}
+
+"""
+Vector search type
+"""
+enum VectorSearchType {
+  SEMANTIC
+  HYBRID
+}
+
+"""
+Similarity metric for vector search
+"""
+enum SimilarityMetric {
+  COSINE
+  DOT_PRODUCT
+  EUCLIDEAN
+}
+
+# ========== Types ==========
+
+"""
+Shard metadata
+"""
+type ShardMetadata {
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  createdBy: String!
+  updatedBy: String!
+  version: Int!
+  tags: [String!]!
+  category: String
+}
+
+"""
+Vector data for shard
+"""
+type VectorData {
+  embedding: [Float!]!
+  model: String!
+  dimensions: Int!
+  generatedAt: DateTime!
+}
+
+"""
+Shard - core content entity
+"""
+type Shard {
+  id: ID!
+  tenantId: String!
+  shardTypeId: String!
+  status: ShardStatus!
+  structuredData: JSON!
+  unstructuredData: String
+  vectors: [VectorData!]
+  metadata: ShardMetadata!
+  
+  # Computed fields (require DataLoader)
+  shardType: ShardType
+  revisions(first: Int, after: Cursor): RevisionConnection
+  permissions: [PermissionLevel!]!
+  canRead: Boolean!
+  canWrite: Boolean!
+  canDelete: Boolean!
+}
+
+"""
+ShardType - defines schema for shards
+"""
+type ShardType {
+  id: ID!
+  tenantId: String!
+  name: String!
+  displayName: String!
+  description: String
+  version: Int!
+  schema: JSON!
+  isActive: Boolean!
+  isSystem: Boolean!
+  metadata: ShardMetadata!
+  
+  # Computed fields
+  shardCount: Int!
+  shards(first: Int, after: Cursor, status: ShardStatus): ShardConnection
+}
+
+"""
+Revision - version history for shards
+"""
+type Revision {
+  id: ID!
+  tenantId: String!
+  shardId: String!
+  shardTypeId: String!
+  version: Int!
+  operation: RevisionOperation!
+  changedBy: String!
+  changedAt: DateTime!
+  previousData: JSON
+  currentData: JSON!
+  changesSummary: JSON
+  
+  # Computed fields
+  shard: Shard
+  shardType: ShardType
+}
+
+"""
+Page info for cursor-based pagination
+"""
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: Cursor
+  endCursor: Cursor
+}
+
+"""
+Edge type for Shard pagination
+"""
+type ShardEdge {
+  cursor: Cursor!
+  node: Shard!
+}
+
+"""
+Connection type for Shard pagination
+"""
+type ShardConnection {
+  edges: [ShardEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Edge type for ShardType pagination
+"""
+type ShardTypeEdge {
+  cursor: Cursor!
+  node: ShardType!
+}
+
+"""
+Connection type for ShardType pagination
+"""
+type ShardTypeConnection {
+  edges: [ShardTypeEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Edge type for Revision pagination
+"""
+type RevisionEdge {
+  cursor: Cursor!
+  node: Revision!
+}
+
+"""
+Connection type for Revision pagination
+"""
+type RevisionConnection {
+  edges: [RevisionEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""
+Vector search result
+"""
+type VectorSearchResult {
+  shard: Shard!
+  score: Float!
+  matchType: VectorSearchType!
+}
+
+"""
+Vector search results
+"""
+type VectorSearchResults {
+  results: [VectorSearchResult!]!
+  totalCount: Int!
+  executionTimeMs: Float!
+}
+
+# ========== Inputs ==========
+
+"""
+Shard filter input
+"""
+input ShardFilterInput {
+  tenantId: String!
+  shardTypeId: String
+  status: ShardStatus
+  tags: [String!]
+  category: String
+  createdAfter: DateTime
+  createdBefore: DateTime
+  updatedAfter: DateTime
+  updatedBefore: DateTime
+  searchQuery: String
+}
+
+"""
+ShardType filter input
+"""
+input ShardTypeFilterInput {
+  tenantId: String!
+  isActive: Boolean
+  isSystem: Boolean
+  name: String
+}
+
+"""
+Revision filter input
+"""
+input RevisionFilterInput {
+  tenantId: String!
+  shardId: String
+  shardTypeId: String
+  operation: RevisionOperation
+  changedBy: String
+  changedAfter: DateTime
+  changedBefore: DateTime
+}
+
+"""
+Sort input
+"""
+input SortInput {
+  field: String!
+  direction: SortDirection!
+}
+
+"""
+Create shard input
+"""
+input CreateShardInput {
+  tenantId: String!
+  shardTypeId: String!
+  structuredData: JSON!
+  unstructuredData: String
+  tags: [String!]
+  category: String
+}
+
+"""
+Update shard input
+"""
+input UpdateShardInput {
+  structuredData: JSON
+  unstructuredData: String
+  status: ShardStatus
+  tags: [String!]
+  category: String
+  schemaVersion: Int
+}
+
+"""
+Create shard type input
+"""
+input CreateShardTypeInput {
+  tenantId: String!
+  name: String!
+  displayName: String!
+  description: String
+  schema: JSON!
+}
+
+"""
+Update shard type input
+"""
+input UpdateShardTypeInput {
+  displayName: String
+  description: String
+  schema: JSON
+  isActive: Boolean
+}
+
+"""
+Vector search input
+"""
+input VectorSearchInput {
+  query: String!
+  tenantId: String!
+  shardTypeId: String
+  topK: Int
+  minScore: Float
+  filters: ShardFilterInput
+}
+
+"""
+Hybrid search input
+"""
+input HybridSearchInput {
+  query: String!
+  keywords: [String!]!
+  tenantId: String!
+  shardTypeId: String
+  topK: Int
+  vectorWeight: Float
+  keywordWeight: Float
+  filters: ShardFilterInput
+}
+
+# ========== Queries ==========
+
+type Query {
+  """
+  Get a single shard by ID
+  """
+  shard(id: ID!, tenantId: String!): Shard
+  
+  """
+  Get multiple shards with filtering and pagination
+  """
+  shards(
+    filter: ShardFilterInput!
+    first: Int = 20
+    after: Cursor
+    sort: SortInput
+  ): ShardConnection!
+  
+  """
+  Get a single shard type by ID
+  """
+  shardType(id: ID!, tenantId: String!): ShardType
+  
+  """
+  Get multiple shard types with filtering and pagination
+  """
+  shardTypes(
+    filter: ShardTypeFilterInput!
+    first: Int = 20
+    after: Cursor
+  ): ShardTypeConnection!
+  
+  """
+  Get a single revision by ID
+  """
+  revision(id: ID!, tenantId: String!): Revision
+  
+  """
+  Get multiple revisions with filtering and pagination
+  """
+  revisions(
+    filter: RevisionFilterInput!
+    first: Int = 20
+    after: Cursor
+  ): RevisionConnection!
+  
+  """
+  Search shards by semantic similarity
+  """
+  vectorSearch(input: VectorSearchInput!): VectorSearchResults!
+  
+  """
+  Search shards using hybrid (vector + keyword) search
+  """
+  hybridSearch(input: HybridSearchInput!): VectorSearchResults!
+}
+
+# ========== Mutations ==========
+
+type Mutation {
+  """
+  Create a new shard
+  """
+  createShard(input: CreateShardInput!): Shard!
+  
+  """
+  Update an existing shard
+  """
+  updateShard(id: ID!, tenantId: String!, input: UpdateShardInput!): Shard!
+  
+  """
+  Delete a shard (soft delete)
+  """
+  deleteShard(id: ID!, tenantId: String!): Boolean!
+  
+  """
+  Restore a deleted shard
+  """
+  restoreShard(id: ID!, tenantId: String!): Shard!
+  
+  """
+  Create a new shard type
+  """
+  createShardType(input: CreateShardTypeInput!): ShardType!
+  
+  """
+  Update an existing shard type
+  """
+  updateShardType(id: ID!, tenantId: String!, input: UpdateShardTypeInput!): ShardType!
+  
+  """
+  Deactivate a shard type
+  """
+  deactivateShardType(id: ID!, tenantId: String!): Boolean!
+}
+
+# ========== Subscriptions ==========
+
+type Subscription {
+  """
+  Subscribe to shard creation events
+  """
+  shardCreated(tenantId: String!): Shard!
+  
+  """
+  Subscribe to shard update events
+  """
+  shardUpdated(tenantId: String!, shardId: ID): Shard!
+  
+  """
+  Subscribe to shard deletion events
+  """
+  shardDeleted(tenantId: String!): ID!
+}

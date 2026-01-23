@@ -1,0 +1,131 @@
+# Logging Module Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: logging
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3014}
+  host: ${HOST:-0.0.0.0}
+
+# Cosmos DB Configuration (shared database, prefixed containers)
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  
+# Legacy database.url for backward compatibility during migration
+database:
+  url: ${DATABASE_URL:-}  # Not used with Cosmos DB, kept for migration period
+  pool_size: 20
+
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: logging_service
+  bindings:
+    - "auth.#"
+    - "user.#"
+    - "organization.#"
+    - "team.#"
+    - "role.#"
+    - "invitation.#"
+    - "secret.#"
+    - "plan.#"
+    - "notification.#"
+
+# Storage provider
+storage:
+  provider: cosmos  # cosmos | elasticsearch (future)
+  cosmos:
+    # Cosmos DB settings are in cosmos_db section above
+    
+# Archive provider (cold storage)
+archive:
+  enabled: false
+  provider: s3  # s3 | azure
+  s3:
+    bucket: ${S3_ARCHIVE_BUCKET:-}
+    region: ${AWS_REGION:-us-east-1}
+    access_key_id: ${AWS_ACCESS_KEY_ID:-}
+    secret_access_key: ${AWS_SECRET_ACCESS_KEY:-}
+  azure:
+    connection_string: ${AZURE_STORAGE_CONNECTION_STRING:-}
+    container: audit-logs
+
+# SIEM provider (future)
+siem:
+  enabled: false
+  provider: webhook  # splunk | datadog | webhook
+  webhook:
+    url: ${SIEM_WEBHOOK_URL:-}
+    headers:
+      Authorization: "Bearer ${SIEM_API_KEY:-}"
+
+# Default settings (can be overridden per org)
+defaults:
+  capture:
+    ip_address: true
+    user_agent: true
+    geolocation: false
+  redaction:
+    enabled: true
+    patterns:
+      - "password"
+      - "secret"
+      - "token"
+      - "apikey"
+      - "api_key"
+      - "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"  # email
+      - "\\b\\d{4}[- ]?\\d{4}[- ]?\\d{4}[- ]?\\d{4}\\b"  # credit card
+  retention:
+    default_days: 90
+    min_days: 30
+    max_days: 2555  # 7 years
+  hash_chain:
+    enabled: true
+    algorithm: sha256
+  alerts:
+    enabled: true
+    check_interval_seconds: 60
+
+# Ingestion settings
+ingestion:
+  batch_size: 100
+  flush_interval_ms: 1000
+  buffer:
+    enabled: true
+    max_size: 10000
+    file_path: /tmp/audit_buffer
+
+# Rate limiting
+rate_limit:
+  enabled: true
+  max_per_second: 1000
+  burst: 2000
+
+# Jobs
+jobs:
+  retention:
+    enabled: true
+    schedule: "0 2 * * *"  # 2 AM daily
+  archive:
+    enabled: false
+    schedule: "0 3 * * *"  # 3 AM daily
+  partition:
+    enabled: true
+    schedule: "0 0 25 * *"  # 25th of each month
+  alerts:
+    enabled: true
+    schedule: "*/1 * * * *"  # Every minute
+
+# External service URLs (from config, not hardcoded)
+services:
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3000}
+  notification:
+    url: ${NOTIFICATION_URL:-http://localhost:3001}
+
+
+

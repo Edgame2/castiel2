@@ -1,0 +1,104 @@
+openapi: 3.0.3
+info:
+  title: Secret Management Service API
+  description: |
+    Centralized, secure, and auditable system for storing, managing, and accessing sensitive credentials.
+    
+    ## Authentication
+    All endpoints (except health checks) require JWT authentication via Bearer token:
+    ```
+    Authorization: Bearer <token>
+    ```
+    
+    ## Secret Scopes
+    Secrets can be scoped at multiple levels:
+    - **GLOBAL**: Platform-wide secrets (Super Admin only)
+    - **ORGANIZATION**: Organization-level secrets
+    - **TEAM**: Team-level secrets
+    - **PROJECT**: Project-level secrets
+    - **USER**: Personal/user-level secrets
+    
+    ## Secret Types
+    Supported secret types:
+    - API_KEY: Simple string API key
+    - OAUTH2_TOKEN: OAuth2 access and refresh tokens
+    - USERNAME_PASSWORD: Username/password pair
+    - CERTIFICATE: TLS/SSL certificate
+    - SSH_KEY: SSH private/public key pair
+    - CONNECTION_STRING: Database connection string
+    - JSON_CREDENTIAL: JSON-formatted credentials (e.g., GCP service account)
+    - ENV_VARIABLE_SET: Set of environment variables
+    - GENERIC: Generic secret string
+    
+    ## Storage Backends
+    Secrets can be stored in:
+    - LOCAL_ENCRYPTED: Local AES-256-GCM encrypted storage
+    - AZURE_KEY_VAULT: Azure Key Vault
+    - AWS_SECRETS_MANAGER: AWS Secrets Manager
+    - HASHICORP_VAULT: HashiCorp Vault
+    - GCP_SECRET_MANAGER: GCP Secret Manager
+  version: 1.0.0
+  contact:
+    name: Coder IDE Team
+
+servers:
+  - url: /api/v1
+    description: API Version 1
+
+tags:
+  - name: Secrets
+    description: Secret CRUD operations
+  - name: Vaults
+    description: Vault management
+  - name: Access
+    description: Access control and grants
+  - name: Audit
+    description: Audit log access
+  - name: Health
+    description: Health check endpoints
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Liveness probe
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: Checks if service is ready to handle requests
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+

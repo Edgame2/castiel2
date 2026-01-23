@@ -1,0 +1,31 @@
+# Cache Service Module Configuration
+
+module:
+  name: cache-service
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3035}
+  host: ${HOST:-0.0.0.0}
+
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+
+redis:
+  url: ${REDIS_URL:-redis://localhost:6379}
+  host: ${REDIS_HOST:-localhost}
+  port: ${REDIS_PORT:-6379}
+  password: ${REDIS_PASSWORD:-}
+  ttl: ${CACHE_TTL:-300}
+
+services:
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: cache_service
+

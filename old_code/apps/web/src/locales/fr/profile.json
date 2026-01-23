@@ -1,0 +1,39 @@
+{
+  "title": "Parametres du profil",
+  "subtitle": "Gerez vos informations personnelles",
+  "personalInfo": {
+    "title": "Informations personnelles",
+    "description": "Mettez a jour votre nom et les details de votre profil",
+    "firstName": "Prenom",
+    "firstNamePlaceholder": "Entrez votre prenom",
+    "lastName": "Nom",
+    "lastNamePlaceholder": "Entrez votre nom",
+    "saveChanges": "Enregistrer les modifications",
+    "saving": "Enregistrement...",
+    "success": "Profil mis a jour avec succes !"
+  },
+  "accountInfo": {
+    "title": "Informations du compte",
+    "description": "Consultez les details de votre compte (lecture seule)",
+    "email": "E-mail",
+    "displayName": "Nom d'affichage",
+    "status": "Statut",
+    "emailVerified": "E-mail verifie",
+    "verified": "Verifie",
+    "notVerified": "Non verifie",
+    "roles": "Roles",
+    "created": "Cree le",
+    "lastUpdated": "Derniere mise a jour"
+  },
+  "memberships": {
+    "title": "Appartenances aux locataires",
+    "description": "Organisations auxquelles vous appartenez",
+    "noMemberships": "Aucune appartenance trouvee",
+    "current": "Actuel",
+    "switchTo": "Basculer vers ce locataire",
+    "role": "Role",
+    "since": "Membre depuis"
+  },
+  "loading": "Chargement du profil..."
+}
+

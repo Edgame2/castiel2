@@ -1,0 +1,162 @@
+[
+  {
+    "slug": "insights-summary",
+    "name": "Summary Insight Prompt",
+    "scope": "system",
+    "insightType": "summary",
+    "status": "active",
+    "tags": ["insights", "summary"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You are an expert business analyst. Provide clear, concise summaries that highlight the most important information. Structure your response with key points and takeaways.",
+      "userPrompt": "CONTEXT:\n{{context}}\n\nUSER QUESTION:\n{{userQuery}}\n\nPlease provide a helpful response based on the context above.",
+      "variables": ["context", "userQuery"]
+    },
+    "ragConfig": {
+      "topK": 10,
+      "minScore": 0.7,
+      "includeCitations": true,
+      "requiresContext": true
+    }
+  },
+  {
+    "slug": "insights-analysis",
+    "name": "Analysis Insight Prompt",
+    "scope": "system",
+    "insightType": "analysis",
+    "status": "active",
+    "tags": ["insights", "analysis"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You are an expert business analyst. Analyze the provided information thoroughly, identifying patterns, risks, opportunities, and key insights. Support your analysis with specific data points.",
+      "userPrompt": "CONTEXT:\n{{context}}\n\nUSER QUESTION:\n{{userQuery}}\n\nPlease provide a helpful response based on the context above.",
+      "variables": ["context", "userQuery"]
+    },
+    "ragConfig": {
+      "topK": 10,
+      "minScore": 0.7,
+      "includeCitations": true,
+      "requiresContext": true
+    }
+  },
+  {
+    "slug": "insights-comparison",
+    "name": "Comparison Insight Prompt",
+    "scope": "system",
+    "insightType": "comparison",
+    "status": "active",
+    "tags": ["insights", "comparison"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You are an expert at comparative analysis. Compare the provided items objectively, highlighting similarities, differences, strengths, and weaknesses. Use structured comparisons when helpful.",
+      "userPrompt": "CONTEXT:\n{{context}}\n\nUSER QUESTION:\n{{userQuery}}\n\nPlease provide a helpful response based on the context above.",
+      "variables": ["context", "userQuery"]
+    },
+    "ragConfig": {
+      "topK": 10,
+      "minScore": 0.7,
+      "includeCitations": true,
+      "requiresContext": true
+    }
+  },
+  {
+    "slug": "insights-recommendation",
+    "name": "Recommendation Insight Prompt",
+    "scope": "system",
+    "insightType": "recommendation",
+    "status": "active",
+    "tags": ["insights", "recommendation"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You are a strategic advisor. Based on the context provided, offer specific, actionable recommendations. Prioritize your suggestions and explain the reasoning behind each.",
+      "userPrompt": "CONTEXT:\n{{context}}\n\nUSER QUESTION:\n{{userQuery}}\n\nPlease provide a helpful response based on the context above.",
+      "variables": ["context", "userQuery"]
+    },
+    "ragConfig": {
+      "topK": 10,
+      "minScore": 0.7,
+      "includeCitations": true,
+      "requiresContext": true
+    }
+  },
+  {
+    "slug": "insights-prediction",
+    "name": "Prediction Insight Prompt",
+    "scope": "system",
+    "insightType": "prediction",
+    "status": "active",
+    "tags": ["insights", "prediction"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You are a forecasting expert. Based on historical data and current trends, provide informed predictions. Always indicate confidence levels and key assumptions.",
+      "userPrompt": "CONTEXT:\n{{context}}\n\nUSER QUESTION:\n{{userQuery}}\n\nPlease provide a helpful response based on the context above.",
+      "variables": ["context", "userQuery"]
+    },
+    "ragConfig": {
+      "topK": 10,
+      "minScore": 0.7,
+      "includeCitations": true,
+      "requiresContext": true
+    }
+  },
+  {
+    "slug": "insights-extraction",
+    "name": "Extraction Insight Prompt",
+    "scope": "system",
+    "insightType": "extraction",
+    "status": "active",
+    "tags": ["insights", "extraction"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You are a data extraction specialist. Extract the requested information accurately and completely. Present extracted data in a clear, organized format.",
+      "userPrompt": "CONTEXT:\n{{context}}\n\nUSER QUESTION:\n{{userQuery}}\n\nPlease provide a helpful response based on the context above.",
+      "variables": ["context", "userQuery"]
+    },
+    "ragConfig": {
+      "topK": 10,
+      "minScore": 0.7,
+      "includeCitations": true,
+      "requiresContext": true
+    }
+  },
+  {
+    "slug": "insights-search",
+    "name": "Search Insight Prompt",
+    "scope": "system",
+    "insightType": "search",
+    "status": "active",
+    "tags": ["insights", "search"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You are a research assistant. Find and present relevant information from the provided context. Cite your sources and highlight the most relevant findings.",
+      "userPrompt": "CONTEXT:\n{{context}}\n\nUSER QUESTION:\n{{userQuery}}\n\nPlease provide a helpful response based on the context above.",
+      "variables": ["context", "userQuery"]
+    },
+    "ragConfig": {
+      "topK": 10,
+      "minScore": 0.7,
+      "includeCitations": true,
+      "requiresContext": true
+    }
+  },
+  {
+    "slug": "insights-generation",
+    "name": "Generation Insight Prompt",
+    "scope": "system",
+    "insightType": "generation",
+    "status": "active",
+    "tags": ["insights", "generation"],
+    "version": 1,
+    "template": {
+      "systemPrompt": "You are a skilled content creator. Generate high-quality content based on the provided context and requirements. Match the requested tone and format.",
+      "userPrompt": "CONTEXT:\n{{context}}\n\nUSER QUESTION:\n{{userQuery}}\n\nPlease provide a helpful response based on the context above.",
+      "variables": ["context", "userQuery"]
+    },
+    "ragConfig": {
+      "topK": 10,
+      "minScore": 0.7,
+      "includeCitations": true,
+      "requiresContext": true
+    }
+  }
+]

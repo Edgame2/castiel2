@@ -1,0 +1,72 @@
+# User Management Module Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: user-management
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3022}
+  host: ${HOST:-0.0.0.0}
+
+# Cosmos DB Configuration (shared database, prefixed containers)
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  
+# Legacy database.url for backward compatibility during migration
+database:
+  url: ${DATABASE_URL:-}  # Not used with Cosmos DB, kept for migration period
+  pool_size: 20
+
+# JWT Configuration (shared with auth service)
+jwt:
+  secret: ${JWT_SECRET}
+
+# External Service URLs (from config, not hardcoded)
+services:
+  auth:
+    url: ${AUTH_URL:-http://localhost:3021}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  notification:
+    url: ${NOTIFICATION_URL:-http://localhost:3001}
+  secret_management:
+    url: ${SECRET_MANAGEMENT_URL:-http://localhost:3003}
+
+# RabbitMQ Configuration
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: user_management_service
+  bindings:
+    - "auth.login.success"
+    - "auth.login.failed"
+    - "user.registered"
+
+# Feature Flags
+features:
+  user_profiles: ${FEATURE_USER_PROFILES:-true}
+  organizations: ${FEATURE_ORGANIZATIONS:-true}
+  teams: ${FEATURE_TEAMS:-true}
+  rbac: ${FEATURE_RBAC:-true}
+  invitations: ${FEATURE_INVITATIONS:-true}
+  user_analytics: ${FEATURE_USER_ANALYTICS:-true}
+
+# Organization Settings
+organization:
+  max_members: ${ORG_MAX_MEMBERS:-1000}
+  allow_public_orgs: ${ALLOW_PUBLIC_ORGS:-false}
+  default_role: ${ORG_DEFAULT_ROLE:-member}
+
+# Team Settings
+team:
+  max_members: ${TEAM_MAX_MEMBERS:-100}
+  max_teams_per_org: ${MAX_TEAMS_PER_ORG:-50}
+
+# Invitation Settings
+invitation:
+  expiration_days: ${INVITATION_EXPIRATION_DAYS:-7}
+  max_pending_per_org: ${MAX_PENDING_INVITATIONS:-100}
+

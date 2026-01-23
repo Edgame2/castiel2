@@ -1,0 +1,57 @@
+# Secret Management Module Configuration
+# Default settings - override with environment variables or environment-specific files
+
+module:
+  name: secret-management
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3003}
+  host: ${HOST:-0.0.0.0}
+  env: ${NODE_ENV:-development}
+
+database:
+  url: ${DATABASE_URL}
+
+encryption:
+  masterKey: ${SECRET_MASTER_KEY}  # Required, 64 hex characters
+  algorithm: AES-256-GCM
+  keyRotation:
+    enabled: true
+    intervalDays: 90
+
+service:
+  authToken: ${SERVICE_AUTH_TOKEN}  # Required
+
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: ${RABBITMQ_EXCHANGE:-coder_events}
+
+logging:
+  serviceUrl: ${LOGGING_SERVICE_URL}
+  enabled: ${LOGGING_ENABLED:-true}
+  level: ${LOG_LEVEL:-info}
+
+# Secret Management specific settings
+secrets:
+  defaultBackend: ${SECRETS_DEFAULT_BACKEND:-LOCAL_ENCRYPTED}
+  cache:
+    enabled: true
+    ttlSeconds: 300
+    maxSize: 1000
+  softDelete:
+    recoveryPeriodDays: 30
+  rotation:
+    defaultIntervalDays: 90
+  expiration:
+    notificationDays: [30, 14, 7, 1]
+
+# External service URLs (from config, not hardcoded)
+services:
+  user_management:
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3000}
+  logging:
+    url: ${LOGGING_SERVICE_URL:-http://localhost:3014}
+  notification:
+    url: ${NOTIFICATION_SERVICE_URL:-http://localhost:3001}
+

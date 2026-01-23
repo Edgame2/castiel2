@@ -1,0 +1,338 @@
+/* Rich Text Editor - shadcn/ui compatible styles */
+
+/* Base container styling */
+.rich-text-editor {
+  @apply relative w-full rounded-md border shadow-xs transition-all;
+  border-color: hsl(var(--input));
+}
+
+.rich-text-editor:focus-within {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.5);
+}
+
+.rich-text-editor.error {
+  border-color: hsl(var(--destructive));
+  box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.2);
+}
+
+.rich-text-editor.readonly {
+  @apply cursor-not-allowed opacity-60;
+}
+
+/* Quill editor container */
+.rich-text-editor .ql-container {
+  @apply border-0 text-base md:text-sm;
+  font-family: inherit;
+}
+
+.rich-text-editor .ql-container.ql-snow {
+  border: none;
+}
+
+/* Editor content area */
+.rich-text-editor .ql-editor {
+  @apply px-3 py-2;
+  color: hsl(var(--foreground));
+  background: transparent;
+}
+
+.rich-text-editor .ql-editor::before {
+  color: hsl(var(--muted-foreground));
+  font-style: normal;
+  left: 12px;
+  right: 12px;
+}
+
+.rich-text-editor .ql-editor.ql-blank::before {
+  color: hsl(var(--muted-foreground));
+  font-style: normal;
+}
+
+/* Toolbar styling */
+.rich-text-editor .ql-toolbar {
+  @apply border-0 border-b px-2 py-1.5;
+  border-color: hsl(var(--border));
+  background: hsl(var(--muted) / 0.3);
+  border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0;
+}
+
+.rich-text-editor .ql-toolbar.ql-snow {
+  border: none;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* Toolbar buttons */
+.rich-text-editor .ql-toolbar button {
+  @apply rounded p-1;
+  color: hsl(var(--muted-foreground));
+  width: 28px;
+  height: 28px;
+}
+
+.rich-text-editor .ql-toolbar button:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent));
+}
+
+.rich-text-editor .ql-toolbar button.ql-active {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.1);
+}
+
+.rich-text-editor .ql-toolbar button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Toolbar stroke colors */
+.rich-text-editor .ql-snow .ql-stroke {
+  stroke: currentColor;
+}
+
+.rich-text-editor .ql-snow .ql-fill {
+  fill: currentColor;
+}
+
+.rich-text-editor .ql-snow .ql-picker {
+  color: hsl(var(--muted-foreground));
+}
+
+.rich-text-editor .ql-snow .ql-picker:hover .ql-picker-label {
+  color: hsl(var(--foreground));
+}
+
+.rich-text-editor .ql-snow .ql-picker.ql-expanded .ql-picker-label {
+  color: hsl(var(--primary));
+  border-color: hsl(var(--ring));
+}
+
+/* Picker dropdown */
+.rich-text-editor .ql-snow .ql-picker-label {
+  @apply rounded px-2 py-0.5;
+  border-color: hsl(var(--border));
+}
+
+.rich-text-editor .ql-snow .ql-picker-options {
+  @apply rounded-md border p-1;
+  background: hsl(var(--popover));
+  border-color: hsl(var(--border));
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.rich-text-editor .ql-snow .ql-picker-item {
+  @apply rounded px-2 py-1;
+  color: hsl(var(--popover-foreground));
+}
+
+.rich-text-editor .ql-snow .ql-picker-item:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.rich-text-editor .ql-snow .ql-picker-item.ql-selected {
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.1);
+}
+
+/* Color picker */
+.rich-text-editor .ql-color-picker .ql-picker-options,
+.rich-text-editor .ql-background .ql-picker-options {
+  @apply grid grid-cols-8 gap-0.5 p-2;
+  width: auto;
+}
+
+.rich-text-editor .ql-color-picker .ql-picker-item,
+.rich-text-editor .ql-background .ql-picker-item {
+  @apply rounded;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  margin: 0;
+}
+
+/* Format groups separator */
+.rich-text-editor .ql-formats {
+  @apply mr-2;
+}
+
+.rich-text-editor .ql-formats::after {
+  @apply ml-2 border-l;
+  content: '';
+  border-color: hsl(var(--border));
+  height: 24px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.rich-text-editor .ql-formats:last-child::after {
+  display: none;
+}
+
+/* Tooltip for buttons */
+.rich-text-editor .ql-snow .ql-tooltip {
+  @apply rounded-md border px-3 py-2;
+  background: hsl(var(--popover));
+  border-color: hsl(var(--border));
+  color: hsl(var(--popover-foreground));
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.rich-text-editor .ql-snow .ql-tooltip input[type="text"] {
+  @apply rounded border px-2 py-1;
+  border-color: hsl(var(--input));
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.rich-text-editor .ql-snow .ql-tooltip input[type="text"]:focus {
+  border-color: hsl(var(--ring));
+  outline: none;
+}
+
+.rich-text-editor .ql-snow .ql-tooltip a.ql-action::after,
+.rich-text-editor .ql-snow .ql-tooltip a.ql-remove::before {
+  @apply rounded px-2 py-1;
+}
+
+.rich-text-editor .ql-snow .ql-tooltip a.ql-action:hover,
+.rich-text-editor .ql-snow .ql-tooltip a.ql-remove:hover {
+  background: hsl(var(--accent));
+}
+
+/* Content styles */
+.rich-text-editor .ql-editor h1 {
+  @apply text-2xl font-bold;
+  color: hsl(var(--foreground));
+}
+
+.rich-text-editor .ql-editor h2 {
+  @apply text-xl font-semibold;
+  color: hsl(var(--foreground));
+}
+
+.rich-text-editor .ql-editor h3 {
+  @apply text-lg font-medium;
+  color: hsl(var(--foreground));
+}
+
+.rich-text-editor .ql-editor p {
+  @apply mb-2;
+}
+
+.rich-text-editor .ql-editor blockquote {
+  @apply my-2 border-l-4 pl-4 italic;
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+
+.rich-text-editor .ql-editor pre.ql-syntax {
+  @apply my-2 overflow-x-auto rounded-md p-3;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+}
+
+.rich-text-editor .ql-editor code {
+  @apply rounded px-1.5 py-0.5;
+  background: hsl(var(--muted));
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+}
+
+.rich-text-editor .ql-editor ul,
+.rich-text-editor .ql-editor ol {
+  @apply my-2 pl-6;
+}
+
+.rich-text-editor .ql-editor li {
+  @apply mb-1;
+}
+
+.rich-text-editor .ql-editor a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+
+.rich-text-editor .ql-editor a:hover {
+  text-decoration: none;
+}
+
+.rich-text-editor .ql-editor img {
+  @apply my-2 max-w-full rounded;
+}
+
+.rich-text-editor .ql-editor .ql-video {
+  @apply my-2 aspect-video w-full max-w-full rounded;
+}
+
+/* Table styles */
+.rich-text-editor .ql-editor table {
+  @apply my-2 w-full border-collapse;
+}
+
+.rich-text-editor .ql-editor table td,
+.rich-text-editor .ql-editor table th {
+  @apply border px-3 py-2;
+  border-color: hsl(var(--border));
+}
+
+.rich-text-editor .ql-editor table th {
+  @apply font-semibold;
+  background: hsl(var(--muted) / 0.5);
+}
+
+/* Character counter */
+.rich-text-editor-footer {
+  @apply flex items-center justify-end border-t px-3 py-1.5 text-xs;
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted) / 0.2);
+  border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px);
+}
+
+.rich-text-editor-footer.warning {
+  color: hsl(var(--chart-4));
+}
+
+.rich-text-editor-footer.error {
+  color: hsl(var(--destructive));
+}
+
+/* Dark mode adjustments */
+.dark .rich-text-editor {
+  background: hsl(var(--input) / 0.3);
+}
+
+.dark .rich-text-editor .ql-toolbar {
+  background: hsl(var(--muted) / 0.5);
+}
+
+.dark .rich-text-editor .ql-snow .ql-picker-options {
+  background: hsl(var(--popover));
+}
+
+/* Loading state */
+.rich-text-editor-loading {
+  @apply flex items-center justify-center p-8;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Error boundary fallback */
+.rich-text-editor-error {
+  @apply flex flex-col items-center justify-center gap-2 rounded-md border p-8;
+  border-color: hsl(var(--destructive) / 0.5);
+  background: hsl(var(--destructive) / 0.05);
+  color: hsl(var(--destructive));
+}
+
+.rich-text-editor-error button {
+  @apply mt-2 rounded-md px-4 py-2 text-sm;
+  background: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+
+.rich-text-editor-error button:hover {
+  opacity: 0.9;
+}

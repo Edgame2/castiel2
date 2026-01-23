@@ -1,0 +1,17 @@
+# Test environment overrides
+# These values override defaults from default.yaml
+
+server:
+  env: test
+  port: ${PORT:-3003}
+
+logging:
+  enabled: false  # Disable external logging in tests
+
+secrets:
+  defaultBackend: LOCAL_ENCRYPTED
+  cache:
+    enabled: false  # Disable cache in tests for predictability
+
+
+

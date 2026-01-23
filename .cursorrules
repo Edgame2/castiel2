@@ -1,0 +1,108 @@
+# Coder IDE Enterprise Migration - Cursor Rules
+
+## Core Principles
+- NEVER use hardcoded ports, URLs, or service addresses
+- ALWAYS use configuration files (YAML) for all settings
+- ALWAYS enforce tenant isolation at all layers (gateway, service, database)
+- ALWAYS include tenantId in all database queries (partition key)
+- NEVER import directly from another module's src/ folder
+- ALWAYS use @coder/shared for shared types and utilities
+- ALWAYS communicate between services via REST API (config-driven URLs) or events (RabbitMQ)
+
+## Module Structure Requirements
+- MUST follow the standard directory layout from ModuleImplementationGuide.md
+- MUST include: Dockerfile, package.json, tsconfig.json, README.md, CHANGELOG.md
+- MUST have config/default.yaml with schema validation
+- MUST have openapi.yaml in module root
+- MUST have src/server.ts as entry point
+
+## Security Requirements
+- Service-to-service calls MUST use JWT tokens with service identity
+- All routes MUST validate X-Tenant-ID header (from gateway)
+- All database queries MUST include tenantId in partition key
+- All secrets MUST be in environment variables, never in code
+- All auth operations MUST be audit logged
+
+## Configuration Standards
+- Use YAML config files (config/default.yaml)
+- Support environment variable overrides
+- Validate config against schema.json
+- Type all config with TypeScript interfaces
+- Service URLs MUST come from config, never hardcoded
+
+## Error Handling
+- Use AppError from @coder/shared/errors
+- Include proper HTTP status codes
+- Log errors with context (tenantId, userId, correlationId)
+- Never expose internal errors to clients
+
+## Testing Requirements
+- Minimum 80% test coverage
+- Unit tests for all services and utilities
+- Integration tests for all API routes
+- Use Vitest for testing
+- Mock all external dependencies
+
+## Code Quality
+- Use TypeScript strict mode
+- Follow ESLint rules
+- Use Prettier for formatting
+- Maximum cyclomatic complexity: 10
+- All functions MUST have JSDoc comments
+
+## Event-Driven Communication
+- Use RabbitMQ for inter-service communication
+- Events MUST include: id, type, version, timestamp, tenantId, source, data
+- Event types follow pattern: {module}.{resource}.{action}
+- Document all published and consumed events
+
+## Performance
+- Use multi-layer caching (in-memory + Redis)
+- Use connection pooling for databases
+- Always use partition keys in database queries
+- Implement circuit breakers for service calls
+
+## Documentation
+- README.md MUST include: overview, setup, API endpoints, configuration
+- CHANGELOG.md MUST track all version changes
+- All public functions MUST have JSDoc
+- Architecture decisions MUST be in architecture.md
+
+## Naming Conventions
+- Files: kebab-case (e.g., password-reset.ts)
+- Classes: PascalCase (e.g., PasswordResetService)
+- Functions: camelCase (e.g., validatePassword)
+- Constants: UPPER_SNAKE_CASE (e.g., MAX_RETRY_ATTEMPTS)
+- Types/Interfaces: PascalCase with descriptive names
+
+## When Creating New Modules
+1. Reference ModuleImplementationGuide.md for structure
+2. Copy from existing container (e.g., containers/auth) as template
+3. Update all placeholders with module-specific names
+4. Ensure all required files are present
+5. Configure service discovery in config/default.yaml
+6. Set up event publishers/consumers if needed
+7. Add tenant enforcement middleware to all routes
+8. Write tests before marking as complete
+
+## TypeScript Standards
+- Use strict mode
+- No any types (use unknown and type guards)
+- Use branded types for IDs (userId, tenantId)
+- Validate all inputs with Zod or similar
+- Use type guards for runtime validation
+
+## Database Standards
+- All Cosmos DB queries MUST include tenantId in partition key
+- Use parameterized queries (never string concatenation)
+- Implement query result caching
+- Use connection pooling
+- All queries must be typed
+
+## Service Communication
+- Use ServiceClient from @coder/shared for HTTP calls
+- Include circuit breakers
+- Implement retry logic with exponential backoff
+- Log all service calls with correlation IDs
+- Handle service failures gracefully
+

@@ -1,0 +1,16 @@
+# Production environment overrides
+# These values override defaults from default.yaml
+
+server:
+  env: production
+
+logging:
+  level: info
+  enabled: true
+
+# Production should use external vaults
+secrets:
+  defaultBackend: ${SECRETS_DEFAULT_BACKEND:-AZURE_KEY_VAULT}
+
+
+

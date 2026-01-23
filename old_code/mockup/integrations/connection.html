@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connection Status - UI Mockup Catalog</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <style>
+    .page-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .breadcrumb {
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+      color: var(--muted-foreground);
+    }
+    .breadcrumb a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+    }
+    .status-connected {
+      background-color: color-mix(in srgb, #10b981 20%, transparent);
+      color: #10b981;
+    }
+    .status-disconnected {
+      background-color: color-mix(in srgb, var(--destructive) 20%, transparent);
+      color: var(--destructive);
+    }
+    .status-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background-color: currentColor;
+    }
+    .timeline-item {
+      display: flex;
+      gap: 1rem;
+      padding: 0.75rem 0;
+      border-left: 2px solid var(--border);
+      padding-left: 1rem;
+      margin-left: 0.5rem;
+    }
+    .timeline-item:last-child {
+      border-left: none;
+    }
+    .timeline-dot {
+      width: 0.75rem;
+      height: 0.75rem;
+      border-radius: 50%;
+      background-color: var(--primary);
+      border: 2px solid var(--background);
+      margin-top: 0.25rem;
+      margin-left: -1.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-container">
+    <div class="breadcrumb">
+      <a href="../index.html">Catalog</a> / <a href="../index.html#integrations">Integrations</a> / Connection Status
+    </div>
+
+    <header style="margin-bottom: 2rem;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+        <h1 style="font-size: 2rem; font-weight: 700;">Salesforce Production</h1>
+        <button class="button button-default">Test Connection</button>
+      </div>
+      <p class="text-muted-foreground">Connection details and sync activity</p>
+    </header>
+
+    <!-- Connection Status Card -->
+    <div class="card" style="margin-bottom: 2rem;">
+      <div class="card-header">
+        <div class="card-title">Connection Status</div>
+        <div class="card-description">Current connection state and health</div>
+      </div>
+      <div class="card-content">
+        <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+          <div class="status-indicator status-connected">
+            <span class="status-dot"></span>
+            Connected
+          </div>
+          <div class="status-indicator status-connected">
+            <span class="status-dot"></span>
+            Active
+          </div>
+          <div style="margin-left: auto;">
+            <div class="text-sm text-muted-foreground">Last Sync</div>
+            <div class="text-sm font-medium">March 20, 2024 10:30 AM</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <div class="text-xs text-muted-foreground">Sync Frequency</div>
+              <div class="text-sm font-medium">Hourly</div>
+            </div>
+            <div>
+              <div class="text-xs text-muted-foreground">Credentials Status</div>
+              <div class="text-sm font-medium" style="color: #10b981;">Valid</div>
+            </div>
+            <div>
+              <div class="text-xs text-muted-foreground">Records Synced</div>
+              <div class="text-sm font-medium">150</div>
+            </div>
+            <div>
+              <div class="text-xs text-muted-foreground">Last Success</div>
+              <div class="text-sm font-medium">2 hours ago</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recent Sync Activity</div>
+        <div class="card-description">Latest synchronization events</div>
+      </div>
+      <div class="card-content">
+        <div class="space-y-2">
+          <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <div style="font-weight: 500; font-size: 0.875rem;">Sync completed</div>
+                  <div class="text-xs text-muted-foreground">150 records synced successfully</div>
+                </div>
+                <div class="text-xs text-muted-foreground">10:30 AM</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <div style="font-weight: 500; font-size: 0.875rem;">Sync completed</div>
+                  <div class="text-xs text-muted-foreground">142 records synced successfully</div>
+                </div>
+                <div class="text-xs text-muted-foreground">9:30 AM</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <div style="font-weight: 500; font-size: 0.875rem;">Sync completed</div>
+                  <div class="text-xs text-muted-foreground">138 records synced successfully</div>
+                </div>
+                <div class="text-xs text-muted-foreground">8:30 AM</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/theme.js"></script>
+</body>
+</html>
+

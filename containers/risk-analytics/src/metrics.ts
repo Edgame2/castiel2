@@ -30,4 +30,10 @@ export const batchJobDurationSeconds = new Histogram({
   buckets: [1, 5, 15, 30, 60, 120, 300],
 });
 
+export const rabbitmqMessagesConsumedTotal = new Counter({
+  name: 'rabbitmq_messages_consumed_total',
+  help: 'Total RabbitMQ messages consumed (Plan §8.5.2, deployment/monitoring/README). Label queue.',
+  labelNames: ['queue'],
+});
+
 export { register };

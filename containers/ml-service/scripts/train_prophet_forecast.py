@@ -37,6 +37,7 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
+        import numpy as np
         import pandas as pd
         import joblib
     except ImportError as e:
@@ -100,6 +101,32 @@ def main() -> int:
         weekly_seasonality=weekly,
     )
     m.fit(g)
+
+    # Metrics (Plan §877): in-sample MAPE, RMSE, MAE
+    forecast = m.predict(g)
+    y_true = g["y"].values
+    y_pred = forecast["yhat"].values if "yhat" in forecast.columns else np.full_like(y_true, np.nan)
+    n = min(len(y_true), len(y_pred))
+    if n > 0:
+        y_true, y_pred = y_true[:n].astype(np.float64), y_pred[:n].astype(np.float64)
+        mape = float(np.mean(np.abs((y_true - y_pred) / (np.abs(y_true) + 1e-8))) * 100)
+        rmse = float(np.sqrt(np.mean((y_true - y_pred) ** 2)))
+        mae = float(np.mean(np.abs(y_true - y_pred)))
+    else:
+        mape, rmse, mae = 0.0, 0.0, 0.0
+    print(f"MAPE: {mape:.4f}%, RMSE: {rmse:.4f}, MAE: {mae:.4f}", file=sys.stderr)
+
+    # Log to Azure ML run when executed as an Azure ML Job (Plan §877)
+    try:
+        from azureml.core import Run
+
+        run = Run.get_context()
+        if run and getattr(run, "id", None) and "OfflineRun" not in str(getattr(run, "id", "")):
+            run.log("MAPE", mape)
+            run.log("RMSE", rmse)
+            run.log("MAE", mae)
+    except Exception:
+        pass  # not in Azure ML or azureml-core not installed; stderr already printed
 
     artifact = {
         "model": m,

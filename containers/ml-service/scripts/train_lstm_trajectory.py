@@ -131,7 +131,28 @@ def main() -> int:
         layers.Dense(3),
     ])
     model.compile(optimizer="adam", loss="mse", metrics=["mae"])
-    model.fit(X, y, epochs=args.param_epochs, validation_split=0.1, verbose=1)
+    history = model.fit(X, y, epochs=args.param_epochs, validation_split=0.1, verbose=1)
+
+    # Metrics (Plan §875): final epoch loss, val_loss, mae, val_mae
+    h = history.history
+    loss = float(h["loss"][-1]) if h.get("loss") else 0.0
+    val_loss = float(h["val_loss"][-1]) if h.get("val_loss") else 0.0
+    mae = float(h["mae"][-1]) if h.get("mae") else 0.0
+    val_mae = float(h["val_mae"][-1]) if h.get("val_mae") else 0.0
+    print(f"final loss: {loss:.4f}, val_loss: {val_loss:.4f}, mae: {mae:.4f}, val_mae: {val_mae:.4f}", file=sys.stderr)
+
+    # Log to Azure ML run when executed as an Azure ML Job (Plan §875)
+    try:
+        from azureml.core import Run
+
+        run = Run.get_context()
+        if run and getattr(run, "id", None) and "OfflineRun" not in str(getattr(run, "id", "")):
+            run.log("loss", loss)
+            run.log("val_loss", val_loss)
+            run.log("mae", mae)
+            run.log("val_mae", val_mae)
+    except Exception:
+        pass  # not in Azure ML or azureml-core not installed; stderr already printed
 
     out_dir = "risk_trajectory_lstm"
     os.makedirs(out_dir, exist_ok=True)

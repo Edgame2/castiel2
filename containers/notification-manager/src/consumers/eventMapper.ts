@@ -10,6 +10,33 @@ import { DomainEvent } from '@coder/shared';
 export function mapEventToNotificationInput(event: DomainEvent<any>): NotificationInput | null {
   const eventData = event.data || {};
 
+  // hitl.approval.requested (Plan §972): HITL approval request; BI/risk uses tenantId only.
+  // recipientId: eventData.ownerId || eventData.approverId || eventData.recipientId. risk-analytics must include at least one when publishing.
+  if (event.type === 'hitl.approval.requested') {
+    const tenantId = eventData.tenantId || (event as { tenantId?: string }).tenantId;
+    const recipientId = eventData.ownerId || eventData.approverId || eventData.recipientId;
+    if (!tenantId || !recipientId) return null;
+    const oppId = eventData.opportunityId || '';
+    const risk = eventData.riskScore != null ? Number(eventData.riskScore) : null;
+    const amount = eventData.amount != null ? Number(eventData.amount) : null;
+    return {
+      organizationId: tenantId,
+      eventType: 'hitl.approval.requested',
+      eventCategory: 'SYSTEM_ADMIN',
+      sourceModule: 'risk-analytics',
+      sourceResourceId: oppId,
+      sourceResourceType: 'opportunity',
+      recipientId,
+      title: 'Approval requested (high-risk deal)',
+      body: `Opportunity ${oppId} requires approval (risk${risk != null ? ` ${risk}` : ''}${amount != null ? `, amount ${amount}` : ''}).`,
+      criticality: 'HIGH',
+      channelsRequested: ['IN_APP', 'EMAIL'],
+      actionUrl: eventData.approvalUrl || undefined,
+      actionLabel: 'Review',
+      metadata: { opportunityId: oppId, riskScore: risk, amount, requestedAt: eventData.requestedAt, correlationId: eventData.correlationId },
+    };
+  }
+
   // anomaly.detected (Plan §7.2): BI/risk uses tenantId only; notify owner when high/medium severity.
   // recipientId requires eventData.ownerId (opportunity OwnerId). risk-analytics should include ownerId when publishing.
   if (event.type === 'anomaly.detected') {

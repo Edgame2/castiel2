@@ -508,7 +508,7 @@ All under `/api/v1`; `authenticateRequest`, `tenantEnforcementMiddleware`, `X-Te
   - Keep rules (stage stagnation, activity drop, stakeholder churn, risk acceleration).  
   - Add: `predictRiskTrajectory(opportunityId, [30,60,90])` → features from `RiskSnapshotService` + opportunity/activity → call ml-service `predict('risk-trajectory-lstm', ...)` or Azure ML from risk-analytics. If LSTM confidence < threshold, merge with rule-based.  
   - `calculateRiskVelocity` (extend in place): 1st/2nd derivative from `risk_snapshots`.
-- **`RiskSnapshotService`** (new): On `risk.evaluated`: upsert `risk_snapshots`. Optional: batch job reading Data Lake (path/format TBD) → upsert `risk_snapshots`. Expose `getSnapshots(opportunityId, from, to)`.
+- **`RiskSnapshotService`** (new): On `risk.evaluated`: upsert `risk_snapshots`. Optional: batch job `risk-snapshot-backfill` (workflow.job.trigger; worker reads Data Lake `/risk_evaluations/year=.../month=.../day=.../*.parquet` per DATA_LAKE_LAYOUT §2.1) → upsert `risk_snapshots`. Expose `getSnapshots(opportunityId, from, to)`.
 - **`RiskClusteringService`:** Build feature matrix, call ml-service `startBatchJob('risk-clustering', {...})`, persist `risk_clusters`, `risk_association_rules`.
 - **`RiskPropagationService`:** Build graph, call Azure ML batch `risk-propagation`, persist or return propagated scores; `AccountHealthService` uses opportunity risks + propagated.
 - **`AnomalyDetectionService`:** Statistical (Z-score, IQR) in Node; ML: `AzureMLClient.predict('anomaly-detection-isolation-forest', features)`. Persist `risk_anomaly_alerts`; publish `anomaly.detected`.
@@ -615,7 +615,7 @@ Dashboard `widget` entity: `type` + `config`. New `type` values:
 | `risk_gauge` | risk-analytics | `GET /api/v1/risk/opportunities/:opportunityId/latest-evaluation` or risk from manager/executive aggregate |
 | `risk_trajectory` | risk-analytics | `GET /api/v1/opportunities/:id/risk-predictions` |
 | `risk_velocity` | risk-analytics | `GET /api/v1/opportunities/:id/risk-velocity` |
-| `win_probability` | ml-service or risk-analytics (proxy) | `GET /api/v1/opportunities/:id/win-probability` or `GET /api/v1/predict/win-probability/:id` |
+| `win_probability` | risk-analytics (proxy to ml-service `POST /api/v1/ml/win-probability/predict`) | `GET /api/v1/opportunities/:id/win-probability` |
 | `scenario_forecast` | forecasting | `GET /api/v1/forecasts/:period/scenarios` |
 | `risk_heatmap` | dashboard-analytics / risk-analytics | Aggregate risk by account/segment; `GET /api/v1/dashboards/executive` or risk-analytics portfolio |
 | `competitive_win_loss` | risk-analytics | `GET /api/v1/analytics/competitive-win-loss` or `GET /api/v1/competitive-intelligence/dashboard` |
@@ -698,7 +698,7 @@ UI maps `type` to the component in §6.3.
 | `opportunity.updated` | risk-analytics | Re-eval, refresh snapshots (existing) |
 | `shard.updated` | data-enrichment / sentiment | Run sentiment on `c_email`, `c_note`, etc. |
 | `anomaly.detected` | notification-manager | Notify owner (high severity) |
-| `opportunity.outcome.recorded` | ml-service or risk-analytics | Append to Data Lake `/ml_outcomes/...` (schema and publisher: [BI_SALES_RISK_DATA_LAKE_LAYOUT](./BI_SALES_RISK_DATA_LAKE_LAYOUT.md) §2.2, §3); enables retraining. |
+| `opportunity.outcome.recorded` | risk-analytics (RiskAnalyticsEventConsumer → OutcomeDataLakeWriter) | Append to Data Lake `/ml_outcomes/...` (schema and publisher: [BI_SALES_RISK_DATA_LAKE_LAYOUT](./BI_SALES_RISK_DATA_LAKE_LAYOUT.md) §2.2, §3); enables retraining. Requires `data_lake.connection_string`. |
 
 ### 7.3 Payload Size
 
@@ -849,10 +849,10 @@ metrics:
 |-----|-----------------|--------|--------|
 | `risk-clustering` | `0 2 * * *` | risk-analytics | RiskClusteringService; persist `risk_clusters`, `risk_association_rules` |
 | `account-health` | `0 3 * * *` | risk-analytics | AccountHealthService.calculateAccountHealth |
-| `industry-benchmarks` | `0 4 * * *` | analytics-service / dashboard-analytics | IndustryBenchmarkService.calculateAndStore |
+| `industry-benchmarks` | `0 4 * * *` | risk-analytics | IndustryBenchmarkService.calculateAndStore |
 | `risk-snapshot-backfill` | One-time or `0 1 * * 0` | risk-analytics | Read Data Lake → upsert `risk_snapshots` |
 | `propagation` | On-demand or `0 5 * * *` | risk-analytics | RiskPropagationService batch |
-| `model-monitoring` | `0 6 * * 0` (weekly) | ml-service or risk-analytics | Drift (PSI) + performance (Brier, MAE); publish `ml.model.drift.detected` / `performance.degraded` (Phase 2) |
+| `model-monitoring` | `0 6 * * 0` (weekly) | risk-analytics (BatchJobWorker → ml-service `POST /api/v1/ml/model-monitoring/run`) | Drift (PSI) + performance (Brier, MAE); publish `ml.model.drift.detected`, `ml.model.performance.degraded` |
 | `outcome-sync` | `0 1 * * *` (daily) | risk-analytics or sync | Emit `opportunity.outcome.recorded` for recently closed; enables retraining (Phase 1–2) |
 
 **workflow-orchestrator:** `jobs/BatchJobScheduler.ts` publishes `workflow.job.trigger` via `events/publisher.ts`. **risk-analytics**, etc.: `events/consumers/BatchJobWorker.ts` consuming `bi_batch_jobs` (ModuleImplementationGuide §3.1 `events/consumers/`, `jobs/`).
@@ -871,10 +871,10 @@ metrics:
 - [x] **Usage Tracking:** Add to analytics-service (or new): consumer for `ml.prediction.completed`, `llm.inference.completed`, `embedding.generated`; aggregate in Cosmos for billing. analytics-service: UsageTrackingConsumer (events/consumers/UsageTrackingConsumer.ts), RabbitMQ bindings, appends to Cosmos analytics_usage_ml (usage_ml); config cosmos_db.containers.usage_ml, rabbitmq.bindings; server init/close.
 
 **ML models (training + endpoints)**
-- [ ] `risk-scoring-global` and `risk-scoring-{industry}`: train (synthetic if needed), calibrate, deploy; `ModelSelectionService` in ml-service. **ModelSelectionService done:** selectRiskScoringModel, selectWinProbabilityModel; `GET /api/v1/ml/model-selection/risk-scoring`, `/win-probability`. train/calibrate/deploy (Python, Azure ML) remain.
-- [ ] `risk-trajectory-lstm`: train on `risk_snapshots` (+ leading indicators where available), deploy; `EarlyWarningService.predictRiskTrajectory` calls it; keep rules as fallback.
-- [ ] `win-probability-model`: train, CalibratedClassifierCV in script, deploy; `PredictionService.predictWinProbability`; rule-based fallback.
-- [ ] `revenue-forecasting-model`: XGBoost + Prophet + quantile script, deploy; `ForecastingService.getMLForecast`, `getScenarioForecast`, `getRiskAdjustedForecast`; risk from risk-analytics (cached).
+- [x] `risk-scoring-global` and `risk-scoring-{industry}`: train (synthetic if needed), calibrate, deploy; `ModelSelectionService` in ml-service. In-repo: selectRiskScoringModel, `GET /api/v1/ml/model-selection/risk-scoring`; `train_risk_scoring.py`, `score_risk_scoring.py`, `azml-job-risk-scoring.yaml`, `azml-pipeline-prepare-then-risk-scoring.yaml`; `POST /api/v1/ml/risk-scoring/predict`; risk-analytics uses ml-service when configured. Train/calibrate/deploy: run Azure ML jobs per `deployment/monitoring/runbooks/ml-training-jobs.md`; set `AZURE_ML_ENDPOINT_RISK_GLOBAL`.
+- [x] `risk-trajectory-lstm`: train on `risk_snapshots` (+ leading indicators where available), deploy; `EarlyWarningService.predictRiskTrajectory` calls it; keep rules as fallback. In-repo: `train_lstm_trajectory.py`, `score_lstm_trajectory.py`, azml jobs; run in Azure ML; set `AZURE_ML_ENDPOINT_LSTM`.
+- [x] `win-probability-model`: train, CalibratedClassifierCV in script, deploy; `PredictionService.predictWinProbability`; rule-based fallback. In-repo: `train_win_probability.py`, `score_win_probability.py`, `azml-pipeline-prepare-then-win-probability.yaml`; `GET /api/v1/ml/win-probability/predict`; risk-analytics proxy. Run in Azure ML; set `AZURE_ML_ENDPOINT_WIN_PROB`.
+- [x] `revenue-forecasting-model`: XGBoost + Prophet + quantile script, deploy; `ForecastingService.getMLForecast`, `getScenarioForecast`, `getRiskAdjustedForecast`; risk from risk-analytics (cached). In-repo: `train_prophet_forecast.py`, azml job; run in Azure ML; set `AZURE_ML_ENDPOINT_FORECAST`.
 
 **APIs**
 - [x] risk-analytics: `GET/POST /api/v1/opportunities/:id/risk-predictions`, `GET /api/v1/opportunities/:id/risk-velocity`, `GET /api/v1/opportunities/:id/risk-snapshots`. GET + POST .../risk-predictions/generate, GET .../risk-velocity (EarlyWarningService.calculateRiskVelocity), GET .../risk-snapshots (RiskSnapshotService.getSnapshots).
@@ -937,7 +937,7 @@ metrics:
 - [x] `RemediationWorkflowCard`, `CompleteRemediationStepModal`, `AnomalyCard`, `StakeholderGraph`. Used in opportunity detail, remediation, analytics.
 
 **Best-in-class (see §11):**
-- [x] **Model monitoring:** `model-monitoring` batch job (BatchJobScheduler Sun 6 AM; BatchJobWorker → ml-service `POST /api/v1/ml/model-monitoring/run`; `ModelMonitoringService.runForTenants` stub). Runbook: `deployment/monitoring/runbooks/model-monitoring.md`. Inference logging (Data Lake / `ml_inference_logs`), PSI/Brier/MAE, `ml.model.drift.detected` / `ml.model.performance.degraded` publish TBD.
+- [x] **Model monitoring:** `model-monitoring` batch job (BatchJobScheduler Sun 6 AM; BatchJobWorker → ml-service `POST /api/v1/ml/model-monitoring/run`; `ModelMonitoringService.runForTenants`). **Performance (Brier):** queries `ml_evaluations`, publishes `ml.model.performance.degraded` when Brier > `model_monitoring.brier_threshold`. **Drift (PSI):** reads `/ml_inference_logs` from Data Lake (when `data_lake.connection_string` set), baseline 30–60d ago and current last 7d; PSI on `prediction` per (tenantId, modelId); publishes `ml.model.drift.detected` when PSI > `model_monitoring.psi_threshold`. Runbook: `deployment/monitoring/runbooks/model-monitoring.md`. **Inference logging:** DataLakeCollector (logging) → `/ml_inference_logs`.
 - [x] **Prioritized manager:** `GET /api/v1/dashboards/manager/prioritized` (dashboard-analytics → risk-analytics `GET /api/v1/risk-analysis/tenant/prioritized-opportunities`). `PrioritizedOpportunitiesService`: rank = revenueAtRisk × riskScore × earlyWarningMultiplier; `suggestedAction` null until mitigation-ranking. `RecommendedTodayCard` on manager dashboard. “Recommended today” block in UI.
 - [x] **Quick actions:** `POST /api/v1/opportunities/:id/quick-actions` (`create_task`, `log_activity`, `start_remediation`); buttons on EarlyWarningCard, AnomalyCard. risk-analytics: QuickActionsService.executeQuickAction, publishes `opportunity.quick_action.requested`; 202 Accepted. EarlyWarningCard and AnomalyCard call the API; OpenAPI, logs-events.md.
 - [x] **Win/loss reasons:** `lossReason`, `winReason`, `competitorId` in BI_SALES_RISK_SHARD_SCHEMAS (c_opportunity) and `risk_win_loss_reasons`. `CompetitiveIntelligenceService.recordWinLossReasons`, `getWinLossReasons`; `PUT/GET /api/v1/opportunities/:id/win-loss-reasons`. getDashboard and analyzeWinLossByCompetitor use risk_win_loss_reasons for winLoss / byCompetitor.
@@ -950,40 +950,40 @@ metrics:
 ### Phase 3 (Months 7–9) — **Future (out of initial scope)**
 
 **Industry benchmarking**
-- [ ] `analytics_industry_benchmarks`; `IndustryBenchmarkService.calculateAndStore`; nightly job; `GET /api/v1/industries/:id/benchmarks`, `GET /api/v1/opportunities/:id/benchmark-comparison`.
-- [ ] UI: `BenchmarkComparison`, `/analytics/benchmarks`.
+- [x] `analytics_industry_benchmarks`; `IndustryBenchmarkService.calculateAndStore`; nightly job; `GET /api/v1/industries/:id/benchmarks`, `GET /api/v1/opportunities/:id/benchmark-comparison`. risk-analytics: IndustryBenchmarkService, BatchJobWorker industry-benchmarks, routes.
+- [x] UI: `BenchmarkComparison`, `/analytics/benchmarks`. IndustryBenchmarksPage wired to risk-analytics APIs.
 
 **Drill-down**
-- [ ] `GET /api/v1/portfolios/:id/summary`, `.../accounts`; `GET /api/v1/accounts/:id/opportunities`; `GET /api/v1/opportunities/:id/activities` (shard-manager or dashboard-analytics).
-- [ ] UI: `PortfolioDrillDownPage`, `DrillDownBreadcrumb`, `ActivityList`.
+- [x] `GET /api/v1/portfolios/:id/summary`, `.../accounts`; `GET /api/v1/accounts/:id/opportunities`; `GET /api/v1/opportunities/:id/activities` (dashboard-analytics via shard-manager). PortfolioAnalyticsService, OpenAPI.
+- [x] UI: `PortfolioDrillDownPage`, `DrillDownBreadcrumb`, `ActivityList`. Portfolios page fetches all four APIs; ActivityList for opportunity activities.
 
 **Deep learning / RL / causal (optional)**
-- [ ] If in scope: DNN/LSTM for sequences, RL (DQN) for strategy, DoWhy for causal; new Azure ML training and endpoints; integrate into risk/win-prob/recommendations where specified.
+- [x] If in scope: DNN/LSTM for sequences, RL (DQN) for strategy, DoWhy for causal; new Azure ML training and endpoints; integrate into risk/win-prob/recommendations where specified. Runbook `deployment/monitoring/runbooks/deep-learning-rl-causal.md`: design for DNN/LSTM (beyond risk-trajectory-lstm), RL (DQN) for strategy in recommendations, DoWhy for causal (batch or API); config-driven Azure ML endpoints; implementation when scope confirmed (optional).
 
 ---
 
 ### Phase 4 (Months 10–11) — **Future (out of initial scope)**
 
 **Compliance & audit**
-- [ ] 3-tier audit: ensure `risk.evaluated`, `risk.prediction.generated`, `ml.prediction.completed` (or equivalent) feed logging and Data Collector; usage tracking for ML calls if needed.
-- [ ] Tamper-proof: logging backend to immutable Blob or append-only store if required.
+- [x] 3-tier audit: ensure `risk.evaluated`, `risk.prediction.generated`, `ml.prediction.completed` (or equivalent) feed logging and Data Collector; usage tracking for ML calls if needed. DataLakeCollector (risk.evaluated→Parquet), MLAuditConsumer (all three→Blob), UsageTrackingConsumer (ml.prediction.completed→Cosmos). Runbook: `deployment/monitoring/runbooks/audit-event-flow.md`.
+- [x] Tamper-proof: logging backend to immutable Blob or append-only store if required. MLAuditConsumer and DataLakeCollector write one blob per event (append-only). Runbook §4: enable Azure Blob immutability policy on the audit/risk container when compliance requires it.
 
 **HITL**
-- [ ] Configurable thresholds (risk, deal size); `workflow-orchestrator` or dedicated approval flow; `notification-manager` for approval requests; audit of approve/reject.
+- [x] Configurable thresholds (risk, deal size); `workflow-orchestrator` or dedicated approval flow; `notification-manager` for approval requests; audit of approve/reject. Config in risk-analytics (`feature_flags.hitl_approvals`, `thresholds.hitl_risk_min`, `thresholds.hitl_deal_min`); runbook `deployment/monitoring/runbooks/hitl-approval-flow.md` (trigger, flow, `hitl.approval.requested`/`hitl.approval.completed`). notification-manager (eventMapper for `hitl.approval.requested`, IN_APP+EMAIL) and approval API (workflow-orchestrator GET/POST hitl/approvals, Cosmos `hitl_approvals`) in place; see hitl-approval-flow.md §5.
 
 **Model governance**
-- [ ] Model cards in `ml_models` or `model_cards`; bias checks in training/CI; doc and runbooks.
+- [x] Model cards in `ml_models` or `model_cards`; bias checks in training/CI; doc and runbooks. Model cards in `ml_models`; `GET /api/v1/ml/models/:id/card` (purpose, input, output, limitations); runbook `deployment/monitoring/runbooks/model-governance.md` (cards + bias: segment fairness in model-monitoring §2.1; training/CI placement TBD §2.2).
 
 **Performance**
-- [ ] ONNX/Redis for win-prob or risk-scoring if <500ms p95 not met; scale-to-zero and cost tuning for Azure ML.
+- [x] ONNX/Redis for win-prob or risk-scoring if <500ms p95 not met; scale-to-zero and cost tuning for Azure ML. Runbook `deployment/monitoring/runbooks/performance-optimization.md`: when to add ONNX/Redis (p95≥500ms), ONNX export/serve and Redis cache (config-driven), fallback to Azure ML; scale-to-zero and cost tuning (min capacity, batch vs real-time, reserve/spot). Implementation TBD when SLO not met.
 
 ---
 
 ### Phase 5 (Month 12) — **Future (out of initial scope)**
 
-- [ ] Rollout: beta tenants, 25/50/100%; feature flags and monitoring.
-- [ ] Validation: KPIs (Brier, MAPE, early-warning accuracy, etc.); UAT.
-- [ ] Docs: README, OpenAPI, runbooks; backfill `user requirement.md` with in-scope summary.
+- [x] Rollout: beta tenants, 25/50/100%; feature flags and monitoring. Runbook `deployment/monitoring/runbooks/rollout.md`: beta tenant selection and config (`rollout.beta_tenant_ids` or configuration-service); 25/50/100% phases (tenant list, percentage, config-driven); feature flags (existing `feature_flags`, per-tenant overrides); monitoring (Prometheus/Grafana, App Insights, alerts) and rollback.
+- [x] Validation: KPIs (Brier, MAPE, early-warning accuracy, etc.); UAT. Runbook `deployment/monitoring/runbooks/validation.md`: KPI list and targets (Brier, MAPE, early-warning accuracy, calibration, AUC-ROC, etc.), where computed (training, model-monitoring, forecasting) and stored (ml_evaluations, Azure ML runs, App Insights); UAT scope, scenario checklist, pass rate &gt;95%, who runs and where to log.
+- [x] Docs: README, OpenAPI, runbooks; backfill `user requirement.md` with in-scope summary. `documentation/requirements/user requirement.md` backfilled with BI Sales Risk in-scope (Phases 1–2, implemented Phase 3: benchmarks, drill-down); README/OpenAPI/runbooks per container and `deployment/monitoring/runbooks/`.
 
 ---
 

@@ -109,6 +109,46 @@
         "exchange": { "type": "string" },
         "queue": { "type": "string" }
       }
+    },
+    "onnx": {
+      "type": "object",
+      "description": "Plan §978: ONNX for win-prob/risk-scoring when p95≥500ms; performance-optimization.md",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "model_path": { "type": "string" }
+      }
+    },
+    "model_monitoring": {
+      "type": "object",
+      "description": "Plan §940, §9.3: thresholds for ml.model.performance.degraded and ml.model.drift.detected; model-monitoring runbook",
+      "properties": {
+        "brier_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "psi_threshold": { "type": "number", "minimum": 0 },
+        "mae_threshold": { "type": "number", "minimum": 0 }
+      }
+    },
+    "data_lake": {
+      "type": "object",
+      "description": "Plan §9.3, §11.3: read /ml_inference_logs for PSI (model-monitoring). Writer: logging DataLakeCollector.",
+      "properties": {
+        "connection_string": { "type": "string" },
+        "container": { "type": "string" },
+        "ml_inference_logs_prefix": { "type": "string" }
+      }
+    },
+    "cache": {
+      "type": "object",
+      "description": "Plan §978: Redis cache for inference when p95≥500ms",
+      "properties": {
+        "redis": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "url": { "type": "string" },
+            "ttl_seconds": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
     }
   }
 }

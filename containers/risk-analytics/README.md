@@ -88,6 +88,7 @@ See [OpenAPI Spec](./openapi.yaml)
 - `integration.sync.completed` - Log only; evaluations triggered by shard/opportunity events
 - `workflow.risk.analysis.requested` - Process workflow-triggered risk analysis
 - `workflow.risk.scoring.requested` - Process risk scoring workflow request
+- `opportunity.outcome.recorded` - RiskAnalyticsEventConsumer → OutcomeDataLakeWriter appends to Data Lake `/ml_outcomes/...` (Plan §904, DATA_LAKE_LAYOUT §2.2). Requires `data_lake.connection_string`; when unset, handler skipped.
 
 ## Dependencies
 

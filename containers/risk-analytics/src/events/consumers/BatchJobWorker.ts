@@ -6,7 +6,7 @@
  * risk-clustering (Plan §915): RiskClusteringService TBD (§914); stub publishes workflow.job.completed.
  * account-health (Plan §915): AccountHealthService TBD (§917); stub publishes workflow.job.completed.
  * propagation (Plan §915, §916): RiskPropagationService.computeAndPersistForTenant; stub (no persistence) until graph + Azure ML batch.
- * model-monitoring (Plan §9.3, §940): calls ml-service POST /api/v1/ml/model-monitoring/run; drift (PSI) + performance (Brier, MAE) stub; ml.model.drift.detected / ml.model.performance.degraded when implemented.
+ * model-monitoring (Plan §9.3, §940): calls ml-service POST /api/v1/ml/model-monitoring/run. ml-service implements PSI (from Data Lake /ml_inference_logs), Brier and MAE (from ml_evaluations); publishes ml.model.drift.detected and ml.model.performance.degraded when thresholds are exceeded.
  */
 
 import { unlinkSync, existsSync } from 'fs';
@@ -20,7 +20,7 @@ import { EventConsumer } from '@coder/shared';
 import { loadConfig } from '../../config';
 import { log } from '../../utils/logger';
 import { publishJobCompleted, publishJobFailed, publishOpportunityOutcomeRecorded } from '../publishers/RiskAnalyticsEventPublisher';
-import { batchJobDurationSeconds } from '../../metrics';
+import { batchJobDurationSeconds, rabbitmqMessagesConsumedTotal } from '../../metrics';
 import { upsertFromDataLakeRow } from '../../services/RiskSnapshotService';
 import { IndustryBenchmarkService } from '../../services/IndustryBenchmarkService';
 import { AccountHealthService } from '../../services/AccountHealthService';
@@ -211,6 +211,8 @@ export async function initializeBatchJobWorker(): Promise<void> {
   });
 
   consumer.on('workflow.job.trigger', async (event: { data?: { job?: string; metadata?: { from?: string; to?: string; tenantId?: string; tenantIds?: string[]; industryIds?: string[]; period?: string } } }) => {
+    const q = loadConfig().rabbitmq?.batch_jobs?.queue || 'bi_batch_jobs';
+    rabbitmqMessagesConsumedTotal.inc({ queue: q });
     const job = event.data?.job;
     const metadata = event.data?.metadata ?? {};
     const span = trace.getTracer('risk-analytics').startSpan('batch_job.run', { attributes: { 'batch_job.name': job || 'unknown' } });

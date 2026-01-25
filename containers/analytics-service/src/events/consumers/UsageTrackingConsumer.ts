@@ -8,6 +8,7 @@ import { randomUUID } from 'crypto';
 import { EventConsumer } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { loadConfig } from '../../config';
+import { rabbitmqMessagesConsumedTotal } from '../../metrics';
 
 let consumer: EventConsumer | null = null;
 
@@ -81,6 +82,7 @@ export async function initializeUsageTrackingConsumer(): Promise<void> {
       }
     });
     consumer.on('llm.inference.completed', async (ev: UsageEvent) => {
+      rabbitmqMessagesConsumedTotal.inc({ queue: mq.queue });
       try {
         await recordUsage('llm.inference.completed', ev);
       } catch (e: unknown) {
@@ -89,6 +91,7 @@ export async function initializeUsageTrackingConsumer(): Promise<void> {
       }
     });
     consumer.on('embedding.generated', async (ev: UsageEvent) => {
+      rabbitmqMessagesConsumedTotal.inc({ queue: mq.queue });
       try {
         await recordUsage('embedding.generated', ev);
       } catch (e: unknown) {

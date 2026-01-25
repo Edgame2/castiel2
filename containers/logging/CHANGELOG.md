@@ -7,10 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **README, docs/logs-events.md:** `ml.model.drift.detected` doc: "when PSI implemented" → "when PSI > psi_threshold"; `ml.model.performance.degraded` doc: add "or MAE > mae_threshold" (ml-service ModelMonitoringService implements both).
+
 ### Added
+- **Inference logging (Plan §940, §11.3, DATA_LAKE_LAYOUT §2.3):** **DataLakeCollector** writes to `/ml_inference_logs/year=.../month=.../day=.../` for `risk.evaluated` (modelId=risk-evaluation, prediction=riskScore, featureVector from categoryScores/topDrivers) and `ml.prediction.completed` (modelId, opportunityId; prediction/featureVector when present in event). Config: `data_lake.ml_inference_logs_prefix` (default `/ml_inference_logs`); `rabbitmq.data_lake.bindings` adds `ml.prediction.completed`. Enables model-monitoring drift (PSI) when implemented. ml-service may add `prediction` to `ml.prediction.completed` in a follow-up.
+- **Observability (Plan §8.5.2):** `rabbitmq_messages_consumed_total` Counter (label `queue`) in `DataLakeCollector` and `MLAuditConsumer` when consuming from `logging_data_lake` and `logging_ml_audit`; feeds deployment/monitoring/README and consumer-scaling runbook.
 - **Documentation:** `docs/logs-events.md` — DataLakeCollector (`risk.evaluated` → Parquet) and MLAuditConsumer (`risk.evaluated`, `ml.prediction.completed`, `remediation.workflow.completed` → audit Blob). Plan §3.5, FIRST_STEPS §3, DATA_LAKE_LAYOUT.
 - **README:** Configuration reference for `data_lake.*` (connection_string, container, path_prefix, audit_path_prefix) and `rabbitmq.data_lake` / `rabbitmq.ml_audit` (queues, bindings); Consumed Events table for DataLakeCollector and MLAuditConsumer.
 - **MLAuditConsumer (Plan §10):** `risk.prediction.generated` added to `rabbitmq.ml_audit.bindings`. 30/60/90-day risk predictions from risk-analytics (EarlyWarningService.generatePredictions) are written to audit Blob.
+- **MLAuditConsumer (Plan §940):** `ml.model.drift.detected` and `ml.model.performance.degraded` added to `rabbitmq.ml_audit.bindings`. Model-monitoring events from ml-service are written to audit Blob.
 
 ## [1.2.0] - 2025-01-24
 

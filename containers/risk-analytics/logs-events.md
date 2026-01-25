@@ -27,9 +27,10 @@ The Risk Analytics module publishes the following events to the `coder_events` e
 | `risk.prediction.generated` | 30/60/90-day risk prediction written to risk_predictions (Plan §10). Payload: predictionId, opportunityId, horizons, modelId, predictionDate. Publisher: when EarlyWarningService.generatePredictions succeeds | Logging (MLAuditConsumer) |
 | `opportunity.quick_action.requested` | Quick action from EarlyWarningCard/AnomalyCard (Plan §942, §11.10). Payload: opportunityId, userId, action (create_task\|log_activity\|start_remediation), payload?. Consumers: workflow-orchestrator, integration-manager, recommendations. | (async; no Logging consumer by default) |
 | `anomaly.detected` | Anomaly alert written to risk_anomaly_alerts (Plan §920). Payload: tenantId, opportunityId, anomalyType, severity, description, detectedAt. Published when statistical/ML detection is implemented. Consumers: notification-manager, logging. | Logging, notification-manager |
+| `hitl.approval.requested` | HITL (Plan §972): when feature_flags.hitl_approvals and riskScore ≥ hitl_risk_min and amount ≥ hitl_deal_min. Payload: tenantId, opportunityId, riskScore, amount, requestedAt; ownerId or approverId or recipientId (for notification-manager). Publisher: RiskEvaluationService after risk.evaluated. Consumers: notification-manager, workflow-orchestrator (or dedicated approval), logging/audit. | Logging (when MLAuditConsumer or HITL consumer binds), notification-manager |
 | `risk.cluster.updated` | Risk clustering batch completed (Plan §7.1, §914). Payload: clusterIds, ruleCount. Published by RiskClusteringService.computeAndPersistForTenant. Consumers: logging, cache invalidation. | Logging |
-| `ml.model.drift.detected` | (Plan §940) Published by **ml-service** ModelMonitoringService when drift (e.g. PSI) exceeds threshold. Payload: modelId, segment?, metric, delta. Consumers: logging, alerting. Not yet implemented (model-monitoring stub). | Logging |
-| `ml.model.performance.degraded` | (Plan §940) Published by **ml-service** ModelMonitoringService when performance (Brier, MAE) degrades. Payload: modelId, metric, value, threshold. Consumers: logging, alerting. Not yet implemented (model-monitoring stub). | Logging |
+| `ml.model.drift.detected` | (Plan §940) Published by **ml-service** ModelMonitoringService when PSI on `prediction` from `/ml_inference_logs` exceeds `model_monitoring.psi_threshold`. Payload: modelId, segment?, metric (e.g. `psi`), delta. Consumers: logging (MLAuditConsumer), alerting. | Logging |
+| `ml.model.performance.degraded` | (Plan §940) Published by **ml-service** ModelMonitoringService when Brier or MAE (from ml_evaluations) exceeds `model_monitoring.brier_threshold` or `model_monitoring.mae_threshold`. Payload: modelId, metric (`brier`\|`mae`), value, threshold. Consumers: logging, alerting. | Logging |
 
 ---
 
@@ -56,6 +57,24 @@ The Risk Analytics module publishes the following events to the `coder_events` e
 **Payload (data)**: `tenantId`, `opportunityId`, `anomalyType` (statistical|ml|pattern), `severity` (low|medium|high), `description`, `detectedAt`. Optional: `subtype`, `details`, `ownerId` (opportunity OwnerId; from c_opportunity.structuredData.OwnerId via shard-manager when `POST .../anomalies/detect` runs and `services.shard_manager.url` is set; notification-manager uses it to notify the owner).
 
 **Consumers**: notification-manager (alerts when `ownerId` present; Plan §7.2), Logging (audit).
+
+---
+
+### hitl.approval.requested (Plan §972)
+
+**Description**: HITL (Human-in-the-Loop) approval request when a high-risk, high-value opportunity exceeds configurable thresholds. Emitted by `RiskEvaluationService` after `risk.evaluated` when `feature_flags.hitl_approvals` is true and `riskScore >= thresholds.hitl_risk_min` and `amount >= thresholds.hitl_deal_min`.
+
+**Triggered When**:
+- Risk evaluation completes in `evaluateRisk`
+- `feature_flags.hitl_approvals === true`
+- `riskScore >= thresholds.hitl_risk_min` (default 0.8)
+- `amount >= thresholds.hitl_deal_min` (default 1_000_000); amount from `c_opportunity.structuredData.Amount` or `amount`
+
+**Publisher**: `src/events/publishers/RiskAnalyticsEventPublisher.ts` → `publishHitlApprovalRequested()`
+
+**Payload (data)**: `tenantId`, `opportunityId`, `riskScore`, `amount`, `requestedAt`. Optional: `ownerId` (from c_opportunity `OwnerId`/`ownerId`; for notification-manager), `approverId`, `recipientId`, `correlationId`, `approvalUrl`.
+
+**Consumers**: notification-manager (eventMapper; IN_APP+EMAIL when `ownerId`/`approverId`/`recipientId` present), workflow-orchestrator or dedicated approval service, logging/audit. Runbook: `deployment/monitoring/runbooks/hitl-approval-flow.md`.
 
 ---
 

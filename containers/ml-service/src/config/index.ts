@@ -29,6 +29,13 @@ export interface MLServiceConfig {
     endpoints?: Record<string, string>;
     api_key?: string;
   };
+  /** Plan §978: ONNX/Redis when p95≥500ms; performance-optimization.md. Used when implemented. */
+  onnx?: { enabled?: boolean; model_path?: string };
+  cache?: { redis?: { enabled?: boolean; url?: string; ttl_seconds?: number } };
+  /** Plan §940, §9.3: model-monitoring thresholds; model-monitoring runbook */
+  model_monitoring?: { brier_threshold?: number; psi_threshold?: number; mae_threshold?: number };
+  /** Plan §9.3, §11.3: read /ml_inference_logs for PSI when implemented. Writer: logging DataLakeCollector. */
+  data_lake?: { connection_string?: string; container?: string; ml_inference_logs_prefix?: string };
 }
 
 export function loadConfig(): MLServiceConfig {

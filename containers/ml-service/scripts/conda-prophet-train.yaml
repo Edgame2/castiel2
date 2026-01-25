@@ -15,3 +15,4 @@ dependencies:
     - joblib
     - azure-ai-ml
     - azure-identity
+    - azureml-core

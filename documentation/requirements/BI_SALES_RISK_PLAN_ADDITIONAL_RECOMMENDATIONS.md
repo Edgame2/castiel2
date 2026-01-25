@@ -11,7 +11,7 @@
 
 **Add:**
 - **Event:** `opportunity.outcome.recorded` — published by risk-analytics or a sync job when opportunity becomes Closed Won/Lost. Payload: `tenantId`, `opportunityId`, `outcome` (won|lost), `competitorId` (if loss), `closeDate`, `amount`.
-- **Consumer (ml-service or risk-analytics):** Append outcome to `ml_win_probability_predictions` or a new `ml_outcomes` container (for each prediction we can join by opportunityId+predictionDate). Also write to Data Lake for retraining.
+- **Consumer (risk-analytics):** `RiskAnalyticsEventConsumer` → `OutcomeDataLakeWriter` appends to Data Lake `/ml_outcomes/...` for retraining (DATA_LAKE_LAYOUT §2.2). Optionally append to `ml_win_probability_predictions` or `ml_outcomes` Cosmos for join by opportunityId+predictionDate.
 - **Batch job:** `outcome-sync` (e.g. daily): query shards for recently closed opportunities, publish `opportunity.outcome.recorded` or write to Data Lake. Enables periodic retraining of win-probability and risk-scoring.
 
 **Phase:** 1 (event + consumer); 2 (batch retrain pipeline that uses outcome-enriched data).

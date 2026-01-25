@@ -71,6 +71,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       workflows: config.cosmos_db.containers.workflows,
       steps: config.cosmos_db.containers.steps,
       executions: config.cosmos_db.containers.executions,
+      hitl_approvals: config.cosmos_db.containers.hitl_approvals ?? 'hitl_approvals',
     },
   });
   

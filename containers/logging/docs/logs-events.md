@@ -18,7 +18,7 @@ The Logging module consumes events from the following exchanges via RabbitMQ:
 - `plan.#` - Planning events
 - `notification.#` - Notification events
 
-**BI/risk (dedicated queues, Plan §3.5):** `risk.evaluated` (DataLakeCollector → Parquet); `risk.evaluated`, `ml.prediction.completed`, `remediation.workflow.completed` (MLAuditConsumer → audit Blob). Config: `rabbitmq.data_lake`, `rabbitmq.ml_audit`, `data_lake.*`.
+**BI/risk (dedicated queues, Plan §3.5, §940):** `risk.evaluated` (DataLakeCollector → Parquet); `risk.evaluated`, `ml.prediction.completed`, `remediation.workflow.completed`, `ml.model.drift.detected`, `ml.model.performance.degraded` (MLAuditConsumer → audit Blob). Config: `rabbitmq.data_lake`, `rabbitmq.ml_audit`, `data_lake.*`.
 
 ---
 
@@ -776,23 +776,32 @@ Per BI_SALES_RISK_IMPLEMENTATION_PLAN §3.5, FIRST_STEPS §3, and BI_SALES_RISK_
 
 ### risk.evaluated (DataLakeCollector)
 
-**Description**: Written by **DataLakeCollector** to Azure Data Lake as Parquet at `/risk_evaluations/year=YYYY/month=MM/day=DD/*.parquet`. Used by risk-snapshot-backfill and training.
+**Description**: Written by **DataLakeCollector** to Azure Data Lake: (1) Parquet at `/risk_evaluations/year=YYYY/month=MM/day=DD/*.parquet` (DATA_LAKE_LAYOUT §2.1; risk-snapshot-backfill, training); (2) inference log at `/ml_inference_logs/...` (modelId=risk-evaluation, prediction=riskScore, featureVector from categoryScores/topDrivers; Plan §940, §11.3, §2.3).
 
 **Handler**: `src/events/consumers/DataLakeCollector.ts`  
-**Queue**: `rabbitmq.data_lake.queue` (e.g. `logging_data_lake`), bindings: `risk.evaluated`
+**Queue**: `rabbitmq.data_lake.queue` (e.g. `logging_data_lake`), bindings: `risk.evaluated`, `ml.prediction.completed`
 
 **Parquet columns** (DATA_LAKE_LAYOUT §2.1): `tenantId`, `opportunityId`, `riskScore`, `categoryScores` (JSON string), `topDrivers` (optional, JSON), `dataQuality` (optional, JSON), `timestamp` (ISO), `evaluationId` (optional).
 
+### ml.prediction.completed (DataLakeCollector)
+
+**Description**: **DataLakeCollector** writes an inference-log row to `/ml_inference_logs/year=YYYY/month=MM/day=DD/*.parquet` (DATA_LAKE_LAYOUT §2.3, Plan §940, §11.3). Columns: `tenantId`, `opportunityId`, `modelId`, `timestamp`; optional `featureVector`, `prediction` (when present in event). Enables model-monitoring drift (PSI) when ml-service reads /ml_inference_logs. ml-service may add `prediction` to the event in a follow-up.
+
+**Handler**: `src/events/consumers/DataLakeCollector.ts`  
+**Queue**: `rabbitmq.data_lake.queue` (e.g. `logging_data_lake`), bindings: `risk.evaluated`, `ml.prediction.completed`
+
 ---
 
-### risk.evaluated, risk.prediction.generated, ml.prediction.completed, remediation.workflow.completed (MLAuditConsumer)
+### risk.evaluated, risk.prediction.generated, ml.prediction.completed, remediation.workflow.completed, hitl.approval.requested, hitl.approval.completed, ml.model.drift.detected, ml.model.performance.degraded (MLAuditConsumer)
 
 **Description**: Written by **MLAuditConsumer** to audit Blob at `data_lake.audit_path_prefix/year=YYYY/month=MM/day=DD/{routingKey}-{id}.json`. Immutable; 7-year retention per Plan.
 
 **Handler**: `src/events/consumers/MLAuditConsumer.ts`  
-**Queue**: `rabbitmq.ml_audit.queue` (e.g. `logging_ml_audit`), bindings: `risk.evaluated`, `risk.prediction.generated`, `ml.prediction.completed`, `remediation.workflow.completed`
+**Queue**: `rabbitmq.ml_audit.queue` (e.g. `logging_ml_audit`), bindings: `risk.evaluated`, `risk.prediction.generated`, `ml.prediction.completed`, `remediation.workflow.completed`, **`hitl.approval.requested`**, **`hitl.approval.completed`** (Plan §972), **`ml.model.drift.detected`**, **`ml.model.performance.degraded`** (Plan §940).
 
-**Blob content**: `{ eventType, timestamp, tenantId, userId?, data, id, source }`. `risk.prediction.generated` (Plan §10): payload from risk-analytics when EarlyWarningService.generatePredictions writes to risk_predictions.
+**Blob content**: `{ eventType, timestamp, tenantId, userId?, data, id, source }`. `risk.prediction.generated` (Plan §10): payload from risk-analytics when EarlyWarningService.generatePredictions writes to risk_predictions. **hitl.approval.requested**: risk-analytics when HITL thresholds met; **hitl.approval.completed**: approval API on approve/reject (Plan §972). **ml.model.drift.detected**: ml-service when PSI exceeds threshold (modelId, segment?, metric, delta); **ml.model.performance.degraded**: ml-service when Brier &gt; brier_threshold or MAE &gt; mae_threshold (modelId, metric, value, threshold). **notification-manager** consumes `hitl.approval.requested` for IN_APP+EMAIL when `ownerId`/`approverId`/`recipientId` present.
+
+**Runbook**: `deployment/monitoring/runbooks/hitl-approval-flow.md`
 
 ---
 

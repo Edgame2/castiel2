@@ -167,6 +167,117 @@ paths:
           description: Unauthorized
         '500':
           $ref: '#/components/responses/InternalError'
+  /portfolios/{id}/summary:
+    get:
+      tags:
+        - Dashboard Analytics
+      summary: Portfolio summary (Plan §957)
+      description: Tenant-level aggregates from shard-manager; opportunityCount, accountsCount, totalPipeline.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: opportunityCount, accountsCount, totalPipeline
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  opportunityCount: { type: number }
+                  accountsCount: { type: number }
+                  totalPipeline: { type: number }
+        '401': { description: Unauthorized }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /portfolios/{id}/accounts:
+    get:
+      tags:
+        - Dashboard Analytics
+      summary: Portfolio accounts (Plan §957)
+      description: c_account from shard-manager for drill-down.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of { id, name }
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    name: { type: string }
+        '401': { description: Unauthorized }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /accounts/{id}/opportunities:
+    get:
+      tags:
+        - Dashboard Analytics
+      summary: Account opportunities (Plan §957)
+      description: c_opportunity where AccountId=id from shard-manager.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of { id, name, amount, stageName }
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    name: { type: string }
+                    amount: { type: number }
+                    stageName: { type: string }
+        '401': { description: Unauthorized }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /opportunities/{id}/activities:
+    get:
+      tags:
+        - Dashboard Analytics
+      summary: Opportunity activities (Plan §957)
+      description: has_activity related shards (c_email, c_call, c_meeting, etc.) from shard-manager.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of { id, type, createdAt, summary }
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    type: { type: string }
+                    createdAt: { type: string }
+                    summary: { type: string }
+        '401': { description: Unauthorized }
+        '500': { $ref: '#/components/responses/InternalError' }
   /dashboard/widgets/{widgetId}/cache:
     get:
       tags:

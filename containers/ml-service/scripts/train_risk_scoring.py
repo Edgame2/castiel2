@@ -46,8 +46,9 @@ def main() -> int:
         import numpy as np
         import pandas as pd
         import xgboost as xgb
+        from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
     except ImportError as e:
-        print(f"Required: pip install pandas xgboost pyarrow. For Azure ML register: azure-ai-ml azure-identity. {e}", file=sys.stderr)
+        print(f"Required: pip install pandas xgboost pyarrow scikit-learn. For Azure ML register: azure-ai-ml azure-identity. {e}", file=sys.stderr)
         return 1
 
     # Load data
@@ -75,6 +76,27 @@ def main() -> int:
 
     model = xgb.XGBRegressor(objective="reg:squarederror", n_estimators=args.param_n_estimators, max_depth=args.param_max_depth)
     model.fit(X, y)
+
+    # Metrics (Plan §874; regression: RMSE, MAE, R²)
+    pred = model.predict(X)
+    rmse = float(np.sqrt(mean_squared_error(y, pred)))
+    mae = float(mean_absolute_error(y, pred))
+    r2 = float(r2_score(y, pred))
+    print(f"RMSE: {rmse:.4f}", file=sys.stderr)
+    print(f"MAE: {mae:.4f}", file=sys.stderr)
+    print(f"R2: {r2:.4f}", file=sys.stderr)
+
+    # Log to Azure ML run when executed as an Azure ML Job (Plan §874)
+    try:
+        from azureml.core import Run
+
+        run = Run.get_context()
+        if run and getattr(run, "id", None) and "OfflineRun" not in str(getattr(run, "id", "")):
+            run.log("RMSE", rmse)
+            run.log("MAE", mae)
+            run.log("R2", r2)
+    except Exception:
+        pass  # not in Azure ML or azureml-core not installed; stderr already printed
 
     model.get_booster().save_model("model.json")
 

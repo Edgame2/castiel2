@@ -18,4 +18,10 @@ export const httpRequestDurationSeconds = new Histogram({
   buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
 });
 
+export const rabbitmqMessagesConsumedTotal = new Counter({
+  name: 'rabbitmq_messages_consumed_total',
+  help: 'Total RabbitMQ messages consumed (Plan §8.5.2, deployment/monitoring/README). Label queue.',
+  labelNames: ['queue'],
+});
+
 export { register };

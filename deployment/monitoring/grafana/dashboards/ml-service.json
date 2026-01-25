@@ -47,6 +47,31 @@
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisCenteredZero": false },
+          "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 0.5}] },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "id": 4,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ml_prediction_duration_seconds_bucket{job=\"ml-service\"}[5m])) by (le, model))",
+          "legendFormat": "p95 {{model}}",
+          "refId": "A"
+        }
+      ],
+      "title": "ML prediction latency p95 by model (SLO < 500 ms)",
+      "type": "timeseries",
+      "description": "Plan §11.7 SLO. Breach → consider ONNX/Redis; see deployment/monitoring/README.md SLOs, runbooks/performance-optimization.md."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
         "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisCenteredZero": false }, "unit": "reqps" },
         "overrides": []
       },
@@ -62,6 +87,66 @@
       ],
       "title": "ml-service HTTP request rate",
       "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisCenteredZero": false }, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "id": 5,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "sum(increase(ml_drift_checks_total{job=\"ml-service\"}[7d])) by (model)",
+          "legendFormat": "{{model}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Model-monitoring: PSI drift checks (7d)",
+      "type": "timeseries",
+      "description": "Plan §8.5.2, §940. model-monitoring job (weekly); ml_drift_checks_total by model."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisCenteredZero": false }, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "id": 6,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "sum(increase(ml_drift_detections_total{job=\"ml-service\"}[7d])) by (model)",
+          "legendFormat": "{{model}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Model-monitoring: Drift detections (7d)",
+      "type": "timeseries",
+      "description": "Plan §8.5.2, §940. ml.model.drift.detected when PSI > psi_threshold; ml_drift_detections_total by model."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisCenteredZero": false }, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "id": 7,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "sum(increase(ml_performance_degraded_total{job=\"ml-service\"}[7d])) by (model, metric)",
+          "legendFormat": "{{model}} {{metric}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Model-monitoring: Performance degraded (7d)",
+      "type": "timeseries",
+      "description": "Plan §8.5.2, §940. ml.model.performance.degraded when Brier or MAE > threshold; ml_performance_degraded_total by model, metric."
     }
   ],
   "refresh": "30s",

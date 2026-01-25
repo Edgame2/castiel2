@@ -1,7 +1,8 @@
 /**
  * ML Audit Consumer
- * Subscribes to risk.evaluated, risk.prediction.generated, ml.prediction.completed, remediation.workflow.completed;
- * writes to audit Blob (immutable). Per FIRST_STEPS §3, Plan §3.5, §10.
+ * Subscribes to risk.evaluated, risk.prediction.generated, ml.prediction.completed, remediation.workflow.completed,
+ * hitl.approval.requested, hitl.approval.completed, ml.model.drift.detected, ml.model.performance.degraded;
+ * writes to audit Blob (immutable). Per FIRST_STEPS §3, Plan §3.5, §10, §972, §940.
  */
 
 import amqp from 'amqplib';
@@ -9,6 +10,7 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import { randomUUID } from 'crypto';
 import { getConfig } from '../../config';
 import { log } from '../../utils/logger';
+import { rabbitmqMessagesConsumedTotal } from '../../metrics';
 
 export class MLAuditConsumer {
   private channel: amqp.Channel | null = null;
@@ -52,6 +54,7 @@ export class MLAuditConsumer {
         mq.queue,
         async (msg) => {
           if (!msg) return;
+          rabbitmqMessagesConsumedTotal.inc({ queue: mq.queue });
           try {
             const event = JSON.parse(msg.content.toString()) as Record<string, unknown>;
             await this.writeAuditBlob(event, msg.fields.routingKey as string, dl);

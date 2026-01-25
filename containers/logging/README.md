@@ -72,7 +72,7 @@ pnpm start
 | **data_lake.path_prefix** | string | /risk_evaluations | Path prefix for DataLakeCollector Parquet output. |
 | **data_lake.audit_path_prefix** | string | /ml_audit | Path prefix for MLAuditConsumer audit JSON blobs. |
 | **rabbitmq.data_lake.queue** | string | logging_data_lake | Queue for DataLakeCollector. Bindings: `risk.evaluated`. |
-| **rabbitmq.ml_audit.queue** | string | logging_ml_audit | Queue for MLAuditConsumer. Bindings: `risk.evaluated`, `ml.prediction.completed`, `remediation.workflow.completed`. |
+| **rabbitmq.ml_audit.queue** | string | logging_ml_audit | Queue for MLAuditConsumer. Bindings: `risk.evaluated`, `risk.prediction.generated`, `ml.prediction.completed`, `remediation.workflow.completed`, `hitl.approval.requested`, `hitl.approval.completed`, `ml.model.drift.detected`, `ml.model.performance.degraded` (Plan §972, §940). |
 | defaults.hash_chain.enabled | boolean | true | Enable tamper-evident logging |
 | defaults.redaction.enabled | boolean | true | Enable sensitive data redaction |
 | defaults.retention.default_days | number | 90 | Default retention period |
@@ -120,11 +120,16 @@ See [OpenAPI Specification](./docs/openapi.yaml)
 
 | Event | Handler | Output |
 |-------|---------|--------|
-| `risk.evaluated` | **DataLakeCollector** | Parquet at `/risk_evaluations/year=.../month=.../day=.../` (DATA_LAKE_LAYOUT §2.1) |
+| `risk.evaluated` | **DataLakeCollector** | Parquet at `/risk_evaluations/year=.../month=.../day=.../` (DATA_LAKE_LAYOUT §2.1); and inference log at `/ml_inference_logs/...` (Plan §940, §2.3). |
+| `ml.prediction.completed` | **DataLakeCollector** | Inference log Parquet at `/ml_inference_logs/year=.../month=.../day=.../` (DATA_LAKE_LAYOUT §2.3, Plan §940). |
 | `risk.evaluated` | **MLAuditConsumer** | Audit JSON at `audit_path_prefix/year=.../month=.../day=.../` (Blob, 7-year retention) |
 | `risk.prediction.generated` | **MLAuditConsumer** | Audit JSON (predictionId, opportunityId, horizons, modelId, predictionDate; Plan §10) |
 | `ml.prediction.completed` | **MLAuditConsumer** | Audit JSON (modelId, opportunityId?, inferenceMs) |
 | `remediation.workflow.completed` | **MLAuditConsumer** | Audit JSON |
+| `hitl.approval.requested` | **MLAuditConsumer** | Audit JSON (Plan §972; tenantId, opportunityId, riskScore, amount, requestedAt) |
+| `hitl.approval.completed` | **MLAuditConsumer** | Audit JSON (Plan §972; tenantId, opportunityId, approvalId, approved, decidedBy, decidedAt) |
+| `ml.model.drift.detected` | **MLAuditConsumer** | Audit JSON (Plan §940; modelId, segment?, metric, delta; ml-service when PSI &gt; psi_threshold) |
+| `ml.model.performance.degraded` | **MLAuditConsumer** | Audit JSON (Plan §940; modelId, metric, value, threshold; ml-service when Brier &gt; brier_threshold or MAE &gt; mae_threshold) |
 
 ### Published Events
 

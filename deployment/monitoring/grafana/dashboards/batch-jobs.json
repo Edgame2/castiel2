@@ -66,6 +66,26 @@
     {
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisCenteredZero": false }, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "id": 6,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "sum(rate(rabbitmq_messages_consumed_total{queue=~\"logging_data_lake|logging_ml_audit|analytics_service\"}[5m])) by (queue)",
+          "legendFormat": "{{queue}}",
+          "refId": "A"
+        }
+      ],
+      "title": "BI/risk queues (logging, analytics) consumption rate",
+      "type": "timeseries",
+      "description": "DataLakeCollector (logging_data_lake), MLAuditConsumer (logging_ml_audit), UsageTrackingConsumer (analytics_service). Runbook: consumer-scaling.md."
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
         "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisCenteredZero": false }, "unit": "reqps" },
         "overrides": []
       },
@@ -80,6 +100,25 @@
         }
       ],
       "title": "workflow-orchestrator HTTP request rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisCenteredZero": false }, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "id": 5,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "sum(increase(batch_job_triggers_total[24h])) by (batch_job)",
+          "legendFormat": "{{batch_job}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Batch job triggers (24h) by job",
       "type": "timeseries"
     }
   ],

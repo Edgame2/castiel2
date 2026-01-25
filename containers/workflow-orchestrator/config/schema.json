@@ -45,7 +45,8 @@
           "properties": {
             "workflows": { "type": "string" },
             "steps": { "type": "string" },
-            "executions": { "type": "string" }
+            "executions": { "type": "string" },
+            "hitl_approvals": { "type": "string", "description": "Plan §972; HITL approval requests from hitl.approval.requested" }
           },
           "required": ["workflows", "steps", "executions"]
         }

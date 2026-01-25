@@ -7,7 +7,7 @@ import { EventConsumer } from '@coder/shared';
 import { loadConfig } from '../../config';
 import { log } from '../../utils/logger';
 import { WorkflowOrchestratorService } from '../../services/WorkflowOrchestratorService';
-import { WorkflowStepType } from '../../types/workflow.types';
+import { createFromEvent } from '../../services/HitlApprovalService';
 
 let consumer: EventConsumer | null = null;
 let workflowOrchestratorService: WorkflowOrchestratorService | null = null;
@@ -179,6 +179,35 @@ export async function initializeEventConsumer(): Promise<void> {
         event.data?.error || 'Recommendation generation failed',
         tenantId
       );
+    });
+
+    // HITL (Plan §972, hitl-approval-flow runbook): create approval from hitl.approval.requested
+    consumer.on('hitl.approval.requested', async (event) => {
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      const d = event.data;
+      if (!tenantId || !d?.opportunityId || typeof d.riskScore !== 'number' || typeof d.amount !== 'number') {
+        log.warn('hitl.approval.requested missing tenantId, opportunityId, riskScore or amount', { hasData: !!d, service: 'workflow-orchestrator' });
+        return;
+      }
+      try {
+        await createFromEvent(tenantId, {
+          opportunityId: d.opportunityId,
+          riskScore: d.riskScore,
+          amount: d.amount,
+          requestedAt: d.requestedAt ?? new Date().toISOString(),
+          ownerId: d.ownerId,
+          approverId: d.approverId,
+          recipientId: d.recipientId,
+          correlationId: d.correlationId,
+          approvalUrl: d.approvalUrl,
+        });
+      } catch (error: unknown) {
+        log.error('Failed to create HITL approval from hitl.approval.requested', error instanceof Error ? error : new Error(String(error)), {
+          opportunityId: d.opportunityId,
+          tenantId,
+          service: 'workflow-orchestrator',
+        });
+      }
     });
 
     await consumer.start();

@@ -4,6 +4,7 @@ import { initializeDatabase, connectDatabase, disconnectDatabase, setupJWT, setu
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import { loadConfig } from './config';
+import { register } from './metrics';
 import { registerRoutes } from './routes';
 
 let app: FastifyInstance | null = null;
@@ -71,6 +72,11 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Register routes
   await registerRoutes(fastify, config);
+
+  // Prometheus /metrics (Plan §8.5.2)
+  fastify.get('/metrics', async (_request, reply) => {
+    return reply.type('text/plain; version=0.0.4').send(await register.metrics());
+  });
 
   app = fastify;
   return fastify;

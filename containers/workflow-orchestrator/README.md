@@ -32,7 +32,8 @@ cp config/default.yaml config/local.yaml
 
 The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers). Ensure the following containers exist:
 
-- `workflow-orchestrator_data` - Main data container
+- `workflow_workflows`, `workflow_steps`, `workflow_executions` - Workflow data
+- `hitl_approvals` - HITL approvals (Plan §972); partition key `tenantId`
 
 ### Running
 

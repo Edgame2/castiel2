@@ -352,7 +352,7 @@ paths:
     post:
       tags: [Predictions]
       summary: Model monitoring run (Plan §940, §9.3)
-      description: Internal. Called by risk-analytics BatchJobWorker. Run drift (PSI) and performance (Brier, MAE) checks. Stub returns driftChecked=0, performanceChecked=0 until wired. Full impl will publish ml.model.drift.detected / ml.model.performance.degraded.
+      description: Internal. Called by risk-analytics BatchJobWorker. Run drift (PSI from /ml_inference_logs) and performance (Brier from ml_evaluations) checks. Publishes ml.model.drift.detected when PSI > psi_threshold, ml.model.performance.degraded when Brier > brier_threshold. Returns driftChecked (PSI checks with enough data), performanceChecked (Brier docs checked). Requires data_lake.connection_string for PSI.
       security: []
       requestBody:
         content:

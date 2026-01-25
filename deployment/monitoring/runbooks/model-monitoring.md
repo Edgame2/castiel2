@@ -11,18 +11,18 @@ Per [BI_SALES_RISK_IMPLEMENTATION_PLAN.md](../../../documentation/requirements/B
 - **Schedule:** `0 6 * * 0` (Sunday 6 AM) via workflow-orchestrator `BatchJobScheduler`. Overridable with `MODEL_MONITORING_CRON` / `batch_jobs.model_monitoring_cron`.
 - **Trigger:** `workflow.job.trigger` to queue `bi_batch_jobs`.
 - **Worker:** risk-analytics `BatchJobWorker` calls ml-service `POST /api/v1/ml/model-monitoring/run` with `{ tenantIds?: string[] }`.
-- **ml-service:** `ModelMonitoringService.runForTenants` – drift (PSI) and performance (Brier, MAE). Currently a **stub** (`driftChecked: 0`, `performanceChecked: 0`). Full impl: log feature vector at inference (Data Lake or `ml_inference_logs`); compute PSI vs baseline, Brier/MAE vs outcomes; publish `ml.model.drift.detected` / `ml.model.performance.degraded`.
+- **ml-service:** `ModelMonitoringService.runForTenants` – **performance (Brier, MAE):** queries `ml_evaluations` (TOP 100 per tenant); reads Brier from `doc.brier` or `doc.metrics.brier`/`Brier`—when Brier > `model_monitoring.brier_threshold` (default 0.2) publishes `ml.model.performance.degraded`; reads MAE from `doc.mae` or `doc.metrics.mae`/`MAE`—when MAE > `model_monitoring.mae_threshold` (default 0.2) publishes `ml.model.performance.degraded`. **Drift (PSI):** reads `/ml_inference_logs` from Data Lake (when `data_lake.connection_string` set); baseline = 30–60 days ago, current = last 7 days; PSI on `prediction` per (tenantId, modelId); when PSI > `model_monitoring.psi_threshold` (default 0.2) publishes `ml.model.drift.detected`. Min 30 samples in each window.
 
 ---
 
-## 2. Events (when implemented)
+## 2. Events
 
 | Event | When | Payload (min) | Action |
 |-------|------|---------------|--------|
-| `ml.model.drift.detected` | PSI (or other drift metric) exceeds threshold | modelId, segment?, metric, delta | Investigate; consider retrain or rollback. |
-| `ml.model.performance.degraded` | Brier/MAE degrades vs baseline | modelId, metric, value, threshold | Investigate; consider rollback. |
+| `ml.model.drift.detected` | PSI on `prediction` from `/ml_inference_logs` exceeds `model_monitoring.psi_threshold`. | modelId, segment?, metric, delta | Investigate; consider retrain or rollback. |
+| `ml.model.performance.degraded` | Brier or MAE (from ml_evaluations) > `model_monitoring.brier_threshold` or `model_monitoring.mae_threshold` (default 0.2). | modelId, metric, value, threshold | Investigate; consider rollback. |
 
-Consumers: logging, alerting. See risk-analytics `logs-events.md`.
+Consumers: logging (MLAuditConsumer → Blob; [audit-event-flow.md](audit-event-flow.md)), alerting. See risk-analytics `logs-events.md`.
 
 ---
 
@@ -54,15 +54,14 @@ When `ml.model.drift.detected` or `ml.model.performance.degraded` fires:
 
 - **risk-analytics `config`:** `services.ml_service.url` must be set for the model-monitoring job to call ml-service. If unset, the worker logs an error and publishes `workflow.job.failed`.
 - **workflow-orchestrator:** `batch_jobs.model_monitoring_cron` (default `0 6 * * 0`).
-- **ml-service:** `azure_ml.*` for endpoints; future: `ml_inference_logs` or Data Lake paths for feature logging.
+- **ml-service:** `azure_ml.*` for endpoints; `model_monitoring.brier_threshold` (default 0.2), `model_monitoring.mae_threshold` (default 0.2), `model_monitoring.psi_threshold` (default 0.2). **Inference logs:** DataLakeCollector (logging) writes to `/ml_inference_logs`; ml-service reads from same path: `data_lake.connection_string`, `data_lake.container`, `data_lake.ml_inference_logs_prefix` (default `/ml_inference_logs`). When `data_lake.connection_string` is empty, model-monitoring skips PSI. PSI: baseline 30–60 days ago, current last 7 days; min 30 samples per window.
 
 ---
 
 ## 6. Monitoring and dashboards
 
-- **Grafana:** `batch-jobs.json` – `batch_job_duration_seconds{job_name="model-monitoring"}`, `batch_job_triggers_total{job="model-monitoring"}`.
-- **ml-service:** `ml-service.json` – prediction rate and latency by model.
-- **Logs:** risk-analytics `BatchJobWorker` logs `model-monitoring completed` or `model-monitoring failed` with `tenants`, `driftChecked`, `performanceChecked`.
+- **Grafana:** [batch-jobs.json](../grafana/dashboards/batch-jobs.json) – `batch_job_duration_seconds{job_name="model-monitoring"}`, `batch_job_triggers_total{batch_job="model-monitoring"}`. [ml-service.json](../grafana/dashboards/ml-service.json) – prediction rate/latency; `ml_drift_checks_total`, `ml_drift_detections_total`, `ml_performance_degraded_total` (labels `model`, `metric`) for model-monitoring (Plan §8.5.2).
+- **Logs:** risk-analytics `BatchJobWorker` logs `model-monitoring completed` or `model-monitoring failed` with `tenants`, `driftChecked`, `performanceChecked`. ml-service `ModelMonitoringService` returns `driftChecked` = number of (tenantId, modelId) PSI checks with enough data; `performanceChecked` = Brier evaluations checked.
 
 ---
 
@@ -70,5 +69,8 @@ When `ml.model.drift.detected` or `ml.model.performance.degraded` fires:
 
 - [BI_SALES_RISK_IMPLEMENTATION_PLAN.md](../../../documentation/requirements/BI_SALES_RISK_IMPLEMENTATION_PLAN.md) §940, §9.3, §11.7
 - [deployment/monitoring/README.md](../README.md) – Prometheus, Grafana, metrics
+- [model-governance.md](model-governance.md) – segment fairness (Plan §975 §2.1; when added to model-monitoring: Brier/calibration by industry, region, deal size)
 - risk-analytics `logs-events.md` – `ml.model.drift.detected`, `ml.model.performance.degraded`
-- Plan §11.7: runbooks for **backfill failure**, **consumer scaling** – see main operations runbooks where present.
+- [audit-event-flow.md](audit-event-flow.md) – `ml.model.drift.detected`, `ml.model.performance.degraded` → MLAuditConsumer
+- [backfill-failure.md](backfill-failure.md) – risk-snapshot-backfill and outcome-sync failure (Plan §11.7).
+- [consumer-scaling.md](consumer-scaling.md) – RabbitMQ consumer scaling (Plan §11.7).

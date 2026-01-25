@@ -24,7 +24,7 @@ import {
 import { RiskCatalog, DetectedRisk } from '../types/risk-catalog.types';
 import { RiskCatalogService } from './RiskCatalogService';
 import { trace } from '@opentelemetry/api';
-import { publishRiskAnalyticsEvent } from '../events/publishers/RiskAnalyticsEventPublisher';
+import { publishRiskAnalyticsEvent, publishHitlApprovalRequested } from '../events/publishers/RiskAnalyticsEventPublisher';
 import { riskEvaluationsTotal } from '../metrics';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -369,6 +369,23 @@ export class RiskEvaluationService {
       trace.getTracer('risk-analytics').startSpan('risk.evaluated', {
         attributes: { tenantId: request.tenantId, opportunityId: request.opportunityId },
       }).end();
+
+      // HITL (Plan §972): if hitl_approvals on and riskScore ≥ hitl_risk_min and amount ≥ hitl_deal_min, publish hitl.approval.requested.
+      const hitlOn = this.config.feature_flags?.hitl_approvals === true;
+      const hitlRiskMin = typeof this.config.thresholds?.hitl_risk_min === 'number' ? this.config.thresholds.hitl_risk_min : 0.8;
+      const hitlDealMin = typeof this.config.thresholds?.hitl_deal_min === 'number' ? this.config.thresholds.hitl_deal_min : 1_000_000;
+      const amount = Number(opportunityShard?.structuredData?.Amount ?? opportunityShard?.structuredData?.amount ?? 0);
+      const ownerId = opportunityShard?.structuredData?.OwnerId ?? opportunityShard?.structuredData?.ownerId;
+      if (hitlOn && riskScore >= hitlRiskMin && amount >= hitlDealMin) {
+        await publishHitlApprovalRequested(request.tenantId, {
+          opportunityId: request.opportunityId,
+          riskScore,
+          amount,
+          requestedAt: new Date().toISOString(),
+          ownerId: typeof ownerId === 'string' ? ownerId : undefined,
+          correlationId: evaluationId,
+        });
+      }
 
       // Step 11: recordPrediction (REST) and publish outcome to adaptive-learning (MISSING_FEATURES 3.2)
       if (this.config.services.adaptive_learning?.url) {

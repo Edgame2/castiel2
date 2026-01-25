@@ -1,0 +1,41 @@
+# Azure ML v2 Command Job: prepare_training_data.py (DATA_LAKE_LAYOUT §2.4; TRAINING_SCRIPTS_SPEC §2.1).
+# Submit from containers/ml-service/scripts:
+#   az ml job create --file azml-job-prepare-training.yaml \
+#     --set inputs.risk_evaluations.path=abfs://container@account.dfs.core.windows.net/risk_evaluations \
+#     --set inputs.ml_outcomes.path=abfs://container@account.dfs.core.windows.net/ml_outcomes
+# Optionally: inputs.model_id=win_probability, inputs.tenant_id=..., inputs.partition_date=YYYY-MM-DD.
+# Output: writes to outputs.training_prep (uri_folder); use as input to train_risk_scoring or train_win_probability
+# in a pipeline, or download/upload to Data Lake for standalone train jobs.
+# Env AZURE_ML_SUBSCRIPTION_ID, AZURE_ML_RESOURCE_GROUP, AZURE_ML_WORKSPACE_NAME.
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+experiment_name: prepare-training-data
+display_name: prepare-training-data
+code: .
+command: >
+  python prepare_training_data.py
+  --risk-evaluations-path ${{inputs.risk_evaluations}}
+  --ml-outcomes-path ${{inputs.ml_outcomes}}
+  --output-path ${{outputs.training_prep}}/prepared.parquet
+  --model-id ${{inputs.model_id}}
+  --tenant-id ${{inputs.tenant_id}}
+  --partition-date ${{inputs.partition_date}}
+inputs:
+  risk_evaluations:
+    type: uri_folder
+    path: https://REPLACE_WITH_RISK_EVALUATIONS_PATH
+  ml_outcomes:
+    type: uri_folder
+    path: https://REPLACE_WITH_ML_OUTCOMES_PATH
+  model_id:
+    value: risk_scoring
+  tenant_id:
+    value: ""
+  partition_date:
+    value: ""
+outputs:
+  training_prep:
+    type: uri_folder
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+  conda_file: conda-prepare-train.yaml

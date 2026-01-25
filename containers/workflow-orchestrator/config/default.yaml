@@ -29,6 +29,8 @@ cosmos_db:
     workflows: workflow_workflows
     steps: workflow_steps
     executions: workflow_executions
+    # HITL (Plan §972, hitl-approval-flow runbook): approvals from hitl.approval.requested
+    hitl_approvals: hitl_approvals
 
 # JWT Configuration (shared with auth service)
 jwt:
@@ -69,6 +71,7 @@ rabbitmq:
     - "forecast.completed"
     - "recommendation.generation.completed"
     - "recommendation.generation.failed"
+    - "hitl.approval.requested"
 
 # Batch jobs (Plan §9.3, §915): scheduler publishes workflow.job.trigger to coder_events
 batch_jobs:
@@ -83,7 +86,7 @@ batch_jobs:
   account_health_cron: ${ACCOUNT_HEALTH_CRON:-0 3 * * *}
   # propagation (Plan §915): 5 AM; risk-analytics RiskPropagationService batch
   propagation_cron: ${PROPAGATION_CRON:-0 5 * * *}
-  # model-monitoring (Plan §9.3, §940): Sunday 6 AM; ml-service or risk-analytics — drift (PSI) + performance (Brier, MAE); publish ml.model.drift.detected / performance.degraded
+  # model-monitoring (Plan §9.3, §940): Sunday 6 AM; risk-analytics BatchJobWorker calls ml-service /api/v1/ml/model-monitoring/run; ml-service publishes ml.model.drift.detected, ml.model.performance.degraded when thresholds exceeded
   model_monitoring_cron: ${MODEL_MONITORING_CRON:-0 6 * * 0}
 
 # Feature Flags

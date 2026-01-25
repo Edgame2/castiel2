@@ -165,6 +165,38 @@ export async function publishAnomalyDetected(
   }
 }
 
+/**
+ * Publish hitl.approval.requested (Plan §972). When feature_flags.hitl_approvals and riskScore ≥ hitl_risk_min and amount ≥ hitl_deal_min.
+ * Payload: tenantId, opportunityId, riskScore, amount, requestedAt; ownerId or approverId or recipientId for notification-manager.
+ */
+export async function publishHitlApprovalRequested(
+  tenantId: string,
+  data: {
+    opportunityId: string;
+    riskScore: number;
+    amount: number;
+    requestedAt: string;
+    ownerId?: string;
+    approverId?: string;
+    recipientId?: string;
+    correlationId?: string;
+    approvalUrl?: string;
+  }
+): Promise<void> {
+  if (!publisher) {
+    log.warn('Event publisher not initialized, skipping hitl.approval.requested', { opportunityId: data.opportunityId, service: 'risk-analytics' });
+    return;
+  }
+  try {
+    await publisher.publish('hitl.approval.requested', tenantId, {
+      ...data,
+      tenantId,
+    });
+  } catch (e) {
+    log.error('Failed to publish hitl.approval.requested', e instanceof Error ? e : new Error(String(e)), { opportunityId: data.opportunityId, service: 'risk-analytics' });
+  }
+}
+
 /** Publish opportunity.outcome.recorded (DATA_LAKE_LAYOUT §3). Payload: tenantId, opportunityId, outcome, competitorId?, closeDate, amount. */
 export async function publishOpportunityOutcomeRecorded(payload: {
   tenantId: string;

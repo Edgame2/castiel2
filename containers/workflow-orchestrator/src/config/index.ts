@@ -22,6 +22,7 @@ export interface WorkflowOrchestratorConfig {
       workflows: string;
       steps: string;
       executions: string;
+      hitl_approvals?: string;
     };
   };
   jwt: { secret: string };

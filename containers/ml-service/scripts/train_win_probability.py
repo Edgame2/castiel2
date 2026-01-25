@@ -107,6 +107,17 @@ def main() -> int:
     print(f"Brier score: {brier:.4f}", file=sys.stderr)
     print(f"AUC-ROC: {auc:.4f}", file=sys.stderr)
 
+    # Log to Azure ML run when executed as an Azure ML Job (TRAINING_SCRIPTS_SPEC §3.2; Plan §876)
+    try:
+        from azureml.core import Run
+
+        run = Run.get_context()
+        if run and getattr(run, "id", None) and "OfflineRun" not in str(getattr(run, "id", "")):
+            run.log("Brier", float(brier))
+            run.log("AUC_ROC", 0.0 if (isinstance(auc, float) and np.isnan(auc)) else float(auc))
+    except Exception:
+        pass  # not in Azure ML or azureml-core not installed; stderr already printed
+
     # Save: model + feature_columns for inference (output: winProbability, confidence)
     artifact = {"model": model, "feature_columns": list(X.columns)}
     joblib.dump(artifact, "model.joblib")

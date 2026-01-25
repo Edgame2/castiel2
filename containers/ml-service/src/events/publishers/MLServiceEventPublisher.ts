@@ -50,3 +50,35 @@ export async function publishMlPredictionCompleted(
     console.warn('ml-service: Failed to publish ml.prediction.completed', e);
   }
 }
+
+/**
+ * Publish ml.model.drift.detected (Plan §940, runbook §2). PSI or other drift metric exceeds threshold.
+ * Payload: modelId, segment?, metric, delta. No-op if publisher not initialized.
+ */
+export async function publishMlModelDriftDetected(
+  tenantId: string,
+  data: { modelId: string; segment?: string; metric: string; delta: number }
+): Promise<void> {
+  if (!publisher) return;
+  try {
+    await publisher.publish('ml.model.drift.detected', tenantId, data);
+  } catch (e: unknown) {
+    console.warn('ml-service: Failed to publish ml.model.drift.detected', e);
+  }
+}
+
+/**
+ * Publish ml.model.performance.degraded (Plan §940, runbook §2). Brier/MAE exceeds threshold.
+ * Payload: modelId, metric, value, threshold. No-op if publisher not initialized.
+ */
+export async function publishMlModelPerformanceDegraded(
+  tenantId: string,
+  data: { modelId: string; metric: string; value: number; threshold: number }
+): Promise<void> {
+  if (!publisher) return;
+  try {
+    await publisher.publish('ml.model.performance.degraded', tenantId, data);
+  } catch (e: unknown) {
+    console.warn('ml-service: Failed to publish ml.model.performance.degraded', e);
+  }
+}

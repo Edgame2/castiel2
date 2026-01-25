@@ -32,4 +32,25 @@ export const mlPredictionDurationSeconds = new Histogram({
   buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
 });
 
+/** Plan §8.5.2, §940: PSI drift checks in model-monitoring (ModelMonitoringService). */
+export const mlDriftChecksTotal = new Counter({
+  name: 'ml_drift_checks_total',
+  help: 'Total PSI drift checks (model-monitoring)',
+  labelNames: ['model'],
+});
+
+/** Plan §8.5.2, §940: Drift detections (ml.model.drift.detected published). */
+export const mlDriftDetectionsTotal = new Counter({
+  name: 'ml_drift_detections_total',
+  help: 'Total drift detections (PSI > psi_threshold)',
+  labelNames: ['model'],
+});
+
+/** Plan §8.5.2, §940: Performance degraded (ml.model.performance.degraded published; Brier or MAE > threshold). */
+export const mlPerformanceDegradedTotal = new Counter({
+  name: 'ml_performance_degraded_total',
+  help: 'Total performance degraded (Brier or MAE > threshold)',
+  labelNames: ['model', 'metric'],
+});
+
 export { register };

@@ -12,5 +12,7 @@ dependencies:
   - pip
   - pip:
     - xgboost
+    - scikit-learn
     - azure-ai-ml
     - azure-identity
+    - azureml-core

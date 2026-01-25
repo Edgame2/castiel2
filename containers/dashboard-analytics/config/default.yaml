@@ -51,6 +51,8 @@ services:
     url: ${RISK_ANALYTICS_URL:-}
   forecasting:
     url: ${FORECASTING_URL:-}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3023}
 
 # RabbitMQ Configuration
 rabbitmq:

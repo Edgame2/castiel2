@@ -1,0 +1,58 @@
+# Azure ML v2 Pipeline: prepare_training_data → train_win_probability (DATA_LAKE_LAYOUT §2.4; Plan §876).
+# Chains prepare (model_id=win_probability) with train_win_probability. Submit from containers/ml-service/scripts:
+#   az ml job create --file azml-pipeline-prepare-then-win-probability.yaml \
+#     --set inputs.risk_evaluations.path=abfs://<container>@<account>.dfs.core.windows.net/<path-to-risk_evaluations> \
+#     --set inputs.ml_outcomes.path=abfs://<container>@<account>.dfs.core.windows.net/<path-to-ml_outcomes> \
+#     [--set inputs.model_name.value=win-probability-model] \
+#     [--set inputs.deploy_flag.value=--deploy] \
+#     [--set settings.default_compute=azureml:<compute>]
+# Env AZURE_ML_SUBSCRIPTION_ID, AZURE_ML_RESOURCE_GROUP, AZURE_ML_WORKSPACE_NAME. For --deploy: DEPLOY_*.
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+experiment_name: prepare-then-win-probability
+display_name: prepare-then-win-probability
+settings:
+  default_compute: azureml:cpu-cluster
+inputs:
+  risk_evaluations:
+    type: uri_folder
+    path: https://REPLACE_OR_SET_AT_SUBMIT
+  ml_outcomes:
+    type: uri_folder
+    path: https://REPLACE_OR_SET_AT_SUBMIT
+  model_name:
+    value: win-probability-model
+  deploy_flag:
+    value: ""
+
+jobs:
+  prepare_training_data:
+    type: command
+    code: .
+    command: >
+      python prepare_training_data.py
+      --risk-evaluations-path ${{inputs.risk_evaluations}}
+      --ml-outcomes-path ${{inputs.ml_outcomes}}
+      --output-path ${{outputs.training_prep}}/prepared.parquet
+      --model-id win_probability
+    inputs:
+      risk_evaluations: ${{parent.inputs.risk_evaluations}}
+      ml_outcomes: ${{parent.inputs.ml_outcomes}}
+    outputs:
+      training_prep:
+        type: uri_folder
+    environment:
+      image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+      conda_file: conda-prepare-train.yaml
+
+  train_win_probability:
+    type: command
+    code: .
+    command: python train_win_probability.py --input-path ${{inputs.training_data}} --model-name ${{inputs.model_name}} ${{inputs.deploy_flag}}
+    inputs:
+      training_data: ${{parent.jobs.prepare_training_data.outputs.training_prep}}
+      model_name: ${{parent.inputs.model_name}}
+      deploy_flag: ${{parent.inputs.deploy_flag}}
+    environment:
+      image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+      conda_file: conda-win-probability-train.yaml

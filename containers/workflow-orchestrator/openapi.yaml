@@ -12,9 +12,93 @@ servers:
 tags:
   - name: Workflows
     description: Workflow management
+  - name: HITL
+    description: Human-in-the-Loop approvals (Plan §972, hitl-approval-flow runbook)
   - name: Health
     description: Health check endpoints
 paths:
+  /hitl/approvals/{id}:
+    get:
+      tags: [HITL]
+      summary: Get HITL approval by id
+      description: Returns an HITL approval created from hitl.approval.requested. Plan §972.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: HITL approval
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  tenantId: { type: string }
+                  opportunityId: { type: string }
+                  riskScore: { type: number }
+                  amount: { type: number }
+                  requestedAt: { type: string }
+                  status: { type: string, enum: [pending, approved, rejected] }
+        '401': { description: Unauthorized }
+        '404': { description: Not found }
+  /hitl/approvals/{id}/approve:
+    post:
+      tags: [HITL]
+      summary: Approve HITL request
+      description: Approve an HITL request. Publishes hitl.approval.completed. Plan §972.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decidedBy]
+              properties:
+                decidedBy: { type: string }
+                comment: { type: string }
+      responses:
+        '200': { description: Approval updated and event published }
+        '400': { description: decidedBy required }
+        '401': { description: Unauthorized }
+        '404': { description: Not found }
+        '409': { description: Not pending }
+  /hitl/approvals/{id}/reject:
+    post:
+      tags: [HITL]
+      summary: Reject HITL request
+      description: Reject an HITL request. Publishes hitl.approval.completed. Plan §972.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decidedBy]
+              properties:
+                decidedBy: { type: string }
+                comment: { type: string }
+      responses:
+        '200': { description: Rejection updated and event published }
+        '400': { description: decidedBy required }
+        '401': { description: Unauthorized }
+        '404': { description: Not found }
+        '409': { description: Not pending }
   /workflows/{workflowId}:
     get:
       tags:
@@ -104,7 +188,7 @@ paths:
     get:
       tags: [Health]
       summary: Prometheus metrics (Plan §8.5.2, FIRST_STEPS §1)
-      description: Exposes http_requests_total, http_request_duration_seconds, batch_job_triggers_total (label job). Optional Bearer when metrics.require_auth.
+      description: Exposes http_requests_total, http_request_duration_seconds, batch_job_triggers_total (label batch_job). Optional Bearer when metrics.require_auth.
       responses:
         '200':
           description: text/plain; version=0.0.4 (Prometheus format)

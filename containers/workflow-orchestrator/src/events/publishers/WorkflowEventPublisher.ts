@@ -85,3 +85,23 @@ export async function publishJobTrigger(
     throw error;
   }
 }
+
+/**
+ * Publish hitl.approval.completed (Plan §972, hitl-approval-flow runbook). On approve/reject.
+ * Payload: tenantId, opportunityId, approvalId, approved, decidedBy, decidedAt. Consumers: logging/audit.
+ */
+export async function publishHitlApprovalCompleted(
+  tenantId: string,
+  data: { opportunityId: string; approvalId: string; approved: boolean; decidedBy: string; decidedAt: string }
+): Promise<void> {
+  if (!publisher) {
+    log.warn('Event publisher not initialized, skipping hitl.approval.completed', { approvalId: data.approvalId, service: 'workflow-orchestrator' });
+    return;
+  }
+  try {
+    await publisher.publish('hitl.approval.completed', tenantId, { ...data, tenantId });
+  } catch (e) {
+    log.error('Failed to publish hitl.approval.completed', e instanceof Error ? e : new Error(String(e)), { approvalId: data.approvalId, service: 'workflow-orchestrator' });
+    throw e;
+  }
+}

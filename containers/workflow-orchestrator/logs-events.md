@@ -19,6 +19,15 @@ The Workflow Orchestrator module publishes the following events to the `coder_ev
 | `workflow.opportunity.analysis.failed` | Workflow failed | Logging module |
 | `workflow.step.completed` | Individual workflow step completed | Logging module |
 | `workflow.job.trigger` | Batch job trigger (Plan §9.3); payload: job, metadata, triggeredBy, timestamp. Jobs: risk-snapshot-backfill, outcome-sync. Consumers: risk-analytics BatchJobWorker (bi_batch_jobs) | Logging module |
+| `hitl.approval.completed` | HITL approval decided (approve/reject). Plan §972, hitl-approval-flow runbook. Payload: tenantId, opportunityId, approvalId, approved, decidedBy, decidedAt. Publisher: WorkflowEventPublisher on POST .../approve or .../reject. Consumers: logging (MLAuditConsumer) | Logging module |
+
+---
+
+## Consumed Events
+
+| Event | Consumer | Action |
+|-------|----------|--------|
+| `hitl.approval.requested` | WorkflowOrchestratorEventConsumer | Create approval in hitl_approvals (Cosmos); published by risk-analytics when HITL thresholds met. Plan §972. |
 
 ---
 

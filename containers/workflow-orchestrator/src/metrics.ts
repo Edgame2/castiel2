@@ -20,8 +20,8 @@ export const httpRequestDurationSeconds = new Histogram({
 
 export const batchJobTriggersTotal = new Counter({
   name: 'batch_job_triggers_total',
-  help: 'Total workflow.job.trigger publishes by job name',
-  labelNames: ['job'],
+  help: 'Total workflow.job.trigger publishes by batch job id (Plan §8.5.2). Label batch_job to avoid clashing with Prometheus scrape job.',
+  labelNames: ['batch_job'],
 });
 
 export { register };

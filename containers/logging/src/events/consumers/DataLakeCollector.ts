@@ -1,7 +1,8 @@
 /**
  * Data Lake Collector
  * Subscribes to risk.evaluated, writes Parquet to /risk_evaluations/year=.../month=.../day=.../
- * Per BI_SALES_RISK_DATA_LAKE_LAYOUT §2.1, add-datalake-consumer skill, Plan §3.5.
+ * Also subscribes to risk.evaluated and ml.prediction.completed, writes to /ml_inference_logs/... (Plan §940, §11.3, DATA_LAKE_LAYOUT §2.3).
+ * Per BI_SALES_RISK_DATA_LAKE_LAYOUT §2.1, §2.3, add-datalake-consumer skill, Plan §3.5.
  */
 
 import amqp from 'amqplib';
@@ -13,8 +14,10 @@ import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
 import { getConfig } from '../../config';
 import { log } from '../../utils/logger';
+import { rabbitmqMessagesConsumedTotal } from '../../metrics';
 
 const RISK_EVALUATED = 'risk.evaluated';
+const ML_PREDICTION_COMPLETED = 'ml.prediction.completed';
 
 /** Parquet row for risk_evaluations per §2.1 */
 function eventToRow(event: Record<string, unknown>, routingKey: string): Record<string, unknown> {
@@ -76,11 +79,26 @@ export class DataLakeCollector {
         mq.queue,
         async (msg) => {
           if (!msg) return;
+          rabbitmqMessagesConsumedTotal.inc({ queue: mq.queue });
           try {
             const event = JSON.parse(msg.content.toString()) as Record<string, unknown>;
             const key = msg.fields.routingKey as string;
             if (key === RISK_EVALUATED) {
               await this.writeRiskEvaluation(event, dl);
+              const d = (event.data as Record<string, unknown>) || event;
+              await this.writeInferenceLog(event, dl, {
+                modelId: 'risk-evaluation',
+                prediction: Number(d.riskScore ?? (event as Record<string, unknown>).riskScore ?? 0),
+                featureVector: (d.categoryScores != null || d.topDrivers != null)
+                  ? JSON.stringify({ categoryScores: d.categoryScores, topDrivers: d.topDrivers })
+                  : undefined,
+              });
+            } else if (key === ML_PREDICTION_COMPLETED) {
+              const d = (event.data as Record<string, unknown>) || {};
+              await this.writeInferenceLog(event, dl, {
+                modelId: String(d.modelId ?? 'unknown'),
+                prediction: typeof d.prediction === 'number' ? d.prediction : undefined,
+              });
             }
             ch.ack(msg);
           } catch (e) {
@@ -132,6 +150,59 @@ export class DataLakeCollector {
       const block = c.getBlockBlobClient(blobPath);
       await block.uploadData(buf, { blobHTTPHeaders: { blobContentType: 'application/octet-stream' } });
       log.debug('DataLakeCollector wrote Parquet', { blobPath });
+    } finally {
+      try { unlinkSync(tmp); } catch (_) { /* ignore */ }
+    }
+  }
+
+  /**
+   * Write one row to /ml_inference_logs/year=.../month=.../day=.../ (DATA_LAKE_LAYOUT §2.3, Plan §940, §11.3).
+   */
+  private async writeInferenceLog(
+    event: Record<string, unknown>,
+    dl: { connection_string: string; container: string; path_prefix?: string; ml_inference_logs_prefix?: string },
+    opts: { modelId: string; prediction?: number; featureVector?: string | null }
+  ): Promise<void> {
+    const d = (event.data as Record<string, unknown>) || event;
+    const ts = (event.timestamp || d.timestamp || new Date()) as string | Date;
+    const tsStr = typeof ts === 'string' ? ts : new Date(ts as Date).toISOString();
+    const row: Record<string, unknown> = {
+      tenantId: String(event.tenantId ?? d.tenantId ?? ''),
+      opportunityId: String(d.opportunityId ?? (event as Record<string, unknown>).opportunityId ?? ''),
+      modelId: opts.modelId,
+      timestamp: tsStr,
+    };
+    if (opts.featureVector != null && opts.featureVector !== '') row.featureVector = opts.featureVector;
+    if (opts.prediction != null && !Number.isNaN(opts.prediction)) row.prediction = opts.prediction;
+
+    const date = new Date(tsStr);
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const prefix = (dl.ml_inference_logs_prefix || '/ml_inference_logs').replace(/^\/+/, '');
+    const blobPath = `${prefix}/year=${y}/month=${m}/day=${day}/${randomUUID()}.parquet`;
+
+    const schema = new parquet.ParquetSchema({
+      tenantId: { type: 'UTF8' },
+      opportunityId: { type: 'UTF8' },
+      modelId: { type: 'UTF8' },
+      timestamp: { type: 'UTF8' },
+      featureVector: { type: 'UTF8', optional: true },
+      prediction: { type: 'DOUBLE', optional: true },
+    });
+
+    const tmp = join(tmpdir(), `parquet-inference-${randomUUID()}.parquet`);
+    try {
+      const w = await parquet.ParquetWriter.openFile(schema, tmp);
+      await w.appendRow(row);
+      await w.close();
+      const buf = readFileSync(tmp);
+      const blob = BlobServiceClient.fromConnectionString(dl.connection_string);
+      const c = blob.getContainerClient(dl.container || 'risk');
+      await c.createIfNotExists();
+      const block = c.getBlockBlobClient(blobPath);
+      await block.uploadData(buf, { blobHTTPHeaders: { blobContentType: 'application/octet-stream' } });
+      log.debug('DataLakeCollector wrote inference log Parquet', { blobPath });
     } finally {
       try { unlinkSync(tmp); } catch (_) { /* ignore */ }
     }

@@ -79,3 +79,12 @@ scrape_configs:
       - targets: ['notification-manager:3001']
         labels: { service: 'notification-manager', domain: 'bi-risk' }
     # When metrics.require_auth is true, add: bearer_token: <secret> or bearer_token_file: /path/to/token
+
+  # --- analytics-service (default port 3030, Plan §8.5.2; rabbitmq_messages_consumed_total for UsageTrackingConsumer) ---
+  - job_name: analytics-service
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['analytics-service:3030']
+        labels: { service: 'analytics-service', domain: 'bi-risk' }

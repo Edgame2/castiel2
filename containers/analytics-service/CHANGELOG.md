@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Observability (Plan §8.5.2):** `rabbitmq_messages_consumed_total` Counter (label `queue`) in `UsageTrackingConsumer` when consuming from `rabbitmq.queue` (default `analytics_service`); `GET /metrics` (prom-client) for Prometheus; feeds deployment/monitoring/README and consumer-scaling runbook.
 - **Usage Tracking (Plan §10, §3.5, §871):** `UsageTrackingConsumer` in `src/events/consumers/UsageTrackingConsumer.ts`; subscribes to `ml.prediction.completed`, `llm.inference.completed`, `embedding.generated` via RabbitMQ; appends to Cosmos `analytics_usage_ml` for billing aggregation. Stored doc: `tenantId`, `eventType`, `modelId`, `opportunityId`, `inferenceMs` (when present, e.g. from ml.prediction.completed), `inferredAt`, `source`. Config: `rabbitmq.bindings`, `cosmos_db.containers.usage_ml`. Optional: when `rabbitmq.url` and `rabbitmq.bindings` are set, consumer starts on server init.
 
 ### Fixed

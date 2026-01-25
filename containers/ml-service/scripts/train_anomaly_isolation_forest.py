@@ -71,13 +71,25 @@ def main() -> int:
     )
     clf.fit(X)
 
+    f1 = None
     if has_labels:
         y = df["is_anomaly"].astype(int)
         # Map is_anomaly 1 -> -1 (anomaly), 0 -> 1 (normal) to match IsolationForest
         y_if = np.where(y == 1, -1, 1)
         pred = clf.predict(X)
-        f1 = f1_score(y_if, pred, pos_label=-1, zero_division=0)
+        f1 = float(f1_score(y_if, pred, pos_label=-1, zero_division=0))
         print(f"Labeled validation F1 (anomaly): {f1:.4f}", file=sys.stderr)
+
+    # Log to Azure ML run when executed as an Azure ML Job (TRAINING_SCRIPTS_SPEC §3.4; Plan Phase 2)
+    if f1 is not None:
+        try:
+            from azureml.core import Run
+
+            run = Run.get_context()
+            if run and getattr(run, "id", None) and "OfflineRun" not in str(getattr(run, "id", "")):
+                run.log("F1", f1)
+        except Exception:
+            pass  # not in Azure ML or azureml-core not installed; stderr already printed
 
     artifact = {"model": clf, "feature_columns": list(X.columns)}
     joblib.dump(artifact, "model.joblib")

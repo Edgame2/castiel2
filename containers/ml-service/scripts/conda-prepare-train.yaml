@@ -1,0 +1,13 @@
+# Conda env for prepare_training_data.py (DATA_LAKE_LAYOUT §2.4; TRAINING_SCRIPTS_SPEC §2.1).
+# Joins risk_evaluations + ml_outcomes → /ml_training/{model_id}/. Light deps; adlfs for abfs://.
+name: prepare-train
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.8,<3.12
+  - pandas
+  - pyarrow
+  - pip
+  - pip:
+    - adlfs

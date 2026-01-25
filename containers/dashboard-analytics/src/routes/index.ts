@@ -7,6 +7,7 @@ import { loadConfig } from '../config';
 import { log } from '../utils/logger';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { DashboardAnalyticsService } from '../services/DashboardAnalyticsService';
+import { PortfolioAnalyticsService } from '../services/PortfolioAnalyticsService';
 
 /**
  * Register all routes
@@ -14,6 +15,7 @@ import { DashboardAnalyticsService } from '../services/DashboardAnalyticsService
 export async function registerRoutes(fastify: FastifyInstance, config: ReturnType<typeof loadConfig>): Promise<void> {
   try {
     const dashboardAnalyticsService = new DashboardAnalyticsService();
+    const portfolioAnalyticsService = new PortfolioAnalyticsService();
 
     // Prioritized opportunities for "Recommended today" (Plan §941). Rank by revenue-at-risk × risk × early-warning; suggestedAction.
     fastify.get(
@@ -190,6 +192,119 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           return reply.status(statusCode).send({
             error: { code: 'BOARD_DASHBOARD_FAILED', message: msg || 'Failed to get board dashboard' },
           });
+        }
+      }
+    );
+
+    // Portfolio drill-down (Plan §957): GET /portfolios/:id/summary, /portfolios/:id/accounts; GET /accounts/:id/opportunities; GET /opportunities/:id/activities
+    fastify.get<{ Params: { id: string } }>(
+      '/api/v1/portfolios/:id/summary',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Portfolio summary (Plan §957). Tenant-level: opportunityCount, accountsCount, totalPipeline from shard-manager.',
+          tags: ['Dashboard Analytics'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+          response: { 200: { type: 'object', properties: { opportunityCount: { type: 'number' }, accountsCount: { type: 'number' }, totalPipeline: { type: 'number' } } } },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { id } = request.params;
+          const tenantId = request.user!.tenantId;
+          const authHeader = typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined;
+          const out = await portfolioAnalyticsService.getSummary(id, tenantId, authHeader);
+          return reply.send(out);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('portfolios summary failed', error instanceof Error ? error : new Error(msg), { service: 'dashboard-analytics' });
+          return reply.status(statusCode).send({ error: { code: 'PORTFOLIO_SUMMARY_FAILED', message: msg || 'Failed to get portfolio summary' } });
+        }
+      }
+    );
+
+    fastify.get<{ Params: { id: string } }>(
+      '/api/v1/portfolios/:id/accounts',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Portfolio accounts for drill-down (Plan §957). c_account from shard-manager.',
+          tags: ['Dashboard Analytics'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+          response: { 200: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' } } } } },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { id } = request.params;
+          const tenantId = request.user!.tenantId;
+          const authHeader = typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined;
+          const out = await portfolioAnalyticsService.getAccounts(id, tenantId, authHeader);
+          return reply.send(out);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('portfolios accounts failed', error instanceof Error ? error : new Error(msg), { service: 'dashboard-analytics' });
+          return reply.status(statusCode).send({ error: { code: 'PORTFOLIO_ACCOUNTS_FAILED', message: msg || 'Failed to get portfolio accounts' } });
+        }
+      }
+    );
+
+    fastify.get<{ Params: { id: string } }>(
+      '/api/v1/accounts/:id/opportunities',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Opportunities for an account (Plan §957). c_opportunity where AccountId=id from shard-manager.',
+          tags: ['Dashboard Analytics'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+          response: { 200: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' }, amount: { type: 'number' }, stageName: { type: 'string' } } } } },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { id } = request.params;
+          const tenantId = request.user!.tenantId;
+          const authHeader = typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined;
+          const out = await portfolioAnalyticsService.getOpportunitiesForAccount(id, tenantId, authHeader);
+          return reply.send(out);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('accounts opportunities failed', error instanceof Error ? error : new Error(msg), { service: 'dashboard-analytics' });
+          return reply.status(statusCode).send({ error: { code: 'ACCOUNTS_OPPORTUNITIES_FAILED', message: msg || 'Failed to get account opportunities' } });
+        }
+      }
+    );
+
+    fastify.get<{ Params: { id: string } }>(
+      '/api/v1/opportunities/:id/activities',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Activities for an opportunity (Plan §957). has_activity related shards (c_email, c_call, c_meeting, etc.) from shard-manager.',
+          tags: ['Dashboard Analytics'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+          response: { 200: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, type: { type: 'string' }, createdAt: { type: 'string' }, summary: { type: 'string' } } } } },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { id } = request.params;
+          const tenantId = request.user!.tenantId;
+          const authHeader = typeof request.headers.authorization === 'string' ? request.headers.authorization : undefined;
+          const out = await portfolioAnalyticsService.getActivitiesForOpportunity(id, tenantId, authHeader);
+          return reply.send(out);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('opportunities activities failed', error instanceof Error ? error : new Error(msg), { service: 'dashboard-analytics' });
+          return reply.status(statusCode).send({ error: { code: 'OPPORTUNITIES_ACTIVITIES_FAILED', message: msg || 'Failed to get opportunity activities' } });
         }
       }
     );

@@ -6,7 +6,7 @@
  * risk-clustering: batch_jobs.risk_clustering_cron (default 0 2 * * *); worker: risk-analytics.
  * account-health: batch_jobs.account_health_cron (default 0 3 * * *); worker: risk-analytics.
  * propagation: batch_jobs.propagation_cron (default 0 5 * * *); worker: risk-analytics.
- * model-monitoring (Plan §9.3, §940): batch_jobs.model_monitoring_cron (default 0 6 * * 0 = Sun 6 AM); worker: ml-service or risk-analytics.
+ * model-monitoring (Plan §9.3, §940): batch_jobs.model_monitoring_cron (default 0 6 * * 0 = Sun 6 AM); worker: risk-analytics (calls ml-service POST /api/v1/ml/model-monitoring/run).
  */
 
 import { schedule as cronSchedule, validate as cronValidate } from 'node-cron';
@@ -34,7 +34,7 @@ export async function startBatchJobScheduler(): Promise<void> {
     cronJobs.push(cronSchedule(expr, async () => {
       try {
         await publishJobTrigger('risk-snapshot-backfill', { schedule: expr, triggeredAt: new Date().toISOString() });
-        batchJobTriggersTotal.inc({ job: 'risk-snapshot-backfill' });
+        batchJobTriggersTotal.inc({ batch_job: 'risk-snapshot-backfill' });
       } catch (e) {
         log.error('BatchJobScheduler: publishJobTrigger failed', e instanceof Error ? e : new Error(String(e)), {
           job: 'risk-snapshot-backfill',
@@ -52,7 +52,7 @@ export async function startBatchJobScheduler(): Promise<void> {
     cronJobs.push(cronSchedule(expr, async () => {
       try {
         await publishJobTrigger('outcome-sync', { schedule: expr, triggeredAt: new Date().toISOString() });
-        batchJobTriggersTotal.inc({ job: 'outcome-sync' });
+        batchJobTriggersTotal.inc({ batch_job: 'outcome-sync' });
       } catch (e) {
         log.error('BatchJobScheduler: publishJobTrigger failed', e instanceof Error ? e : new Error(String(e)), {
           job: 'outcome-sync',
@@ -70,7 +70,7 @@ export async function startBatchJobScheduler(): Promise<void> {
     cronJobs.push(cronSchedule(expr, async () => {
       try {
         await publishJobTrigger('industry-benchmarks', { schedule: expr, triggeredAt: new Date().toISOString() });
-        batchJobTriggersTotal.inc({ job: 'industry-benchmarks' });
+        batchJobTriggersTotal.inc({ batch_job: 'industry-benchmarks' });
       } catch (e) {
         log.error('BatchJobScheduler: publishJobTrigger failed', e instanceof Error ? e : new Error(String(e)), {
           job: 'industry-benchmarks',
@@ -88,7 +88,7 @@ export async function startBatchJobScheduler(): Promise<void> {
     cronJobs.push(cronSchedule(expr, async () => {
       try {
         await publishJobTrigger('risk-clustering', { schedule: expr, triggeredAt: new Date().toISOString() });
-        batchJobTriggersTotal.inc({ job: 'risk-clustering' });
+        batchJobTriggersTotal.inc({ batch_job: 'risk-clustering' });
       } catch (e) {
         log.error('BatchJobScheduler: publishJobTrigger failed', e instanceof Error ? e : new Error(String(e)), {
           job: 'risk-clustering',
@@ -106,7 +106,7 @@ export async function startBatchJobScheduler(): Promise<void> {
     cronJobs.push(cronSchedule(expr, async () => {
       try {
         await publishJobTrigger('account-health', { schedule: expr, triggeredAt: new Date().toISOString() });
-        batchJobTriggersTotal.inc({ job: 'account-health' });
+        batchJobTriggersTotal.inc({ batch_job: 'account-health' });
       } catch (e) {
         log.error('BatchJobScheduler: publishJobTrigger failed', e instanceof Error ? e : new Error(String(e)), {
           job: 'account-health',
@@ -124,7 +124,7 @@ export async function startBatchJobScheduler(): Promise<void> {
     cronJobs.push(cronSchedule(expr, async () => {
       try {
         await publishJobTrigger('propagation', { schedule: expr, triggeredAt: new Date().toISOString() });
-        batchJobTriggersTotal.inc({ job: 'propagation' });
+        batchJobTriggersTotal.inc({ batch_job: 'propagation' });
       } catch (e) {
         log.error('BatchJobScheduler: publishJobTrigger failed', e instanceof Error ? e : new Error(String(e)), {
           job: 'propagation',
@@ -142,7 +142,7 @@ export async function startBatchJobScheduler(): Promise<void> {
     cronJobs.push(cronSchedule(expr, async () => {
       try {
         await publishJobTrigger('model-monitoring', { schedule: expr, triggeredAt: new Date().toISOString() });
-        batchJobTriggersTotal.inc({ job: 'model-monitoring' });
+        batchJobTriggersTotal.inc({ batch_job: 'model-monitoring' });
       } catch (e) {
         log.error('BatchJobScheduler: publishJobTrigger failed', e instanceof Error ? e : new Error(String(e)), {
           job: 'model-monitoring',

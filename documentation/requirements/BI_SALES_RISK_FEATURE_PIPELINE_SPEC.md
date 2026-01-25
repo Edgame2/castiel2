@@ -32,11 +32,10 @@
   `GET /api/v1/shards/{opportunityId}/related?targetShardTypeId=c_contact` → count = `stakeholderCount`.  
   Use `shard.structuredData.role` if present (`decision_maker`, `influencer`, `executive_sponsor`).
 
-### 2.2 risk-analytics / Cosmos (from ml-service or risk-analytics)
+### 2.2 risk-analytics / Cosmos (ml-service calls risk-analytics HTTP)
 
-- **risk_snapshots:** Query `(tenantId, opportunityId)` and `snapshotDate` in range. Use latest N (e.g. 30) for LSTM; latest 1 for risk-scoring/win-prob/anomaly.  
-  If ml-service has no Cosmos access to risk_snapshots, **ml-service calls risk-analytics** `GET /api/v1/opportunities/:id/risk-snapshots?from=...&to=...` or a dedicated `GET /api/v1/features/opportunity/:id` that returns a prebuilt feature dict.
-- **risk_evaluations:** Latest evaluation for `opportunityId` → `riskScore`, `categoryScores`; use as features or as prior for LSTM.
+- **risk_snapshots:** ml-service `FeatureService.buildVectorForOpportunity` calls risk-analytics `GET /api/v1/opportunities/:id/risk-snapshots?from=...&to=...`. Use latest N (e.g. 30) for LSTM; latest 1 for risk-scoring/win-prob/anomaly. Requires `services.risk_analytics.url`.
+- **risk_evaluations:** Latest evaluation for `opportunityId` → `riskScore`, `categoryScores`; ml-service obtains via risk-analytics (e.g. `/risk-snapshots` or a dedicated latest-evaluation endpoint). Use as features or as prior for LSTM.
 
 ---
 

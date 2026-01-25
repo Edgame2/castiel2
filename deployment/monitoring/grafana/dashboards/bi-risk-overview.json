@@ -17,7 +17,7 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=~\"risk-analytics|ml-service|forecasting|recommendations|workflow-orchestrator|logging|dashboard-analytics|notification-manager\"}[5m])) by (job)",
+          "expr": "sum(rate(http_requests_total{job=~\"risk-analytics|ml-service|forecasting|recommendations|workflow-orchestrator|logging|dashboard-analytics|notification-manager|analytics-service\"}[5m])) by (job)",
           "legendFormat": "{{job}}",
           "refId": "A"
         }
@@ -84,7 +84,7 @@
       "id": 5,
       "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto" },
       "targets": [
-        { "expr": "count(up{job=~\"risk-analytics|ml-service|forecasting|recommendations|workflow-orchestrator|logging|dashboard-analytics|notification-manager\"} == 1)", "legendFormat": "Up", "refId": "A" }
+        { "expr": "count(up{job=~\"risk-analytics|ml-service|forecasting|recommendations|workflow-orchestrator|logging|dashboard-analytics|notification-manager|analytics-service\"} == 1)", "legendFormat": "Up", "refId": "A" }
       ],
       "title": "BI/risk services up",
       "type": "stat"

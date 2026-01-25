@@ -33,83 +33,70 @@ export async function initializeEventConsumer(): Promise<void> {
 
     // Handle opportunity updates
     consumer.on('opportunity.updated', async (event) => {
-      log.info('Opportunity updated, generating recommendations', {
-        opportunityId: event.data.opportunityId,
-        tenantId: event.tenantId,
-        service: 'recommendations',
-      });
-      
+      const opportunityId = event.data?.opportunityId;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!opportunityId || !tenantId) {
+        log.warn('opportunity.updated missing opportunityId or tenantId', { hasData: !!event.data, service: 'recommendations' });
+        return;
+      }
+      log.info('Opportunity updated, generating recommendations', { opportunityId, tenantId, service: 'recommendations' });
+
       if (!recommendationsService) {
         log.error('Recommendations service not initialized', { service: 'recommendations' });
         return;
       }
-      
+
       try {
-        await recommendationsService.generateRecommendations({
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
-          limit: 20,
-        });
-      } catch (error: any) {
-        log.error('Failed to generate recommendations from opportunity update', error, {
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
-          service: 'recommendations',
-        });
+        await recommendationsService.generateRecommendations({ opportunityId, tenantId, limit: 20 });
+      } catch (error: unknown) {
+        log.error('Failed to generate recommendations from opportunity update', error instanceof Error ? error : new Error(String(error)), { opportunityId, tenantId, service: 'recommendations' });
       }
     });
 
     // Handle risk evaluation completion
     consumer.on('risk.evaluation.completed', async (event) => {
-      log.info('Risk evaluation completed, generating recommendations', {
-        opportunityId: event.data.opportunityId,
-        tenantId: event.tenantId,
-        service: 'recommendations',
-      });
-      
+      const opportunityId = event.data?.opportunityId;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!opportunityId || !tenantId) {
+        log.warn('risk.evaluation.completed missing opportunityId or tenantId', { hasData: !!event.data, service: 'recommendations' });
+        return;
+      }
+      log.info('Risk evaluation completed, generating recommendations', { opportunityId, tenantId, service: 'recommendations' });
+
       if (!recommendationsService) {
         log.error('Recommendations service not initialized', { service: 'recommendations' });
         return;
       }
-      
+
       try {
-        await recommendationsService.generateRecommendations({
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
-          limit: 20,
-        });
-      } catch (error: any) {
-        log.error('Failed to generate recommendations from risk evaluation', error, {
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
-          service: 'recommendations',
-        });
+        await recommendationsService.generateRecommendations({ opportunityId, tenantId, limit: 20 });
+      } catch (error: unknown) {
+        log.error('Failed to generate recommendations from risk evaluation', error instanceof Error ? error : new Error(String(error)), { opportunityId, tenantId, service: 'recommendations' });
       }
     });
 
     // Handle forecast completion
     consumer.on('forecast.completed', async (event) => {
-      log.info('Forecast completed, generating recommendations', {
-        opportunityId: event.data.opportunityId,
-        tenantId: event.tenantId,
-        service: 'recommendations',
-      });
-      
+      const data = event?.data ?? {};
+      const opportunityId = data.opportunityId;
+      const tenantId = event.tenantId ?? data.tenantId;
+      if (!opportunityId || !tenantId) {
+        log.warn('forecast.completed missing opportunityId or tenantId', { hasData: !!event?.data, service: 'recommendations' });
+        return;
+      }
+      log.info('Forecast completed, generating recommendations', { opportunityId, tenantId, service: 'recommendations' });
+
       if (!recommendationsService) {
         log.error('Recommendations service not initialized', { service: 'recommendations' });
         return;
       }
-      
+
       try {
-        await recommendationsService.generateRecommendations({
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
-          limit: 20,
-        });
-      } catch (error: any) {
-        log.error('Failed to generate recommendations from forecast', error, {
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
+        await recommendationsService.generateRecommendations({ opportunityId, tenantId, limit: 20 });
+      } catch (error: unknown) {
+        log.error('Failed to generate recommendations from forecast', error instanceof Error ? error : new Error(String(error)), {
+          opportunityId,
+          tenantId,
           service: 'recommendations',
         });
       }
@@ -117,43 +104,37 @@ export async function initializeEventConsumer(): Promise<void> {
 
     // Handle workflow-triggered recommendations
     consumer.on('workflow.recommendation.requested', async (event) => {
-      log.info('Workflow recommendation requested', {
-        workflowId: event.data.workflowId,
-        opportunityId: event.data.opportunityId,
-        tenantId: event.tenantId,
-        service: 'recommendations',
-      });
-      
+      const opportunityId = event.data?.opportunityId;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      const workflowId = event.data?.workflowId;
+      if (!opportunityId || !tenantId) {
+        log.warn('workflow.recommendation.requested missing opportunityId or tenantId', { hasData: !!event.data, service: 'recommendations' });
+        return;
+      }
+      log.info('Workflow recommendation requested', { workflowId, opportunityId, tenantId, service: 'recommendations' });
+
       if (!recommendationsService) {
         log.error('Recommendations service not initialized', { service: 'recommendations' });
         return;
       }
-      
+
       try {
-        await recommendationsService.generateRecommendations({
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
-          workflowId: event.data.workflowId, // Forward workflowId
-          limit: 20,
-        });
-      } catch (error: any) {
-        log.error('Failed to generate recommendations from workflow', error, {
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
-          service: 'recommendations',
-        });
+        await recommendationsService.generateRecommendations({ opportunityId, tenantId, workflowId, limit: 20 });
+      } catch (error: unknown) {
+        log.error('Failed to generate recommendations from workflow', error instanceof Error ? error : new Error(String(error)), { opportunityId, tenantId, service: 'recommendations' });
       }
     });
 
     // Handle shard updates
     consumer.on('shard.updated', async (event) => {
-      log.debug('Shard updated, may trigger contextual recommendations', {
-        shardId: event.data.shardId,
-        tenantId: event.tenantId,
-        service: 'recommendations',
-      });
-      // Note: Shard updates don't always trigger recommendations
-      // Only specific shard types (opportunity, etc.) trigger recommendations
+      const shardId = event.data?.shardId ?? event.data?.id;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!shardId || !tenantId) {
+        log.warn('shard.updated missing shardId or tenantId', { hasData: !!event.data, service: 'recommendations' });
+        return;
+      }
+      log.debug('Shard updated, may trigger contextual recommendations', { shardId, tenantId, service: 'recommendations' });
+      // Note: Shard updates don't always trigger recommendations; only specific shard types (opportunity, etc.) would
     });
 
     await consumer.start();
@@ -166,6 +147,7 @@ export async function initializeEventConsumer(): Promise<void> {
 
 export async function closeEventConsumer(): Promise<void> {
   if (consumer) {
+    await consumer.stop();
     consumer = null;
   }
 }

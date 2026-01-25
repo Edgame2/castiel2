@@ -12,10 +12,14 @@
     "test:integration": "vitest run tests/integration",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@azure/monitor-opentelemetry": "^1.0.0",
+    "@opentelemetry/api": "^1.9.0",
     "@coder/shared": "file:../shared",
+    "node-cron": "^3.0.3",
     "@fastify/swagger": "^9.1.0",
     "@fastify/swagger-ui": "^5.0.0",
     "ajv": "^8.17.1",
@@ -24,6 +28,7 @@
     "fastify": "^5.1.0",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
+    "prom-client": "^15.1.0",
     "winston": "^3.17.0",
     "yaml": "^2.7.1",
     "zod": "^3.24.1",
@@ -33,6 +38,7 @@
     "@types/amqplib": "^0.10.6",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.7",
+    "@types/node-cron": "^3.0.11",
     "@types/node": "^25.0.5",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",

@@ -56,6 +56,8 @@ The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers)
 | POST | `/api/v1/adaptive-learning/reset/:tenantId` | Reset learned parameters |
 | GET | `/api/v1/adaptive-learning/validation-status/:tenantId` | Get validation status |
 | GET | `/api/v1/adaptive-learning/rollout-status/:tenantId` | Get rollout status |
+| POST | `/api/v1/adaptive-learning/outcomes/record-prediction` | Record a prediction (CAIS 3.2) |
+| POST | `/api/v1/adaptive-learning/outcomes/record-outcome` | Record actual outcome for a prediction |
 | GET | `/api/v1/cais-services/*` | CAIS services endpoints (22 services) |
 
 ## CAIS Services (22 Total)
@@ -91,6 +93,10 @@ The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers)
 - AdversarialTestingService
 
 ## Events
+
+### Consumed Events
+
+- `adaptive.learning.outcome.recorded` - Store outcome from risk-analytics, forecasting, recommendations (OutcomeEventConsumer)
 
 ### Published Events
 

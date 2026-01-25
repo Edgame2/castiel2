@@ -1,6 +1,6 @@
 # Logging Module
 
-Enterprise-grade audit logging service for Coder IDE.
+Enterprise-grade audit logging service for Castiel.
 
 ## Features
 
@@ -67,6 +67,12 @@ pnpm start
 | cosmos_db.key | string | - | Cosmos DB access key (required) |
 | cosmos_db.database_id | string | castiel | Cosmos DB database ID (shared database) |
 | storage.provider | string | cosmos | Storage backend (cosmos | elasticsearch) |
+| **data_lake.connection_string** | string | - | Azure Storage (Data Lake) connection string. Required for **DataLakeCollector** and **MLAuditConsumer** (BI Sales Risk Plan §3.5, FIRST_STEPS §3). |
+| **data_lake.container** | string | risk | Blob container for Parquet and ML audit blobs. |
+| **data_lake.path_prefix** | string | /risk_evaluations | Path prefix for DataLakeCollector Parquet output. |
+| **data_lake.audit_path_prefix** | string | /ml_audit | Path prefix for MLAuditConsumer audit JSON blobs. |
+| **rabbitmq.data_lake.queue** | string | logging_data_lake | Queue for DataLakeCollector. Bindings: `risk.evaluated`. |
+| **rabbitmq.ml_audit.queue** | string | logging_ml_audit | Queue for MLAuditConsumer. Bindings: `risk.evaluated`, `ml.prediction.completed`, `remediation.workflow.completed`. |
 | defaults.hash_chain.enabled | boolean | true | Enable tamper-evident logging |
 | defaults.redaction.enabled | boolean | true | Enable sensitive data redaction |
 | defaults.retention.default_days | number | 90 | Default retention period |
@@ -109,6 +115,16 @@ See [OpenAPI Specification](./docs/openapi.yaml)
 | `auth.login.failed` | Log failed authentication |
 | `user.created` | Log user creation |
 | `secret.accessed` | Log secret access |
+
+**BI / Risk (Plan §3.5, FIRST_STEPS §3)** — require `data_lake.connection_string` and `rabbitmq.data_lake` / `rabbitmq.ml_audit`:
+
+| Event | Handler | Output |
+|-------|---------|--------|
+| `risk.evaluated` | **DataLakeCollector** | Parquet at `/risk_evaluations/year=.../month=.../day=.../` (DATA_LAKE_LAYOUT §2.1) |
+| `risk.evaluated` | **MLAuditConsumer** | Audit JSON at `audit_path_prefix/year=.../month=.../day=.../` (Blob, 7-year retention) |
+| `risk.prediction.generated` | **MLAuditConsumer** | Audit JSON (predictionId, opportunityId, horizons, modelId, predictionDate; Plan §10) |
+| `ml.prediction.completed` | **MLAuditConsumer** | Audit JSON (modelId, opportunityId?, inferenceMs) |
+| `remediation.workflow.completed` | **MLAuditConsumer** | Audit JSON |
 
 ### Published Events
 

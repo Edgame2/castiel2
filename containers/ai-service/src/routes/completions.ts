@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { authenticateRequest } from '@coder/shared';
+import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { CompletionService } from '../services/CompletionService';
 import { EventPublisher } from '@coder/shared';
 
@@ -7,8 +7,11 @@ export async function completionRoutes(fastify: FastifyInstance) {
   const completionService = new CompletionService();
   const eventPublisher = new EventPublisher('coder.events');
 
-  // Register authentication middleware
-  fastify.addHook('preHandler', authenticateRequest);
+  // Register authentication and tenant enforcement middleware
+  fastify.addHook('preHandler', async (request, reply) => {
+    await authenticateRequest()(request, reply);
+    await tenantEnforcementMiddleware()(request, reply);
+  });
 
   // Create completion
   fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -61,24 +64,24 @@ export async function completionRoutes(fastify: FastifyInstance) {
         });
 
         reply.send(completion);
-      } catch (error: any) {
+      } catch (error: unknown) {
         const durationMs = Date.now() - startTime;
-
+        const msg = error instanceof Error ? error.message : String(error);
         // Publish event: completion failed
         await eventPublisher.publish({
           type: 'ai.completion.failed',
           requestId,
           model,
-          error: error.message,
+          error: msg,
           durationMs,
           organizationId: user.organizationId,
           timestamp: new Date(),
         });
-
         throw error;
       }
-    } catch (error: any) {
-      reply.code(500).send({ error: error.message || 'Failed to create completion' });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      reply.code(500).send({ error: msg || 'Failed to create completion' });
     }
   });
 }

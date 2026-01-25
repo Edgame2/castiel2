@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Prompt Service API
-  description: Prompt management and optimization service for Coder IDE
+  description: Prompt management and optimization service for Castiel
   version: 1.0.0
 servers:
   - url: /api/v1

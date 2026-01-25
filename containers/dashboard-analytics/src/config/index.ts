@@ -10,6 +10,8 @@ import addFormats from 'ajv-formats';
 import { log } from '../utils/logger';
 
 export interface DashboardAnalyticsConfig {
+  application_insights?: { connection_string?: string; disable?: boolean };
+  metrics?: { path?: string; require_auth?: boolean; bearer_token?: string };
   module: { name: string; version: string };
   server: { port: number; host: string };
   cosmos_db: {

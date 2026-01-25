@@ -16,11 +16,15 @@ export interface UtilityServicesConfig {
     endpoint: string;
     key: string;
     database_id: string;
-    containers: {
-      imports: string
-      exports: string
-      migrations: string
-    };
+  containers: {
+    imports: string;
+    exports: string;
+    migrations: string;
+    notifications?: string;
+    batches?: string;
+    preferences?: string;
+    templates?: string;
+  };
   };
   jwt: { secret: string };
   services: { [key: string]: { url: string } };

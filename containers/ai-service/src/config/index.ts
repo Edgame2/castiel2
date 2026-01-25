@@ -1,6 +1,13 @@
-import { readFileSync } from 'fs';
+/**
+ * Configuration loader for ai-service module
+ * Per ModuleImplementationGuide Section 4.4
+ */
+
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { load } from 'yaml';
+import { parse as parseYaml } from 'yaml';
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
 
 export interface AIServiceConfig {
   module: { name: string; version: string };
@@ -14,6 +21,8 @@ export interface AIServiceConfig {
   services: {
     secret_management?: { url: string };
     logging?: { url: string };
+    shard_manager?: { url: string };
+    embeddings?: { url: string };
   };
   rabbitmq: { url: string; exchange: string; queue: string };
   redis: {
@@ -25,29 +34,137 @@ export interface AIServiceConfig {
   };
 }
 
-export function loadConfig(): AIServiceConfig {
-  const configPath = join(__dirname, '../../config/default.yaml');
-  const config = load(readFileSync(configPath, 'utf-8')) as AIServiceConfig;
+let cachedConfig: AIServiceConfig | null = null;
+
+/**
+ * Deep merge two objects
+ */
+function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
+  const result = { ...target };
   
-  // Override with environment variables if provided
-  if (process.env.PORT) config.server.port = parseInt(process.env.PORT, 10);
-  if (process.env.HOST) config.server.host = process.env.HOST;
-  if (process.env.COSMOS_DB_ENDPOINT) config.cosmos_db.endpoint = process.env.COSMOS_DB_ENDPOINT;
-  if (process.env.COSMOS_DB_KEY) config.cosmos_db.key = process.env.COSMOS_DB_KEY;
-  if (process.env.COSMOS_DB_DATABASE_ID) config.cosmos_db.database_id = process.env.COSMOS_DB_DATABASE_ID;
-  if (process.env.SECRET_MANAGEMENT_URL) {
-    config.services.secret_management = { url: process.env.SECRET_MANAGEMENT_URL };
+  for (const key in source) {
+    const sourceValue = source[key];
+    const targetValue = result[key];
+    
+    if (sourceValue !== undefined) {
+      if (
+        typeof sourceValue === 'object' &&
+        sourceValue !== null &&
+        !Array.isArray(sourceValue) &&
+        typeof targetValue === 'object' &&
+        targetValue !== null &&
+        !Array.isArray(targetValue)
+      ) {
+        result[key] = deepMerge(targetValue, sourceValue);
+      } else {
+        result[key] = sourceValue as any;
+      }
+    }
   }
-  if (process.env.LOGGING_URL) {
-    config.services.logging = { url: process.env.LOGGING_URL };
-  }
-  if (process.env.RABBITMQ_URL) config.rabbitmq.url = process.env.RABBITMQ_URL;
-  if (process.env.REDIS_URL) config.redis.url = process.env.REDIS_URL;
-  if (process.env.REDIS_HOST) config.redis.host = process.env.REDIS_HOST;
-  if (process.env.REDIS_PORT) config.redis.port = parseInt(process.env.REDIS_PORT, 10);
-  if (process.env.REDIS_PASSWORD) config.redis.password = process.env.REDIS_PASSWORD;
-  if (process.env.REDIS_DB) config.redis.db = parseInt(process.env.REDIS_DB, 10);
   
-  return config;
+  return result;
 }
 
+/**
+ * Resolve environment variables in config values
+ * Supports ${VAR:-default} syntax
+ */
+function resolveEnvVars(obj: any): any {
+  if (typeof obj === 'string') {
+    return obj.replace(/\$\{([^}]+)\}/g, (match, expression) => {
+      const [varName, defaultValue] = expression.split(':-');
+      const envValue = process.env[varName];
+      if (envValue !== undefined) {
+        return envValue;
+      }
+      if (defaultValue !== undefined) {
+        return defaultValue;
+      }
+      return match;
+    });
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(resolveEnvVars);
+  }
+  
+  if (typeof obj === 'object' && obj !== null) {
+    const result: Record<string, any> = {};
+    for (const key in obj) {
+      result[key] = resolveEnvVars(obj[key]);
+    }
+    return result;
+  }
+  
+  return obj;
+}
+
+/**
+ * Load and validate configuration
+ */
+export function loadConfig(): AIServiceConfig {
+  if (cachedConfig) {
+    return cachedConfig;
+  }
+  
+  const env = process.env.NODE_ENV || 'development';
+  const configDir = join(__dirname, '../../config');
+  const defaultPath = join(configDir, 'default.yaml');
+  
+  if (!existsSync(defaultPath)) {
+    throw new Error(`Default config not found: ${defaultPath}`);
+  }
+  
+  const defaultConfig = parseYaml(readFileSync(defaultPath, 'utf8')) as AIServiceConfig;
+  
+  let envConfig: Partial<AIServiceConfig> = {};
+  const envPath = join(configDir, `${env}.yaml`);
+  if (existsSync(envPath)) {
+    envConfig = parseYaml(readFileSync(envPath, 'utf8')) as Partial<AIServiceConfig>;
+  }
+  
+  const schemaPath = join(configDir, 'schema.json');
+  let schema: any;
+  try {
+    const schemaContent = readFileSync(schemaPath, 'utf8');
+    schema = JSON.parse(schemaContent);
+  } catch (error) {
+    throw new Error(`Failed to load schema from ${schemaPath}: ${error}`);
+  }
+  
+  const config = deepMerge(defaultConfig, envConfig);
+  const resolved = resolveEnvVars(config) as AIServiceConfig;
+  
+  if (typeof resolved.server.port === 'string') {
+    resolved.server.port = parseInt(resolved.server.port, 10);
+  }
+  
+  if (typeof resolved.redis.port === 'string') {
+    resolved.redis.port = parseInt(resolved.redis.port, 10);
+  }
+  
+  if (typeof resolved.redis.db === 'string') {
+    resolved.redis.db = parseInt(resolved.redis.db, 10);
+  }
+  
+  const ajv = new Ajv({ allErrors: true, useDefaults: true });
+  addFormats(ajv);
+  const validate = ajv.compile(schema);
+  
+  if (!validate(resolved)) {
+    const errors = validate.errors?.map(e => `${e.instancePath} ${e.message}`).join(', ');
+    throw new Error(`Invalid configuration: ${errors}`);
+  }
+  
+  // Additional runtime validations
+  if (!resolved.cosmos_db.endpoint || !resolved.cosmos_db.key) {
+    throw new Error('COSMOS_DB_ENDPOINT and COSMOS_DB_KEY environment variables are required');
+  }
+  
+  if (!resolved.rabbitmq.url) {
+    throw new Error('RABBITMQ_URL environment variable is required');
+  }
+  
+  cachedConfig = resolved;
+  return cachedConfig;
+}

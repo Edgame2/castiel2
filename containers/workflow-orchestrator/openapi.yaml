@@ -100,6 +100,16 @@ paths:
           description: Workflow not found
         '500':
           $ref: '#/components/responses/InternalError'
+  /metrics:
+    get:
+      tags: [Health]
+      summary: Prometheus metrics (Plan §8.5.2, FIRST_STEPS §1)
+      description: Exposes http_requests_total, http_request_duration_seconds, batch_job_triggers_total (label job). Optional Bearer when metrics.require_auth.
+      responses:
+        '200':
+          description: text/plain; version=0.0.4 (Prometheus format)
+        '401':
+          description: Unauthorized (when metrics.require_auth and invalid Bearer)
   /health:
     get:
       tags:

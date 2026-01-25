@@ -9,6 +9,7 @@ import { getContainer } from '@coder/shared/database';
 import { ConversationService } from '../services/ConversationService';
 import { ContextAssemblyService } from '../services/ContextAssemblyService';
 import { GroundingService } from '../services/GroundingService';
+import { IntentAnalyzerService } from '../services/IntentAnalyzerService';
 import { log } from '../utils/logger';
 
 /**
@@ -18,6 +19,7 @@ export async function registerContextRoutes(fastify: FastifyInstance, config: AI
   const conversationService = new ConversationService(fastify);
   const contextAssemblyService = new ContextAssemblyService(fastify);
   const groundingService = new GroundingService(fastify);
+  const intentAnalyzerService = new IntentAnalyzerService(fastify);
 
   // Get conversation context
   fastify.get<{ Params: { conversationId: string } }>(

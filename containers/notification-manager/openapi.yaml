@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Notification Manager Service API
   description: |
-    Multi-channel notification service for Coder IDE with delivery tracking, preferences, and templates.
+    Multi-channel notification service for Castiel with delivery tracking, preferences, and templates.
     
     ## Authentication
     All endpoints (except health checks) require JWT authentication via Bearer token:
@@ -19,7 +19,7 @@ info:
     - **Batching**: Batch notifications for efficiency
   version: 1.0.0
   contact:
-    name: Coder IDE Team
+    name: Castiel Team
 
 servers:
   - url: /api/v1
@@ -82,3 +82,19 @@ paths:
         '503':
           description: Service is not ready
 
+  /metrics:
+    get:
+      tags:
+        - Health
+      summary: Prometheus metrics
+      description: Exposes http_requests_total, http_request_duration_seconds (Plan §8.5.2, deployment/monitoring/README). Optional Bearer when metrics.require_auth.
+      security: []
+      responses:
+        '200':
+          description: Prometheus exposition format (text/plain; version=0.0.4)
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized (when metrics.require_auth and invalid Bearer)

@@ -1,6 +1,6 @@
 # Performance Optimization Module
 
-Code performance optimization service for Coder IDE, providing code optimization, bundle size optimization, database query optimization, algorithm selection, and memory optimization.
+Code performance optimization service for Castiel, providing code optimization, bundle size optimization, database query optimization, algorithm selection, and memory optimization.
 
 ## Features
 
@@ -120,5 +120,5 @@ npm test
 
 ## License
 
-Proprietary - Coder IDE
+Proprietary - Castiel
 

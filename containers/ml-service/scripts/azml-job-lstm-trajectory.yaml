@@ -1,0 +1,27 @@
+# Azure ML v2 Command Job: train_lstm_trajectory.py (Plan §5.6, §875; TRAINING_SCRIPTS_SPEC §3.3).
+# Submit from containers/ml-service/scripts:
+#   az ml job create --file azml-job-lstm-trajectory.yaml \
+#     --set inputs.training_data.path=abfs://container@account.dfs.core.windows.net/path \
+#     [--set inputs.deploy_flag.value=--deploy]
+# Input Parquet: opportunityId, snapshotDate, risk_score, activity_count_30d, days_since_last_activity,
+#   target_risk_30/60/90 (or target_risk). From risk_snapshots export or Data Lake /risk_snapshots/.
+# Env AZURE_ML_*; for --deploy also DEPLOY_INSTANCE_TYPE, DEPLOY_INSTANCE_COUNT, SEQUENCE_LENGTH.
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+experiment_name: lstm-trajectory-training
+display_name: lstm-trajectory-train
+code: .
+command: python train_lstm_trajectory.py --input-path ${{inputs.training_data}} --model-name ${{inputs.model_name}} --sequence-length ${{inputs.sequence_length}} ${{inputs.deploy_flag}}
+inputs:
+  training_data:
+    type: uri_folder
+    path: https://REPLACE_WITH_YOUR_RISK_SNAPSHOTS_OR_DATASET
+  model_name:
+    value: risk-trajectory-lstm
+  sequence_length:
+    value: 30
+  deploy_flag:
+    value: ""
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+  conda_file: conda-lstm-train.yaml

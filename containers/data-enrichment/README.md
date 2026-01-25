@@ -1,11 +1,15 @@
-# Data-enrichment Module
+# Data Enrichment Module
 
-[Description of what this service does]
+Data enrichment and vectorization pipeline service for Castiel, providing AI-powered enrichment, vectorization, shard embedding management, and relationship processing.
 
 ## Features
 
-- Feature 1
-- Feature 2
+- **AI Enrichment**: Entity extraction, classification, summarization, sentiment analysis, key phrase extraction
+- **Vectorization**: Convert shard content to embeddings for semantic search
+- **Shard Embedding Management**: Manage embeddings for shards; automatic embedding generation on shard create/update (via EmbeddingTemplateService); scheduled batch re-embedding (reembedding_scheduler)
+- **Relationship Processing**: Process shard relationships and links
+- **ACL Integration**: Access control list processing
+- **Batch Processing**: Bulk enrichment operations
 
 ## Quick Start
 
@@ -53,11 +57,20 @@ See [OpenAPI Spec](./openapi.yaml)
 
 ### Published Events
 
-- `data-enrichment.event.name`
+- `enrichment.job.completed` - Enrichment job completed
+- `enrichment.job.failed` - Enrichment job failed
+- `vectorization.completed` - Vectorization completed
 
 ### Consumed Events
 
-- `other.event.name`
+- `shard.created` - Trigger enrichment and embedding generation for new shards
+- `shard.updated` - Trigger re-enrichment and embedding generation for updated shards
+
+## Dependencies
+
+- **shard-manager**: For shard access
+- **embeddings**: For embedding storage and similarity search
+- **ai-service**: For AI-powered enrichment processing
 
 ## Development
 

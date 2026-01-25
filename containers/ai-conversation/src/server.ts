@@ -38,7 +38,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       info: {
         title: 'AI Conversation Service API',
         description: `
-          AI conversation and context management service for Coder IDE.
+          AI conversation and context management service for Castiel.
           
           ## Authentication
           All endpoints (except health checks) require JWT authentication via Bearer token:

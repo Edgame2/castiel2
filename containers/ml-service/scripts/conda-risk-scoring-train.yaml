@@ -1,0 +1,16 @@
+# Conda env for Azure ML Job: train_risk_scoring.py (Plan §5.6, §874; TRAINING_SCRIPTS_SPEC §3.1).
+# Training needs pandas, pyarrow; register/deploy needs azure-ai-ml, azure-identity.
+name: risk-scoring-train
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.8,<3.12
+  - numpy
+  - pandas
+  - pyarrow
+  - pip
+  - pip:
+    - xgboost
+    - azure-ai-ml
+    - azure-identity

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Shard Manager module provides core data model management for the Coder IDE system. Shards are the fundamental data entities representing all business objects (opportunities, contacts, accounts, projects, etc.). This module manages shard lifecycle, schemas (ShardTypes), relationships, and versioning.
+The Shard Manager module provides core data model management for the Castiel system. Shards are the fundamental data entities representing all business objects (opportunities, contacts, accounts, projects, etc.). This module manages shard lifecycle, schemas (ShardTypes), relationships, and versioning.
 
 ## Database Architecture
 

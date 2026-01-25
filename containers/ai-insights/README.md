@@ -1,6 +1,6 @@
 # AI Insights Module
 
-AI-powered insights and recommendations service for Coder IDE.
+AI-powered insights and recommendations service for Castiel.
 
 ## Features
 

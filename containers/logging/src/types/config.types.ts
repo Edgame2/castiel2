@@ -3,6 +3,8 @@
  */
 
 export interface LoggingConfig {
+  application_insights?: { connection_string?: string; disable?: boolean };
+  metrics?: { path?: string; require_auth?: boolean; bearer_token?: string };
   module: {
     name: string;
     version: string;
@@ -30,6 +32,14 @@ export interface LoggingConfig {
     exchange: string;
     queue: string;
     bindings: string[];
+    data_lake?: { queue: string; bindings: string[] };
+    ml_audit?: { queue: string; bindings: string[] };
+  };
+  data_lake?: {
+    connection_string: string;
+    container: string;
+    path_prefix: string;
+    audit_path_prefix: string;
   };
   
   storage: {

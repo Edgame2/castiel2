@@ -61,6 +61,8 @@ export interface VectorSearchRequest {
   minScore?: number; // Minimum similarity score (0-1)
   includeEmbedding?: boolean;
   includeShard?: boolean;
+  /** When true (default), apply field-weighted rerank if field_weight_boost > 0 */
+  applyFieldWeights?: boolean;
   filters?: {
     shardTypeIds?: string[];
     createdAfter?: Date;
@@ -83,6 +85,7 @@ export interface HybridSearchRequest {
   keywordWeight?: number; // 0-1, default: 0.3
   includeEmbedding?: boolean;
   includeShard?: boolean;
+  applyFieldWeights?: boolean;
   filters?: VectorSearchRequest['filters'];
 }
 

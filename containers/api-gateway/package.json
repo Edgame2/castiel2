@@ -1,14 +1,17 @@
 {
   "name": "@coder/api-gateway",
   "version": "1.0.0",
-  "description": "API Gateway for Coder IDE - Routes requests to microservices",
+  "description": "API Gateway for Castiel - Routes requests to microservices",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "vitest run",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src --ext .ts",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@coder/shared": "file:../shared",
@@ -25,7 +28,7 @@
     "@types/node": "^25.0.5",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.0"
+    "vitest": "^4.0.0",
+    "@vitest/coverage-v8": "^2.1.0"
   }
 }
-

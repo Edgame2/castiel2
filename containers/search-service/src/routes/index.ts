@@ -43,6 +43,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
             minScore: { type: 'number', minimum: 0, maximum: 1 },
             includeEmbedding: { type: 'boolean' },
             includeShard: { type: 'boolean' },
+            applyFieldWeights: { type: 'boolean', description: 'Apply field-weighted rerank when field_weight_boost > 0 (default true)' },
             filters: {
               type: 'object',
               properties: {
@@ -100,6 +101,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
             keywordWeight: { type: 'number', minimum: 0, maximum: 1, default: 0.3 },
             includeEmbedding: { type: 'boolean' },
             includeShard: { type: 'boolean' },
+            applyFieldWeights: { type: 'boolean', description: 'Apply field-weighted rerank when field_weight_boost > 0 (default true)' },
             filters: {
               type: 'object',
               properties: {
@@ -230,6 +232,52 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         endDate: new Date(request.query.endDate),
       });
       reply.send(analytics);
+    }
+  );
+
+  // ===== WEB SEARCH ROUTES (from web-search) =====
+
+  /**
+   * Perform web search
+   * POST /api/v1/search/web
+   */
+  app.post<{ Body: { query: string; limit?: number; useCache?: boolean } }>(
+    '/api/v1/search/web',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Perform web search',
+        tags: ['Search'],
+        body: {
+          type: 'object',
+          required: ['query'],
+          properties: {
+            query: { type: 'string', minLength: 1 },
+            limit: { type: 'number', minimum: 1, maximum: 50 },
+            useCache: { type: 'boolean' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            description: 'Web search results',
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { query, limit, useCache } = request.body;
+        const tenantId = request.user!.tenantId;
+        const result = await searchService.webSearch(tenantId, query, { limit, useCache });
+        return reply.send(result);
+      } catch (error: unknown) {
+        const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+        const msg = error instanceof Error ? error.message : String(error);
+        return reply.status(statusCode).send({
+          error: { code: 'WEB_SEARCH_FAILED', message: msg || 'Failed to perform web search' },
+        });
+      }
     }
   );
 }

@@ -1,11 +1,12 @@
-# Dashboard-analytics Module
+# Dashboard Analytics Module
 
-[Description of what this service does]
+Advanced dashboard and widget analytics service for Castiel, providing admin dashboard data, dashboard caching, and widget data services.
 
 ## Features
 
-- Feature 1
-- Feature 2
+- **Admin Dashboard**: Admin dashboard data and analytics
+- **Dashboard Caching**: Cache dashboard data for performance
+- **Widget Data**: Widget data service for dashboard widgets
 
 ## Quick Start
 
@@ -32,7 +33,8 @@ cp config/default.yaml config/local.yaml
 
 The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers). Ensure the following containers exist:
 
-- `dashboard-analytics_data` - Main data container
+- `dashboard_admin_data` - Admin dashboard data (partition: `/tenantId`)
+- `dashboard_widget_cache` - Widget cache data (partition: `/tenantId`)
 
 ### Running
 
@@ -53,11 +55,17 @@ See [OpenAPI Spec](./openapi.yaml)
 
 ### Published Events
 
-- `dashboard-analytics.event.name`
+- `dashboard.analytics.updated` - Dashboard analytics updated
 
 ### Consumed Events
 
-- `other.event.name`
+- (None currently)
+
+## Dependencies
+
+- **dashboard**: For dashboard CRUD operations
+- **analytics-service**: For analytics data
+- **cache-service**: For cache operations
 
 ## Development
 

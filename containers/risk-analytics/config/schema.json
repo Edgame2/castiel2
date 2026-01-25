@@ -29,10 +29,21 @@
           "type": "object",
           "properties": {
             "evaluations": { "type": "string" },
+            "snapshots": { "type": "string" },
+            "predictions": { "type": "string" },
             "revenue_at_risk": { "type": "string" },
             "quotas": { "type": "string" },
             "warnings": { "type": "string" },
-            "simulations": { "type": "string" }
+            "simulations": { "type": "string" },
+            "competitor_tracking": { "type": "string" },
+            "competitors": { "type": "string" },
+            "anomaly_alerts": { "type": "string" },
+            "sentiment_trends": { "type": "string" },
+            "win_loss_reasons": { "type": "string" },
+            "industry_benchmarks": { "type": "string", "description": "Plan §953 analytics_industry_benchmarks" },
+            "clusters": { "type": "string", "description": "Plan §914 risk_clusters" },
+            "association_rules": { "type": "string", "description": "Plan §914 risk_association_rules" },
+            "account_health": { "type": "string", "description": "Plan §917 risk_account_health" }
           },
           "required": ["evaluations", "revenue_at_risk", "quotas", "warnings", "simulations"]
         }
@@ -43,6 +54,16 @@
       "required": ["secret"],
       "properties": {
         "secret": { "type": "string" }
+      }
+    },
+    "auto_evaluation": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "trigger_on_shard_update": { "type": "boolean" },
+        "trigger_on_opportunity_update": { "type": "boolean" },
+        "trigger_on_risk_catalog_update": { "type": "boolean" },
+        "max_reevaluations_per_catalog_event": { "type": "number", "minimum": 1, "maximum": 200 }
       }
     },
     "services": {
@@ -59,8 +80,87 @@
       "properties": {
         "url": { "type": "string" },
         "exchange": { "type": "string" },
-        "queue": { "type": "string" }
+        "queue": { "type": "string" },
+        "batch_jobs": {
+          "type": "object",
+          "properties": {
+            "queue": { "type": "string" },
+            "routing_keys": { "type": "array", "items": { "type": "string" } }
+          }
+        }
       }
+    },
+    "application_insights": {
+      "type": "object",
+      "properties": {
+        "connection_string": { "type": "string" },
+        "disable": { "type": "boolean" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "require_auth": { "type": "boolean" },
+        "bearer_token": { "type": "string" }
+      }
+    },
+    "data_lake": {
+      "type": "object",
+      "properties": {
+        "connection_string": { "type": "string" },
+        "container": { "type": "string" },
+        "path_prefix": { "type": "string" },
+        "ml_outcomes_prefix": { "type": "string" }
+      }
+    },
+    "outcome_sync": {
+      "type": "object",
+      "properties": {
+        "tenant_ids": { "type": "array", "items": { "type": "string" } },
+        "shard_type_name": { "type": "string" }
+      }
+    },
+    "outcome_feedback": {
+      "type": "object",
+      "description": "Plan §904: publish opportunity.outcome.recorded on shard/integration update when IsClosed",
+      "properties": {
+        "publish_on_shard_update": { "type": "boolean" }
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": { "type": "boolean" },
+      "description": "Legacy feature flags; feature_flags preferred (Plan §8.1)."
+    },
+    "feature_flags": {
+      "type": "object",
+      "description": "Plan §8.1, §895: early_warning_lstm, industry_models, competitive_intelligence, anomaly_detection, prescriptive_remediation, executive_dashboards, hitl_approvals",
+      "properties": {
+        "early_warning_lstm": { "type": "boolean" },
+        "industry_models": { "type": "boolean" },
+        "competitive_intelligence": { "type": "boolean" },
+        "anomaly_detection": { "type": "boolean" },
+        "prescriptive_remediation": { "type": "boolean" },
+        "executive_dashboards": { "type": "boolean" },
+        "hitl_approvals": { "type": "boolean" }
+      },
+      "additionalProperties": { "type": "boolean" }
+    },
+    "thresholds": {
+      "type": "object",
+      "description": "Plan §8.1: early-warning, risk-velocity, HITL thresholds",
+      "properties": {
+        "early_warning_days_inactivity": { "type": "array", "items": { "type": "number" } },
+        "risk_velocity_alert": { "type": "number" },
+        "hitl_risk_min": { "type": "number" },
+        "hitl_deal_min": { "type": "number" }
+      }
+    },
+    "at_risk_reasons_mitigation": {
+      "type": "object",
+      "description": "Plan §11.11, §944: map atRiskReason string to mitigation playbook/action id or label",
+      "additionalProperties": { "type": "string" }
     }
   }
 }

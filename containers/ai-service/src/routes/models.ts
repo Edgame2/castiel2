@@ -1,19 +1,22 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { authenticateRequest } from '@coder/shared';
+import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { ModelService } from '../services/ModelService';
 
 export async function modelRoutes(fastify: FastifyInstance) {
   const modelService = new ModelService();
 
-  // Register authentication middleware
-  fastify.addHook('preHandler', authenticateRequest);
+  // Register authentication and tenant enforcement middleware
+  fastify.addHook('preHandler', async (request, reply) => {
+    await authenticateRequest()(request, reply);
+    await tenantEnforcementMiddleware()(request, reply);
+  });
 
   // List available models
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const models = await modelService.listModels();
       reply.send({ models });
-    } catch (error: any) {
+    } catch (error: unknown) {
       reply.code(500).send({ error: 'Failed to list models' });
     }
   });
@@ -30,7 +33,7 @@ export async function modelRoutes(fastify: FastifyInstance) {
       }
 
       reply.send(model);
-    } catch (error: any) {
+    } catch (error: unknown) {
       reply.code(500).send({ error: 'Failed to get model' });
     }
   });

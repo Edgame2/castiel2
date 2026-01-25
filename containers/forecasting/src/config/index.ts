@@ -11,6 +11,8 @@ import { log } from '../utils/logger';
 
 export interface ForecastingConfig {
   module: { name: string; version: string };
+  application_insights?: { connection_string?: string; disable?: boolean };
+  metrics?: { path?: string; require_auth?: boolean; bearer_token?: string };
   server: { port: number; host: string };
   cosmos_db: {
     endpoint: string;
@@ -21,11 +23,13 @@ export interface ForecastingConfig {
       consensus: string;
       commitments: string;
       pipeline_health: string;
+      predictions: string;
     };
   };
   jwt: { secret: string };
   services: { [key: string]: { url: string } };
   rabbitmq: { url: string; exchange: string; queue: string; bindings: string[] };
+  industry_seasonality?: Record<string, unknown>;
   features: { [key: string]: boolean };
 }
 

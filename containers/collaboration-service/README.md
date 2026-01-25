@@ -1,6 +1,6 @@
 # Collaboration Service Module
 
-Real-time collaboration features service for Coder IDE.
+Real-time collaboration features service for Castiel.
 
 ## Features
 

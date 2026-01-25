@@ -9,6 +9,17 @@ server:
   port: ${PORT:-3001}
   host: ${HOST:-0.0.0.0}
 
+# Application Insights (Plan §8.5.1, FIRST_STEPS §1); init via src/instrumentation.ts
+application_insights:
+  connection_string: ${APPLICATIONINSIGHTS_CONNECTION_STRING:-}
+  disable: ${APPLICATIONINSIGHTS_DISABLE:-false}
+
+# Prometheus metrics (§8.5.2, §8.5.4); deployment/monitoring/README
+metrics:
+  path: ${METRICS_PATH:-/metrics}
+  require_auth: ${METRICS_REQUIRE_AUTH:-false}
+  bearer_token: ${METRICS_BEARER_TOKEN:-}
+
 # Cosmos DB Configuration
 cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
@@ -38,7 +49,7 @@ notification:
       provider: ${EMAIL_PROVIDER:-smtp}  # sendgrid | ses | smtp
       secret_id: ${SENDGRID_SECRET_ID:-}
       from_address: ${EMAIL_FROM_ADDRESS:-noreply@coder.ide}
-      from_name: ${EMAIL_FROM_NAME:-Coder IDE}
+      from_name: ${EMAIL_FROM_NAME:-Castiel}
     push:
       enabled: ${PUSH_ENABLED:-false}
       provider: ${PUSH_PROVIDER:-firebase}  # firebase | onesignal

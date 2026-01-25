@@ -236,6 +236,7 @@ export class ShardService {
     tenantId: string,
     filters?: {
       shardTypeId?: string;
+      shardTypeName?: string;
       status?: ShardStatus;
       parentShardId?: string;
       userId?: string;
@@ -256,6 +257,11 @@ export class ShardService {
     if (filters?.shardTypeId) {
       query += ' AND c.shardTypeId = @shardTypeId';
       parameters.push({ name: '@shardTypeId', value: filters.shardTypeId });
+    }
+
+    if (filters?.shardTypeName) {
+      query += ' AND c.shardTypeName = @shardTypeName';
+      parameters.push({ name: '@shardTypeName', value: filters.shardTypeName });
     }
 
     if (filters?.status) {

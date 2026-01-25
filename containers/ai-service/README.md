@@ -1,6 +1,6 @@
 # AI Service
 
-Centralized LLM completion service for Coder IDE.
+Centralized LLM completion service for Castiel.
 
 ## Features
 

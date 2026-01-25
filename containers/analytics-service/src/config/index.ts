@@ -7,11 +7,14 @@ export interface AnalyticsServiceConfig {
   server: { port: number; host: string };
   cosmos_db: { endpoint: string; key: string; database_id: string; containers?: Record<string, string> };
   services: {
-    shard_manager: { url: string };
-    logging: { url: string };
-    user_management: { url: string };
+    shard_manager?: { url: string };
+    logging?: { url: string };
+    user_management?: { url: string };
+    ai_service?: { url: string };
+    ml_service?: { url: string };
+    integration_manager?: { url: string };
   };
-  rabbitmq: { url: string; exchange: string; queue: string };
+  rabbitmq: { url: string; exchange: string; queue: string; bindings?: string[] };
 }
 
 export function loadConfig(): AnalyticsServiceConfig {

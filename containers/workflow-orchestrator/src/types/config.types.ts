@@ -35,6 +35,11 @@ export interface WorkflowOrchestratorConfig {
     queue: string;
     bindings: string[];
   };
+  batch_jobs?: {
+    enabled?: boolean;
+    risk_snapshot_backfill_cron?: string;
+    outcome_sync_cron?: string;
+  };
   features: {
     [key: string]: boolean;
   };

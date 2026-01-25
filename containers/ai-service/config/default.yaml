@@ -16,12 +16,25 @@ cosmos_db:
     models: ai_models
     completions: ai_completions
     agents: ai_agents
+    insights: ai_insights
+    proactive_insights: ai_proactive_insights
+    collaborative_insights: ai_collaborative_insights
+    risk_analysis: ai_risk_analysis
+    tasks: reasoning_tasks
+    prompts: prompt_prompts
+    versions: prompt_versions
+    ab_tests: prompt_ab_tests
+    analytics: prompt_analytics
 
 services:
   secret_management:
     url: ${SECRET_MANAGEMENT_URL:-http://localhost:3003}
   logging:
     url: ${LOGGING_URL:-http://localhost:3014}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3023}
+  embeddings:
+    url: ${EMBEDDINGS_URL:-http://localhost:3005}
 
 rabbitmq:
   url: ${RABBITMQ_URL}

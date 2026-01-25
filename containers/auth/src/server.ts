@@ -41,7 +41,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       info: {
         title: 'Authentication Service API',
         description: `
-          Authentication service for Coder IDE with multi-provider support.
+          Authentication service for Castiel with multi-provider support.
           
           ## Authentication
           Most endpoints (except health checks and public auth endpoints) require JWT authentication via Bearer token:

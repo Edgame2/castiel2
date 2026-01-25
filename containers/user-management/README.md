@@ -1,6 +1,6 @@
 # User Management Module
 
-User profiles, organizations, teams, roles, and permissions management service for Coder IDE.
+User profiles, organizations, teams, roles, and permissions management service for Castiel.
 
 ## Features
 

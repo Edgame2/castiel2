@@ -16,6 +16,13 @@ cosmos_db:
     events: analytics_events
     metrics: analytics_metrics
     reports: analytics_reports
+    quality_metrics: quality_metrics
+    quality_anomalies: quality_anomalies
+    ai_analytics_events: ai_analytics_events
+    ai_analytics_models: ai_analytics_models
+    signal_intelligence_signals: signal_intelligence_signals
+    # Usage tracking for billing (Plan §10, §3.5): ml.prediction.completed, llm.inference.completed, embedding.generated
+    usage_ml: analytics_usage_ml
 
 services:
   shard_manager:
@@ -24,9 +31,20 @@ services:
     url: ${LOGGING_URL:-http://localhost:3014}
   user_management:
     url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
+  ai_service:
+    url: ${AI_SERVICE_URL:-http://localhost:3006}
+  ml_service:
+    url: ${ML_SERVICE_URL:-http://localhost:3031}
+  integration_manager:
+    url: ${INTEGRATION_MANAGER_URL:-http://localhost:3010}
 
 rabbitmq:
   url: ${RABBITMQ_URL}
   exchange: coder_events
   queue: analytics_service
+  # Usage tracking (Plan §10): consumer for ml.prediction.completed, llm.inference.completed, embedding.generated → Cosmos analytics_usage_ml
+  bindings:
+    - "ml.prediction.completed"
+    - "llm.inference.completed"
+    - "embedding.generated"
 

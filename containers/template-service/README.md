@@ -1,6 +1,6 @@
 # Template Service Module
 
-Template management service for Coder IDE.
+Template management service for Castiel.
 
 ## Features
 

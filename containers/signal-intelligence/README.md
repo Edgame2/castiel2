@@ -1,11 +1,15 @@
-# Signal-intelligence Module
+# Signal Intelligence Module
 
-[Description of what this service does]
+Signal analysis and intelligence service for Castiel, providing communication analysis, calendar intelligence, social signal monitoring, product usage integration, competitive intelligence, and customer success integration.
 
 ## Features
 
-- Feature 1
-- Feature 2
+- **Communication Analysis**: Analyze email and meeting communications
+- **Calendar Intelligence**: Calendar pattern analysis
+- **Social Signal**: Social media monitoring
+- **Product Usage**: Product usage integration
+- **Competitive Intelligence**: Competitive intelligence gathering
+- **Customer Success Integration**: Customer success data integration
 
 ## Quick Start
 
@@ -32,7 +36,9 @@ cp config/default.yaml config/local.yaml
 
 The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers). Ensure the following containers exist:
 
-- `signal-intelligence_data` - Main data container
+- `signal_communications` - Communication analysis data (partition: `/tenantId`)
+- `signal_calendar` - Calendar intelligence data (partition: `/tenantId`)
+- `signal_social` - Social signal data (partition: `/tenantId`)
 
 ### Running
 
@@ -53,11 +59,19 @@ See [OpenAPI Spec](./openapi.yaml)
 
 ### Published Events
 
-- `signal-intelligence.event.name`
+- `signal.communication.analyzed` - Communication analyzed
+- `signal.calendar.analyzed` - Calendar analyzed
+- `signal.social.detected` - Social signal detected
 
 ### Consumed Events
 
-- `other.event.name`
+- (None currently)
+
+## Dependencies
+
+- **ai-service**: For AI-powered analysis
+- **analytics-service**: For analytics
+- **integration-manager**: For integration access
 
 ## Development
 

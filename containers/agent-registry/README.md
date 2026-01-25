@@ -1,6 +1,6 @@
 # Agent Registry Module
 
-Management of specialized AI agents for Coder IDE, providing agent registration, agent selection, execution tracking, and versioning.
+Management of specialized AI agents for Castiel, providing agent registration, agent selection, execution tracking, and versioning.
 
 ## Features
 
@@ -110,5 +110,5 @@ npm test
 
 ## License
 
-Proprietary - Coder IDE
+Proprietary - Castiel
 

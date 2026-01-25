@@ -41,18 +41,29 @@ services:
   user_management:
     url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
 
-# RabbitMQ Configuration
+# RabbitMQ Configuration (RabbitMQ only; no Azure Service Bus)
 rabbitmq:
   url: ${RABBITMQ_URL}
   exchange: coder_events
   queue: [module-name]_service
   bindings:
     - "event.name"  # Events to consume
+  # Optional: for batch job workers (ModuleImplementationGuide §9.6)
+  queue_batch_jobs: ${RABBITMQ_QUEUE_BATCH_JOBS:-bi_batch_jobs}
+
+# Optional: Data Lake (for event→Data Lake consumers, e.g. DataLakeCollector)
+data_lake:
+  connection_string: ${DATA_LAKE_CONNECTION_STRING:-}
+  container: ${DATA_LAKE_CONTAINER:-risk}
+  path_prefix: ${DATA_LAKE_PATH_PREFIX:-/risk_evaluations}
+  # ml_outcomes_prefix: ${DATA_LAKE_ML_OUTCOMES_PREFIX:-/ml_outcomes}  # for outcome consumer (BI Sales Risk)
 
 # Feature flags
 features:
   feature_flag: ${FEATURE_FLAG:-true}
 ```
+
+**For BI Sales Risk containers (plan §8.5.4, §8.1–8.3):** add `application_insights` and `metrics`; for ml-service add `azure_ml`; for risk-analytics add `data_lake` (backfill), `feature_flags`, `thresholds`. See BI_SALES_RISK_IMPLEMENTATION_PLAN §8.
 
 ## Environment Variable Syntax
 
@@ -266,6 +277,12 @@ export interface ModuleConfig {
     exchange: string;
     queue: string;
     bindings: string[];
+    queue_batch_jobs?: string;
+  };
+  data_lake?: {
+    connection_string: string;
+    container: string;
+    path_prefix: string;
   };
   features?: Record<string, boolean | string>;
 }

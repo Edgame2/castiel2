@@ -39,7 +39,7 @@ info:
     - GCP_SECRET_MANAGER: GCP Secret Manager
   version: 1.0.0
   contact:
-    name: Coder IDE Team
+    name: Castiel Team
 
 servers:
   - url: /api/v1

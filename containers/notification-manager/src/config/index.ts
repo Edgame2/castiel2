@@ -108,6 +108,12 @@ export function loadConfig(): ModuleConfig {
     resolved.server.port = parseInt(resolved.server.port, 10);
   }
 
+  // Plan §8.5.2, §8.5.4: metrics with env METRICS_PATH, METRICS_REQUIRE_AUTH, METRICS_BEARER_TOKEN
+  resolved.metrics = resolved.metrics ?? { path: '/metrics', require_auth: false, bearer_token: '' };
+  if (typeof (resolved.metrics as any).require_auth === 'string') {
+    (resolved.metrics as any).require_auth = (resolved.metrics as any).require_auth === 'true';
+  }
+
   // Validate against schema
   const ajv = new Ajv({ allErrors: true });
   const validate = ajv.compile(schema);

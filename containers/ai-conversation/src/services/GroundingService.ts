@@ -46,6 +46,7 @@ export interface GroundingWarning {
   severity: 'low' | 'medium' | 'high';
   message: string;
   location?: string;
+  suggestion?: string;
 }
 
 export class GroundingService {
@@ -96,7 +97,7 @@ export class GroundingService {
       });
 
       // 1. Extract claims from response
-      const claims = await this.extractClaims(response);
+      const claims = await this.extractClaims(tenantId, response);
 
       // 2. Match claims to sources
       const verifiedClaims = await this.matchClaimsToSources(claims, context);
@@ -140,65 +141,163 @@ export class GroundingService {
   }
 
   /**
-   * Extract claims from response
+   * Extract claims from response using AI service
    */
-  private async extractClaims(response: string): Promise<Array<{ text: string; type: string }>> {
+  private async extractClaims(tenantId: string, response: string): Promise<Array<{ text: string; type: string; verifiable: boolean }>> {
     try {
-      // Simple claim extraction: identify factual statements
-      const sentences = response.split(/[.!?]+/).filter(s => s.trim().length > 10);
-      const claims: Array<{ text: string; type: string }> = [];
+      const token = this.getServiceToken(tenantId);
+      
+      // Truncate if too long
+      const truncatedResponse = response.length > 4000 ? response.substring(0, 4000) + '...' : response;
 
-      for (const sentence of sentences) {
-        const trimmed = sentence.trim();
-        // Identify factual statements (contain numbers, dates, or specific entities)
-        if (/\d+/.test(trimmed) || /(is|are|was|were|has|have|contains|includes)/i.test(trimmed)) {
-          claims.push({
-            text: trimmed,
-            type: 'factual',
-          });
-        } else if (trimmed.length > 20) {
-          // Other significant statements
-          claims.push({
-            text: trimmed,
-            type: 'general',
-          });
+      const CLAIM_EXTRACTION_PROMPT = `You are a claim extraction specialist. Analyze the following text and extract all factual and analytical claims.
+
+For each claim, identify:
+1. The exact text of the claim
+2. The type (fact, date, quantity, quote, status, relationship, assessment, comparison, prediction, recommendation, opinion, general_knowledge)
+3. Whether it's verifiable (true/false)
+
+IMPORTANT:
+- Extract EVERY claim, including inferred ones
+- Mark assessments like "at risk" or "critical" as type "assessment"
+- Mark comparisons like "better than" or "more than" as type "comparison"
+- Mark future statements as type "prediction"
+- Mark suggestions like "should" or "recommend" as type "recommendation"
+- Mark subjective opinions as type "opinion"
+- Mark common knowledge as type "general_knowledge"
+
+Text:
+"${truncatedResponse}"
+
+Return ONLY a valid JSON array. Example format:
+[
+  {"text": "claim 1", "type": "fact", "verifiable": true},
+  {"text": "claim 2", "type": "assessment", "verifiable": true}
+]`;
+
+      const aiResponse = await this.aiServiceClient.post<any>(
+        '/api/ai/completions',
+        {
+          messages: [
+            {
+              role: 'user',
+              content: CLAIM_EXTRACTION_PROMPT,
+            },
+          ],
+          temperature: 0.2,
+          maxTokens: 2000,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'X-Tenant-ID': tenantId,
+          },
         }
+      );
+
+      // Parse JSON response
+      let parsed: Array<{ text: string; type: string; verifiable: boolean }>;
+      try {
+        const content = aiResponse.choices?.[0]?.message?.content || aiResponse.completion || aiResponse.text || '';
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) {
+          throw new Error('No JSON array found in response');
+        }
+        parsed = JSON.parse(jsonMatch[0]);
+      } catch (parseError: any) {
+        log.warn('Failed to parse claim extraction response', {
+          error: parseError.message,
+          service: 'ai-conversation',
+        });
+        // Fallback to simple extraction
+        return this.simpleClaimExtraction(response);
       }
 
-      return claims.slice(0, 10); // Limit to top 10 claims
+      return parsed
+        .filter((p) => typeof p.text === 'string' && typeof p.type === 'string' && p.text.length > 0)
+        .slice(0, 20);
     } catch (error: any) {
-      log.warn('Claim extraction failed', {
+      log.warn('AI claim extraction failed, using simple extraction', {
         error: error.message,
         service: 'ai-conversation',
       });
-      return [];
+      return this.simpleClaimExtraction(response);
     }
   }
 
   /**
-   * Match claims to sources
+   * Simple claim extraction fallback
+   */
+  private simpleClaimExtraction(response: string): Array<{ text: string; type: string; verifiable: boolean }> {
+    const sentences = response.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    const claims: Array<{ text: string; type: string; verifiable: boolean }> = [];
+
+    for (const sentence of sentences) {
+      const trimmed = sentence.trim();
+      if (/\d+/.test(trimmed) || /(is|are|was|were|has|have|contains|includes)/i.test(trimmed)) {
+        claims.push({
+          text: trimmed,
+          type: 'fact',
+          verifiable: true,
+        });
+      } else if (trimmed.length > 20) {
+        claims.push({
+          text: trimmed,
+          type: 'general',
+          verifiable: false,
+        });
+      }
+    }
+
+    return claims.slice(0, 10);
+  }
+
+  /**
+   * Match claims to sources with semantic similarity
    */
   private async matchClaimsToSources(
-    claims: Array<{ text: string; type: string }>,
+    claims: Array<{ text: string; type: string; verifiable: boolean }>,
     context: AssembledContext
   ): Promise<VerifiedClaim[]> {
     try {
       const verifiedClaims: VerifiedClaim[] = [];
+      const MIN_CONFIDENCE_THRESHOLD = 0.65;
 
       for (const claim of claims) {
+        if (!claim.verifiable) {
+          // Opinion/general knowledge - no source needed
+          verifiedClaims.push({
+            id: uuidv4(),
+            text: claim.text,
+            verified: false,
+            confidence: 0,
+            sources: [],
+            category: claim.type,
+          });
+          continue;
+        }
+
         const claimWords = claim.text.toLowerCase().split(/\s+/).filter(w => w.length > 3);
         const matchingSources: string[] = [];
         let maxConfidence = 0;
 
-        // Check each source for claim matches
+        // Check each source for claim matches with semantic similarity
         for (const source of context.sources) {
           const sourceContent = source.content.toLowerCase();
+          
+          // Calculate word overlap
           const matchingWords = claimWords.filter(word => sourceContent.includes(word)).length;
-          const matchRatio = matchingWords / claimWords.length;
+          const wordMatchRatio = matchingWords / Math.max(1, claimWords.length);
+          
+          // Calculate semantic similarity (simple version - can be enhanced with embeddings)
+          const semanticScore = this.calculateTextSimilarity(claim.text, source.content);
+          
+          // Combined score
+          const matchScore = (wordMatchRatio * 0.4 + semanticScore * 0.6);
 
-          if (matchRatio > 0.3) {
+          if (matchScore > MIN_CONFIDENCE_THRESHOLD) {
             matchingSources.push(source.id);
-            maxConfidence = Math.max(maxConfidence, matchRatio);
+            maxConfidence = Math.max(maxConfidence, matchScore);
           }
         }
 
@@ -230,7 +329,20 @@ export class GroundingService {
   }
 
   /**
-   * Detect hallucinations
+   * Calculate text similarity (simple version)
+   */
+  private calculateTextSimilarity(text1: string, text2: string): number {
+    const words1 = new Set(text1.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+    const words2 = new Set(text2.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+    
+    const intersection = new Set([...words1].filter(x => words2.has(x)));
+    const union = new Set([...words1, ...words2]);
+    
+    return union.size > 0 ? intersection.size / union.size : 0;
+  }
+
+  /**
+   * Detect hallucinations with enhanced detection
    */
   private async detectHallucinations(
     claims: VerifiedClaim[],
@@ -238,20 +350,31 @@ export class GroundingService {
   ): Promise<GroundingWarning[]> {
     try {
       const warnings: GroundingWarning[] = [];
+      const MIN_CONFIDENCE_THRESHOLD = 0.65;
 
       for (const claim of claims) {
-        if (!claim.verified && claim.confidence < 0.3) {
-          const severity = claim.confidence < 0.1 ? 'high' : claim.confidence < 0.2 ? 'medium' : 'low';
+        // Check for unverified factual claims
+        if (!claim.verified && claim.confidence < MIN_CONFIDENCE_THRESHOLD) {
+          const severity = claim.confidence < 0.1 ? 'high' : claim.confidence < 0.3 ? 'medium' : 'low';
+          
+          // Determine warning type based on claim category
+          let warningType: 'hallucination' | 'unverified' | 'contradiction' = 'unverified';
+          if (claim.category === 'fact' || claim.category === 'date' || claim.category === 'quantity') {
+            warningType = 'hallucination';
+          }
+          
           warnings.push({
-            type: 'hallucination',
+            type: warningType,
             severity,
-            message: `Unverified claim with low confidence (${(claim.confidence * 100).toFixed(0)}%): ${claim.text.substring(0, 100)}`,
+            message: `Unverified ${claim.category} claim with low confidence (${(claim.confidence * 100).toFixed(0)}%): ${claim.text.substring(0, 100)}`,
+            location: claim.text.substring(0, 50),
           });
-        } else if (claim.verified && claim.confidence < 0.5) {
+        } else if (claim.verified && claim.confidence < MIN_CONFIDENCE_THRESHOLD) {
           warnings.push({
             type: 'unverified',
             severity: 'low',
-            message: `Claim verified but with low confidence: ${claim.text.substring(0, 100)}`,
+            message: `Claim verified but with low confidence (${(claim.confidence * 100).toFixed(0)}%): ${claim.text.substring(0, 100)}`,
+            location: claim.text.substring(0, 50),
           });
         }
       }

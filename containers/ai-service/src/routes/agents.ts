@@ -1,12 +1,15 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { authenticateRequest } from '@coder/shared';
+import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { AgentService } from '../services/AgentService';
 
 export async function agentRoutes(fastify: FastifyInstance) {
   const agentService = new AgentService();
 
-  // Register authentication middleware
-  fastify.addHook('preHandler', authenticateRequest);
+  // Register authentication and tenant enforcement middleware
+  fastify.addHook('preHandler', async (request, reply) => {
+    await authenticateRequest()(request, reply);
+    await tenantEnforcementMiddleware()(request, reply);
+  });
 
   // List agents
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -41,7 +44,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
       }
 
       reply.send(agent);
-    } catch (error: any) {
+    } catch (error: unknown) {
       reply.code(500).send({ error: 'Failed to get agent' });
     }
   });
@@ -62,7 +65,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
       });
 
       reply.code(201).send({ execution });
-    } catch (error: any) {
+    } catch (error: unknown) {
       reply.code(500).send({ error: 'Failed to execute agent' });
     }
   });

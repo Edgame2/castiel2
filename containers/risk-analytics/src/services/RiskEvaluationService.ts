@@ -13,14 +13,19 @@ import { log } from '../utils/logger';
 import {
   RiskEvaluationRequest,
   RiskEvaluationResult,
+  RiskEvaluationAssumptions,
+  EvaluationDataQuality,
   RiskScoringRequest,
   RiskScoringResult,
   LearnedWeights,
   ModelSelection,
   RevenueAtRiskCalculation,
 } from '../types/risk-analytics.types';
-import { RiskCatalog, DetectedRisk } from '../../risk-catalog/src/types/risk-catalog.types';
+import { RiskCatalog, DetectedRisk } from '../types/risk-catalog.types';
+import { RiskCatalogService } from './RiskCatalogService';
+import { trace } from '@opentelemetry/api';
 import { publishRiskAnalyticsEvent } from '../events/publishers/RiskAnalyticsEventPublisher';
+import { riskEvaluationsTotal } from '../metrics';
 import { v4 as uuidv4 } from 'uuid';
 
 // Default weights for fallback
@@ -38,6 +43,8 @@ export class RiskEvaluationService {
   private mlServiceClient: ServiceClient;
   private aiInsightsClient: ServiceClient;
   private shardManagerClient: ServiceClient;
+  private embeddingsClient: ServiceClient;
+  private searchServiceClient: ServiceClient;
   private evaluationCache = new Map<string, { evaluation: RiskEvaluationResult; expiresAt: number }>();
   private readonly CACHE_TTL = 15 * 60 * 1000; // 15 minutes
   private app: FastifyInstance | null = null;
@@ -88,6 +95,13 @@ export class RiskEvaluationService {
       retries: 3,
       circuitBreaker: { enabled: true },
     });
+
+    this.searchServiceClient = new ServiceClient({
+      baseURL: this.config.services.search_service?.url || '',
+      timeout: 15000,
+      retries: 2,
+      circuitBreaker: { enabled: true },
+    });
   }
 
   /**
@@ -121,9 +135,9 @@ export class RiskEvaluationService {
         }
       );
       return response || DEFAULT_WEIGHTS;
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.warn('Failed to get learned weights, using defaults', {
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         tenantId,
         service: 'risk-analytics',
       });
@@ -147,9 +161,9 @@ export class RiskEvaluationService {
         }
       );
       return response || { modelId: 'default-risk-model', confidence: 0.8 };
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.warn('Failed to get model selection, using default', {
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         tenantId,
         service: 'risk-analytics',
       });
@@ -158,28 +172,14 @@ export class RiskEvaluationService {
   }
 
   /**
-   * Get risk catalog from risk-catalog service
+   * Get risk catalog from local RiskCatalogService (merged from risk-catalog)
    */
   private async getRiskCatalog(tenantId: string, industryId?: string): Promise<RiskCatalog[]> {
     try {
-      const url = industryId
-        ? `/api/v1/risk-catalog/catalog/${tenantId}?industryId=${industryId}`
-        : `/api/v1/risk-catalog/catalog/${tenantId}`;
-      
-      const token = this.getServiceToken(tenantId);
-      const catalog = await this.riskCatalogClient.get<RiskCatalog[]>(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-Tenant-ID': tenantId,
-        },
-      });
-        headers: {
-          'X-Tenant-ID': tenantId,
-        },
-      });
+      const catalog = await this.riskCatalogService.getCatalog(tenantId, industryId);
       return Array.isArray(catalog) ? catalog : [];
-    } catch (error: any) {
-      log.error('Failed to get risk catalog', error, {
+    } catch (error: unknown) {
+      log.error('Failed to get risk catalog', error instanceof Error ? error : new Error(String(error)), {
         tenantId,
         industryId,
         service: 'risk-analytics',
@@ -204,8 +204,8 @@ export class RiskEvaluationService {
         }
       );
       return shard;
-    } catch (error: any) {
-      log.error('Failed to get opportunity shard', error, {
+    } catch (error: unknown) {
+      log.error('Failed to get opportunity shard', error instanceof Error ? error : new Error(String(error)), {
         opportunityId,
         tenantId,
         service: 'risk-analytics',
@@ -277,47 +277,57 @@ export class RiskEvaluationService {
       );
 
       // Step 4: Calculate risk scores
-      const riskScore = this.calculateRiskScore(detectedRisks, weights);
+      let riskScore = this.calculateRiskScore(detectedRisks, weights);
       const categoryScores = this.calculateCategoryScores(detectedRisks);
 
-      // Step 5: Calculate revenue at risk
-      const opportunityValue = opportunityShard?.structuredData?.amount || 0;
-      const revenueAtRisk = this.calculateRevenueAtRisk(riskScore, opportunityValue);
-
-      // Step 6: Get ML risk score (optional, if ML weight > 0)
+      // Step 5: Get ML risk score and merge when ML weight > 0 (MISSING_FEATURES 4.2)
       let mlRiskScore: number | undefined;
       if (weights.ml && weights.ml > 0) {
         try {
           const modelSelection = await this.getModelSelection(request.tenantId, 'risk-scoring');
           const mlResult = await this.performMLRiskScoring(request.opportunityId, request.tenantId, modelSelection);
           mlRiskScore = mlResult.mlRiskScore;
-          
-          // Combine ML score with rule-based score
           const combinedScore = (riskScore * (1 - weights.ml!)) + (mlRiskScore * weights.ml!);
-          // Use combined score if ML is significant
           if (weights.ml! > 0.3) {
-            // Update risk score with ML contribution
+            riskScore = combinedScore;
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           log.warn('ML risk scoring failed, continuing without ML', {
-            error: error.message,
+            error: error instanceof Error ? error.message : String(error),
             opportunityId: request.opportunityId,
             service: 'risk-analytics',
           });
         }
       }
 
-      // Step 7: Build evaluation result
+      // Step 6: Calculate revenue at risk (after riskScore is finalized, including ML when applied)
+      const opportunityValue = opportunityShard?.structuredData?.amount || 0;
+      const revenueAtRisk = this.calculateRevenueAtRisk(riskScore, opportunityValue);
+
+      // Step 7: Build evaluation result (assumptions: data quality, staleness, missing data – MISSING_FEATURES 4.3; dataQuality Plan §11.6)
+      const assumptions = this.buildAssumptions(opportunityShard);
+      const qualityScore = this.calculateQualityScore(opportunityShard);
+      const dataQuality: EvaluationDataQuality = {
+        score: qualityScore,
+        completenessPct: Math.round((assumptions.dataQuality?.completeness ?? 0) * 100),
+        missingCritical: (assumptions.dataQuality?.issues ?? []).filter((i) => i.severity === 'high').map((i) => i.field || i.message || ''),
+        stalenessDays: Math.floor(assumptions.staleness?.daysSinceUpdate ?? 0),
+      };
+      const atRiskReasons = [...new Set(detectedRisks.map((r) => r.riskName).filter(Boolean))];
       const evaluation: RiskEvaluationResult = {
         evaluationId,
         opportunityId: request.opportunityId,
         riskScore,
         categoryScores,
         detectedRisks,
+        atRiskReasons,
         revenueAtRisk,
         calculatedAt: new Date(),
         trustLevel: this.calculateTrustLevel(detectedRisks, opportunityShard),
-        qualityScore: this.calculateQualityScore(opportunityShard),
+        qualityScore,
+        dataQuality,
+        assumptions,
+        ...(mlRiskScore != null && { mlRiskScore }),
       };
 
       // Step 8: Store in database
@@ -339,7 +349,45 @@ export class RiskEvaluationService {
         timestamp: new Date().toISOString(),
       });
 
-      // Step 11: Publish outcome to adaptive-learning for learning
+      // Publish risk.evaluated for DataLakeCollector (logging) and RiskSnapshotService (Plan §9.1, §11.2)
+      // topDrivers: { feature, contribution, direction }[] per plan Explainability / DATA_LAKE_LAYOUT
+      await publishRiskAnalyticsEvent('risk.evaluated', request.tenantId, {
+        opportunityId: request.opportunityId,
+        evaluationId,
+        riskScore,
+        categoryScores,
+        topDrivers: detectedRisks.slice(0, 5).map((r) => ({
+          feature: r.riskName || 'Risk',
+          contribution: typeof r.contribution === 'number' ? r.contribution : 0.1,
+          direction: 'increases' as const,
+        })),
+        dataQuality: evaluation.dataQuality,
+        atRiskReasons: evaluation.atRiskReasons,
+        timestamp: new Date().toISOString(),
+      });
+      riskEvaluationsTotal.inc();
+      trace.getTracer('risk-analytics').startSpan('risk.evaluated', {
+        attributes: { tenantId: request.tenantId, opportunityId: request.opportunityId },
+      }).end();
+
+      // Step 11: recordPrediction (REST) and publish outcome to adaptive-learning (MISSING_FEATURES 3.2)
+      if (this.config.services.adaptive_learning?.url) {
+        try {
+          const token = this.getServiceToken(request.tenantId);
+          await this.adaptiveLearningClient.post(
+            '/api/v1/adaptive-learning/outcomes/record-prediction',
+            {
+              component: 'risk-evaluation',
+              predictionId: evaluationId,
+              context: { opportunityId: request.opportunityId, detectedRisks: detectedRisks.length, categoryScores },
+              predictedValue: riskScore,
+            },
+            { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': request.tenantId } }
+          );
+        } catch (e: unknown) {
+          log.warn('recordPrediction (adaptive-learning) failed', { error: (e as Error).message, evaluationId, service: 'risk-analytics' });
+        }
+      }
       await publishRiskAnalyticsEvent('adaptive.learning.outcome.recorded', request.tenantId, {
         component: 'risk-evaluation',
         prediction: riskScore,
@@ -360,19 +408,19 @@ export class RiskEvaluationService {
       });
 
       return evaluation;
-    } catch (error: any) {
-      log.error('Risk evaluation failed', error, {
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      log.error('Risk evaluation failed', error instanceof Error ? error : new Error(errMsg), {
         evaluationId,
         opportunityId: request.opportunityId,
         tenantId: request.tenantId,
         service: 'risk-analytics',
       });
 
-      // Publish failure event
       await publishRiskAnalyticsEvent('risk.evaluation.failed', request.tenantId, {
         evaluationId,
         opportunityId: request.opportunityId,
-        error: error.message || 'Unknown error',
+        error: errMsg || 'Unknown error',
       });
 
       throw error;
@@ -457,9 +505,9 @@ export class RiskEvaluationService {
             lifecycleState: 'identified',
           });
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.warn('Failed to evaluate risk rule', {
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           riskId: riskDef.riskId,
           service: 'risk-analytics',
         });
@@ -521,9 +569,9 @@ export class RiskEvaluationService {
       }));
 
       return risks;
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.warn('AI risk detection failed', {
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         opportunityId: opportunityShard.id,
         service: 'risk-analytics',
       });
@@ -532,75 +580,112 @@ export class RiskEvaluationService {
   }
 
   /**
-   * Historical pattern matching
+   * Historical pattern matching (MISSING_FEATURES 4.5).
+   * Uses vector search for similar opportunities when search_service is configured;
+   * falls back to shard-manager attribute-based query (stage, amount) otherwise.
    */
   private async detectRisksHistorical(opportunityShard: any, catalog: RiskCatalog[]): Promise<DetectedRisk[]> {
     try {
       const token = this.getServiceToken(opportunityShard.tenantId);
       const data = opportunityShard?.structuredData || {};
-      
-      // Query similar opportunities from shard-manager
-      const similarOpportunities = await this.shardManagerClient.post<any>(
-        '/api/v1/shards/query',
-        {
-          shardType: 'opportunity',
-          filters: {
-            stage: data.stage,
-            amount: { $gte: data.amount * 0.8, $lte: data.amount * 1.2 },
-          },
-          limit: 10,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'X-Tenant-ID': opportunityShard.tenantId,
-          },
-        }
-      );
+      type SimilarItem = { id: string; structuredData?: Record<string, unknown> };
+      let similarList: SimilarItem[] = [];
 
-      const risks: DetectedRisk[] = [];
-      
-      // Analyze historical outcomes
-      for (const similarOpp of (similarOpportunities.data || [])) {
-        const outcome = similarOpp.structuredData?.outcome || similarOpp.structuredData?.status;
-        
-        // If similar opportunity had negative outcome, check for matching risks
-        if (outcome === 'lost' || outcome === 'cancelled') {
-          // Get risks that were detected for this similar opportunity
-          const historicalEvaluation = await this.getHistoricalEvaluation(similarOpp.id, opportunityShard.tenantId);
-          
-          if (historicalEvaluation && historicalEvaluation.detectedRisks) {
-            // Match risks that are still in catalog
-            for (const historicalRisk of historicalEvaluation.detectedRisks) {
-              const catalogRisk = catalog.find(r => r.riskId === historicalRisk.riskId);
-              if (catalogRisk && catalogRisk.isActive) {
-                risks.push({
-                  ...historicalRisk,
-                  confidence: historicalRisk.confidence * 0.7, // Reduce confidence for historical match
-                  explainability: {
-                    ...historicalRisk.explainability,
-                    detectionMethod: 'historical',
-                    evidence: {
-                      ...historicalRisk.explainability?.evidence,
-                      similarOpportunityId: similarOpp.id,
-                      historicalOutcome: outcome,
-                    },
-                    reasoning: {
-                      summary: `Risk detected based on historical pattern: similar opportunity ${outcome}`,
-                      standard: `A similar opportunity (${similarOpp.id}) had outcome "${outcome}" and was associated with risk: ${historicalRisk.riskName}`,
-                    },
-                  },
-                });
+      // 1) Try vector search for similar opportunities when search_service is configured
+      if (this.config.services.search_service?.url) {
+        const queryText = [data.description, data.summary, data.stage, String(data.amount ?? '')]
+          .filter(Boolean)
+          .join(' ') || [data.stage, data.amount].filter(Boolean).join(' ') || 'opportunity';
+        try {
+          const res = await this.searchServiceClient.post<{ results?: Array<{ shardId: string; shard?: { id?: string; structuredData?: Record<string, unknown> } }> }>(
+            '/api/v1/search/vector',
+            {
+              query: queryText,
+              shardTypeIds: ['c_opportunity'],
+              limit: 10,
+              includeShard: true,
+            },
+            { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': opportunityShard.tenantId } }
+          );
+          const results = res?.results ?? [];
+          for (const r of results) {
+            if (r.shardId === opportunityShard.id) continue;
+            let shard: { id?: string; structuredData?: Record<string, unknown> } | undefined = r.shard;
+            if (!shard && r.shardId) {
+              try {
+                shard = await this.getOpportunityShard(r.shardId, opportunityShard.tenantId);
+              } catch {
+                /* skip */
               }
             }
+            if (shard) {
+              similarList.push({ id: shard.id ?? r.shardId, structuredData: shard.structuredData });
+            }
           }
+        } catch (e) {
+          log.warn('Vector search for similar opportunities failed, using shard-manager fallback', {
+            error: (e as Error).message,
+            opportunityId: opportunityShard.id,
+            service: 'risk-analytics',
+          });
+        }
+      }
+
+      // 2) Fallback: attribute-based query from shard-manager
+      if (similarList.length === 0) {
+        const smRes = await this.shardManagerClient.post<{ data?: Array<{ id: string; structuredData?: Record<string, unknown> }> }>(
+          '/api/v1/shards/query',
+          {
+            shardType: 'opportunity',
+            filters: {
+              stage: data.stage,
+              amount: { $gte: data.amount * 0.8, $lte: data.amount * 1.2 },
+            },
+            limit: 10,
+          },
+          { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': opportunityShard.tenantId } }
+        );
+        similarList = (smRes?.data ?? []).map((o: { id: string; structuredData?: Record<string, unknown> }) => ({
+          id: o.id,
+          structuredData: o.structuredData,
+        }));
+      }
+
+      const risks: DetectedRisk[] = [];
+      for (const similarOpp of similarList) {
+        const outcome = similarOpp.structuredData?.outcome ?? similarOpp.structuredData?.status;
+        if (outcome !== 'lost' && outcome !== 'cancelled') continue;
+
+        const historicalEvaluation = await this.getHistoricalEvaluation(similarOpp.id, opportunityShard.tenantId);
+        if (!historicalEvaluation?.detectedRisks) continue;
+
+        for (const historicalRisk of historicalEvaluation.detectedRisks) {
+          const catalogRisk = catalog.find((r) => r.riskId === historicalRisk.riskId);
+          if (!catalogRisk?.isActive) continue;
+          risks.push({
+            ...historicalRisk,
+            confidence: historicalRisk.confidence * 0.7,
+            explainability: {
+              ...historicalRisk.explainability,
+              detectionMethod: 'historical',
+              evidence: {
+                ...historicalRisk.explainability?.evidence,
+                similarOpportunityId: similarOpp.id,
+                historicalOutcome: outcome,
+              },
+              reasoning: {
+                summary: `Risk detected based on historical pattern: similar opportunity ${outcome}`,
+                standard: `A similar opportunity (${similarOpp.id}) had outcome "${outcome}" and was associated with risk: ${historicalRisk.riskName}`,
+              },
+            },
+          });
         }
       }
 
       return this.deduplicateRisks(risks);
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.warn('Historical risk detection failed', {
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         opportunityId: opportunityShard.id,
         service: 'risk-analytics',
       });
@@ -621,9 +706,9 @@ export class RiskEvaluationService {
       
       const { resources } = await container.items.query(querySpec, { partitionKey: tenantId }).fetchAll();
       return resources && resources.length > 0 ? resources[0] as any : null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.warn('Failed to get historical evaluation', {
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         opportunityId,
         service: 'risk-analytics',
       });
@@ -727,9 +812,9 @@ export class RiskEvaluationService {
       }
 
       return this.deduplicateRisks(risks);
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.warn('Semantic risk detection failed', {
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         opportunityId: opportunityShard.id,
         service: 'risk-analytics',
       });
@@ -944,6 +1029,66 @@ export class RiskEvaluationService {
   }
 
   /**
+   * Build assumptions for evaluation (data quality, staleness, missing data).
+   * Populated consistently so UI can display to users (MISSING_FEATURES 4.3).
+   */
+  private buildAssumptions(opportunityShard: any): RiskEvaluationAssumptions {
+    const data = opportunityShard?.structuredData || {};
+    const hasValue = (data.amount != null && data.amount !== '') || (data.value != null && data.value !== '');
+    const requiredFields = ['stage', 'probability', 'currency'];
+    const missing: string[] = requiredFields.filter(
+      (f) => data[f] === undefined || data[f] === null || data[f] === ''
+    );
+    if (!hasValue) missing.push('amount or value');
+    const missingDataWarnings = missing.map((f) => `Missing required field: ${f}`);
+
+    const issues: { type: string; field?: string; message: string; severity?: string }[] = requiredFields
+      .filter((f) => data[f] === undefined || data[f] === null || data[f] === '')
+      .map((f) => ({
+        type: 'missing_field',
+        field: f,
+        message: `Required field ${f} is missing`,
+        severity: 'high',
+      }));
+    if (!hasValue) {
+      issues.push({
+        type: 'missing_field',
+        field: 'value',
+        message: 'Amount or value is missing',
+        severity: 'high',
+      });
+    }
+
+    let lastUpdated: Date | null = null;
+    if (opportunityShard?.updatedAt) {
+      lastUpdated = new Date(opportunityShard.updatedAt);
+    }
+    const daysSinceUpdate = lastUpdated
+      ? (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24)
+      : 0;
+    const isStale = daysSinceUpdate > 30;
+
+    if (isStale) {
+      issues.push({
+        type: 'stale_data',
+        message: `Data hasn't been updated in ${Math.floor(daysSinceUpdate)} days`,
+        severity: 'medium',
+      });
+    }
+
+    const totalRequired = 4; // stage, probability, currency, amount|value
+    const completeness = Math.max(0, 1 - missing.length / totalRequired);
+
+    return {
+      dataQuality: { completeness, issues: issues.length > 0 ? issues : undefined },
+      staleness: lastUpdated
+        ? { lastUpdated: lastUpdated.toISOString(), daysSinceUpdate, isStale }
+        : undefined,
+      missingDataWarnings: missingDataWarnings.length > 0 ? missingDataWarnings : undefined,
+    };
+  }
+
+  /**
    * Perform ML risk scoring
    */
   async performMLRiskScoring(
@@ -1009,8 +1154,8 @@ export class RiskEvaluationService {
       });
 
       return result;
-    } catch (error: any) {
-      log.error('ML risk scoring failed', error, {
+    } catch (error: unknown) {
+      log.error('ML risk scoring failed', error instanceof Error ? error : new Error(String(error)), {
         scoringId,
         opportunityId,
         tenantId,
@@ -1065,13 +1210,12 @@ export class RiskEvaluationService {
         },
         { partitionKey: tenantId }
       );
-    } catch (error: any) {
-      log.error('Failed to store evaluation', error, {
+    } catch (error: unknown) {
+      log.error('Failed to store evaluation', error instanceof Error ? error : new Error(String(error)), {
         evaluationId: evaluation.evaluationId,
         tenantId,
         service: 'risk-analytics',
       });
-      // Don't throw - evaluation can continue without storage
     }
   }
 
@@ -1116,8 +1260,8 @@ export class RiskEvaluationService {
       });
 
       return calculation;
-    } catch (error: any) {
-      log.error('Failed to calculate revenue at risk', error, {
+    } catch (error: unknown) {
+      log.error('Failed to calculate revenue at risk', error instanceof Error ? error : new Error(String(error)), {
         opportunityId,
         tenantId,
         service: 'risk-analytics',

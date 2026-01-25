@@ -1,11 +1,13 @@
-# Collaboration-intelligence Module
+# Collaboration Intelligence Module
 
-[Description of what this service does]
+Collaborative intelligence and insights service for Castiel, providing collaborative insights, collaborative intelligence, memory context, and sharing capabilities.
 
 ## Features
 
-- Feature 1
-- Feature 2
+- **Collaborative Insights**: Generate insights from collaborative data
+- **Collaborative Intelligence**: Collaborative intelligence processing
+- **Memory Context**: Memory context service for conversations
+- **Sharing**: Sharing service for collaborative features
 
 ## Quick Start
 
@@ -53,11 +55,17 @@ See [OpenAPI Spec](./openapi.yaml)
 
 ### Published Events
 
-- `collaboration-intelligence.event.name`
+- `collaboration.insight.generated` - Collaborative insight generated
+- `collaboration.memory.updated` - Collaboration memory updated
 
 ### Consumed Events
 
-- `other.event.name`
+- (None currently)
+
+## Dependencies
+
+- **collaboration-service**: For collaboration features
+- **ai-insights**: For AI-powered insights
 
 ## Development
 

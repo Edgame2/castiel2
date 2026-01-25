@@ -1,6 +1,6 @@
 # Validation Engine Module
 
-Comprehensive validation service for Coder IDE, providing syntax validation, semantic validation, architecture validation, security validation, performance validation, and consistency validation.
+Comprehensive validation service for Castiel, providing syntax validation, semantic validation, architecture validation, security validation, performance validation, and consistency validation.
 
 ## Features
 
@@ -116,5 +116,5 @@ npm test
 
 ## License
 
-Proprietary - Coder IDE
+Proprietary - Castiel
 

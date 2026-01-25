@@ -1,0 +1,10 @@
+# Conda env for Azure ML ManagedOnlineDeployment of anomaly-detection-isolation-forest (score_anomaly_isolation_forest.py).
+# Used by train_anomaly_isolation_forest.py --deploy. Plan Phase 2; TRAINING_SCRIPTS_SPEC §3.4.
+name: anomaly-isolation-forest
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.8,<3.12
+  - numpy
+  - scikit-learn

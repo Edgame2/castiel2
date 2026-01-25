@@ -17,6 +17,18 @@ cosmos_db:
     integrations: integration_integrations
     sync_tasks: integration_sync_tasks
     webhooks: integration_webhooks
+    executions: integration_executions
+    conflicts: integration_conflicts
+    catalog: integration_catalog
+    visibility: integration_visibility
+    connections: integration_connections
+    sync_conflicts: integration_sync_conflicts
+    jobs: content_generation_jobs
+    content_templates: content_templates
+    templates: template_templates
+    template_versions: template_versions
+    context_templates: template_context_templates
+    email_templates: template_email_templates
 
 services:
   logging:
@@ -27,9 +39,16 @@ services:
     url: ${SHARD_MANAGER_URL:-http://localhost:3023}
   secret_management:
     url: ${SECRET_MANAGEMENT_URL:-http://localhost:3003}
+  ai_service:
+    url: ${AI_SERVICE_URL:-http://localhost:3006}
 
 rabbitmq:
   url: ${RABBITMQ_URL}
   exchange: coder_events
   queue: integration_manager_service
+  # Event consumer routing keys (optional override)
+  routingKeys:
+    - integration.sync.check-due
+    - integration.token.check-expiring
+    - integration.*
 

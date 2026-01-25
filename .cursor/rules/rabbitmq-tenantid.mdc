@@ -1,0 +1,11 @@
+---
+description: RabbitMQ and tenantId for events and jobs
+globs: "**/events/**/*.ts","**/jobs/**/*.ts"
+alwaysApply: false
+---
+
+# RabbitMQ and tenantId
+
+- Use **RabbitMQ** for all events and job triggers. No Azure Service Bus or other brokers.
+- In `DomainEvent` and `createBaseEvent` use **`tenantId`** for tenant context (prefer over `organizationId`).
+- Batch jobs: scheduler publishes `workflow.job.trigger`; workers consume from a queue (e.g. `bi_batch_jobs`). See ModuleImplementationGuide §9.6.

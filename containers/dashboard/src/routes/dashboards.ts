@@ -74,4 +74,74 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       reply.code(500).send({ error: 'Failed to delete dashboard' });
     }
   });
+
+  // ===== DASHBOARD ANALYTICS ROUTES (from dashboard-analytics) =====
+
+  // Record dashboard view
+  fastify.post<{ Body: { dashboardId: string; widgetId?: string } }>(
+    '/analytics/view',
+    {
+      preHandler: [authenticateRequest()],
+      schema: {
+        description: 'Record dashboard view',
+        tags: ['Dashboard Analytics'],
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const { dashboardId, widgetId } = request.body as { dashboardId: string; widgetId?: string };
+        const user = (request as any).user;
+        const tenantId = user.tenantId;
+
+        await dashboardService.recordView(tenantId, dashboardId, widgetId);
+        return reply.status(204).send();
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'VIEW_RECORDING_FAILED',
+            message: error.message || 'Failed to record dashboard view',
+          },
+        });
+      }
+    }
+  );
+
+  // Get widget cache
+  fastify.get<{ Params: { widgetId: string } }>(
+    '/widgets/:widgetId/cache',
+    {
+      preHandler: [authenticateRequest()],
+      schema: {
+        description: 'Get widget cache',
+        tags: ['Dashboard Analytics'],
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const { widgetId } = request.params as { widgetId: string };
+        const user = (request as any).user;
+        const tenantId = user.tenantId;
+
+        const cache = await dashboardService.getWidgetCache(tenantId, widgetId);
+
+        if (!cache) {
+          return reply.status(404).send({
+            error: {
+              code: 'CACHE_NOT_FOUND',
+              message: 'Widget cache not found or expired',
+            },
+          });
+        }
+
+        return reply.send(cache);
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'CACHE_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to retrieve widget cache',
+          },
+        });
+      }
+    }
+  );
 }

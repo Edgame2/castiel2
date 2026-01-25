@@ -1,0 +1,26 @@
+# Azure ML v2 Command Job: train_win_probability.py (Plan §5.6, §876; TRAINING_SCRIPTS_SPEC §3.2).
+# Submit from containers/ml-service/scripts:
+#   az ml job create --file azml-job-win-probability.yaml \
+#     --set inputs.training_data.path=abfs://container@account.dfs.core.windows.net/path \
+#     [--set inputs.deploy_flag.value=--deploy]
+# Input Parquet: amount, probability, days_to_close, stage_encoded, industry_encoded,
+#   days_since_last_activity, activity_count_30d, stakeholder_count, target_win; is_closed (filter ==1).
+# Source: /ml_training/win_probability/, risk_evaluations + outcomes, or generate_synthetic_opportunities --pct-closed.
+# Env AZURE_ML_*; for --deploy also DEPLOY_INSTANCE_TYPE, DEPLOY_INSTANCE_COUNT.
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+experiment_name: win-probability-training
+display_name: win-probability-train
+code: .
+command: python train_win_probability.py --input-path ${{inputs.training_data}} --model-name ${{inputs.model_name}} ${{inputs.deploy_flag}}
+inputs:
+  training_data:
+    type: uri_folder
+    path: https://REPLACE_WITH_YOUR_DATA_LAKE_OR_DATASET
+  model_name:
+    value: win-probability-model
+  deploy_flag:
+    value: ""
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+  conda_file: conda-win-probability-train.yaml

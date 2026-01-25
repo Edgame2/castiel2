@@ -13,6 +13,8 @@ import { loadConfig } from './config';
 import { log } from './utils/logger';
 
 let app: FastifyInstance | null = null;
+let syncScheduler: any = null;
+let tokenRefreshService: any = null;
 
 export async function buildApp(): Promise<FastifyInstance> {
   const config = loadConfig();
@@ -85,9 +87,34 @@ export async function buildApp(): Promise<FastifyInstance> {
     await initializeEventPublisher();
     const { initializeEventConsumer } = await import('./events/consumers/IntegrationSyncEventConsumer');
     await initializeEventConsumer(fastify);
-    log.info('Event publisher and consumer initialized', { service: 'integration-sync' });
+    
+    // Initialize sync task event consumer (for scheduled syncs)
+    const { initializeEventConsumer: initializeSyncTaskConsumer } = await import('./events/consumers/SyncTaskEventConsumer');
+    await initializeSyncTaskConsumer(fastify);
+    
+    log.info('Event publisher and consumers initialized', { service: 'integration-sync' });
   } catch (error) {
     log.warn('Failed to initialize event handlers', { error, service: 'integration-sync' });
+  }
+
+  // Initialize sync scheduler
+  try {
+    const { SyncSchedulerService } = await import('./services/SyncSchedulerService');
+    syncScheduler = new SyncSchedulerService(fastify);
+    await syncScheduler.start();
+    log.info('Sync scheduler initialized and started', { service: 'integration-sync' });
+  } catch (error) {
+    log.warn('Failed to initialize sync scheduler', { error, service: 'integration-sync' });
+  }
+
+  // Initialize token refresh worker
+  try {
+    const { TokenRefreshService } = await import('./services/TokenRefreshService');
+    tokenRefreshService = new TokenRefreshService(fastify);
+    await tokenRefreshService.start();
+    log.info('Token refresh worker initialized and started', { service: 'integration-sync' });
+  } catch (error) {
+    log.warn('Failed to initialize token refresh worker', { error, service: 'integration-sync' });
   }
 
   fastify.setErrorHandler((error: Error & { validation?: unknown; statusCode?: number }, request, reply) => {
@@ -183,12 +210,25 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   log.info(`${signal} received, shutting down gracefully`, { service: 'integration-sync' });
   try {
+    // Stop sync scheduler
+    if (syncScheduler) {
+      await syncScheduler.stop();
+    }
+    
+    // Stop token refresh worker
+    if (tokenRefreshService) {
+      await tokenRefreshService.stop();
+    }
+    
+    // Close event handlers
     const { closeEventPublisher } = await import('./events/publishers/IntegrationSyncEventPublisher');
     await closeEventPublisher();
     const { closeEventConsumer } = await import('./events/consumers/IntegrationSyncEventConsumer');
     await closeEventConsumer();
+    const { closeEventConsumer: closeSyncTaskConsumer } = await import('./events/consumers/SyncTaskEventConsumer');
+    await closeSyncTaskConsumer();
   } catch (error) {
-    log.error('Error closing event handlers', error, { service: 'integration-sync' });
+    log.error('Error during graceful shutdown', error, { service: 'integration-sync' });
   }
   if (app) await app.close();
   process.exit(0);
@@ -200,8 +240,8 @@ process.on('uncaughtException', (error: Error) => {
   log.error('Uncaught exception', error, { service: 'integration-sync' });
   gracefulShutdown('uncaughtException').catch(() => process.exit(1));
 });
-process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-  log.error('Unhandled promise rejection', reason as Error, { service: 'integration-sync', promise: promise.toString() });
+process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
+  log.error('Unhandled promise rejection', reason instanceof Error ? reason : new Error(String(reason)), { service: 'integration-sync', promise: String(promise) });
 });
 
 if (require.main === module) {

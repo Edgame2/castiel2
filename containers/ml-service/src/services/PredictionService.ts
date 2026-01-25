@@ -1,23 +1,67 @@
 /**
  * Prediction Service
  * Handles model predictions
+ * Uses CAIS (adaptive-learning) for adaptive feature engineering and outcome collection
  */
 
+import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { v4 as uuidv4 } from 'uuid';
 import { getContainer } from '@coder/shared/database';
 import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
+import { FastifyInstance } from 'fastify';
 import { MLModelService } from './MLModelService';
+import { FeatureService } from './FeatureService';
+import { AzureMLClient } from '../clients/AzureMLClient';
 import {
   Prediction,
   CreatePredictionInput,
+  ModelStatus,
 } from '../types/ml.types';
+import { loadConfig } from '../config';
+import { publishMlPredictionCompleted } from '../events/publishers/MLServiceEventPublisher';
 
 export class PredictionService {
   private containerName = 'ml_predictions';
   private modelService: MLModelService;
+  private featureService: FeatureService;
+  private azureMlClient: AzureMLClient;
+  private adaptiveLearningClient: ServiceClient;
+  private app: FastifyInstance | null = null;
+  private config: ReturnType<typeof loadConfig>;
 
-  constructor(modelService: MLModelService) {
+  constructor(
+    modelService: MLModelService,
+    featureService: FeatureService,
+    azureMlClient: AzureMLClient,
+    app?: FastifyInstance
+  ) {
     this.modelService = modelService;
+    this.featureService = featureService;
+    this.azureMlClient = azureMlClient;
+    this.app = app || null;
+    this.config = loadConfig();
+    
+    // Initialize adaptive-learning service client
+    this.adaptiveLearningClient = new ServiceClient({
+      baseURL: this.config.services.adaptive_learning?.url || '',
+      timeout: 30000,
+      retries: 3,
+      circuitBreaker: { enabled: true },
+    });
+  }
+
+  /**
+   * Get service token for service-to-service authentication
+   */
+  private getServiceToken(tenantId: string): string {
+    if (!this.app) {
+      return '';
+    }
+    return generateServiceToken(this.app, {
+      serviceId: 'ml-service',
+      serviceName: 'ml-service',
+      tenantId,
+    });
   }
 
   /**
@@ -74,9 +118,62 @@ export class PredictionService {
         throw new Error('Failed to create prediction');
       }
 
-      return resource as Prediction;
+      const prediction = resource as Prediction;
+
+      // recordPrediction for CAIS outcome collection (MISSING_FEATURES 3.2)
+      if (this.config.services.adaptive_learning?.url) {
+        try {
+          const token = this.getServiceToken(input.tenantId);
+          await this.adaptiveLearningClient.post(
+            '/api/v1/adaptive-learning/outcomes/record-prediction',
+            {
+              component: 'ml-prediction',
+              predictionId: prediction.id,
+              context: { modelId: input.modelId, modelVersion: model.version },
+              predictedValue: prediction.confidence,
+            },
+            { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': input.tenantId } }
+          );
+        } catch (e: unknown) {
+          console.warn('recordPrediction (adaptive-learning) failed', { error: (e as Error).message, predictionId: prediction.id, service: 'ml-service' });
+        }
+      }
+
+      return prediction;
     } catch (error: any) {
       throw error;
+    }
+  }
+
+  /**
+   * Record outcome for a prediction (for CAIS learning)
+   */
+  async recordOutcome(
+    predictionId: string,
+    tenantId: string,
+    outcome: any
+  ): Promise<void> {
+    try {
+      const token = this.getServiceToken(tenantId);
+      await this.adaptiveLearningClient.post<any>(
+        `/api/v1/adaptive-learning/outcomes/record-outcome`,
+        {
+          component: 'ml-prediction',
+          predictionId,
+          outcome,
+          tenantId,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'X-Tenant-ID': tenantId,
+          },
+        }
+      );
+    } catch (error: unknown) {
+      // CAIS unavailable, log and continue
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn('Failed to record outcome for CAIS learning', { error: msg, predictionId, tenantId, service: 'ml-service' });
     }
   }
 
@@ -108,6 +205,254 @@ export class PredictionService {
       return metrics.accuracy;
     }
     return 0.8; // Default confidence
+  }
+
+  /**
+   * Win-probability prediction (BI_SALES_RISK Plan §5.4, §5.7).
+   * buildVector('win-probability') → AzureMLClient('win-probability-model'); on failure use heuristic (vector.probability or 0.5).
+   */
+  async predictWinProbability(tenantId: string, opportunityId: string): Promise<{ probability: number }> {
+    const t0 = Date.now();
+    let modelId = 'heuristic';
+    let vec = await this.featureService.buildVectorForOpportunity(tenantId, opportunityId, 'win-probability');
+    if (vec == null) {
+      publishMlPredictionCompleted(tenantId, { modelId, opportunityId, inferenceMs: Date.now() - t0 });
+      return { probability: 0.5 };
+    }
+    if (this.azureMlClient.hasEndpoint('win-probability-model')) {
+      try {
+        const p = await this.azureMlClient.predict('win-probability-model', vec);
+        modelId = 'win-probability-model';
+        publishMlPredictionCompleted(tenantId, { modelId, opportunityId, inferenceMs: Date.now() - t0 });
+        return { probability: p };
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn('Azure ML win-probability-model failed, using heuristic', { opportunityId, error: msg, service: 'ml-service' });
+      }
+    }
+    const p = (vec.probability != null && !isNaN(vec.probability)) ? vec.probability : 0.5;
+    publishMlPredictionCompleted(tenantId, { modelId, opportunityId, inferenceMs: Date.now() - t0 });
+    return { probability: Math.min(1, Math.max(0, p)) };
+  }
+
+  /**
+   * Win-probability explain (Plan §905, §11.2). Top drivers from feature vector.
+   * Phase 1: top features by |value|; Phase 2: tree feature importance or SHAP when available.
+   */
+  async getWinProbabilityExplain(tenantId: string, opportunityId: string): Promise<{ topDrivers: { feature: string; contribution: number; direction: 'increases' | 'decreases' }[] }> {
+    const vec = await this.featureService.buildVectorForOpportunity(tenantId, opportunityId, 'win-probability');
+    if (vec == null || typeof vec !== 'object') {
+      return { topDrivers: [] };
+    }
+    const entries = Object.entries(vec)
+      .filter(([k, v]) => k !== 'probability' && typeof v === 'number' && !isNaN(v))
+      .map(([k, v]) => ({ feature: k, v: v as number }))
+      .sort((a, b) => Math.abs(b.v) - Math.abs(a.v))
+      .slice(0, 5);
+    const topDrivers = entries.map(({ feature, v }) => ({
+      feature,
+      contribution: Math.round(Math.abs(v) * 1000) / 1000,
+      direction: (v >= 0 ? 'increases' : 'decreases') as 'increases' | 'decreases',
+    }));
+    return { topDrivers };
+  }
+
+  /**
+   * LSTM risk-trajectory (Plan §5.5, §875). sequence from risk_snapshots [riskScore, activity_count_30d, days_since_last_activity].
+   * Returns { risk_30, risk_60, risk_90, confidence }. Caller (risk-analytics) builds sequence; fallback to rules when endpoint unavailable.
+   */
+  async predictLstmTrajectory(sequence: number[][]): Promise<{ risk_30: number; risk_60: number; risk_90: number; confidence: number }> {
+    if (!this.azureMlClient.hasEndpoint('risk_trajectory_lstm')) {
+      throw new Error('risk_trajectory_lstm endpoint not configured');
+    }
+    return this.azureMlClient.predictLstmTrajectory('risk_trajectory_lstm', sequence);
+  }
+
+  /**
+   * Anomaly prediction (Plan §5.5). buildVector('anomaly') → Azure ML anomaly endpoint.
+   * Returns { isAnomaly, anomalyScore }. No heuristic in ml-service; fallback is statistical in risk-analytics.
+   */
+  async predictAnomaly(tenantId: string, opportunityId: string): Promise<{ isAnomaly: number; anomalyScore: number }> {
+    const t0 = Date.now();
+    const vec = await this.featureService.buildVectorForOpportunity(tenantId, opportunityId, 'anomaly');
+    if (vec == null) {
+      throw new NotFoundError('Opportunity not found');
+    }
+    if (!this.azureMlClient.hasEndpoint('anomaly')) {
+      throw new Error('Anomaly endpoint not configured');
+    }
+    const numFeat: Record<string, number> = {};
+    for (const [k, v] of Object.entries(vec)) {
+      const n = typeof v === 'number' ? v : Number(v);
+      if (!isNaN(n)) numFeat[k] = n;
+    }
+    const out = await this.azureMlClient.predictAnomaly('anomaly', numFeat);
+    publishMlPredictionCompleted(tenantId, { modelId: 'anomaly', opportunityId, inferenceMs: Date.now() - t0 });
+    return { isAnomaly: out.isAnomaly, anomalyScore: out.anomalyScore };
+  }
+
+  /**
+   * Risk-scoring prediction (MISSING_FEATURES 4.2, BI_SALES_RISK Plan §5.4).
+   * When body.features missing: buildVector('risk-scoring'). If azure_ml.endpoints['risk-scoring-model']: try Azure ML first.
+   * Then Cosmos model or heuristic.
+   */
+  async predictRiskScore(
+    tenantId: string,
+    body: { opportunityId: string; modelId?: string; features?: Record<string, unknown> }
+  ): Promise<{ riskScore: number; confidence?: number; modelId?: string }> {
+    const t0 = Date.now();
+    let features = body.features && Object.keys(body.features).length > 0 ? body.features : undefined;
+    if (features == null) {
+      const vec = await this.featureService.buildVectorForOpportunity(tenantId, body.opportunityId, 'risk-scoring');
+      if (vec) {
+        features = { ...vec, daysSinceUpdated: vec.days_in_stage ?? vec.days_since_last_activity ?? 0 } as Record<string, unknown>;
+      } else {
+        features = {};
+      }
+    }
+    const feat = features as Record<string, unknown>;
+
+    const toNumeric = (o: Record<string, unknown>): Record<string, number> => {
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(o)) {
+        const n = typeof v === 'number' ? v : Number(v);
+        if (!isNaN(n)) out[k] = n;
+      }
+      return out;
+    };
+
+    if (this.azureMlClient.hasEndpoint('risk-scoring-model')) {
+      const numFeat = toNumeric(feat);
+      if (Object.keys(numFeat).length > 0) {
+        try {
+          const riskScore = await this.azureMlClient.predict('risk-scoring-model', numFeat);
+          publishMlPredictionCompleted(tenantId, { modelId: 'risk-scoring-model', opportunityId: body.opportunityId, inferenceMs: Date.now() - t0 });
+          return { riskScore, confidence: 0.8, modelId: 'risk-scoring-model' };
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.warn('Azure ML risk-scoring-model failed, falling through', { opportunityId: body.opportunityId, error: msg, service: 'ml-service' });
+        }
+      }
+    }
+
+    if (body.modelId) {
+      try {
+        const model = await this.modelService.getById(body.modelId, tenantId);
+        if (model.status === ModelStatus.DEPLOYED || model.status === ModelStatus.READY) {
+          const pred = await this.predict({
+            tenantId,
+            modelId: body.modelId,
+            input: { ...feat, opportunityId: body.opportunityId },
+          });
+          const v = (pred.output as any)?.riskScore ?? (pred.output as any)?.value;
+          const riskScore =
+            typeof v === 'number' ? Math.min(1, Math.max(0, v <= 1 ? v : v / 100)) : 0.5;
+          publishMlPredictionCompleted(tenantId, { modelId: body.modelId!, opportunityId: body.opportunityId, inferenceMs: Date.now() - t0 });
+          return { riskScore, confidence: pred.confidence, modelId: body.modelId };
+        }
+      } catch {
+        /* fallthrough to heuristic */
+      }
+    }
+
+    // Heuristic when no deployed model or on failure
+    const p = (feat.probability as number) ?? 0.5;
+    const days = (feat.daysSinceUpdated as number) ?? 0;
+    let s = 0.3 + (1 - p) * 0.4 + Math.min(0.3, (days / 90) * 0.3);
+    publishMlPredictionCompleted(tenantId, { modelId: body.modelId || 'heuristic', opportunityId: body.opportunityId, inferenceMs: Date.now() - t0 });
+    return { riskScore: Math.min(1, Math.max(0, s)), confidence: 0.5, modelId: body.modelId };
+  }
+
+  /**
+   * Prophet revenue-forecast for one or more periods (Plan §877).
+   * Uses AzureMLClient.predictRevenueForecast('revenue_forecasting', history, periods).
+   * @throws When revenue_forecasting endpoint is not configured (caller returns 503).
+   */
+  async predictRevenueForecastPeriod(
+    history: Array<[string, number]>,
+    periods?: number
+  ): Promise<{ p10: number; p50: number; p90: number; modelId: string }> {
+    if (!this.azureMlClient.hasEndpoint('revenue_forecasting')) {
+      throw new Error('revenue_forecasting endpoint not configured');
+    }
+    const { p10, p50, p90 } = await this.azureMlClient.predictRevenueForecast(
+      'revenue_forecasting',
+      history,
+      periods ?? 1
+    );
+    return { p10, p50, p90, modelId: 'revenue-forecasting-model' };
+  }
+
+  /**
+   * Forecast prediction (MISSING_FEATURES 5.1).
+   * Returns pointForecast, P10/P50/P90, and scenario (best/base/worst). Uses deployed model when available.
+   */
+  async predictForecast(
+    tenantId: string,
+    body: {
+      opportunityId: string;
+      level?: string;
+      modelId?: string;
+      features?: { opportunityValue?: number; probability?: number; stage?: string; daysInStage?: number };
+    }
+  ): Promise<{
+    pointForecast: number;
+    uncertainty?: { p10: number; p50: number; p90: number };
+    scenarios?: Array<{ scenario: string; probability: number; forecast: number }>;
+    confidence?: number;
+  }> {
+    const t0 = Date.now();
+    const feat = body.features || {};
+    const oppVal = (feat.opportunityValue as number) ?? 0;
+    const prob = (feat.probability as number) ?? 0.5;
+
+    if (body.modelId) {
+      try {
+        const model = await this.modelService.getById(body.modelId, tenantId);
+        if (model.status === ModelStatus.DEPLOYED || model.status === ModelStatus.READY) {
+          const pred = await this.predict({
+            tenantId,
+            modelId: body.modelId,
+            input: { ...feat, opportunityId: body.opportunityId },
+          });
+          const out = (pred.output as any) || {};
+          const pt = typeof out.pointForecast === 'number' ? out.pointForecast
+            : (typeof out.forecast === 'number' ? out.forecast : (typeof out.value === 'number' ? out.value : oppVal * prob));
+          const p50 = out.uncertainty?.p50 ?? out.p50 ?? pt;
+          const p10 = out.uncertainty?.p10 ?? out.p10 ?? p50 * 0.7;
+          const p90 = out.uncertainty?.p90 ?? out.p90 ?? p50 * 1.3;
+          const sc = out.scenarios || [
+            { scenario: 'worst', probability: 0.1, forecast: p10 },
+            { scenario: 'base', probability: 0.5, forecast: p50 },
+            { scenario: 'best', probability: 0.4, forecast: p90 },
+          ];
+          publishMlPredictionCompleted(tenantId, { modelId: body.modelId ?? 'forecast', opportunityId: body.opportunityId, inferenceMs: Date.now() - t0 });
+          return {
+            pointForecast: pt,
+            uncertainty: { p10, p50, p90 },
+            scenarios: sc,
+            confidence: pred.confidence,
+          };
+        }
+      } catch {
+        /* fallthrough */
+      }
+    }
+
+    const pointForecast = oppVal * prob;
+    const p10 = pointForecast * 0.7;
+    const p90 = pointForecast * 1.3;
+    publishMlPredictionCompleted(tenantId, { modelId: 'heuristic', opportunityId: body.opportunityId, inferenceMs: Date.now() - t0 });
+    return {
+      pointForecast,
+      uncertainty: { p10, p50: pointForecast, p90 },
+      scenarios: [
+        { scenario: 'worst', probability: 0.1, forecast: p10 },
+        { scenario: 'base', probability: 0.5, forecast: pointForecast },
+        { scenario: 'best', probability: 0.4, forecast: p90 },
+      ],
+      confidence: 0.65,
+    };
   }
 
   /**
@@ -178,8 +523,9 @@ export class PredictionService {
         items: resources.slice(0, limit),
         continuationToken,
       };
-    } catch (error: any) {
-      throw new Error(`Failed to list predictions: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to list predictions: ${msg}`);
     }
   }
 }

@@ -1,11 +1,12 @@
-# Web-search Module
+# Web Search Module
 
-[Description of what this service does]
+Web search integration and context service for Castiel, providing web search integration, result caching, and context integration for AI conversations.
 
 ## Features
 
-- Feature 1
-- Feature 2
+- **Web Search Integration**: Integrate with web search providers
+- **Search Result Caching**: Cache web search results
+- **Context Integration**: Integrate web search results into AI context
 
 ## Quick Start
 
@@ -32,7 +33,8 @@ cp config/default.yaml config/local.yaml
 
 The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers). Ensure the following containers exist:
 
-- `web-search_data` - Main data container
+- `web_search_results` - Web search results (partition: `/tenantId`)
+- `web_search_cache` - Web search cache (partition: `/tenantId`)
 
 ### Running
 
@@ -53,11 +55,17 @@ See [OpenAPI Spec](./openapi.yaml)
 
 ### Published Events
 
-- `web-search.event.name`
+- `web-search.completed` - Web search completed
 
 ### Consumed Events
 
-- `other.event.name`
+- (None currently)
+
+## Dependencies
+
+- **ai-service**: For AI-powered search processing
+- **context-service**: For context integration
+- **embeddings**: For semantic search
 
 ## Development
 

@@ -12,6 +12,8 @@ servers:
 tags:
   - name: Risk Evaluation
     description: Risk evaluation operations
+  - name: Competitive Intelligence
+    description: Competitor tracking and competitive intel (Plan §10 Phase 1)
   - name: Risk Scoring
     description: ML-based risk scoring
   - name: Revenue
@@ -19,6 +21,917 @@ tags:
   - name: Health
     description: Health check endpoints
 paths:
+  /risk/opportunities/{opportunityId}/latest-evaluation:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Get latest evaluation by opportunity (MISSING_FEATURES 5.1)
+      description: Returns the most recent risk evaluation for an opportunity; used by forecasting for risk-adjusted revenue.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Latest risk evaluation (includes assumptions for UI display; dataQuality for trust-level, Plan §11.6)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  evaluationId: { type: string }
+                  riskScore: { type: number }
+                  assumptions: { $ref: '#/components/schemas/RiskEvaluationAssumptions' }
+                  dataQuality: { $ref: '#/components/schemas/EvaluationDataQuality' }
+        '404':
+          description: No evaluation found for this opportunity
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/risk-explainability:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Risk explainability – top drivers (Plan §4.1, §11.2)
+      description: Top drivers for risk score (topDrivers: feature, contribution, direction). Derived from latest evaluation detectedRisks.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: evaluationId, opportunityId, riskScore, topDrivers (feature, contribution, direction)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  evaluationId: { type: string }
+                  opportunityId: { type: string }
+                  riskScore: { type: number }
+                  topDrivers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        feature: { type: string }
+                        contribution: { type: number }
+                        direction: { type: string, enum: ['increases', 'decreases'] }
+        '404':
+          description: No evaluation found for this opportunity
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/risk-snapshots:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Get risk snapshots (Plan §9.1, FIRST_STEPS §2)
+      description: Returns risk snapshots for an opportunity in a date range. Query params from and to (YYYY-MM-DD); default last 90 days.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List of risk snapshots
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  snapshots:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        snapshotDate: { type: string }
+                        riskScore: { type: number }
+                        categoryScores: { type: object }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/win-probability:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Get win probability (FIRST_STEPS §8, Plan §4.1)
+      description: Proxies to ml-service POST /api/v1/ml/win-probability/predict. Returns probability in [0,1]. Requires services.ml_service.url.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Win probability
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  probability: { type: number, minimum: 0, maximum: 1 }
+        '503':
+          description: ml-service URL not configured
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/win-probability/explain:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Win-probability explain (Plan §905, §11.2)
+      description: Proxies to ml-service POST /api/v1/ml/win-probability/explain. Top drivers (feature, contribution, direction) for win-probability. Requires services.ml_service.url.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: topDrivers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  topDrivers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        feature: { type: string }
+                        contribution: { type: number }
+                        direction: { type: string, enum: [increases, decreases] }
+        '503':
+          description: ml-service URL not configured
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/risk-predictions:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Get 30/60/90-day risk predictions (FIRST_STEPS §8, Plan §4.1)
+      description: EarlyWarningService.predictRiskTrajectory. Returns stored prediction from risk_predictions or a stub when none. Horizons 30, 60, 90 days with riskScore and confidence.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: horizons (30/60/90 with riskScore, confidence), leadingIndicators, modelId, predictionDate (null when stub)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  opportunityId: { type: string }
+                  tenantId: { type: string }
+                  predictionDate: { type: string, nullable: true }
+                  horizons:
+                    type: object
+                    properties:
+                      '30': { type: object, properties: { riskScore: { type: number }, confidence: { type: number } } }
+                      '60': { type: object, properties: { riskScore: { type: number }, confidence: { type: number } } }
+                      '90': { type: object, properties: { riskScore: { type: number }, confidence: { type: number } } }
+                  leadingIndicators: { type: array, items: {} }
+                  modelId: { type: string, nullable: true }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/risk-predictions/generate:
+    post:
+      tags:
+        - Risk Evaluation
+      summary: Generate 30/60/90-day risk predictions (FIRST_STEPS §8, Plan §4.1)
+      description: EarlyWarningService.generatePredictions. Rules-based (latest risk + velocity extrapolation); writes to risk_predictions. LSTM later (modelId 'rules' for now).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Created prediction (id, predictionDate, horizons, leadingIndicators, modelId)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  tenantId: { type: string }
+                  opportunityId: { type: string }
+                  predictionDate: { type: string }
+                  horizons:
+                    type: object
+                    properties:
+                      '30': { type: object, properties: { riskScore: { type: number }, confidence: { type: number } } }
+                      '60': { type: object, properties: { riskScore: { type: number }, confidence: { type: number } } }
+                      '90': { type: object, properties: { riskScore: { type: number }, confidence: { type: number } } }
+                  leadingIndicators: { type: array }
+                  modelId: { type: string }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/risk-velocity:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Get risk velocity and acceleration (FIRST_STEPS §8, Plan §4.1)
+      description: Computed from risk_snapshots via EarlyWarningService.calculateRiskVelocity. velocity = change in riskScore per day (positive = risk increasing); acceleration = change in velocity per day. dataPoints = number of snapshots used.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: velocity, acceleration (if 3+ snapshots), dataPoints
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  velocity: { type: number }
+                  acceleration: { type: number }
+                  dataPoints: { type: number }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /risk-clustering/clusters:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Get risk clusters (Plan §4.1, §914, §915)
+      description: RiskClusteringService.identifyRiskClusters. Reads from risk_clusters. Returns [] when empty or batch not yet run.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: clusters (array of cluster docs: id, tenantId, clusterId, label, opportunityIds, centroid, computedAt)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clusters: { type: array, items: { type: object } }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /risk-clustering/association-rules:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Get association rules (Plan §4.1, §914, §915)
+      description: RiskClusteringService.findAssociationRules. Reads from risk_association_rules.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: rules (antecedent, consequent, confidence, support, lift, computedAt)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules: { type: array, items: { type: object } }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /risk-clustering/trigger:
+    post:
+      tags:
+        - Risk Evaluation
+      summary: Trigger risk-clustering batch on-demand (Plan §4.1, §915)
+      description: Publishes workflow.job.trigger; BatchJobWorker (bi_batch_jobs) consumes. Returns 202 Accepted.
+      security:
+        - bearerAuth: []
+      responses:
+        '202':
+          description: Accepted; job risk-clustering triggered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  job: { type: string, example: risk-clustering }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /accounts/{id}/health:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Get account health (Plan §4.1, §917)
+      description: AccountHealthService.calculateAccountHealth. Reads from risk_account_health. 404 when batch (account-health) has not run for this account.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: accountId
+      responses:
+        '200':
+          description: healthScore, riskBreakdown, trendDirection (improving|stable|degrading), criticalOpportunities, lastUpdated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  tenantId: { type: string }
+                  accountId: { type: string }
+                  healthScore: { type: number }
+                  riskBreakdown: { type: object }
+                  trendDirection: { type: string, enum: [improving, stable, degrading] }
+                  criticalOpportunities: { type: array, items: { type: string } }
+                  lastUpdated: { type: string }
+        '404':
+          description: Account health not found (batch not run)
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /risk-propagation/opportunities/{id}:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Analyze risk propagation from one opportunity (Plan §4.1, §916)
+      description: RiskPropagationService.analyzeRiskPropagation. Stub until graph + Azure ML batch (NetworkX) wired. Returns opportunityId, tenantId, propagatedRisk?, affectedNodeIds?, _stub.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: opportunityId
+      responses:
+        '200':
+          description: propagatedRisk, affectedNodeIds; _stub true when not yet implemented
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  opportunityId: { type: string }
+                  tenantId: { type: string }
+                  propagatedRisk: { type: number }
+                  affectedNodeIds: { type: array, items: { type: string } }
+                  _stub: { type: boolean }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/quick-actions:
+    post:
+      tags:
+        - Risk Evaluation
+      summary: Quick actions (Plan §942, §11.10)
+      description: create_task, log_activity, start_remediation. Publishes opportunity.quick_action.requested for async handling by workflow-orchestrator, integration-manager, or recommendations (start_remediation).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [create_task, log_activity, start_remediation] }
+                payload: { type: object }
+      responses:
+        '202':
+          description: status accepted, action
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [accepted] }
+                  action: { type: string }
+        '400':
+          description: Invalid action
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/similar-won-deals:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Peer deal comparison (Plan §11.12, §945)
+      description: Deals similar by industry and size band. Returns count, winRate, medianCycleTimeDays, p25CloseAmount. Uses shard-manager c_opportunity.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: count, winRate, medianCycleTimeDays, p25CloseAmount
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: number }
+                  winRate: { type: number }
+                  medianCycleTimeDays: { type: number, nullable: true }
+                  p25CloseAmount: { type: number, nullable: true }
+        '404':
+          description: Opportunity not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/benchmark-comparison:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Compare to industry benchmark (Plan §953)
+      description: benchmark, opportunity, comparison (amountPercentile, vsAvgWinRate, vsAvgDealSize). From analytics_industry_benchmarks and shard-manager.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: benchmark, opportunity, comparison
+        '404':
+          description: Opportunity or benchmark not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /industries/{industryId}/benchmarks:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Get industry benchmark (Plan §953)
+      description: analytics_industry_benchmarks. Query period (YYYY-MM) optional; default current month.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: industryId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: id, industryId, period, metrics, percentiles, computedAt, expiresAt
+        '404':
+          description: No benchmark for industry/period
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/stakeholder-graph:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Stakeholder graph (Plan §924)
+      description: Build from shard-manager relationships has_contact, has_stakeholder (opportunity→contact), reports_to (contact→contact). Nodes: opportunity + contacts; edges with relationshipType. Optional Azure ML centrality in Phase 2.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: nodes (id, type opportunity|contact, label?), edges (source, target, relationshipType)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        type: { type: string, enum: [opportunity, contact] }
+                        label: { type: string }
+                  edges:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        source: { type: string }
+                        target: { type: string }
+                        relationshipType: { type: string }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/anomalies:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Get anomalies for opportunity (Plan §920)
+      description: Returns anomaly alerts from risk_anomaly_alerts for the opportunity. anomalyType statistical|ml|pattern; severity low|medium|high. Statistical (Z-score, IQR) and ML (Isolation Forest) detection to be wired; publish anomaly.detected when implemented.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of anomaly alerts (id, opportunityId, anomalyType, subtype?, severity, description, detectedAt, details?)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    opportunityId: { type: string }
+                    anomalyType: { type: string, enum: [statistical, ml, pattern] }
+                    subtype: { type: string }
+                    severity: { type: string, enum: [low, medium, high] }
+                    description: { type: string }
+                    detectedAt: { type: string, format: date-time }
+                    details: { type: object }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/anomalies/detect:
+    post:
+      tags:
+        - Risk Evaluation
+      summary: Run statistical and optional ML anomaly detection (Plan §920, §5.5)
+      description: |
+        Statistical: Z-score on risk_snapshots (fallback risk_evaluations). If ≥3 scores and zScore ≥ 2 → high, ≥ 1.5 → medium; else no statistical alert.
+        ML: when services.ml_service.url and feature_flags.anomaly_detection, calls ml-service POST /api/v1/ml/anomaly/predict (Isolation Forest). If isAnomaly==-1 or anomalyScore>0.5, persists and publishes.
+        On detection: upserts to risk_anomaly_alerts and publishes anomaly.detected. anomalyType statistical|ml.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: { detected: false } or { detected: true, alert }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [detected]
+                properties:
+                  detected: { type: 'boolean' }
+                  alert:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      opportunityId: { type: string }
+                      anomalyType: { type: string, enum: [statistical, ml, pattern] }
+                      subtype: { type: string }
+                      severity: { type: string, enum: [low, medium, high] }
+                      description: { type: string }
+                      detectedAt: { type: string, format: date-time }
+                      details: { type: object }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/sentiment-trends:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Get sentiment trends for opportunity (Plan §921)
+      description: Returns sentiment over time from risk_sentiment_trends. Populated by ai-insights or data-enrichment when wired; returns empty trends when none.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: trends (period, score, sampleSize) for SentimentTrendChart
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trends:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        period: { type: string }
+                        score: { type: number }
+                        sampleSize: { type: number }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /competitors/{competitorId}/track:
+    post:
+      tags:
+        - Competitive Intelligence
+      summary: Track competitor on opportunity (Plan §10 Phase 1)
+      description: Upsert risk_competitor_tracking. Links competitor to opportunity; increments mentionCount, sets lastMentionDate=now. Resolves competitorName from competitors container when omitted.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: competitorId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+                competitorName: { type: string }
+                mentionCount: { type: number }
+                sentiment: { type: number }
+                winLikelihood: { type: number }
+      responses:
+        '201':
+          description: Created/updated tracking row (id, opportunityId, competitorId, competitorName, detectedDate, lastMentionDate, mentionCount, sentiment?, winLikelihood?)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  tenantId: { type: string }
+                  opportunityId: { type: string }
+                  competitorId: { type: string }
+                  competitorName: { type: string }
+                  detectedDate: { type: string }
+                  lastMentionDate: { type: string }
+                  mentionCount: { type: number }
+                  sentiment: { type: number }
+                  winLikelihood: { type: number }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /competitive-intelligence/dashboard:
+    get:
+      tags:
+        - Competitive Intelligence
+      summary: Competitive intelligence dashboard (Plan §4.1)
+      description: Win/loss, landscape. Aggregates from risk_competitor_tracking and risk_win_loss_reasons (Plan §11.8, §943). winLoss from risk_win_loss_reasons: wins=# with winReason, losses=# with lossReason.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: totalOpportunitiesWithCompetitors, totalMentions, topCompetitorsByMentions, recentMentionCount, winLoss (wins, losses, winRate)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalOpportunitiesWithCompetitors: { type: number }
+                  totalMentions: { type: number }
+                  topCompetitorsByMentions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        competitorId: { type: string }
+                        competitorName: { type: string }
+                        mentionCount: { type: number }
+                  recentMentionCount: { type: number }
+                  winLoss:
+                    type: object
+                    properties:
+                      wins: { type: number }
+                      losses: { type: number }
+                      winRate: { type: number }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /analytics/competitive-win-loss:
+    get:
+      tags:
+        - Competitive Intelligence
+      summary: Win/loss by competitor (Plan §4.1)
+      description: analyzeWinLossByCompetitor. byCompetitor (competitorId, competitorName, wins, losses, winRate); totalWins, totalLosses, overallWinRate. From risk_win_loss_reasons (Plan §11.8, §943): losses per competitorId where lossReason set; totalWins/totalLosses from winReason/lossReason.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: byCompetitor, totalWins, totalLosses, overallWinRate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  byCompetitor:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        competitorId: { type: string }
+                        competitorName: { type: string }
+                        wins: { type: number }
+                        losses: { type: number }
+                        winRate: { type: number }
+                  totalWins: { type: number }
+                  totalLosses: { type: number }
+                  overallWinRate: { type: number }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/competitors:
+    get:
+      tags:
+        - Competitive Intelligence
+      summary: Get competitors for opportunity (Plan §10 Phase 1)
+      description: Returns competitors linked to the opportunity from risk_competitor_tracking. Plan §3.1.1, §3.1.2.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: competitors (competitorId, competitorName, detectedDate, mentionCount, lastMentionDate, sentiment, winLikelihood)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  competitors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        competitorId: { type: string }
+                        competitorName: { type: string }
+                        detectedDate: { type: string }
+                        mentionCount: { type: number }
+                        lastMentionDate: { type: string }
+                        sentiment: { type: number }
+                        winLikelihood: { type: number }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/win-loss-reasons:
+    put:
+      tags:
+        - Competitive Intelligence
+      summary: Record win/loss reasons (Plan §11.8, §943)
+      description: Upserts risk_win_loss_reasons. Body lossReason?, winReason?, competitorId?. Feeds win/loss analytics.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lossReason: { type: string }
+                winReason: { type: string }
+                competitorId: { type: string }
+      responses:
+        '200':
+          description: opportunityId, tenantId, lossReason?, winReason?, competitorId?, recordedAt
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags:
+        - Competitive Intelligence
+      summary: Get win/loss reasons (Plan §11.8, §943)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: lossReason?, winReason?, competitorId?, recordedAt
+        '404':
+          description: Not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /risk-analysis/tenant/prioritized-opportunities:
+    get:
+      tags:
+        - Revenue
+      summary: Prioritized opportunities for manager dashboard (Plan §941, §1024)
+      description: Rank by revenue-at-risk × risk × early-warning. suggestedAction from mitigation-ranking (Phase 2). Consumed by dashboard-analytics GET /dashboards/manager/prioritized.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: opportunities (opportunityId, revenueAtRisk, riskScore, earlyWarningScore, suggestedAction, rankScore), suggestedAction (null until Phase 2)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  opportunities:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        opportunityId: { type: string }
+                        revenueAtRisk: { type: number }
+                        riskScore: { type: number }
+                        earlyWarningScore: { type: number }
+                        suggestedAction: { type: string }
+                        rankScore: { type: number }
+                  suggestedAction: { type: string, nullable: true }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /risk-analysis/tenant/top-at-risk-reasons:
+    get:
+      tags:
+        - Revenue
+      summary: Top at-risk reasons for dashboard (Plan §11.11, §944)
+      description: Aggregates atRiskReasons from risk_evaluations for "Top at-risk reasons" widget in manager/executive dashboard. Query limit (default 15, max 50).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: reasons (reason, count) sorted by count descending
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reasons:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        reason: { type: string }
+                        count: { type: number }
+                        suggestedMitigation: { type: string, description: 'Plan §944: from at_risk_reasons_mitigation when key matches' }
+        '500':
+          $ref: '#/components/responses/InternalError'
   /risk/evaluations/{evaluationId}:
     get:
       tags:
@@ -48,10 +961,17 @@ paths:
                     enum: [pending, in_progress, completed, failed]
                   riskScore:
                     type: number
+                  mlRiskScore:
+                    type: number
+                    description: ML-derived risk score when ML weight > 0 (optional)
                   detectedRisks:
                     type: array
                     items:
                       type: object
+                  assumptions:
+                    $ref: '#/components/schemas/RiskEvaluationAssumptions'
+                  dataQuality:
+                    $ref: '#/components/schemas/EvaluationDataQuality'
         '401':
           description: Unauthorized
         '404':
@@ -135,10 +1055,21 @@ paths:
     get:
       tags:
         - Health
-      summary: Health check
+      summary: Health check (Plan §11.7)
+      description: Includes last successful risk-snapshot-backfill and ML path (ml-service reachable; Azure ML status is in ml-service /health).
       responses:
         '200':
           description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  timestamp: { type: string, format: date-time }
+                  service: { type: string }
+                  lastRiskSnapshotBackfillAt: { type: string, format: date-time, nullable: true, description: "Last successful risk-snapshot-backfill (Plan §11.7)" }
+                  mlServiceReachable: { type: string, enum: ["ok", "unreachable", "not_configured"], description: "ML path reachable via ml-service /health (Plan §11.7)" }
   /ready:
     get:
       tags:
@@ -171,3 +1102,27 @@ components:
               type: string
             message:
               type: string
+    EvaluationDataQuality:
+      description: Data quality for evaluation and trust-level (Plan §11.6, §10 task 906). score 0–1, completenessPct 0–100, missingCritical = high-severity fields, stalenessDays.
+      type: object
+      properties:
+        score: { type: number, minimum: 0, maximum: 1 }
+        completenessPct: { type: number, minimum: 0, maximum: 100 }
+        missingCritical: { type: array, items: { type: string } }
+        stalenessDays: { type: number }
+    RiskEvaluationAssumptions:
+      description: Data quality, staleness, and missing-data assumptions for UI display (MISSING_FEATURES 4.3). Always populated on evaluation; clients should surface dataQuality.issues, staleness.isStale, and missingDataWarnings to users.
+      type: object
+      properties:
+        dataQuality:
+          type: object
+          properties:
+            completeness: { type: number, description: '0-1' }
+            issues: { type: array, items: { type: object, properties: { type: { type: string }, field: { type: string }, message: { type: string }, severity: { type: string } } } }
+        staleness:
+          type: object
+          properties:
+            lastUpdated: { type: string, format: date-time }
+            daysSinceUpdate: { type: number }
+            isStale: { type: boolean }
+        missingDataWarnings: { type: array, items: { type: string } }

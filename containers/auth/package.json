@@ -1,7 +1,7 @@
 {
   "name": "@coder/auth",
   "version": "1.0.0",
-  "description": "Authentication Service for Coder IDE",
+  "description": "Authentication Service for Castiel",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -14,7 +14,8 @@
     "test:int": "vitest run tests/integration",
     "lint": "eslint src --ext .ts",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
-    "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma"
+    "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "test:integration": "vitest run tests/integration"
   },
   "dependencies": {
     "@coder/shared": "file:../shared",
@@ -50,4 +51,3 @@
     "vitest": "^4.0.0"
   }
 }
-

@@ -1,6 +1,6 @@
 # Pattern Recognition Module
 
-Codebase pattern learning and enforcement service for Coder IDE, providing pattern learning, style consistency, design pattern detection, anti-pattern detection, and pattern scanning.
+Codebase pattern learning and enforcement service for Castiel, providing pattern learning, style consistency, design pattern detection, anti-pattern detection, and pattern scanning.
 
 ## Features
 
@@ -113,5 +113,5 @@ npm test
 
 ## License
 
-Proprietary - Coder IDE
+Proprietary - Castiel
 

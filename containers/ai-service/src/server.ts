@@ -4,12 +4,13 @@ import { loadConfig } from './config';
 import { completionRoutes } from './routes/completions';
 import { modelRoutes } from './routes/models';
 import { agentRoutes } from './routes/agents';
+import { registerAllRoutes } from './routes';
 
 const server = Fastify({
   logger: true,
 });
 
-// Register routes
+// Register existing routes
 server.register(completionRoutes, { prefix: '/api/ai/completions' });
 server.register(modelRoutes, { prefix: '/api/ai/models' });
 server.register(agentRoutes, { prefix: '/api/ai/agents' });
@@ -34,6 +35,9 @@ const start = async () => {
     await setupJWT(server);
     
     await connectDatabase();
+    
+    // Register merged routes (insights, reasoning, prompts)
+    await registerAllRoutes(server);
     
     await server.listen({ port: config.server.port, host: config.server.host });
     console.log(`AI Service listening on port ${config.server.port}`);

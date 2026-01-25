@@ -74,6 +74,24 @@ Check events follow: `{domain}.{entity}.{action}`
 
 Reference: ModuleImplementationGuide.md Section 9.1
 
+### 4a. Events: RabbitMQ Only and tenantId
+
+- ✅ No Azure Service Bus, Event Grid, or other message brokers; **RabbitMQ only** for events and job triggers
+- ✅ Events and `createBaseEvent` use **tenantId** for tenant context (prefer over organizationId)
+- ✅ Batch job triggers: `workflow.job.trigger`; workers consume from a queue (e.g. `bi_batch_jobs`)
+
+Reference: .cursorrules (Platform Conventions), ModuleImplementationGuide.md §9.1, §9.6
+
+### 4b. BI/risk Observability (§8.5)
+
+For risk-analytics, ml-service, forecasting, recommendations, workflow-orchestrator, logging, dashboard-analytics:
+
+- ✅ **App Insights:** `@azure/monitor-opentelemetry`; init before other imports; config `application_insights.connection_string`, `application_insights.disable`
+- ✅ **/metrics:** prom-client; `http_requests_total`, `http_request_duration_seconds`, app-specific (`risk_evaluations_total`, `ml_predictions_total`, `batch_job_duration_seconds`); when `metrics.require_auth` true, validate `Authorization: Bearer` against `metrics.bearer_token`
+- ✅ Config: `metrics.path`, `metrics.require_auth`, `metrics.bearer_token`
+
+Reference: BI_SALES_RISK_IMPLEMENTATION_PLAN §8.5, deployment/monitoring/README.md
+
 ### 5. Service-to-Service Auth
 
 Verify:
@@ -201,10 +219,11 @@ grep -r "publish\|emit" src/ --exclude-dir=node_modules
 ## Quick Validation
 
 1. **No hardcoded values**: All config from YAML/env vars
-2. **Tenant isolation**: All queries include tenantId
+2. **Tenant isolation**: All queries include tenantId; events use tenantId
 3. **Required files**: All Section 3.2 files present
 4. **Directory structure**: Matches Section 3.1
 5. **Error handling**: Uses AppError
 6. **Service communication**: Uses ServiceClient
 7. **Event naming**: Follows {domain}.{entity}.{action}
-8. **Dependencies**: No direct imports from other modules
+8. **Events/jobs**: RabbitMQ only; no Azure Service Bus or other brokers
+9. **Dependencies**: No direct imports from other modules

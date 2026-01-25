@@ -96,6 +96,8 @@ export interface ModuleConfig {
   app?: {
     url?: string;
   };
+  /** Plan §8.5.2, §8.5.4: metrics.path, require_auth, bearer_token */
+  metrics?: { path?: string; require_auth?: boolean; bearer_token?: string };
   features?: {
     email_templates?: boolean;
     delivery_tracking?: boolean;

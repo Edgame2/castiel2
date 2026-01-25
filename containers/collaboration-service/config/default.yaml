@@ -15,6 +15,7 @@ cosmos_db:
   containers:
     conversations: collaboration_conversations
     messages: collaboration_messages
+    insights: collaboration_insights
 
 services:
   shard_manager:
@@ -25,6 +26,8 @@ services:
     url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
   notification:
     url: ${NOTIFICATION_MANAGER_URL:-http://localhost:3001}
+  ai_insights:
+    url: ${AI_INSIGHTS_URL:-http://localhost:3007}
 
 rabbitmq:
   url: ${RABBITMQ_URL}

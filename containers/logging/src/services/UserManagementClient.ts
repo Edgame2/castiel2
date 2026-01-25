@@ -5,6 +5,7 @@
  * Provides integration with User Management module for RBAC
  */
 
+import { ServiceClient } from '@coder/shared';
 import { getConfig } from '../config';
 import { log } from '../utils/logger';
 
@@ -51,30 +52,15 @@ export class UserManagementClient {
    */
   async getUserRoles(userId: string): Promise<UserRolesResponse> {
     try {
-      const url = `${this.baseUrl}/api/v1/users/${userId}/roles`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          // In production, would include service-to-service auth token
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          log.warn('User not found in User Management service', { userId });
-          // Return default response for unknown users
-          return {
-            userId,
-            roles: [],
-            isSuperAdmin: false,
-          };
+      const data = await this.serviceClient.get<{ data?: UserRolesResponse }>(
+        `/api/v1/users/${userId}/roles`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            // In production, would include service-to-service auth token
+          },
         }
-        throw new Error(`User Management API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      );
       
       return {
         userId: data.data?.userId || userId,
@@ -82,7 +68,16 @@ export class UserManagementClient {
         roles: data.data?.roles || [],
         isSuperAdmin: data.data?.isSuperAdmin || false,
       };
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        log.warn('User not found in User Management service', { userId });
+        // Return default response for unknown users
+        return {
+          userId,
+          roles: [],
+          isSuperAdmin: false,
+        };
+      }
       log.error('Failed to fetch user roles from User Management', error, { userId });
       // Return default response on error (fail secure - no permissions)
       return {
@@ -207,27 +202,16 @@ export class UserManagementClient {
   async healthCheck(): Promise<{ status: 'ok' | 'error'; latency_ms?: number; message?: string }> {
     try {
       const startTime = Date.now();
-      const url = `${this.baseUrl}/health`;
       
-      const response = await fetch(url, {
-        method: 'GET',
-        signal: AbortSignal.timeout(5000), // 5 second timeout
-      });
-
+      await this.serviceClient.get('/health', { timeout: 5000 });
+      
       const latency = Date.now() - startTime;
-
-      if (response.ok) {
-        return { status: 'ok', latency_ms: latency };
-      }
-
+      return { status: 'ok', latency_ms: latency };
+    } catch (error: any) {
+      const latency = Date.now() - startTime;
       return {
         status: 'error',
         latency_ms: latency,
-        message: `Health check failed: ${response.status}`,
-      };
-    } catch (error: any) {
-      return {
-        status: 'error',
         message: error.message || 'Health check failed',
       };
     }

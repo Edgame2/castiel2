@@ -7,11 +7,13 @@ export interface SecurityServiceConfig {
   server: { port: number; host: string };
   cosmos_db: { endpoint: string; key: string; database_id: string; containers?: Record<string, string> };
   services: {
-    context_service: { url: string };
-    quality: { url: string };
-    observability: { url: string };
-    workflow: { url: string };
-    logging: { url: string };
+    context_service?: { url: string };
+    quality?: { url: string };
+    observability?: { url: string };
+    workflow?: { url: string };
+    logging?: { url: string };
+    shard_manager?: { url: string };
+    secret_management?: { url: string };
   };
   rabbitmq: { url: string; exchange: string; queue: string };
 }

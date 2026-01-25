@@ -1,0 +1,12 @@
+# Conda env for Azure ML ManagedOnlineDeployment of risk-scoring (score_risk_scoring.py).
+# Used by train_risk_scoring.py --deploy. Plan §874.
+name: risk-scoring
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.8,<3.12
+  - numpy
+  - pip
+  - pip:
+    - xgboost

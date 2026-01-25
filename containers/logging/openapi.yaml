@@ -20,7 +20,7 @@ info:
     - **Compliance**: SOC2, GDPR, PCI-DSS compliant
   version: 1.0.0
   contact:
-    name: Coder IDE Team
+    name: Castiel Team
 
 servers:
   - url: /api/v1
@@ -598,6 +598,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReadyResponse'
+
+  /metrics:
+    get:
+      tags: [Health]
+      summary: Prometheus metrics (Plan §8.5.2, FIRST_STEPS §1)
+      description: Exposes http_requests_total, http_request_duration_seconds. Optional Bearer when metrics.require_auth.
+      security: []
+      responses:
+        '200':
+          description: text/plain; version=0.0.4 (Prometheus format)
+        '401':
+          description: Unauthorized (when metrics.require_auth and invalid Bearer)
 
   # Log Endpoints
   /logs:

@@ -17,11 +17,17 @@ export interface RiskAnalyticsConfig {
     database_id: string;
     containers: {
       evaluations: string;
+      snapshots?: string;
       revenue_at_risk: string;
       quotas: string;
       warnings: string;
       simulations: string;
     };
+  };
+  data_lake?: {
+    connection_string: string;
+    container: string;
+    path_prefix: string;
   };
   jwt: {
     secret: string;
@@ -39,5 +45,14 @@ export interface RiskAnalyticsConfig {
   };
   features: {
     [key: string]: boolean;
+  };
+  application_insights?: {
+    connection_string: string;
+    disable: boolean;
+  };
+  metrics?: {
+    path: string;
+    require_auth: boolean;
+    bearer_token: string;
   };
 }

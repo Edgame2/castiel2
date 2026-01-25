@@ -18,6 +18,8 @@ The Logging module consumes events from the following exchanges via RabbitMQ:
 - `plan.#` - Planning events
 - `notification.#` - Notification events
 
+**BI/risk (dedicated queues, Plan §3.5):** `risk.evaluated` (DataLakeCollector → Parquet); `risk.evaluated`, `ml.prediction.completed`, `remediation.workflow.completed` (MLAuditConsumer → audit Blob). Config: `rabbitmq.data_lake`, `rabbitmq.ml_audit`, `data_lake.*`.
+
 ---
 
 ### auth.login.success
@@ -765,6 +767,32 @@ The Logging module consumes events from the following exchanges via RabbitMQ:
   }
 }
 ```
+
+---
+
+## BI / Risk Events (Data Lake & ML Audit)
+
+Per BI_SALES_RISK_IMPLEMENTATION_PLAN §3.5, FIRST_STEPS §3, and BI_SALES_RISK_DATA_LAKE_LAYOUT. These events are consumed via dedicated queues (`rabbitmq.data_lake`, `rabbitmq.ml_audit`). Require `data_lake.connection_string` and `data_lake.container`.
+
+### risk.evaluated (DataLakeCollector)
+
+**Description**: Written by **DataLakeCollector** to Azure Data Lake as Parquet at `/risk_evaluations/year=YYYY/month=MM/day=DD/*.parquet`. Used by risk-snapshot-backfill and training.
+
+**Handler**: `src/events/consumers/DataLakeCollector.ts`  
+**Queue**: `rabbitmq.data_lake.queue` (e.g. `logging_data_lake`), bindings: `risk.evaluated`
+
+**Parquet columns** (DATA_LAKE_LAYOUT §2.1): `tenantId`, `opportunityId`, `riskScore`, `categoryScores` (JSON string), `topDrivers` (optional, JSON), `dataQuality` (optional, JSON), `timestamp` (ISO), `evaluationId` (optional).
+
+---
+
+### risk.evaluated, risk.prediction.generated, ml.prediction.completed, remediation.workflow.completed (MLAuditConsumer)
+
+**Description**: Written by **MLAuditConsumer** to audit Blob at `data_lake.audit_path_prefix/year=YYYY/month=MM/day=DD/{routingKey}-{id}.json`. Immutable; 7-year retention per Plan.
+
+**Handler**: `src/events/consumers/MLAuditConsumer.ts`  
+**Queue**: `rabbitmq.ml_audit.queue` (e.g. `logging_ml_audit`), bindings: `risk.evaluated`, `risk.prediction.generated`, `ml.prediction.completed`, `remediation.workflow.completed`
+
+**Blob content**: `{ eventType, timestamp, tenantId, userId?, data, id, source }`. `risk.prediction.generated` (Plan §10): payload from risk-analytics when EarlyWarningService.generatePredictions writes to risk_predictions.
 
 ---
 

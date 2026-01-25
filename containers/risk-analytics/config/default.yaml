@@ -1,6 +1,17 @@
 # risk-analytics Module Configuration
 # Per ModuleImplementationGuide Section 4
 
+# Application Insights (§8.5.1); init before other imports via src/instrumentation.ts
+application_insights:
+  connection_string: ${APPLICATIONINSIGHTS_CONNECTION_STRING:-}
+  disable: ${APPLICATIONINSIGHTS_DISABLE:-false}
+
+# Prometheus metrics (§8.5.2, §8.5.4); deployment/monitoring/README
+metrics:
+  path: ${METRICS_PATH:-/metrics}
+  require_auth: ${METRICS_REQUIRE_AUTH:-false}
+  bearer_token: ${METRICS_BEARER_TOKEN:-}
+
 module:
   name: risk-analytics
   version: 1.0.0
@@ -10,16 +21,49 @@ server:
   host: ${HOST:-0.0.0.0}
 
 # Cosmos DB Configuration (shared database, prefixed containers)
+# Data Lake: risk-snapshot-backfill reads; outcome consumer writes /ml_outcomes. Plan §8.1, DATA_LAKE_LAYOUT.
+data_lake:
+  connection_string: ${DATA_LAKE_CONNECTION_STRING:-}
+  container: ${DATA_LAKE_CONTAINER:-risk}
+  path_prefix: ${DATA_LAKE_PATH_PREFIX:-/risk_evaluations}
+  ml_outcomes_prefix: ${DATA_LAKE_ML_OUTCOMES_PREFIX:-/ml_outcomes}
+
+# outcome-sync (Plan §9.3, FIRST_STEPS §5): tenant_ids to process; empty = no-op. Override tenant_ids in env-specific YAML.
+outcome_sync:
+  tenant_ids: []
+  shard_type_name: ${OUTCOME_SYNC_SHARD_TYPE_NAME:-c_opportunity}
+
+# Outcome feedback (Plan §904): publish opportunity.outcome.recorded on shard/integration update when IsClosed (in addition to outcome-sync job)
+outcome_feedback:
+  publish_on_shard_update: ${OUTCOME_FEEDBACK_PUBLISH_ON_SHARD_UPDATE:-true}
+
 cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
   key: ${COSMOS_DB_KEY}
   database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
   containers:
     evaluations: risk_evaluations
+    snapshots: risk_snapshots
+    predictions: risk_predictions
     revenue_at_risk: risk_revenue_at_risk
     quotas: risk_quotas
     warnings: risk_warnings
     simulations: risk_simulations
+    # Plan §3.1.1, §3.1.2 competitive intel
+    competitor_tracking: risk_competitor_tracking
+    competitors: competitors
+    anomaly_alerts: risk_anomaly_alerts
+    # Plan §921 sentiment (ai-insights/data-enrichment to populate)
+    sentiment_trends: risk_sentiment_trends
+    # Plan §11.8, §943 win/loss reasons (ingestion for CompetitiveIntelligenceService)
+    win_loss_reasons: risk_win_loss_reasons
+    # Plan §3.1.5, §953 industry benchmarks (partition industryId; id=industryId_period)
+    industry_benchmarks: analytics_industry_benchmarks
+    # Plan §3.1.1, §914 risk clustering (batch: RiskClusteringService → DBSCAN/K-Means + Apriori)
+    clusters: risk_clusters
+    association_rules: risk_association_rules
+    # Plan §3.1.1, §917 account health (batch: account-health job → AccountHealthService.calculateAccountHealth)
+    account_health: risk_account_health
 
 # JWT Configuration (shared with auth service)
 jwt:
@@ -33,8 +77,6 @@ services:
     url: ${LOGGING_URL:-http://localhost:3014}
   user_management:
     url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
-  risk_catalog:
-    url: ${RISK_CATALOG_URL:-http://localhost:3047}
   ai_insights:
     url: ${AI_INSIGHTS_URL:-http://localhost:3007}
   ml_service:
@@ -47,6 +89,10 @@ services:
     url: ${ADAPTIVE_LEARNING_URL:-http://localhost:3032}
   embeddings:
     url: ${EMBEDDINGS_URL:-http://localhost:3035}
+  search_service:
+    url: ${SEARCH_SERVICE_URL:-http://localhost:3029}
+  recommendations:
+    url: ${RECOMMENDATIONS_URL:-}
 
 # RabbitMQ Configuration
 rabbitmq:
@@ -54,11 +100,52 @@ rabbitmq:
   exchange: coder_events
   queue: risk_analytics_service
   bindings:
+    - "opportunity.updated"
     - "integration.opportunity.updated"
+    - "shard.created"
     - "shard.updated"
+    - "risk.catalog.updated"
+    - "risk.catalog.enabled"
+    - "risk.catalog.disabled"
     - "integration.sync.completed"
     - "workflow.risk.analysis.requested"
     - "workflow.risk.scoring.requested"
+    - "risk.evaluated"
+    - "opportunity.outcome.recorded"
+    - "sentiment.trends.updated"
+  # Batch jobs (Plan §9.3): separate queue for workflow.job.trigger
+  batch_jobs:
+    queue: ${RABBITMQ_BATCH_JOBS_QUEUE:-bi_batch_jobs}
+    routing_keys:
+      - "workflow.job.trigger"
 
-# Feature Flags
+# Auto-evaluation configuration
+auto_evaluation:
+  enabled: ${AUTO_EVALUATION_ENABLED:-true}
+  trigger_on_shard_update: ${AUTO_EVALUATION_TRIGGER_SHARD_UPDATE:-true}
+  trigger_on_opportunity_update: ${AUTO_EVALUATION_TRIGGER_OPPORTUNITY_UPDATE:-true}
+  trigger_on_risk_catalog_update: ${AUTO_EVALUATION_TRIGGER_RISK_CATALOG_UPDATE:-true}
+  max_reevaluations_per_catalog_event: ${AUTO_EVALUATION_MAX_REEVALUATIONS_PER_CATALOG:-50}
+
+# Feature flags (Plan §8.1, §895). Override via EARLY_WARNING_LSTM_ENABLED, etc.
+feature_flags:
+  early_warning_lstm: ${EARLY_WARNING_LSTM_ENABLED:-true}
+  industry_models: ${INDUSTRY_MODELS_ENABLED:-true}
+  competitive_intelligence: ${COMPETITIVE_INTELLIGENCE_ENABLED:-true}
+  anomaly_detection: ${ANOMALY_DETECTION_ENABLED:-true}
+  prescriptive_remediation: ${PRESCRIPTIVE_REMEDIATION_ENABLED:-true}
+  executive_dashboards: ${EXECUTIVE_DASHBOARDS_ENABLED:-true}
+  hitl_approvals: ${HITL_APPROVALS_ENABLED:-false}
+
+thresholds:
+  early_warning_days_inactivity: [7, 14, 21]
+  risk_velocity_alert: 0.15
+  hitl_risk_min: 0.8
+  hitl_deal_min: 1000000
+
+# Plan §11.11, §944: map atRiskReasons to mitigation playbooks. reason (string) -> playbook/action id or label.
+# Example: "No executive sponsor": "exec-alignment", "Competitor mentioned": "competitor-battlecard"
+at_risk_reasons_mitigation: {}
+
+# Legacy; feature_flags preferred (Plan §8.1)
 features: {}

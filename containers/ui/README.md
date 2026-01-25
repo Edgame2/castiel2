@@ -1,10 +1,10 @@
 # UI Container
 
-Next.js 16 web application for Coder IDE.
+Next.js 16 web application for Castiel.
 
 ## Overview
 
-The UI Container is a Next.js 16 application (App Router) that provides the frontend interface for Coder IDE. It communicates with backend microservices through the API Gateway.
+The UI Container is a Next.js 16 application (App Router) that provides the frontend interface for Castiel. It communicates with backend microservices through the API Gateway.
 
 ## Features
 

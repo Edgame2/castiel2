@@ -18,6 +18,7 @@ cosmos_db:
     shards: shard_shards
     shard_types: shard_shard_types
     relationships: shard_relationships
+    links: shard_links
 
 # Redis Configuration (optional, for caching)
 cache:

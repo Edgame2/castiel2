@@ -9,6 +9,7 @@ import { LearningPathService } from '../services/LearningPathService';
 import { SkillService } from '../services/SkillService';
 import { ProgressService } from '../services/ProgressService';
 import { AssessmentService } from '../services/AssessmentService';
+import { OutcomeCollectorService } from '../services/OutcomeCollectorService';
 import {
   CreateLearningPathInput,
   UpdateLearningPathInput,
@@ -24,6 +25,72 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   const skillService = new SkillService();
   const progressService = new ProgressService();
   const assessmentService = new AssessmentService();
+  const outcomeCollectorService = new OutcomeCollectorService();
+
+  // ===== OUTCOME COLLECTION (CAIS 3.2) =====
+
+  app.post<{ Body: { component: string; predictionId: string; context?: Record<string, unknown>; predictedValue?: number | Record<string, unknown> } }>(
+    '/api/v1/adaptive-learning/outcomes/record-prediction',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Record a prediction for outcome collection (before/at prediction)',
+        tags: ['Outcomes'],
+        body: {
+          type: 'object',
+          required: ['component', 'predictionId'],
+          properties: {
+            component: { type: 'string' },
+            predictionId: { type: 'string' },
+            context: { type: 'object' },
+            predictedValue: {},
+          },
+        },
+        response: { 201: { type: 'object', properties: { id: { type: 'string' } } } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const r = await outcomeCollectorService.recordPrediction(tenantId, request.body);
+      reply.code(201).send(r);
+    }
+  );
+
+  app.post<{ Body: { predictionId: string; outcomeValue?: number; outcome?: number | Record<string, unknown>; outcomeType?: 'success' | 'failure' | 'partial'; context?: Record<string, unknown> } }>(
+    '/api/v1/adaptive-learning/outcomes/record-outcome',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Record the actual outcome for a prediction (for CAIS learning)',
+        tags: ['Outcomes'],
+        body: {
+          type: 'object',
+          required: ['predictionId'],
+          properties: {
+            predictionId: { type: 'string' },
+            outcomeValue: { type: 'number' },
+            outcome: {},
+            outcomeType: { type: 'string', enum: ['success', 'failure', 'partial'] },
+            context: { type: 'object' },
+          },
+        },
+        response: { 201: { type: 'object', properties: { id: { type: 'string' } } } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const b = request.body;
+      const outcomeValue = b.outcomeValue ?? (typeof b.outcome === 'number' ? b.outcome : 0.5);
+      const outcomeType = b.outcomeType ?? (outcomeValue >= 0.5 ? 'success' : 'failure');
+      const r = await outcomeCollectorService.recordOutcome(tenantId, {
+        predictionId: b.predictionId,
+        outcomeValue: Number(outcomeValue),
+        outcomeType: outcomeType as 'success' | 'failure' | 'partial',
+        context: b.context,
+      });
+      reply.code(201).send(r);
+    }
+  );
 
   // ===== LEARNING PATH ROUTES =====
 

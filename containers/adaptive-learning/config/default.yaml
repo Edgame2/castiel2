@@ -18,6 +18,7 @@ cosmos_db:
     skills: adaptive_skills
     assessments: adaptive_assessments
     assessment_results: adaptive_assessment_results
+    outcomes: adaptive_outcomes
 
 services:
   ai_service:
@@ -31,3 +32,5 @@ rabbitmq:
   url: ${RABBITMQ_URL}
   exchange: coder_events
   queue: adaptive_learning
+  bindings:
+    - "adaptive.learning.outcome.recorded"

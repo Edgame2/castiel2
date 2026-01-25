@@ -7,10 +7,11 @@ export interface CollaborationServiceConfig {
   server: { port: number; host: string };
   cosmos_db: { endpoint: string; key: string; database_id: string; containers?: Record<string, string> };
   services: {
-    shard_manager: { url: string };
-    logging: { url: string };
-    user_management: { url: string };
-    notification: { url: string };
+    shard_manager?: { url: string };
+    logging?: { url: string };
+    user_management?: { url: string };
+    notification?: { url: string };
+    ai_insights?: { url: string };
   };
   rabbitmq: { url: string; exchange: string; queue: string };
 }

@@ -1,6 +1,6 @@
 # Migration Service Module
 
-Code migrations and refactoring service for Coder IDE, providing migration management, step-based execution, rollback capabilities, and version upgrade handling.
+Code migrations and refactoring service for Castiel, providing migration management, step-based execution, rollback capabilities, and version upgrade handling.
 
 ## Features
 
@@ -114,5 +114,5 @@ npm test
 
 ## License
 
-Proprietary - Coder IDE
+Proprietary - Castiel
 

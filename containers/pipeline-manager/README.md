@@ -1,6 +1,6 @@
 # Pipeline Manager Module
 
-Sales pipeline and opportunity management service for Coder IDE.
+Sales pipeline and opportunity management service for Castiel.
 
 ## Features
 

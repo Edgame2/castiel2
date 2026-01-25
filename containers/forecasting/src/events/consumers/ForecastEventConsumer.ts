@@ -32,96 +32,95 @@ export async function initializeEventConsumer(): Promise<void> {
 
     // Handle opportunity updates
     consumer.on('opportunity.updated', async (event) => {
-      log.info('Opportunity updated, generating forecast', {
-        opportunityId: event.data.opportunityId,
-        tenantId: event.tenantId,
-        service: 'forecasting',
-      });
-      
+      const opportunityId = event.data?.opportunityId;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!opportunityId || !tenantId) {
+        log.warn('opportunity.updated missing opportunityId or tenantId', { hasData: !!event.data, service: 'forecasting' });
+        return;
+      }
+      log.info('Opportunity updated, generating forecast', { opportunityId, tenantId, service: 'forecasting' });
+
       if (!forecastingService) {
         log.error('Forecasting service not initialized', { service: 'forecasting' });
         return;
       }
-      
+
       try {
         await forecastingService.generateForecast({
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
+          opportunityId,
+          tenantId,
+          includeDecomposition: true,
+          includeConsensus: true,
+          includeCommitment: true,
         });
-      } catch (error: any) {
-        log.error('Failed to generate forecast from opportunity update', error, {
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
-          service: 'forecasting',
-        });
+      } catch (error: unknown) {
+        log.error('Failed to generate forecast from opportunity update', error instanceof Error ? error : new Error(String(error)), { opportunityId, tenantId, service: 'forecasting' });
       }
     });
 
     // Handle risk evaluation completion
     consumer.on('risk.evaluation.completed', async (event) => {
-      log.info('Risk evaluation completed, generating forecast considering risk factors', {
-        opportunityId: event.data.opportunityId,
-        tenantId: event.tenantId,
-        service: 'forecasting',
-      });
-      
-      if (!forecastingService) {
-        log.error('Forecasting service not initialized', { service: 'forecasting' });
+      const opportunityId = event.data?.opportunityId;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!opportunityId || !tenantId) {
+        log.warn('risk.evaluation.completed missing opportunityId or tenantId', { hasData: !!event.data, service: 'forecasting' });
         return;
       }
-      
-      try {
-        await forecastingService.generateForecast({
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
-          workflowId: event.data.workflowId, // Forward workflowId if available
-        });
-      } catch (error: any) {
-        log.error('Failed to generate forecast from risk evaluation', error, {
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
-          service: 'forecasting',
-        });
-      }
-    });
+      log.info('Risk evaluation completed, generating forecast', { opportunityId, tenantId, service: 'forecasting' });
 
-    // Handle workflow-triggered forecasting
-    consumer.on('workflow.forecast.requested', async (event) => {
-      log.info('Workflow forecast requested', {
-        workflowId: event.data.workflowId,
-        opportunityId: event.data.opportunityId,
-        tenantId: event.tenantId,
-        service: 'forecasting',
-      });
-      
       if (!forecastingService) {
         log.error('Forecasting service not initialized', { service: 'forecasting' });
         return;
       }
-      
+
       try {
         await forecastingService.generateForecast({
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
-          workflowId: event.data.workflowId, // Forward workflowId
+          opportunityId,
+          tenantId,
+          includeDecomposition: true,
+          includeConsensus: true,
+          includeCommitment: true,
         });
-      } catch (error: any) {
-        log.error('Failed to generate forecast from workflow', error, {
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
-          service: 'forecasting',
-        });
+      } catch (error: unknown) {
+        log.error('Failed to generate forecast from risk evaluation', error instanceof Error ? error : new Error(String(error)), { opportunityId, tenantId, service: 'forecasting' });
       }
     });
 
     // Handle sync completion
     consumer.on('integration.sync.completed', async (event) => {
-      log.info('Integration sync completed', {
-        tenantId: event.tenantId,
-        service: 'forecasting',
-      });
-      // Note: Sync completion doesn't specify opportunityId, so we skip forecast
-      // Individual opportunity updates will trigger forecasts via opportunity.updated events
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      log.info('Integration sync completed, may trigger forecasts', { tenantId, service: 'forecasting' });
+      // Note: Sync completion doesn't specify opportunityId; individual opportunity updates trigger forecasts via opportunity.updated
+    });
+
+    // Handle workflow-triggered forecasts
+    consumer.on('workflow.forecast.requested', async (event) => {
+      const opportunityId = event.data?.opportunityId;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      const workflowId = event.data?.workflowId;
+      if (!opportunityId || !tenantId) {
+        log.warn('workflow.forecast.requested missing opportunityId or tenantId', { hasData: !!event.data, service: 'forecasting' });
+        return;
+      }
+      log.info('Workflow forecast requested', { workflowId, opportunityId, tenantId, service: 'forecasting' });
+
+      if (!forecastingService) {
+        log.error('Forecasting service not initialized', { service: 'forecasting' });
+        return;
+      }
+
+      try {
+        await forecastingService.generateForecast({
+          opportunityId,
+          tenantId,
+          workflowId,
+          includeDecomposition: true,
+          includeConsensus: true,
+          includeCommitment: true,
+        });
+      } catch (error: unknown) {
+        log.error('Failed to generate forecast from workflow', error instanceof Error ? error : new Error(String(error)), { opportunityId, tenantId, service: 'forecasting' });
+      }
     });
 
     await consumer.start();
@@ -134,6 +133,7 @@ export async function initializeEventConsumer(): Promise<void> {
 
 export async function closeEventConsumer(): Promise<void> {
   if (consumer) {
+    await consumer.stop();
     consumer = null;
   }
 }

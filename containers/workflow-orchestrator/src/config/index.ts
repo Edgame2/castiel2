@@ -11,6 +11,8 @@ import { log } from '../utils/logger';
 
 export interface WorkflowOrchestratorConfig {
   module: { name: string; version: string };
+  application_insights?: { connection_string?: string; disable?: boolean };
+  metrics?: { path?: string; require_auth?: boolean; bearer_token?: string };
   server: { port: number; host: string };
   cosmos_db: {
     endpoint: string;
@@ -25,6 +27,16 @@ export interface WorkflowOrchestratorConfig {
   jwt: { secret: string };
   services: { [key: string]: { url: string } };
   rabbitmq: { url: string; exchange: string; queue: string; bindings: string[] };
+  batch_jobs?: {
+    enabled?: boolean;
+    risk_snapshot_backfill_cron?: string;
+    outcome_sync_cron?: string;
+    industry_benchmarks_cron?: string;
+    risk_clustering_cron?: string;
+    account_health_cron?: string;
+    propagation_cron?: string;
+    model_monitoring_cron?: string;
+  };
   features: { [key: string]: boolean };
 }
 

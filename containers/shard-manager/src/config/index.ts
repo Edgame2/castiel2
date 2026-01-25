@@ -19,6 +19,11 @@ export interface ShardManagerConfig {
     endpoint: string;
     key: string;
     database_id: string;
+    containers?: {
+      shards?: string;
+      shard_types?: string;
+      relationships?: string;
+    };
   };
   services: {
     logging: { url: string };

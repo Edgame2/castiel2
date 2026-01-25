@@ -1,6 +1,17 @@
 # workflow-orchestrator Module Configuration
 # Per ModuleImplementationGuide Section 4
 
+# Application Insights (Plan §8.5.1, FIRST_STEPS §1); init via src/instrumentation.ts
+application_insights:
+  connection_string: ${APPLICATIONINSIGHTS_CONNECTION_STRING:-}
+  disable: ${APPLICATIONINSIGHTS_DISABLE:-false}
+
+# Prometheus metrics (Plan §8.5.2, §8.5.4); deployment/monitoring/README
+metrics:
+  path: ${METRICS_PATH:-/metrics}
+  require_auth: ${METRICS_REQUIRE_AUTH:-false}
+  bearer_token: ${METRICS_BEARER_TOKEN:-}
+
 module:
   name: workflow-orchestrator
   version: 1.0.0
@@ -58,6 +69,22 @@ rabbitmq:
     - "forecast.completed"
     - "recommendation.generation.completed"
     - "recommendation.generation.failed"
+
+# Batch jobs (Plan §9.3, §915): scheduler publishes workflow.job.trigger to coder_events
+batch_jobs:
+  enabled: ${BATCH_JOBS_ENABLED:-true}
+  risk_snapshot_backfill_cron: ${RISK_SNAPSHOT_BACKFILL_CRON:-0 1 * * 0}
+  outcome_sync_cron: ${OUTCOME_SYNC_CRON:-0 1 * * *}
+  # industry-benchmarks (Plan §915, §953): 4 AM daily; risk-analytics BatchJobWorker runs IndustryBenchmarkService.calculateAndStore
+  industry_benchmarks_cron: ${INDUSTRY_BENCHMARKS_CRON:-0 4 * * *}
+  # risk-clustering (Plan §915): 2 AM; risk-analytics RiskClusteringService → risk_clusters, risk_association_rules
+  risk_clustering_cron: ${RISK_CLUSTERING_CRON:-0 2 * * *}
+  # account-health (Plan §915): 3 AM; risk-analytics AccountHealthService → risk_account_health
+  account_health_cron: ${ACCOUNT_HEALTH_CRON:-0 3 * * *}
+  # propagation (Plan §915): 5 AM; risk-analytics RiskPropagationService batch
+  propagation_cron: ${PROPAGATION_CRON:-0 5 * * *}
+  # model-monitoring (Plan §9.3, §940): Sunday 6 AM; ml-service or risk-analytics — drift (PSI) + performance (Brier, MAE); publish ml.model.drift.detected / performance.degraded
+  model_monitoring_cron: ${MODEL_MONITORING_CRON:-0 6 * * 0}
 
 # Feature Flags
 features: {}

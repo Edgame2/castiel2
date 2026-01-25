@@ -68,6 +68,8 @@ export async function buildApp(): Promise<FastifyInstance> {
     containers: {
       enrichment_jobs: config.cosmos_db.containers.enrichment_jobs,
       enrichment_results: config.cosmos_db.containers.enrichment_results,
+      enrichment_configurations: config.cosmos_db.containers.enrichment_configurations ?? 'enrichment_configurations',
+      enrichment_history: config.cosmos_db.containers.enrichment_history ?? 'enrichment_history',
       vectorization_jobs: config.cosmos_db.containers.vectorization_jobs,
       shard_relationships: config.cosmos_db.containers.shard_relationships,
       shard_acls: config.cosmos_db.containers.shard_acls,
@@ -86,10 +88,19 @@ export async function buildApp(): Promise<FastifyInstance> {
     const { initializeEventPublisher } = await import('./events/publishers/EnrichmentEventPublisher');
     await initializeEventPublisher();
     const { initializeEventConsumer } = await import('./events/consumers/EnrichmentEventConsumer');
-    await initializeEventConsumer();
+    await initializeEventConsumer(fastify);
     log.info('Event publisher and consumer initialized', { service: 'data-enrichment' });
   } catch (error) {
     log.warn('Failed to initialize event handlers', { error, service: 'data-enrichment' });
+  }
+
+  try {
+    const { ReembeddingSchedulerService } = await import('./services/ReembeddingSchedulerService');
+    const reembeddingScheduler = new ReembeddingSchedulerService(fastify);
+    await reembeddingScheduler.start();
+    (fastify as any).reembeddingScheduler = reembeddingScheduler;
+  } catch (error) {
+    log.warn('Failed to start re-embedding scheduler', { error, service: 'data-enrichment' });
   }
 
   fastify.setErrorHandler((error: Error & { validation?: unknown; statusCode?: number }, request, reply) => {
@@ -189,8 +200,10 @@ async function gracefulShutdown(signal: string): Promise<void> {
     await closeEventPublisher();
     const { closeEventConsumer } = await import('./events/consumers/EnrichmentEventConsumer');
     await closeEventConsumer();
+    const sched = app && (app as any).reembeddingScheduler;
+    if (sched && typeof sched.stop === 'function') await sched.stop();
   } catch (error) {
-    log.error('Error closing event handlers', error, { service: 'data-enrichment' });
+    log.error('Error during shutdown', error, { service: 'data-enrichment' });
   }
   if (app) await app.close();
   process.exit(0);
@@ -202,8 +215,8 @@ process.on('uncaughtException', (error: Error) => {
   log.error('Uncaught exception', error, { service: 'data-enrichment' });
   gracefulShutdown('uncaughtException').catch(() => process.exit(1));
 });
-process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-  log.error('Unhandled promise rejection', reason as Error, { service: 'data-enrichment', promise: promise.toString() });
+process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
+  log.error('Unhandled promise rejection', reason instanceof Error ? reason : new Error(String(reason)), { service: 'data-enrichment', promise: String(promise) });
 });
 
 if (require.main === module) {

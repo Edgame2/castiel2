@@ -51,11 +51,25 @@ export interface MLModel {
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
+  /** Model card limitations (Plan §11.9, §946); optional, used by GET /models/:id/card */
+  limitations?: string[];
   // Cosmos DB system fields
   _rid?: string;
   _self?: string;
   _etag?: string;
   _ts?: number;
+}
+
+/** Model card (Plan §11.9, §946): purpose, input, output, limitations for GET /api/v1/ml/models/:id/card */
+export interface ModelCard {
+  modelId: string;
+  name: string;
+  type: ModelType;
+  version: number;
+  purpose: string;
+  input: string[];
+  output: string;
+  limitations: string[];
 }
 
 /**
@@ -199,6 +213,7 @@ export interface UpdateMLModelInput {
   status?: ModelStatus;
   metrics?: ModelMetrics;
   modelPath?: string;
+  limitations?: string[];
 }
 
 /**

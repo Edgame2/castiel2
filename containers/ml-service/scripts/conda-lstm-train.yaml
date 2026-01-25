@@ -1,0 +1,16 @@
+# Conda env for Azure ML Job: train_lstm_trajectory.py (Plan §5.6, §875; TRAINING_SCRIPTS_SPEC §3.3).
+# Training needs pandas, pyarrow, tensorflow; register/deploy needs azure-ai-ml, azure-identity.
+name: lstm-trajectory-train
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.8,<3.12
+  - numpy
+  - pandas
+  - pyarrow
+  - pip
+  - pip:
+    - tensorflow>=2.12
+    - azure-ai-ml
+    - azure-identity

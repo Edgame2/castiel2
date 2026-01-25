@@ -1,6 +1,6 @@
 # Compliance Service Module
 
-Regulatory and policy compliance service for Coder IDE, ensuring adherence to industry standards (WCAG, OWASP) and regulatory requirements (GDPR, HIPAA, SOC2).
+Regulatory and policy compliance service for Castiel, ensuring adherence to industry standards (WCAG, OWASP) and regulatory requirements (GDPR, HIPAA, SOC2).
 
 ## Features
 
@@ -120,5 +120,5 @@ npm test
 
 ## License
 
-Proprietary - Coder IDE
+Proprietary - Castiel
 

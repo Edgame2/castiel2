@@ -19,6 +19,7 @@ cosmos_db:
     messages: conversation_messages
     contexts: conversation_contexts
     citations: conversation_citations
+    citation_configs: conversation_citation_configs
 
 # JWT Configuration (shared with auth service)
 jwt:
@@ -40,6 +41,8 @@ services:
     url: ${SHARD_MANAGER_URL:-http://localhost:3002}
   embeddings:
     url: ${EMBEDDINGS_URL:-http://localhost:3035}
+  search_service:
+    url: ${SEARCH_SERVICE_URL:-http://localhost:3029}
 
 # RabbitMQ Configuration
 rabbitmq:

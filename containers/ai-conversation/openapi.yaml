@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: AI Conversation Service API
   description: |
-    AI conversation and context management service for Coder IDE.
+    AI conversation and context management service for Castiel.
     
     Provides conversation management, context assembly, grounding, intent analysis, and related AI conversation features.
   version: 1.0.0

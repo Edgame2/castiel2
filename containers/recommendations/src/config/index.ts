@@ -10,6 +10,8 @@ import addFormats from 'ajv-formats';
 import { log } from '../utils/logger';
 
 export interface RecommendationsConfig {
+  application_insights?: { connection_string?: string; disable?: boolean };
+  metrics?: { path?: string; require_auth?: boolean; bearer_token?: string };
   module: { name: string; version: string };
   server: { port: number; host: string };
   cosmos_db: {
@@ -20,6 +22,8 @@ export interface RecommendationsConfig {
       recommendations: string;
       feedback: string;
       metrics: string;
+      remediation_workflows?: string;
+      mitigation_actions?: string;
     };
   };
   jwt: { secret: string };

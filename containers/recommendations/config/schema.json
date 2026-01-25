@@ -3,6 +3,21 @@
   "type": "object",
   "required": ["server", "cosmos_db"],
   "properties": {
+    "application_insights": {
+      "type": "object",
+      "properties": {
+        "connection_string": { "type": "string" },
+        "disable": { "type": "boolean" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "require_auth": { "type": "boolean" },
+        "bearer_token": { "type": "string" }
+      }
+    },
     "module": {
       "type": "object",
       "properties": {
@@ -30,7 +45,9 @@
           "properties": {
             "recommendations": { "type": "string" },
             "feedback": { "type": "string" },
-            "metrics": { "type": "string" }
+            "metrics": { "type": "string" },
+            "remediation_workflows": { "type": "string" },
+            "mitigation_actions": { "type": "string" }
           },
           "required": ["recommendations", "feedback", "metrics"]
         }

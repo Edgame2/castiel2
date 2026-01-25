@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ML Service Module Configuration",
+  "type": "object",
+  "required": ["module", "server", "cosmos_db", "rabbitmq"],
+  "properties": {
+    "application_insights": {
+      "type": "object",
+      "properties": {
+        "connection_string": { "type": "string" },
+        "disable": { "type": "boolean" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "require_auth": { "type": "boolean" },
+        "bearer_token": { "type": "string" }
+      }
+    },
+    "module": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "server": {
+      "type": "object",
+      "required": ["port", "host"],
+      "properties": {
+        "port": { "type": ["integer", "string"], "minimum": 1, "maximum": 65535 },
+        "host": { "type": "string" }
+      }
+    },
+    "cosmos_db": {
+      "type": "object",
+      "required": ["endpoint", "key"],
+      "properties": {
+        "endpoint": { "type": "string", "format": "uri" },
+        "key": { "type": "string" },
+        "database_id": { "type": "string", "default": "castiel" },
+        "containers": {
+          "type": "object",
+          "properties": {
+            "models": { "type": "string" },
+            "features": { "type": "string" },
+            "training_jobs": { "type": "string" },
+            "evaluations": { "type": "string" },
+            "predictions": { "type": "string" },
+            "jobs": { "type": "string" }
+          }
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "properties": {
+        "ai_service": { "type": "object", "properties": { "url": { "type": "string", "format": "uri" } } },
+        "embeddings": { "type": "object", "properties": { "url": { "type": "string", "format": "uri" } } },
+        "logging": { "type": "object", "properties": { "url": { "type": "string", "format": "uri" } } },
+        "shard_manager": { "type": "object", "properties": { "url": { "type": "string", "format": "uri" } } },
+        "risk_analytics": { "type": "object", "properties": { "url": { "type": "string", "format": "uri" } } }
+      }
+    },
+    "feature_pipeline": {
+      "type": "object",
+      "properties": {
+        "stage_labels": { "type": "array", "items": { "type": "string" } },
+        "industry_labels": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "feature_flags": {
+      "type": "object",
+      "description": "Plan §895, §8.2: use_win_probability_ml, use_risk_scoring_ml, use_revenue_forecasting_ml. Env: USE_WIN_PROBABILITY_ML, USE_RISK_SCORING_ML, USE_REVENUE_FORECASTING_ML.",
+      "properties": {
+        "use_win_probability_ml": { "type": "boolean" },
+        "use_risk_scoring_ml": { "type": "boolean" },
+        "use_revenue_forecasting_ml": { "type": "boolean" }
+      },
+      "additionalProperties": { "type": "boolean" }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": { "type": "boolean" },
+      "description": "Legacy; feature_flags preferred (Plan §895)."
+    },
+    "azure_ml": {
+      "type": "object",
+      "description": "Plan §5.1, §8.2: workspace/resource_group/subscription_id for SDK/batch; endpoints for Managed Endpoint REST.",
+      "properties": {
+        "workspace_name": { "type": "string", "description": "AZURE_ML_WORKSPACE_NAME" },
+        "resource_group": { "type": "string", "description": "AZURE_ML_RESOURCE_GROUP; Plan §5.1 default castiel-ml-prod-rg" },
+        "subscription_id": { "type": "string", "description": "AZURE_ML_SUBSCRIPTION_ID" },
+        "endpoints": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "format": "uri" }
+        },
+        "api_key": { "type": "string" }
+      }
+    },
+    "rabbitmq": {
+      "type": "object",
+      "required": ["url", "exchange", "queue"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "exchange": { "type": "string" },
+        "queue": { "type": "string" }
+      }
+    }
+  }
+}

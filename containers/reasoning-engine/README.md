@@ -1,6 +1,6 @@
 # Reasoning Engine Module
 
-Advanced reasoning capabilities service for Coder IDE, providing chain-of-thought, tree-of-thought, analogical, counterfactual, and causal reasoning.
+Advanced reasoning capabilities service for Castiel, providing chain-of-thought, tree-of-thought, analogical, counterfactual, and causal reasoning.
 
 ## Features
 
@@ -113,5 +113,5 @@ npm test
 
 ## License
 
-Proprietary - Coder IDE
+Proprietary - Castiel
 

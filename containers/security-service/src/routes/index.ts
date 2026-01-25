@@ -285,5 +285,86 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       reply.send(scan);
     }
   );
+
+  // ===== SECURITY SCANNING ROUTES (from security-scanning) =====
+
+  /**
+   * Trigger security scan (direct scanning - from security-scanning)
+   * POST /api/v1/security/scan
+   */
+  app.post<{ Body: { targetId: string; targetType: 'shard' | 'document' | 'field'; scanType: 'pii' | 'secret' | 'vulnerability' } }>(
+    '/api/v1/security/scan',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Trigger security scan (direct scanning)',
+        tags: ['Security Scans'],
+        body: {
+          type: 'object',
+          required: ['targetId', 'targetType', 'scanType'],
+          properties: {
+            targetId: { type: 'string' },
+            targetType: { type: 'string', enum: ['shard', 'document', 'field'] },
+            scanType: { type: 'string', enum: ['pii', 'secret', 'vulnerability'] },
+          },
+        },
+        response: {
+          202: {
+            type: 'object',
+            description: 'Security scan started',
+            properties: {
+              scanId: { type: 'string' },
+              status: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { targetId, targetType, scanType } = request.body;
+        const tenantId = request.user!.tenantId;
+        const userId = request.user!.id;
+
+        // Create scan
+        const scanInput: CreateSecurityScanInput = {
+          tenantId,
+          userId,
+          type: scanType === 'pii' ? SecurityScanType.PII_DETECTION 
+                : scanType === 'secret' ? SecurityScanType.SECRET_SCAN
+                : SecurityScanType.VULNERABILITY_SCAN,
+          target: {
+            type: targetType === 'shard' ? 'module' : targetType === 'document' ? 'file' : 'file',
+            path: targetId,
+          },
+        };
+
+        const scan = await scanService.create(scanInput);
+
+        // Run scan
+        const runInput: RunSecurityScanInput = {
+          tenantId,
+          userId,
+          scanId: scan.id,
+        };
+
+        await scannerService.runScan(runInput);
+
+        return reply.status(202).send({
+          scanId: scan.id,
+          status: scan.status,
+          message: 'Security scan started',
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'SCAN_TRIGGER_FAILED',
+            message: error.message || 'Failed to trigger security scan',
+          },
+        });
+      }
+    }
+  );
 }
 

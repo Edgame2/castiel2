@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0] - 2026-01-23
+
+### Added
+- OutcomeCollectorService (MISSING_FEATURES 3.2): recordPrediction, recordOutcome, recordFromEvent
+- REST: POST /api/v1/adaptive-learning/outcomes/record-prediction, record-outcome
+- OutcomeEventConsumer: consumes adaptive.learning.outcome.recorded, stores via recordFromEvent
+- Cosmos container `adaptive_outcomes`; rabbitmq bindings for adaptive.learning.outcome.recorded
+
 ## [1.0.0] - 2025-01-22
 
 ### Added

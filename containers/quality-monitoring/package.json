@@ -12,7 +12,8 @@
     "test:integration": "vitest run tests/integration",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@coder/shared": "file:../shared",
@@ -25,6 +26,7 @@
     "amqplib": "^0.10.5",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
+    "uuid": "^10.0.0",
     "winston": "^3.17.0",
     "yaml": "^2.7.1",
     "zod-to-json-schema": "^3.23.5"
@@ -40,6 +42,7 @@
     "@types/amqplib": "^0.10.6",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.7",
+    "@types/uuid": "^10.0.0",
     "@vitest/coverage-v8": "^2.1.0"
   }
 }

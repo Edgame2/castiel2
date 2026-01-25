@@ -1,0 +1,29 @@
+# Azure ML v2 Command Job: train_anomaly_isolation_forest.py (Plan §5.6, Phase 2; TRAINING_SCRIPTS_SPEC §3.4).
+# Submit from containers/ml-service/scripts:
+#   az ml job create --file azml-job-anomaly.yaml \
+#     --set inputs.training_data.path=abfs://container@account.dfs.core.windows.net/path \
+#     [--set inputs.deploy_flag.value=--deploy]
+# Input Parquet: feature columns only (no target); optional is_anomaly for labeled validation.
+# Source: /ml_training/anomaly/ or /ml_inference_logs/ (feature columns), risk_evaluations export.
+# Env AZURE_ML_*; for --deploy also DEPLOY_INSTANCE_TYPE, DEPLOY_INSTANCE_COUNT.
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+experiment_name: anomaly-isolation-forest-training
+display_name: anomaly-isolation-forest-train
+code: .
+command: python train_anomaly_isolation_forest.py --input-path ${{inputs.training_data}} --model-name ${{inputs.model_name}} --param-contamination ${{inputs.param_contamination}} --param-n_estimators ${{inputs.param_n_estimators}} ${{inputs.deploy_flag}}
+inputs:
+  training_data:
+    type: uri_folder
+    path: https://REPLACE_WITH_YOUR_DATA_LAKE_OR_DATASET
+  model_name:
+    value: anomaly-detection-isolation-forest
+  param_contamination:
+    value: 0.1
+  param_n_estimators:
+    value: 100
+  deploy_flag:
+    value: ""
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+  conda_file: conda-anomaly-train.yaml

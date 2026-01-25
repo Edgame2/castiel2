@@ -28,28 +28,38 @@ export async function initializeEventConsumer(app?: FastifyInstance): Promise<vo
       url: config.rabbitmq.url,
       exchange: config.rabbitmq.exchange || 'coder_events',
       queue: config.rabbitmq.queue,
-      bindings: config.rabbitmq.bindings,
+      routingKeys: config.rabbitmq.bindings || [],
     });
 
-    // Handle shard updates for bidirectional sync
+    // Handle shard updates for bidirectional sync (1.4 Real-Time Write-Back)
     consumer.on('shard.updated', async (event) => {
+      const shardId = event.data?.shardId ?? event.data?.id;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!shardId || !tenantId) {
+        log.warn('shard.updated missing shardId or tenantId', {
+          hasData: !!event.data,
+          tenantId: event.tenantId,
+          service: 'integration-sync',
+        });
+        return;
+      }
       log.info('Shard updated, triggering bidirectional sync if needed', {
-        shardId: event.data.shardId,
-        tenantId: event.tenantId,
+        shardId,
+        tenantId,
         service: 'integration-sync',
       });
-      
+
       if (!integrationSyncService) {
         log.error('Integration sync service not initialized', { service: 'integration-sync' });
         return;
       }
-      
+
       try {
-        await integrationSyncService.handleBidirectionalSync(event.data.shardId, event.tenantId);
-      } catch (error: any) {
-        log.error('Failed to handle bidirectional sync', error, {
-          shardId: event.data.shardId,
-          tenantId: event.tenantId,
+        await integrationSyncService.handleBidirectionalSync(shardId, tenantId);
+      } catch (error: unknown) {
+        log.error('Failed to handle bidirectional sync', error instanceof Error ? error : new Error(String(error)), {
+          shardId,
+          tenantId,
           service: 'integration-sync',
         });
       }
@@ -65,6 +75,7 @@ export async function initializeEventConsumer(app?: FastifyInstance): Promise<vo
 
 export async function closeEventConsumer(): Promise<void> {
   if (consumer) {
+    await consumer.stop();
     consumer = null;
   }
 }

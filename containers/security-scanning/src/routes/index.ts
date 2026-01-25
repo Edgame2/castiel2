@@ -90,6 +90,108 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       }
     );
 
+    // Detect PII
+    fastify.post<{ Body: { contentId: string; content: string } }>(
+      '/api/v1/security/pii/detect',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Detect PII in content',
+          tags: ['Security'],
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { contentId, content } = request.body;
+          const tenantId = request.user!.tenantId;
+
+          const detection = await securityScanningService.detectPII(tenantId, contentId, content);
+
+          return reply.send(detection);
+        } catch (error: any) {
+          log.error('Failed to detect PII', error, { service: 'security-scanning' });
+          return reply.status(error.statusCode || 500).send({
+            error: {
+              code: 'PII_DETECTION_FAILED',
+              message: error.message || 'Failed to detect PII',
+            },
+          });
+        }
+      }
+    );
+
+    // Redact PII
+    fastify.post<{ Body: { contentId: string; content: string } }>(
+      '/api/v1/security/pii/redact',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Redact PII from content',
+          tags: ['Security'],
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { contentId, content } = request.body;
+          const tenantId = request.user!.tenantId;
+
+          const redactedContent = await securityScanningService.redactPII(tenantId, contentId, content);
+
+          return reply.send({ redactedContent });
+        } catch (error: any) {
+          log.error('Failed to redact PII', error, { service: 'security-scanning' });
+          return reply.status(error.statusCode || 500).send({
+            error: {
+              code: 'PII_REDACTION_FAILED',
+              message: error.message || 'Failed to redact PII',
+            },
+          });
+        }
+      }
+    );
+
+    // Get PII detection
+    fastify.get<{ Params: { detectionId: string } }>(
+      '/api/v1/security/pii/detections/:detectionId',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Get PII detection by ID',
+          tags: ['Security'],
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { detectionId } = request.params;
+          const tenantId = request.user!.tenantId;
+
+          const detection = await securityScanningService.getPIIDetection(detectionId, tenantId);
+
+          if (!detection) {
+            return reply.status(404).send({
+              error: {
+                code: 'DETECTION_NOT_FOUND',
+                message: 'PII detection not found',
+              },
+            });
+          }
+
+          return reply.send(detection);
+        } catch (error: any) {
+          log.error('Failed to get PII detection', error, { service: 'security-scanning' });
+          return reply.status(error.statusCode || 500).send({
+            error: {
+              code: 'DETECTION_RETRIEVAL_FAILED',
+              message: error.message || 'Failed to retrieve PII detection',
+            },
+          });
+        }
+      }
+    );
+
     log.info('Security scanning routes registered', { service: 'security-scanning' });
   } catch (error) {
     log.error('Failed to register routes', error, { service: 'security-scanning' });

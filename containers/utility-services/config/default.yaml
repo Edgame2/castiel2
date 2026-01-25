@@ -18,6 +18,10 @@ cosmos_db:
     imports: utility_imports
     exports: utility_exports
     migrations: utility_migrations
+    notifications: notification_notifications
+    batches: notification_batches
+    preferences: notification_preferences
+    templates: notification_templates
 
 # JWT Configuration (shared with auth service)
 jwt:
@@ -38,6 +42,46 @@ rabbitmq:
   exchange: coder_events
   queue: utility-services_service
   bindings: []
+
+# Notification Configuration (from notification-manager)
+notification:
+  providers:
+    email:
+      enabled: ${EMAIL_ENABLED:-true}
+      provider: ${EMAIL_PROVIDER:-smtp}
+      secret_id: ${SENDGRID_SECRET_ID:-}
+      from_address: ${EMAIL_FROM_ADDRESS:-noreply@coder.ide}
+      from_name: ${EMAIL_FROM_NAME:-Castiel}
+    push:
+      enabled: ${PUSH_ENABLED:-false}
+      provider: ${PUSH_PROVIDER:-firebase}
+      secret_id: ${FCM_SECRET_ID:-}
+    sms:
+      enabled: ${SMS_ENABLED:-false}
+      provider: ${SMS_PROVIDER:-twilio}
+      secret_id: ${TWILIO_SMS_SECRET_ID:-}
+    whatsapp:
+      enabled: ${WHATSAPP_ENABLED:-false}
+      provider: ${WHATSAPP_PROVIDER:-twilio}
+      secret_id: ${TWILIO_WHATSAPP_SECRET_ID:-}
+    voice:
+      enabled: ${VOICE_ENABLED:-false}
+      provider: ${VOICE_PROVIDER:-twilio}
+      secret_id: ${TWILIO_VOICE_SECRET_ID:-}
+    inapp:
+      enabled: ${INAPP_ENABLED:-true}
+      exchange: ${INAPP_EXCHANGE:-notification.inapp.deliver}
+  defaults:
+    retry_attempts: ${RETRY_ATTEMPTS:-3}
+    retry_delay_ms: ${RETRY_DELAY_MS:-1000}
+    rate_limit_per_user: ${RATE_LIMIT_PER_USER:-100}
+    rate_limit_per_org: ${RATE_LIMIT_PER_ORG:-1000}
+    max_retry_delay_ms: ${MAX_RETRY_DELAY_MS:-30000}
+    deduplication_ttl_seconds: ${DEDUPLICATION_TTL_SECONDS:-3600}
+
+redis:
+  url: ${REDIS_URL:-redis://localhost:6379}
+  enabled: ${REDIS_ENABLED:-true}
 
 # Feature Flags
 features: {}

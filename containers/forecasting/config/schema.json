@@ -31,9 +31,10 @@
             "decompositions": { "type": "string" },
             "consensus": { "type": "string" },
             "commitments": { "type": "string" },
-            "pipeline_health": { "type": "string" }
+            "pipeline_health": { "type": "string" },
+            "predictions": { "type": "string" }
           },
-          "required": ["decompositions", "consensus", "commitments", "pipeline_health"]
+          "required": ["decompositions", "consensus", "commitments", "pipeline_health", "predictions"]
         }
       }
     },
@@ -59,6 +60,26 @@
         "url": { "type": "string" },
         "exchange": { "type": "string" },
         "queue": { "type": "string" }
+      }
+    },
+    "industry_seasonality": {
+      "type": "object",
+      "description": "Multipliers by industry and Q1–Q4; default when missing",
+      "additionalProperties": true
+    },
+    "application_insights": {
+      "type": "object",
+      "properties": {
+        "connection_string": { "type": "string" },
+        "disable": { "type": "boolean" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "require_auth": { "type": "boolean" },
+        "bearer_token": { "type": "string" }
       }
     }
   }

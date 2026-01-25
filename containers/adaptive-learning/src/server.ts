@@ -64,6 +64,13 @@ export async function buildApp(): Promise<FastifyInstance> {
     throw error;
   }
 
+  try {
+    const { initializeEventConsumer } = await import('./events/consumers/OutcomeEventConsumer');
+    await initializeEventConsumer();
+  } catch (e) {
+    console.warn('Outcome event consumer init failed:', (e as Error).message);
+  }
+
   // Register routes
   await registerRoutes(fastify, config);
 
@@ -85,6 +92,10 @@ export async function start(): Promise<void> {
 
 async function gracefulShutdown(signal: string): Promise<void> {
   console.log(`${signal} received, shutting down gracefully`);
+  try {
+    const { closeEventConsumer } = await import('./events/consumers/OutcomeEventConsumer');
+    await closeEventConsumer();
+  } catch (_) { /* ignore */ }
   if (app) await app.close();
   await disconnectDatabase();
   process.exit(0);

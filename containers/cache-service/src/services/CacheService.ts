@@ -5,6 +5,8 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { getRedisClient } from '@coder/shared/cache';
+import { ServiceClient } from '@coder/shared';
+import { getContainer } from '@coder/shared/database';
 import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
 import {
   CacheEntry,
@@ -18,10 +20,25 @@ import {
   InvalidateCachePatternInput,
   CreateCacheWarmingTaskInput,
   CacheHealthCheck,
+  CacheMetrics,
+  CacheStrategy,
 } from '../types/cache.types';
+import { loadConfig } from '../config';
 
 export class CacheService {
   private stats: Map<string, CacheStats> = new Map(); // Key: tenantId:namespace
+  private config: ReturnType<typeof loadConfig>;
+  private embeddingsClient: ServiceClient;
+
+  constructor() {
+    this.config = loadConfig();
+    this.embeddingsClient = new ServiceClient({
+      baseURL: this.config.services.embeddings?.url || '',
+      timeout: 30000,
+      retries: 3,
+      circuitBreaker: { enabled: true },
+    });
+  }
 
   /**
    * Build cache key with tenant and namespace
@@ -389,6 +406,158 @@ export class CacheService {
       createdAt: new Date(),
       createdBy: 'system',
     };
+  }
+
+  /**
+   * Get cache metrics (from cache-management)
+   */
+  async getCacheMetrics(tenantId: string, cacheKey?: string): Promise<CacheMetrics[]> {
+    try {
+      const container = getContainer('cache_metrics');
+      let query = 'SELECT * FROM c WHERE c.tenantId = @tenantId';
+      const parameters: any[] = [{ name: '@tenantId', value: tenantId }];
+
+      if (cacheKey) {
+        query += ' AND c.cacheKey = @cacheKey';
+        parameters.push({ name: '@cacheKey', value: cacheKey });
+      }
+
+      query += ' ORDER BY c.lastAccessed DESC';
+
+      const { resources } = await container.items
+        .query<CacheMetrics>({ query, parameters })
+        .fetchNext();
+
+      return resources;
+    } catch (error: any) {
+      throw new Error(`Failed to get cache metrics: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create or update cache strategy (from cache-management)
+   */
+  async upsertCacheStrategy(
+    tenantId: string,
+    pattern: string,
+    ttl: number,
+    priority: number
+  ): Promise<CacheStrategy> {
+    try {
+      const container = getContainer('cache_strategies');
+      
+      // Check if strategy exists
+      const { resources } = await container.items
+        .query<CacheStrategy>({
+          query: 'SELECT * FROM c WHERE c.tenantId = @tenantId AND c.pattern = @pattern',
+          parameters: [
+            { name: '@tenantId', value: tenantId },
+            { name: '@pattern', value: pattern },
+          ],
+        })
+        .fetchNext();
+
+      if (resources.length > 0) {
+        // Update existing
+        const existing = resources[0];
+        const updated: CacheStrategy = {
+          ...existing,
+          ttl,
+          priority,
+          updatedAt: new Date(),
+        };
+        await container.item(existing.id, tenantId).replace(updated);
+        return updated;
+      }
+
+      // Create new
+      const strategy: CacheStrategy = {
+        id: uuidv4(),
+        tenantId,
+        pattern,
+        ttl,
+        priority,
+        enabled: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      await container.items.create(strategy, { partitionKey: tenantId });
+      return strategy;
+    } catch (error: any) {
+      throw new Error(`Failed to upsert cache strategy: ${error.message}`);
+    }
+  }
+
+  /**
+   * Optimize cache (from cache-management - enhanced version)
+   */
+  async optimizeCache(tenantId: string): Promise<{ optimized: number; freed: number }> {
+    try {
+      // Get cache metrics
+      const metrics = await this.getCacheMetrics(tenantId);
+      
+      // Get cache statistics
+      const stats = await this.getStats(tenantId);
+      
+      // Get cache strategies
+      const container = getContainer('cache_strategies');
+      const querySpec = {
+        query: 'SELECT * FROM c WHERE c.tenantId = @tenantId',
+        parameters: [{ name: '@tenantId', value: tenantId }],
+      };
+      const { resources: strategies } = await container.items
+        .query(querySpec, { partitionKey: tenantId })
+        .fetchAll();
+
+      let optimized = 0;
+      let freed = 0;
+
+      // Analyze metrics and identify optimization opportunities
+      if (stats.hitRate < 0.5) {
+        // Low hit rate - evict least recently used entries
+        const evictionThreshold = stats.totalKeys * 0.2; // Evict 20% of entries
+        freed += Math.floor(evictionThreshold);
+        optimized += 1;
+      }
+
+      if (stats.memoryUsage && stats.memoryUsage > 0.8) {
+        // High memory usage - evict low-priority entries
+        const memoryEviction = stats.totalKeys * 0.15; // Evict 15% for memory
+        freed += Math.floor(memoryEviction);
+        optimized += 1;
+      }
+
+      // Update strategies based on metrics
+      for (const strategy of strategies || []) {
+        // Check if entries are older than expected
+        const avgAge = metrics.length > 0
+          ? metrics.reduce((sum, m) => {
+              const lastAccessed = new Date(m.lastAccessed).getTime();
+              const now = Date.now();
+              return sum + (now - lastAccessed);
+            }, 0) / metrics.length / 1000 // Convert to seconds
+          : 0;
+
+        if (strategy.ttl && avgAge > strategy.ttl * 1.5) {
+          // Entries are older than expected - reduce TTL
+          const updatedStrategy = {
+            ...strategy,
+            ttl: Math.floor(strategy.ttl * 0.8),
+            updatedAt: new Date(),
+          };
+          await container.item(strategy.id, tenantId).replace(updatedStrategy);
+          optimized += 1;
+        }
+      }
+
+      return {
+        optimized,
+        freed,
+      };
+    } catch (error: any) {
+      throw new Error(`Failed to optimize cache: ${error.message}`);
+    }
   }
 }
 

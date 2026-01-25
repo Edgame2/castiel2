@@ -4,6 +4,21 @@
   "type": "object",
   "required": ["module", "server", "database", "rabbitmq"],
   "properties": {
+    "application_insights": {
+      "type": "object",
+      "properties": {
+        "connection_string": { "type": "string" },
+        "disable": { "type": "boolean" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "require_auth": { "type": "boolean" },
+        "bearer_token": { "type": "string" }
+      }
+    },
     "module": {
       "type": "object",
       "required": ["name", "version"],
@@ -38,7 +53,30 @@
         "bindings": { 
           "type": "array", 
           "items": { "type": "string" } 
+        },
+        "data_lake": {
+          "type": "object",
+          "properties": {
+            "queue": { "type": "string" },
+            "bindings": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "ml_audit": {
+          "type": "object",
+          "properties": {
+            "queue": { "type": "string" },
+            "bindings": { "type": "array", "items": { "type": "string" } }
+          }
         }
+      }
+    },
+    "data_lake": {
+      "type": "object",
+      "properties": {
+        "connection_string": { "type": "string" },
+        "container": { "type": "string" },
+        "path_prefix": { "type": "string" },
+        "audit_path_prefix": { "type": "string" }
       }
     },
     "storage": {

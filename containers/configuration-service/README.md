@@ -1,6 +1,6 @@
 # Configuration Service Module
 
-Centralized configuration management service for Coder IDE.
+Centralized configuration management service for Castiel.
 
 ## Features
 

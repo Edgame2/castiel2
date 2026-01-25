@@ -27,43 +27,56 @@ export async function initializeEventConsumer(): Promise<void> {
 
     // Handle shard updates (update conversation context when linked shards change)
     consumer.on('shard.updated', async (event) => {
+      const shardId = event.data?.shardId ?? event.data?.id;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!shardId || !tenantId) {
+        log.warn('shard.updated missing shardId or tenantId', {
+          hasData: !!event.data,
+          tenantId: event.tenantId,
+          service: 'ai-conversation',
+        });
+        return;
+      }
       log.debug('Shard updated, may affect conversation context', {
-        shardId: event.data.shardId,
-        tenantId: event.tenantId,
+        shardId,
+        tenantId,
         service: 'ai-conversation',
       });
-      
+
       // Check if shard is linked to any conversations
       try {
         const { getContainer } = await import('@coder/shared/database');
         const container = getContainer('conversation_conversations');
-        
+
         // Query conversations that have this shard linked
         // Cosmos DB uses ARRAY_CONTAINS for array field queries
         const { resources: conversations } = await container.items
-          .query({
-            query: 'SELECT * FROM c WHERE c.tenantId = @tenantId AND (ARRAY_CONTAINS(c.linkedShardIds, @shardId) OR (c.metadata != null AND ARRAY_CONTAINS(c.metadata.linkedShardIds, @shardId)))',
-            parameters: [
-              { name: '@tenantId', value: event.tenantId },
-              { name: '@shardId', value: event.data.shardId },
-            ],
-          })
+          .query(
+            {
+              query: 'SELECT * FROM c WHERE c.tenantId = @tenantId AND (ARRAY_CONTAINS(c.linkedShardIds, @shardId) OR (c.metadata != null AND ARRAY_CONTAINS(c.metadata.linkedShardIds, @shardId)))',
+              parameters: [
+                { name: '@tenantId', value: tenantId },
+                { name: '@shardId', value: shardId },
+              ],
+            },
+            { partitionKey: tenantId }
+          )
           .fetchNext();
-        
+
         if (conversations && conversations.length > 0) {
           log.info('Shard linked to conversations, context may need refresh', {
-            shardId: event.data.shardId,
+            shardId,
             conversationCount: conversations.length,
-            tenantId: event.tenantId,
+            tenantId,
             service: 'ai-conversation',
           });
           // Context refresh is handled by context-service when conversations are accessed
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         log.warn('Failed to check shard-conversation links', {
-          error: error.message,
-          shardId: event.data.shardId,
-          tenantId: event.tenantId,
+          error: error instanceof Error ? error.message : String(error),
+          shardId,
+          tenantId,
           service: 'ai-conversation',
         });
       }
@@ -79,6 +92,7 @@ export async function initializeEventConsumer(): Promise<void> {
 
 export async function closeEventConsumer(): Promise<void> {
   if (consumer) {
+    await consumer.stop();
     consumer = null;
   }
 }

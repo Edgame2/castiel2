@@ -1,12 +1,13 @@
 # Notification Manager Service
 
-Multi-channel notification service for Coder IDE. Consumes events from RabbitMQ and creates notifications.
+Multi-channel notification service for Castiel. Consumes events from RabbitMQ and creates notifications.
 
 ## Features
 
 - Consumes all events from RabbitMQ
-- Creates notifications based on event types
+- Creates notifications based on event types (see `src/consumers/eventMapper.ts`)
 - User and organization-scoped notifications
+- **BI/risk (Plan §7.2):** `anomaly.detected` → in-app (and email for high severity). Payload must include `tenantId` and `ownerId` (opportunity OwnerId) for a notification to be created; otherwise the event is skipped.
 - Mark as read/unread
 - Delete notifications
 
@@ -30,7 +31,7 @@ Multi-channel notification service for Coder IDE. Consumes events from RabbitMQ 
 - `EMAIL_ENABLED` - Enable/disable email sending (default: true)
 - `EMAIL_PROVIDER` - Email provider: `sendgrid`, `smtp`, or `ses` (default: smtp)
 - `EMAIL_FROM` or `EMAIL_FROM_ADDRESS` - Sender email address (default: noreply@coder.ide)
-- `EMAIL_FROM_NAME` - Sender name (default: Coder IDE)
+- `EMAIL_FROM_NAME` - Sender name (default: Castiel)
 
 ### SendGrid Configuration (if using SendGrid)
 - `SENDGRID_API_KEY` - SendGrid API key

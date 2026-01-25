@@ -14,6 +14,10 @@ tags:
     description: Recommendation operations
   - name: Feedback
     description: User feedback on recommendations
+  - name: Mitigation
+    description: Ranked mitigation actions for opportunities (Plan §428, §927)
+  - name: Remediation
+    description: Remediation workflows (Plan §927–929)
   - name: Health
     description: Health check endpoints
 paths:
@@ -109,6 +113,182 @@ paths:
           description: Unauthorized
         '500':
           $ref: '#/components/responses/InternalError'
+  /opportunities/{id}/mitigation-actions:
+    get:
+      tags:
+        - Mitigation
+      summary: Get ranked mitigation actions (Plan §428, §927)
+      description: Returns ranked mitigation actions for an opportunity. MitigationRankingService.rankMitigationActions. Used to populate remediation workflow steps (actionId).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: opportunityId (c_opportunity shard id)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ranked mitigation actions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  opportunityId: { type: string }
+                  tenantId: { type: string }
+                  actions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        actionId: { type: string }
+                        title: { type: string }
+                        description: { type: string }
+                        rank: { type: number }
+                        estimatedImpact: { type: string, enum: [high, medium, low] }
+                        estimatedEffort: { type: string, enum: [low, medium, high] }
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /remediation-workflows:
+    post:
+      tags:
+        - Remediation
+      summary: Create remediation workflow (Plan §927–929)
+      description: Create a workflow in recommendation_remediation_workflows. Publishes remediation.workflow.created. Body: opportunityId, riskId?, assignedTo?, steps (actionId, description, estimatedEffort?).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId, steps]
+              properties:
+                opportunityId: { type: string }
+                riskId: { type: string }
+                assignedTo: { type: string }
+                steps:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [actionId, description]
+                    properties:
+                      actionId: { type: string }
+                      description: { type: string }
+                      estimatedEffort: { type: string }
+      responses:
+        '201':
+          description: Created workflow (id, tenantId, opportunityId, riskId?, status, assignedTo, steps, completedSteps, totalSteps, createdAt, updatedAt)
+        '400':
+          description: At least one step required
+        '500':
+          $ref: '#/components/responses/InternalError'
+    get:
+      tags:
+        - Remediation
+      summary: List remediation workflows by opportunityId (Plan §928)
+      description: Returns { workflows } from recommendation_remediation_workflows for the opportunity.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: workflows (array of RemediationWorkflow)
+        '400':
+          description: opportunityId required
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /remediation-workflows/{id}:
+    get:
+      tags:
+        - Remediation
+      summary: Get remediation workflow by ID (Plan §928)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: RemediationWorkflow
+        '404':
+          description: Not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /remediation-workflows/{id}/steps/{stepNumber}/complete:
+    post:
+      tags:
+        - Remediation
+      summary: Complete a step (Plan §928)
+      description: Marks step completed; when all steps done publishes remediation.workflow.completed, else remediation.step.completed. Body: completedBy? (defaults to request user).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: stepNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                completedBy: { type: string }
+      responses:
+        '200':
+          description: Updated RemediationWorkflow
+        '400':
+          description: Step already completed or workflow completed/cancelled
+        '404':
+          description: Workflow or step not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /remediation-workflows/{id}/cancel:
+    put:
+      tags:
+        - Remediation
+      summary: Cancel a remediation workflow (Plan §928, §435)
+      description: Sets status to cancelled. No-op if already cancelled. 400 if already completed.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated RemediationWorkflow (status cancelled)
+        '400':
+          description: Cannot cancel a completed workflow
+        '404':
+          description: Workflow not found
+        '500':
+          $ref: '#/components/responses/InternalError'
   /health:
     get:
       tags:
@@ -125,6 +305,17 @@ paths:
       responses:
         '200':
           description: Service readiness status
+  /metrics:
+    get:
+      tags:
+        - Health
+      summary: Prometheus metrics (Plan §8.5.2, FIRST_STEPS §1)
+      description: Exposes http_requests_total, http_request_duration_seconds. Optional Bearer when metrics.require_auth.
+      responses:
+        '200':
+          description: text/plain; version=0.0.4 (Prometheus format)
+        '401':
+          description: Unauthorized (when metrics.require_auth and invalid Bearer)
 components:
   securitySchemes:
     bearerAuth:

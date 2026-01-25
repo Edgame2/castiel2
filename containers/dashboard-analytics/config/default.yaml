@@ -1,6 +1,17 @@
 # dashboard-analytics Module Configuration
 # Per ModuleImplementationGuide Section 4
 
+# Application Insights (Plan §8.5.1, FIRST_STEPS §1); init via src/instrumentation.ts
+application_insights:
+  connection_string: ${APPLICATIONINSIGHTS_CONNECTION_STRING:-}
+  disable: ${APPLICATIONINSIGHTS_DISABLE:-false}
+
+# Prometheus metrics (Plan §8.5.2, §8.5.4); deployment/monitoring/README
+metrics:
+  path: ${METRICS_PATH:-/metrics}
+  require_auth: ${METRICS_REQUIRE_AUTH:-false}
+  bearer_token: ${METRICS_BEARER_TOKEN:-}
+
 module:
   name: dashboard-analytics
   version: 1.0.0
@@ -36,6 +47,10 @@ services:
     url: ${ANALYTICS_SERVICE_URL:-http://localhost:3010}
   cache_service:
     url: ${CACHE_SERVICE_URL:-http://localhost:3004}
+  risk_analytics:
+    url: ${RISK_ANALYTICS_URL:-}
+  forecasting:
+    url: ${FORECASTING_URL:-}
 
 # RabbitMQ Configuration
 rabbitmq:

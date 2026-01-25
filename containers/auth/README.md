@@ -1,6 +1,6 @@
 # Authentication Module
 
-User authentication and session management service for Coder IDE.
+User authentication and session management service for Castiel.
 
 ## Features
 

@@ -2,17 +2,198 @@ openapi: 3.0.3
 info:
   title: Dashboard Analytics Service API
   description: |
-    Dashboard Analytics service.
+    Advanced dashboard and widget analytics service.
+    
+    Provides dashboard view tracking, widget caching, and analytics data management.
   version: 1.0.0
 servers:
   - url: /api/v1
     description: API Version 1
 tags:
   - name: Dashboard Analytics
-    description: Dashboard Analytics operations
+    description: Dashboard analytics operations
   - name: Health
     description: Health check endpoints
 paths:
+  /dashboards/manager/prioritized:
+    get:
+      tags:
+        - Dashboard Analytics
+      summary: Prioritized opportunities for Recommended today (Plan §941)
+      description: Rank by revenue-at-risk × risk × early-warning; suggestedAction. Calls risk-analytics GET /api/v1/risk-analysis/tenant/prioritized-opportunities when configured; returns [] when unset or call fails.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: opportunities (opportunityId, revenueAtRisk?, riskScore?, earlyWarningScore?, suggestedAction?, rankScore?), suggestedAction
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  opportunities:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        opportunityId: { type: string }
+                        revenueAtRisk: { type: number }
+                        riskScore: { type: number }
+                        earlyWarningScore: { type: number }
+                        suggestedAction: { type: string }
+                        rankScore: { type: number }
+                  suggestedAction: { type: string, nullable: true }
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /dashboards/manager:
+    get:
+      tags:
+        - Dashboard Analytics
+      summary: Manager dashboard (Plan §4.5, §10 Phase 1)
+      description: Returns widget data for manager view. Aggregates from risk-analytics (revenue-at-risk) and forecasting (tenant forecast) when configured. Stub when services are unconfigured.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Manager dashboard widgets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dashboardType: { type: "string", enum: ["manager"] }
+                  widgets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        type: { type: string }
+                        title: { type: string }
+                        data: { type: "object" }
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /dashboards/executive:
+    get:
+      tags:
+        - Dashboard Analytics
+      summary: Executive dashboard (Plan §4.5, §932)
+      description: C-suite dashboard. Aggregates from risk-analytics (revenue-at-risk, competitive-intelligence) and forecasting. risk_heatmap and industry_benchmark stubbed (Phase 3).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Executive dashboard widgets (revenue-at-risk, competitive_win_loss, risk_heatmap stub, forecast-summary, industry_benchmark stub)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dashboardType: { type: "string", enum: ["executive"] }
+                  widgets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        type: { type: string }
+                        title: { type: string }
+                        data: { type: "object" }
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /dashboards/board:
+    get:
+      tags:
+        - Dashboard Analytics
+      summary: Board dashboard (Plan §4.5, §932)
+      description: High-level KPIs: revenue-at-risk, forecast, competitive win/loss. Aggregates from risk-analytics and forecasting when configured.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Board dashboard widgets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dashboardType: { type: "string", enum: ["board"] }
+                  widgets:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        type: { type: string }
+                        title: { type: string }
+                        data: { type: "object" }
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /dashboard/analytics/view:
+    post:
+      tags:
+        - Dashboard Analytics
+      summary: Record dashboard view
+      description: Record a dashboard or widget view for analytics
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - dashboardId
+              properties:
+                dashboardId:
+                  type: string
+                widgetId:
+                  type: string
+      responses:
+        '204':
+          description: View recorded successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /dashboard/widgets/{widgetId}/cache:
+    get:
+      tags:
+        - Dashboard Analytics
+      summary: Get widget cache
+      description: Get cached widget data
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: widgetId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Widget cache data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WidgetCache'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Cache not found or expired
+        '500':
+          $ref: '#/components/responses/InternalError'
   /health:
     get:
       tags:
@@ -29,12 +210,36 @@ paths:
       responses:
         '200':
           description: Service readiness status
+  /metrics:
+    get:
+      tags:
+        - Health
+      summary: Prometheus metrics (Plan §8.5.2, FIRST_STEPS §1)
+      description: Exposes http_requests_total, http_request_duration_seconds. Optional Bearer when metrics.require_auth.
+      responses:
+        '200':
+          description: text/plain; version=0.0.4 (Prometheus format)
+        '401':
+          description: Unauthorized (when metrics.require_auth and invalid Bearer)
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
     Error:
       type: object
@@ -46,3 +251,20 @@ components:
               type: string
             message:
               type: string
+    WidgetCache:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        widgetId:
+          type: string
+        data:
+          type: object
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time

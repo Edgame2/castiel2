@@ -18,9 +18,14 @@ import {
   PipelineHealth,
   LearnedWeights,
   ModelSelection,
+  TeamForecastAggregateRequest,
+  TeamForecastAggregateResult,
+  TenantForecastAggregateRequest,
+  TenantForecastAggregateResult,
 } from '../types/forecasting.types';
 import { publishForecastEvent } from '../events/publishers/ForecastingEventPublisher';
 import { v4 as uuidv4 } from 'uuid';
+import { ForecastAccuracyService } from './ForecastAccuracyService';
 
 export class ForecastingService {
   private config: ReturnType<typeof loadConfig>;
@@ -29,11 +34,13 @@ export class ForecastingService {
   private analyticsServiceClient: ServiceClient;
   private riskAnalyticsClient: ServiceClient;
   private shardManagerClient: ServiceClient;
+  private accuracyService: ForecastAccuracyService;
   private app: FastifyInstance | null = null;
 
   constructor(app?: FastifyInstance) {
     this.app = app || null;
     this.config = loadConfig();
+    this.accuracyService = new ForecastAccuracyService();
     
     // Initialize service clients
     this.adaptiveLearningClient = new ServiceClient({
@@ -78,6 +85,20 @@ export class ForecastingService {
   }
 
   /**
+   * Get service token for service-to-service authentication
+   */
+  private getServiceToken(tenantId: string): string {
+    if (!this.app) {
+      return '';
+    }
+    return generateServiceToken(this.app, {
+      serviceId: 'forecasting',
+      serviceName: 'forecasting',
+      tenantId,
+    });
+  }
+
+  /**
    * Get learned weights from adaptive-learning service
    */
   async getLearnedWeights(tenantId: string): Promise<LearnedWeights> {
@@ -92,14 +113,14 @@ export class ForecastingService {
           },
         }
       );
-      return response || { decomposition: 0.3, consensus: 0.4, commitment: 0.3 };
-    } catch (error: any) {
+      return response || { decomposition: 0.3, consensus: 0.4, commitment: 0.3, ml: 0.2 };
+    } catch (error: unknown) {
       log.warn('Failed to get learned weights, using defaults', {
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         tenantId,
         service: 'forecasting',
       });
-      return { decomposition: 0.3, consensus: 0.4, commitment: 0.3 };
+      return { decomposition: 0.3, consensus: 0.4, commitment: 0.3, ml: 0.2 };
     }
   }
 
@@ -119,9 +140,9 @@ export class ForecastingService {
         }
       );
       return response || { modelId: 'default-forecast-model', confidence: 0.8 };
-    } catch (error: any) {
+    } catch (error: unknown) {
       log.warn('Failed to get model selection, using default', {
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         tenantId,
         service: 'forecasting',
       });
@@ -165,7 +186,7 @@ export class ForecastingService {
       // Step 3: Perform forecast decomposition
       let decomposition: ForecastDecomposition | undefined;
       if (request.includeDecomposition !== false && weights.decomposition && weights.decomposition > 0) {
-        decomposition = await this.decomposeForecast(request.opportunityId, request.tenantId, opportunityValue);
+        decomposition = await this.decomposeForecast(request.opportunityId, request.tenantId, opportunityValue, opportunityShard);
       }
 
       // Step 4: Perform consensus forecasting
@@ -180,18 +201,82 @@ export class ForecastingService {
         commitment = await this.analyzeCommitment(request.opportunityId, request.tenantId, opportunityValue);
       }
 
-      // Step 6: Calculate final revenue forecast
+      // Step 6: Get ML-powered forecast with P10/P50/P90 and scenarios (MISSING_FEATURES 5.1)
+      let mlForecast: any = null;
+      if (weights.ml && weights.ml > 0 && this.config.services.ml_service?.url) {
+        try {
+          const modelSelection = await this.getModelSelection(request.tenantId);
+          const token = this.getServiceToken(request.tenantId);
+          const mlResponse = await this.mlServiceClient.post<any>(
+            '/api/v1/ml/forecast/predict',
+            {
+              opportunityId: request.opportunityId,
+              tenantId: request.tenantId,
+              level: 'opportunity',
+              modelId: modelSelection.modelId,
+              features: {
+                opportunityValue,
+                probability: opportunityShard?.structuredData?.probability || 0.5,
+                stage: opportunityShard?.structuredData?.stage || '',
+                daysInStage: opportunityShard?.structuredData?.daysInStage || 0,
+              },
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'X-Tenant-ID': request.tenantId,
+              },
+            }
+          );
+
+          mlForecast = mlResponse;
+          log.debug('Retrieved ML-powered forecast', {
+            opportunityId: request.opportunityId,
+            mlForecast: mlForecast ? {
+              pointForecast: mlForecast.pointForecast,
+              uncertainty: mlForecast.uncertainty ? 'present' : 'missing',
+            } : null,
+            service: 'forecasting',
+          });
+        } catch (error: unknown) {
+          log.warn('ML forecast failed, continuing without ML', {
+            error: error instanceof Error ? error.message : String(error),
+            opportunityId: request.opportunityId,
+            tenantId: request.tenantId,
+            service: 'forecasting',
+          });
+        }
+      }
+
+      // Step 7: Calculate final revenue forecast (combine ML + decomposition + consensus + commitment)
       const revenueForecast = this.calculateRevenueForecast(
         opportunityValue,
         decomposition,
         consensus,
         commitment,
+        mlForecast,
         weights
       );
 
-      const confidence = this.calculateConfidence(decomposition, consensus, commitment);
+      const confidence = this.calculateConfidence(decomposition, consensus, commitment, mlForecast);
 
-      // Step 7: Build forecast result
+      // Step 6b: Risk-adjusted revenue (MISSING_FEATURES 5.1) when risk_analytics is configured
+      let riskAdjustedRevenue: number | undefined;
+      if (this.config.services.risk_analytics?.url) {
+        try {
+          const token = this.getServiceToken(request.tenantId);
+          const evalRes = await this.riskAnalyticsClient.get<{ riskScore?: number }>(
+            `/api/v1/risk/opportunities/${request.opportunityId}/latest-evaluation`,
+            { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': request.tenantId } }
+          );
+          const rs = evalRes?.riskScore ?? 0;
+          riskAdjustedRevenue = revenueForecast * (1 - rs);
+        } catch {
+          /* optional: skip when no evaluation or service down */
+        }
+      }
+
+      // Step 7: Build forecast result (ML: P10/P50/P90, scenarios; riskAdjustedRevenue)
       const result: ForecastResult = {
         forecastId,
         opportunityId: request.opportunityId,
@@ -200,11 +285,32 @@ export class ForecastingService {
         decomposition,
         consensus,
         commitment,
+        ...(riskAdjustedRevenue != null && { riskAdjustedRevenue }),
+        mlForecast: mlForecast ? {
+          pointForecast: mlForecast.pointForecast,
+          uncertainty: mlForecast.uncertainty,
+          scenarios: mlForecast.scenarios,
+          confidence: mlForecast.confidence,
+        } : undefined,
         calculatedAt: new Date(),
       };
 
       // Step 8: Store in database
       await this.storeForecast(result, request.tenantId);
+
+      // Step 8b: Store prediction for accuracy tracking (MISSING_FEATURES 5.4)
+      try {
+        await this.accuracyService.storePrediction({
+          tenantId: request.tenantId,
+          opportunityId: request.opportunityId,
+          forecastId: result.forecastId,
+          forecastType: 'revenue',
+          predictedValue: revenueForecast,
+          predictedAt: result.calculatedAt,
+        });
+      } catch (err: unknown) {
+        log.warn('Failed to store forecast prediction for accuracy', { error: (err as Error).message, forecastId: result.forecastId, tenantId: request.tenantId, service: 'forecasting' });
+      }
 
       // Step 9: Publish completion event
       await publishForecastEvent('forecast.completed', request.tenantId, {
@@ -216,7 +322,30 @@ export class ForecastingService {
         timestamp: new Date().toISOString(),
       });
 
-      // Step 10: Publish outcome to adaptive-learning
+      // Step 10: recordPrediction (REST) and publish outcome to adaptive-learning (MISSING_FEATURES 3.2)
+      if (this.config.services.adaptive_learning?.url) {
+        try {
+          const token = this.getServiceToken(request.tenantId);
+          await this.adaptiveLearningClient.post(
+            '/api/v1/adaptive-learning/outcomes/record-prediction',
+            {
+              component: 'forecasting',
+              predictionId: result.forecastId,
+              context: {
+                opportunityId: request.opportunityId,
+                opportunityValue,
+                decomposition: decomposition ? 'yes' : 'no',
+                consensus: consensus ? 'yes' : 'no',
+                commitment: commitment ? 'yes' : 'no',
+              },
+              predictedValue: revenueForecast,
+            },
+            { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': request.tenantId } }
+          );
+        } catch (e: unknown) {
+          log.warn('recordPrediction (adaptive-learning) failed', { error: (e as Error).message, forecastId: result.forecastId, service: 'forecasting' });
+        }
+      }
       await publishForecastEvent('adaptive.learning.outcome.recorded', request.tenantId, {
         component: 'forecasting',
         prediction: revenueForecast,
@@ -239,19 +368,19 @@ export class ForecastingService {
       });
 
       return result;
-    } catch (error: any) {
-      log.error('Forecast generation failed', error, {
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      log.error('Forecast generation failed', error instanceof Error ? error : new Error(errMsg), {
         forecastId,
         opportunityId: request.opportunityId,
         tenantId: request.tenantId,
         service: 'forecasting',
       });
 
-      // Publish failure event
       await publishForecastEvent('forecast.decomposition.failed', request.tenantId, {
         forecastId,
         opportunityId: request.opportunityId,
-        error: error.message || 'Unknown error',
+        error: errMsg || 'Unknown error',
       });
 
       throw error;
@@ -260,32 +389,44 @@ export class ForecastingService {
 
   /**
    * Decompose forecast
+   * @param opportunityShard - optional; fetched if not provided (needed for industryId, temporal/seasonality; MISSING_FEATURES 5.6)
    */
   async decomposeForecast(
     opportunityId: string,
     tenantId: string,
-    opportunityValue: number
+    opportunityValue: number,
+    opportunityShard?: any
   ): Promise<ForecastDecomposition> {
     const decompositionId = uuidv4();
     const forecastId = `forecast_${Date.now()}`;
 
     try {
+      const shard = opportunityShard ?? (await this.getOpportunityShard(opportunityId, tenantId));
+      const data = shard?.structuredData || {};
+      const probability = data.probability || 0.5;
+      const stage = data.stage || '';
+      const daysInStage = data.daysInStage || 0;
+
+      // Temporal features and industry seasonality (MISSING_FEATURES 5.6)
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const quarter = Math.ceil(month / 3) as 1 | 2 | 3 | 4;
+      const isYearEnd = month >= 10;
+      const industryId = data.industryId ?? (data.account as any)?.industryId ?? null;
+      const industryMult = this.getIndustrySeasonalityMultiplier(industryId, quarter);
+
       // Publish started event
       await publishForecastEvent('forecast.decomposition.started', tenantId, {
         forecastId,
         opportunityId,
       });
 
-      // Implement forecast decomposition
-      const data = opportunityShard?.structuredData || {};
-      const probability = data.probability || 0.5;
-      const stage = data.stage || '';
-      const daysInStage = data.daysInStage || 0;
-      
-      // Time decomposition based on historical patterns
-      const trendFactor = Math.min(1, probability * 1.2); // Trend based on probability
-      const seasonalityFactor = 0.2; // Fixed seasonality component
-      const irregularFactor = 1 - trendFactor - seasonalityFactor;
+      // Time decomposition: trend, industry- and year-end–adjusted seasonality, irregular
+      const trendFactor = Math.min(1, probability * 1.2);
+      let seasonalityFactor = 0.2 * industryMult;
+      if (isYearEnd) seasonalityFactor *= 1.05;
+      seasonalityFactor = Math.min(0.5, Math.max(0.05, seasonalityFactor));
+      const irregularFactor = Math.max(0, 1 - trendFactor - seasonalityFactor);
       
       // Source decomposition based on opportunity type/stage
       const isPipeline = stage && ['prospecting', 'qualification', 'proposal'].includes(stage.toLowerCase());
@@ -330,6 +471,9 @@ export class ForecastingService {
           seasonality: opportunityValue * seasonalityFactor,
           irregular: opportunityValue * irregularFactor,
         },
+        temporalFeatures: { month, quarter, isYearEnd },
+        industrySeasonalityMultiplier: industryMult,
+        ...(industryId != null && { industryId }),
         sourceDecomposition: {
           pipeline: opportunityValue * pipelinePct,
           newBusiness: opportunityValue * newBusinessPct,
@@ -372,8 +516,8 @@ export class ForecastingService {
       });
 
       return decomposition;
-    } catch (error: any) {
-      log.error('Forecast decomposition failed', error, {
+    } catch (error: unknown) {
+      log.error('Forecast decomposition failed', error instanceof Error ? error : new Error(String(error)), {
         decompositionId,
         opportunityId,
         tenantId,
@@ -511,8 +655,8 @@ export class ForecastingService {
       });
 
       return consensus;
-    } catch (error: any) {
-      log.error('Consensus forecast failed', error, {
+    } catch (error: unknown) {
+      log.error('Consensus forecast failed', error instanceof Error ? error : new Error(String(error)), {
         consensusId,
         opportunityId,
         tenantId,
@@ -632,8 +776,8 @@ export class ForecastingService {
       });
 
       return commitment;
-    } catch (error: any) {
-      log.error('Forecast commitment analysis failed', error, {
+    } catch (error: unknown) {
+      log.error('Forecast commitment analysis failed', error instanceof Error ? error : new Error(String(error)), {
         commitmentId,
         opportunityId,
         tenantId,
@@ -708,8 +852,8 @@ export class ForecastingService {
       );
 
       return health;
-    } catch (error: any) {
-      log.error('Pipeline health calculation failed', error, {
+    } catch (error: unknown) {
+      log.error('Pipeline health calculation failed', error instanceof Error ? error : new Error(String(error)), {
         healthId,
         opportunityId,
         tenantId,
@@ -717,6 +861,19 @@ export class ForecastingService {
       });
       throw error;
     }
+  }
+
+  /**
+   * Industry seasonality multiplier from config (MISSING_FEATURES 5.6). Q1–Q4 keys.
+   */
+  private getIndustrySeasonalityMultiplier(industryId: string | null, quarter: 1 | 2 | 3 | 4): number {
+    const cfg = (this.config as any).industry_seasonality as Record<string, Record<string, number> & { default?: number }> | undefined;
+    if (!cfg) return 1;
+    const q = `Q${quarter}`;
+    if (industryId && typeof cfg[industryId] === 'object' && typeof (cfg[industryId] as Record<string, number>)[q] === 'number') {
+      return (cfg[industryId] as Record<string, number>)[q];
+    }
+    return (typeof cfg.default === 'number' ? cfg.default : 1);
   }
 
   /**
@@ -735,8 +892,8 @@ export class ForecastingService {
         }
       );
       return shard;
-    } catch (error: any) {
-      log.error('Failed to get opportunity shard', error, {
+    } catch (error: unknown) {
+      log.error('Failed to get opportunity shard', error instanceof Error ? error : new Error(String(error)), {
         opportunityId,
         tenantId,
         service: 'forecasting',
@@ -753,8 +910,27 @@ export class ForecastingService {
     decomposition?: ForecastDecomposition,
     consensus?: ConsensusForecast,
     commitment?: ForecastCommitment,
+    mlForecast?: any,
     weights?: LearnedWeights
   ): number {
+    // Use ML forecast if available and weight > 0
+    if (mlForecast && mlForecast.pointForecast && weights?.ml && weights.ml > 0) {
+      // Combine ML forecast with other methods based on weights
+      const mlWeight = weights.ml;
+      const otherWeight = 1 - mlWeight;
+      
+      let otherForecast = baseValue;
+      if (consensus) {
+        otherForecast = consensus.consensusRevenue;
+      } else if (decomposition) {
+        otherForecast = decomposition.confidenceDecomposition.commit;
+      }
+      
+      // Weighted combination of ML and other methods
+      return mlForecast.pointForecast * mlWeight + otherForecast * otherWeight;
+    }
+    
+    // Fallback to non-ML methods
     if (consensus) {
       return consensus.consensusRevenue;
     }
@@ -770,7 +946,8 @@ export class ForecastingService {
   private calculateConfidence(
     decomposition?: ForecastDecomposition,
     consensus?: ConsensusForecast,
-    commitment?: ForecastCommitment
+    commitment?: ForecastCommitment,
+    mlForecast?: any
   ): number {
     if (consensus) return consensus.confidence;
     if (commitment) return commitment.confidence;
@@ -792,13 +969,325 @@ export class ForecastingService {
         },
         { partitionKey: tenantId }
       );
-    } catch (error: any) {
-      log.error('Failed to store forecast', error, {
+    } catch (error: unknown) {
+      log.error('Failed to store forecast', error instanceof Error ? error : new Error(String(error)), {
         forecastId: result.forecastId,
         tenantId,
         service: 'forecasting',
       });
-      // Don't throw - forecast can continue without storage
+    }
+  }
+
+  /**
+   * Team-level forecast aggregation (MISSING_FEATURES 5.5).
+   * Sums latest revenue forecasts per opportunity. opportunityIds is required; obtain from pipeline/shard/analytics.
+   */
+  async aggregateTeamForecast(
+    tenantId: string,
+    request: TeamForecastAggregateRequest
+  ): Promise<TeamForecastAggregateResult> {
+    const { teamId, opportunityIds, startDate, endDate } = request;
+    if (!opportunityIds || opportunityIds.length === 0) {
+      return {
+        teamId,
+        totalPipeline: 0,
+        opportunityCount: 0,
+        calculatedAt: new Date(),
+        period: startDate || endDate ? { startDate, endDate } : undefined,
+      };
+    }
+
+    const container = getContainer('forecast_decompositions');
+    let query = 'SELECT * FROM c WHERE c.tenantId = @tenantId AND ARRAY_CONTAINS(@opportunityIds, c.opportunityId)';
+    const parameters: { name: string; value: unknown }[] = [
+      { name: '@tenantId', value: tenantId },
+      { name: '@opportunityIds', value: opportunityIds },
+    ];
+    if (startDate) {
+      query += ' AND c.calculatedAt >= @startDate';
+      parameters.push({ name: '@startDate', value: startDate });
+    }
+    if (endDate) {
+      query += ' AND c.calculatedAt <= @endDate';
+      parameters.push({ name: '@endDate', value: endDate });
+    }
+    query += ' ORDER BY c.calculatedAt DESC';
+
+    const { resources } = await container.items
+      .query<ForecastResult & { calculatedAt?: string }>({ query, parameters }, { partitionKey: tenantId })
+      .fetchAll();
+
+    const byOpp = new Map<string, { revenueForecast: number; riskAdjustedRevenue?: number }>();
+    for (const r of resources || []) {
+      if (!byOpp.has(r.opportunityId)) {
+        byOpp.set(r.opportunityId, {
+          revenueForecast: r.revenueForecast,
+          riskAdjustedRevenue: r.riskAdjustedRevenue,
+        });
+      }
+    }
+
+    let totalPipeline = 0;
+    let totalRiskAdjusted = 0;
+    for (const v of byOpp.values()) {
+      totalPipeline += v.revenueForecast;
+      if (v.riskAdjustedRevenue != null) totalRiskAdjusted += v.riskAdjustedRevenue;
+    }
+
+    return {
+      teamId,
+      totalPipeline,
+      totalRiskAdjusted: totalRiskAdjusted > 0 ? totalRiskAdjusted : undefined,
+      opportunityCount: byOpp.size,
+      winRate: undefined,
+      quotaAttainment: undefined,
+      period: startDate || endDate ? { startDate, endDate } : undefined,
+      calculatedAt: new Date(),
+    };
+  }
+
+  /**
+   * Tenant-level forecast aggregation (MISSING_FEATURES 5.5).
+   * Sums latest revenue forecasts per opportunity for the tenant.
+   */
+  async aggregateTenantForecast(
+    tenantId: string,
+    request: TenantForecastAggregateRequest
+  ): Promise<TenantForecastAggregateResult> {
+    const { startDate, endDate } = request;
+
+    const container = getContainer('forecast_decompositions');
+    let query = 'SELECT * FROM c WHERE c.tenantId = @tenantId';
+    const parameters: { name: string; value: unknown }[] = [{ name: '@tenantId', value: tenantId }];
+    if (startDate) {
+      query += ' AND c.calculatedAt >= @startDate';
+      parameters.push({ name: '@startDate', value: startDate });
+    }
+    if (endDate) {
+      query += ' AND c.calculatedAt <= @endDate';
+      parameters.push({ name: '@endDate', value: endDate });
+    }
+    query += ' ORDER BY c.calculatedAt DESC';
+
+    const { resources } = await container.items
+      .query<ForecastResult & { calculatedAt?: string }>({ query, parameters }, { partitionKey: tenantId })
+      .fetchAll();
+
+    const byOpp = new Map<string, { revenueForecast: number; riskAdjustedRevenue?: number }>();
+    for (const r of resources || []) {
+      if (!byOpp.has(r.opportunityId)) {
+        byOpp.set(r.opportunityId, {
+          revenueForecast: r.revenueForecast,
+          riskAdjustedRevenue: r.riskAdjustedRevenue,
+        });
+      }
+    }
+
+    let totalRevenue = 0;
+    let totalRiskAdjusted = 0;
+    for (const v of byOpp.values()) {
+      totalRevenue += v.revenueForecast;
+      if (v.riskAdjustedRevenue != null) totalRiskAdjusted += v.riskAdjustedRevenue;
+    }
+
+    return {
+      totalRevenue,
+      totalRiskAdjusted: totalRiskAdjusted > 0 ? totalRiskAdjusted : undefined,
+      opportunityCount: byOpp.size,
+      growthRate: undefined,
+      period: startDate || endDate ? { startDate, endDate } : undefined,
+      calculatedAt: new Date(),
+    };
+  }
+
+  /**
+   * Parse period string to startDate/endDate (YYYY-MM-DD). Supports YYYY, YYYY-MM, YYYY-Q1..Q4.
+   * Falls back to current month when unparseable.
+   */
+  private periodToDateRange(period: string): { startDate: string; endDate: string } {
+    const now = new Date();
+    const qMatch = period.match(/^(\d{4})-Q([1-4])$/i);
+    if (qMatch) {
+      const y = parseInt(qMatch[1], 10);
+      const q = parseInt(qMatch[2], 10);
+      const start = new Date(y, (q - 1) * 3, 1);
+      const end = new Date(y, q * 3, 0);
+      return { startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) };
+    }
+    const mmMatch = period.match(/^(\d{4})-(\d{2})$/);
+    if (mmMatch) {
+      const y = parseInt(mmMatch[1], 10);
+      const m = parseInt(mmMatch[2], 10) - 1;
+      const start = new Date(y, m, 1);
+      const end = new Date(y, m + 1, 0);
+      return { startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) };
+    }
+    const yMatch = period.match(/^(\d{4})$/);
+    if (yMatch) {
+      const y = parseInt(yMatch[1], 10);
+      return { startDate: `${y}-01-01`, endDate: `${y}-12-31` };
+    }
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) };
+  }
+
+  /**
+   * Get risk-adjusted forecast for a period (Plan §4.3, FIRST_STEPS §8).
+   * Uses aggregateTenantForecast; risk-adjusted from stored riskAdjustedRevenue (from risk-analytics when generateForecast ran).
+   * When no risk data: riskAdjustedForecast = forecast (degraded).
+   */
+  async getRiskAdjustedForecast(
+    tenantId: string,
+    period: string
+  ): Promise<{ period: string; forecast: number; riskAdjustedForecast: number; opportunityCount: number; startDate?: string; endDate?: string }> {
+    const { startDate, endDate } = this.periodToDateRange(period);
+    const agg = await this.aggregateTenantForecast(tenantId, { startDate, endDate });
+    const forecast = agg.totalRevenue ?? 0;
+    const riskAdjustedForecast = agg.totalRiskAdjusted ?? forecast;
+    return { period, forecast, riskAdjustedForecast, opportunityCount: agg.opportunityCount, startDate, endDate };
+  }
+
+  /**
+   * Get ML-only forecast for a period (Plan §4.3, §877, FIRST_STEPS §8).
+   * When ml_service.url set and history.length >= 2: build history from last 12 months (aggregateTenantForecast
+   * per month, chronological), POST /api/v1/ml/forecast/period { history, periods: 1 }; use ML p10/p50/p90.
+   * On 503, missing URL, history < 2, or other failure: stub from tenant aggregate (Plan §5.7).
+   */
+  async getMLForecast(
+    tenantId: string,
+    period: string
+  ): Promise<{
+    period: string;
+    pointForecast: number;
+    uncertainty: { p10: number; p50: number; p90: number };
+    modelId: string;
+    scenarios: Array<{ scenario: string; forecast: number; probability: number }>;
+  }> {
+    const { startDate, endDate } = this.periodToDateRange(period);
+
+    const runStub = async () => {
+      const agg = await this.aggregateTenantForecast(tenantId, { startDate, endDate });
+      const p50 = agg.totalRevenue ?? 0;
+      const p10 = p50 * 0.7;
+      const p90 = p50 * 1.3;
+      return {
+        period,
+        pointForecast: p50,
+        uncertainty: { p10, p50, p90 },
+        modelId: 'stub',
+        scenarios: [
+          { scenario: 'worst', forecast: p10, probability: 0.1 },
+          { scenario: 'base', forecast: p50, probability: 0.5 },
+          { scenario: 'best', forecast: p90, probability: 0.4 },
+        ],
+      };
+    };
+
+    if (!this.config.services.ml_service?.url) {
+      return runStub();
+    }
+
+    const history: Array<[string, number]> = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const s = d.toISOString().slice(0, 10);
+      const e = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const agg = await this.aggregateTenantForecast(tenantId, { startDate: s, endDate: e });
+      history.push([s, agg.totalRevenue ?? 0]);
+    }
+    if (history.length < 2) {
+      return runStub();
+    }
+
+    try {
+      const token = this.getServiceToken(tenantId);
+      const res = await this.mlServiceClient.post<{ p10: number; p50: number; p90: number; modelId?: string }>(
+        '/api/v1/ml/forecast/period',
+        { history, periods: 1 },
+        { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId } }
+      );
+      return {
+        period,
+        pointForecast: res.p50,
+        uncertainty: { p10: res.p10, p50: res.p50, p90: res.p90 },
+        modelId: res.modelId ?? 'revenue-forecasting-model',
+        scenarios: [
+          { scenario: 'worst', forecast: res.p10, probability: 0.1 },
+          { scenario: 'base', forecast: res.p50, probability: 0.5 },
+          { scenario: 'best', forecast: res.p90, probability: 0.4 },
+        ],
+      };
+    } catch {
+      return runStub();
+    }
+  }
+
+  /**
+   * Get P10/P50/P90 scenario forecast for a period (Plan §4.3, §877, FIRST_STEPS §8).
+   * When ml_service.url set and history (12 months, chronological) has ≥2 points: POST /api/v1/ml/forecast/period,
+   * use Prophet p10/p50/p90. On missing URL, history < 2, 503, or failure: stub from tenant aggregate (no date filter).
+   */
+  async getScenarioForecast(
+    tenantId: string,
+    period: string
+  ): Promise<{ period: string; p10: number; p50: number; p90: number; scenarios: Array<{ scenario: string; forecast: number; probability: number }> }> {
+    const runStub = async () => {
+      const agg = await this.aggregateTenantForecast(tenantId, {});
+      const p50 = agg.totalRevenue ?? 0;
+      const p10 = p50 * 0.7;
+      const p90 = p50 * 1.3;
+      return {
+        period,
+        p10,
+        p50,
+        p90,
+        scenarios: [
+          { scenario: 'worst', forecast: p10, probability: 0.1 },
+          { scenario: 'base', forecast: p50, probability: 0.5 },
+          { scenario: 'best', forecast: p90, probability: 0.4 },
+        ],
+      };
+    };
+
+    if (!this.config.services.ml_service?.url) {
+      return runStub();
+    }
+
+    const history: Array<[string, number]> = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const s = d.toISOString().slice(0, 10);
+      const e = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const agg = await this.aggregateTenantForecast(tenantId, { startDate: s, endDate: e });
+      history.push([s, agg.totalRevenue ?? 0]);
+    }
+    if (history.length < 2) {
+      return runStub();
+    }
+
+    try {
+      const token = this.getServiceToken(tenantId);
+      const res = await this.mlServiceClient.post<{ p10: number; p50: number; p90: number }>(
+        '/api/v1/ml/forecast/period',
+        { history, periods: 1 },
+        { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId } }
+      );
+      return {
+        period,
+        p10: res.p10,
+        p50: res.p50,
+        p90: res.p90,
+        scenarios: [
+          { scenario: 'worst', forecast: res.p10, probability: 0.1 },
+          { scenario: 'base', forecast: res.p50, probability: 0.5 },
+          { scenario: 'best', forecast: res.p90, probability: 0.4 },
+        ],
+      };
+    } catch {
+      return runStub();
     }
   }
 

@@ -1,6 +1,6 @@
 # @coder/shared
 
-Shared utilities, types, and services for all Coder IDE containers.
+Shared utilities, types, and services for all Castiel containers.
 
 ## Overview
 

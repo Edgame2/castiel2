@@ -1,6 +1,17 @@
 # Logging Module Configuration
 # Per ModuleImplementationGuide Section 4
 
+# Application Insights (Plan §8.5.1, FIRST_STEPS §1); init via src/instrumentation.ts
+application_insights:
+  connection_string: ${APPLICATIONINSIGHTS_CONNECTION_STRING:-}
+  disable: ${APPLICATIONINSIGHTS_DISABLE:-false}
+
+# Prometheus metrics (Plan §8.5.2, §8.5.4); deployment/monitoring/README
+metrics:
+  path: ${METRICS_PATH:-/metrics}
+  require_auth: ${METRICS_REQUIRE_AUTH:-false}
+  bearer_token: ${METRICS_BEARER_TOKEN:-}
+
 module:
   name: logging
   version: 1.0.0
@@ -20,6 +31,13 @@ database:
   url: ${DATABASE_URL:-}  # Not used with Cosmos DB, kept for migration period
   pool_size: 20
 
+# Data Lake (BI/risk §3.5, DATA_LAKE_LAYOUT §4): Parquet + ML audit Blob
+data_lake:
+  connection_string: ${DATA_LAKE_CONNECTION_STRING:-}
+  container: ${DATA_LAKE_CONTAINER:-risk}
+  path_prefix: ${DATA_LAKE_PATH_PREFIX:-/risk_evaluations}
+  audit_path_prefix: ${DATA_LAKE_AUDIT_PATH_PREFIX:-/ml_audit}
+
 rabbitmq:
   url: ${RABBITMQ_URL}
   exchange: coder_events
@@ -34,6 +52,19 @@ rabbitmq:
     - "secret.#"
     - "plan.#"
     - "notification.#"
+  # DataLakeCollector: risk.evaluated → Parquet
+  data_lake:
+    queue: logging_data_lake
+    bindings:
+      - "risk.evaluated"
+  # MLAuditConsumer: risk/ml/remediation → Blob audit (Plan §3.5, §10)
+  ml_audit:
+    queue: logging_ml_audit
+    bindings:
+      - "risk.evaluated"
+      - "risk.prediction.generated"
+      - "ml.prediction.completed"
+      - "remediation.workflow.completed"
 
 # Storage provider
 storage:

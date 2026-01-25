@@ -2,17 +2,58 @@ openapi: 3.0.3
 info:
   title: Signal Intelligence Service API
   description: |
-    Signal Intelligence service.
+    Signal analysis and intelligence service.
+    
+    Provides communication analysis, calendar intelligence, social signal monitoring, product usage integration, competitive intelligence, and customer success integration.
   version: 1.0.0
 servers:
   - url: /api/v1
     description: API Version 1
 tags:
   - name: Signal Intelligence
-    description: Signal Intelligence operations
+    description: Signal intelligence operations
   - name: Health
     description: Health check endpoints
 paths:
+  /signals/analyze:
+    post:
+      tags:
+        - Signal Intelligence
+      summary: Analyze signal
+      description: Analyze a signal (communication, calendar, social, product usage, competitive, customer success)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - signalType
+                - source
+                - data
+              properties:
+                signalType:
+                  type: string
+                  enum: [communication, calendar, social, product_usage, competitive]
+                source:
+                  type: string
+                data:
+                  type: object
+      responses:
+        '201':
+          description: Signal analyzed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Signal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
   /health:
     get:
       tags:
@@ -35,6 +76,19 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
     Error:
       type: object
@@ -46,3 +100,24 @@ components:
               type: string
             message:
               type: string
+    Signal:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        signalType:
+          type: string
+          enum: [communication, calendar, social, product_usage, competitive]
+        source:
+          type: string
+        data:
+          type: object
+        analyzed:
+          type: boolean
+        analysis:
+          type: object
+        createdAt:
+          type: string
+          format: date-time

@@ -354,4 +354,75 @@ export class SecurityScanningService {
       return null;
     }
   }
+
+  /**
+   * Redact PII from content
+   */
+  async redactPII(tenantId: string, contentId: string, content: string): Promise<string> {
+    try {
+      // Get PII detection results
+      const detection = await this.detectPII(tenantId, contentId, content);
+      
+      let redactedContent = content;
+      
+      // Redact each detected PII
+      for (const pii of detection.detectedPII) {
+        const value = pii.value;
+        let replacement = '';
+        
+        switch (pii.type) {
+          case 'email':
+            // Redact email: keep first letter and domain
+            const [localPart, domain] = value.split('@');
+            replacement = `${localPart[0]}***@${domain}`;
+            break;
+          case 'phone':
+            // Redact phone: keep last 4 digits
+            replacement = `***-***-${value.slice(-4)}`;
+            break;
+          case 'ssn':
+            // Redact SSN: keep last 4 digits
+            replacement = `***-**-${value.slice(-4)}`;
+            break;
+          case 'credit_card':
+            // Already masked in detection
+            replacement = value;
+            break;
+          default:
+            // Generic redaction
+            replacement = '***REDACTED***';
+        }
+        
+        // Replace all occurrences
+        redactedContent = redactedContent.replace(new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), replacement);
+      }
+      
+      return redactedContent;
+    } catch (error: any) {
+      log.error('PII redaction failed', error, {
+        contentId,
+        tenantId,
+        service: 'security-scanning',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get PII detection by ID
+   */
+  async getPIIDetection(detectionId: string, tenantId: string): Promise<PIIDetection | null> {
+    try {
+      const container = getContainer('security_pii_detections');
+      const { resource } = await container.item(detectionId, tenantId).read<PIIDetection>();
+      return resource || null;
+    } catch (error: any) {
+      log.error('Failed to get PII detection', error, {
+        detectionId,
+        tenantId,
+        service: 'security-scanning',
+      });
+      return null;
+    }
+  }
 }

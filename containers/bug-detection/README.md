@@ -1,6 +1,6 @@
 # Bug Detection Module
 
-Bug detection and fixing service for Coder IDE, providing anomaly detection, bug prediction, root cause analysis, auto-fix suggestions, and bug tracking.
+Bug detection and fixing service for Castiel, providing anomaly detection, bug prediction, root cause analysis, auto-fix suggestions, and bug tracking.
 
 ## Features
 
@@ -118,5 +118,5 @@ npm test
 
 ## License
 
-Proprietary - Coder IDE
+Proprietary - Castiel
 

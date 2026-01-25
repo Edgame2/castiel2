@@ -1,5 +1,16 @@
 # ML Service Module Configuration
 
+# Application Insights (Plan §8.5.1, FIRST_STEPS §1); init via src/instrumentation.ts
+application_insights:
+  connection_string: ${APPLICATIONINSIGHTS_CONNECTION_STRING:-}
+  disable: ${APPLICATIONINSIGHTS_DISABLE:-false}
+
+# Prometheus metrics (Plan §8.5.2, §8.5.4); deployment/monitoring/README
+metrics:
+  path: ${METRICS_PATH:-/metrics}
+  require_auth: ${METRICS_REQUIRE_AUTH:-false}
+  bearer_token: ${METRICS_BEARER_TOKEN:-}
+
 module:
   name: ml-service
   version: 1.0.0
@@ -18,6 +29,7 @@ cosmos_db:
     training_jobs: ml_training_jobs
     evaluations: ml_evaluations
     predictions: ml_predictions
+    jobs: multimodal_jobs
 
 services:
   ai_service:
@@ -26,6 +38,45 @@ services:
     url: ${EMBEDDINGS_URL:-http://localhost:3005}
   logging:
     url: ${LOGGING_URL:-http://localhost:3014}
+  adaptive_learning:
+    url: ${ADAPTIVE_LEARNING_URL:-http://localhost:3032}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3002}
+  risk_analytics:
+    url: ${RISK_ANALYTICS_URL:-http://localhost:3048}
+
+# Feature pipeline (BI_SALES_RISK_FEATURE_PIPELINE_SPEC §6): label encoding for buildVectorForOpportunity. Defaults in code if absent.
+feature_pipeline: {}
+
+# Feature flags for BI/risk (Plan §895, §8.2). Env: USE_WIN_PROBABILITY_ML, USE_RISK_SCORING_ML.
+feature_flags:
+  use_win_probability_ml: true
+  use_risk_scoring_ml: true
+  use_revenue_forecasting_ml: true
+
+# Legacy; feature_flags preferred (Plan §8.1).
+features: {}
+
+# Azure ML (BI_SALES_RISK Plan §5.1, §5.4, §8.2). Env: AZURE_ML_WORKSPACE_NAME, AZURE_ML_RESOURCE_GROUP, AZURE_ML_SUBSCRIPTION_ID.
+# Endpoints env: AZURE_ML_ENDPOINT_RISK_GLOBAL, AZURE_ML_ENDPOINT_RISK_INDUSTRY, AZURE_ML_ENDPOINT_LSTM, AZURE_ML_ENDPOINT_WIN_PROB,
+# AZURE_ML_ENDPOINT_FORECAST, AZURE_ML_ENDPOINT_CLUSTERING, AZURE_ML_ENDPOINT_PROPAGATION, AZURE_ML_ENDPOINT_ANOMALY, AZURE_ML_ENDPOINT_MITIGATION.
+azure_ml:
+  workspace_name: ""
+  resource_group: "castiel-ml-prod-rg"
+  subscription_id: ""
+  endpoints:
+    risk_scoring_global: ""
+    risk_scoring_industry: ""
+    risk_trajectory_lstm: ""
+    win_probability: ""
+    revenue_forecasting: ""
+    clustering: ""
+    propagation: ""
+    anomaly: ""
+    mitigation_ranking: ""
+    win-probability-model: ""
+    risk-scoring-model: ""
+  api_key: ""
 
 rabbitmq:
   url: ${RABBITMQ_URL}

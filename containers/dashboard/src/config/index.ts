@@ -13,6 +13,8 @@ export interface DashboardConfig {
   };
   services: {
     logging?: { url: string };
+    analytics_service?: { url: string };
+    cache_service?: { url: string };
   };
   rabbitmq: { url: string; exchange: string; queue: string };
   redis: {

@@ -38,7 +38,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       info: {
         title: 'User Management Service API',
         description: `
-          User management service for Coder IDE with organizations, teams, roles, and permissions.
+          User management service for Castiel with organizations, teams, roles, and permissions.
           
           ## Authentication
           All endpoints (except health checks) require JWT authentication via Bearer token:

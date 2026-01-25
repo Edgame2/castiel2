@@ -1,0 +1,17 @@
+# Conda env for Azure ML Job: train_anomaly_isolation_forest.py (Plan §5.6, Phase 2; TRAINING_SCRIPTS_SPEC §3.4).
+# Training needs pandas, pyarrow, scikit-learn; register/deploy needs azure-ai-ml, azure-identity.
+name: anomaly-train
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.8,<3.12
+  - numpy
+  - pandas
+  - pyarrow
+  - pip
+  - pip:
+    - scikit-learn
+    - joblib
+    - azure-ai-ml
+    - azure-identity

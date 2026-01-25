@@ -19,6 +19,8 @@ export interface DataEnrichmentConfig {
     containers: {
       enrichment_jobs: string;
       enrichment_results: string;
+      enrichment_configurations?: string;
+      enrichment_history?: string;
       vectorization_jobs: string;
       shard_relationships: string;
       shard_acls: string;
@@ -27,6 +29,12 @@ export interface DataEnrichmentConfig {
   jwt: { secret: string };
   services: { [key: string]: { url: string } };
   rabbitmq: { url: string; exchange: string; queue: string; bindings: string[] };
+  reembedding_scheduler?: {
+    enabled?: boolean;
+    interval_ms?: number;
+    tenant_ids?: string[];
+    shard_type_ids?: string[];
+  };
   features: { [key: string]: boolean };
 }
 

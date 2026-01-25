@@ -2,8 +2,8 @@
   "name": "@coder/ui",
   "version": "1.0.0",
   "private": true,
-  "description": "Coder IDE UI Container - Next.js Web Application",
-  "author": "Coder Team",
+  "description": "Castiel UI Container - Next.js Web Application",
+  "author": "Castiel Team",
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",

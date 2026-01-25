@@ -12,10 +12,13 @@
     "test:integration": "vitest run tests/integration",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@azure/monitor-opentelemetry": "^1.0.0",
     "@coder/shared": "file:../shared",
+    "prom-client": "^15.1.0",
     "fastify": "^5.1.0",
     "@fastify/swagger": "^9.1.0",
     "@fastify/swagger-ui": "^5.0.0",

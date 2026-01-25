@@ -15,6 +15,96 @@ tags:
   - name: Health
     description: Health check endpoints
 paths:
+  /forecasts/{period}/scenarios:
+    get:
+      tags: [Forecasting]
+      summary: P10/P50/P90 scenario forecast (FIRST_STEPS §8, Plan §4.3)
+      description: ForecastingService.getScenarioForecast. Returns period, p10, p50, p90, and best/base/worst scenarios. Wired to ml-service POST /api/v1/ml/forecast/period when ml_service.url set and history ≥2; else stub from tenant aggregate (Plan §877).
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: period
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: period, p10, p50, p90, scenarios (scenario, forecast, probability)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period: { type: string }
+                  p10: { type: number }
+                  p50: { type: number }
+                  p90: { type: number }
+                  scenarios:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        scenario: { type: string }
+                        forecast: { type: number }
+                        probability: { type: number }
+        '401': { description: Unauthorized }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /forecasts/{period}/risk-adjusted:
+    get:
+      tags: [Forecasting]
+      summary: Risk-adjusted forecast for period (FIRST_STEPS §8, Plan §4.3)
+      description: ForecastingService.getRiskAdjustedForecast. Returns period, forecast, riskAdjustedForecast, opportunityCount, startDate, endDate. Risk from risk-analytics when stored at forecast generation; else riskAdjustedForecast = forecast.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: period
+          in: path
+          required: true
+          schema: { type: string }
+          description: YYYY, YYYY-MM, or YYYY-Q1..Q4
+      responses:
+        '200':
+          description: period, forecast, riskAdjustedForecast, opportunityCount, startDate, endDate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period: { type: string }
+                  forecast: { type: number }
+                  riskAdjustedForecast: { type: number }
+                  opportunityCount: { type: number }
+                  startDate: { type: string }
+                  endDate: { type: string }
+        '401': { description: Unauthorized }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /forecasts/{period}/ml:
+    get:
+      tags: [Forecasting]
+      summary: ML-only forecast for period (FIRST_STEPS §8, Plan §4.3)
+      description: ForecastingService.getMLForecast. Returns pointForecast, uncertainty (p10/p50/p90), modelId, scenarios. Stub from tenant aggregate; wire to ml-service revenue-forecasting-model when available.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: period
+          in: path
+          required: true
+          schema: { type: string }
+          description: YYYY, YYYY-MM, or YYYY-Q1..Q4
+      responses:
+        '200':
+          description: pointForecast, uncertainty, modelId, scenarios
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period: { type: string }
+                  pointForecast: { type: number }
+                  uncertainty: { type: object, properties: { p10: { type: number }, p50: { type: number }, p90: { type: number } } }
+                  modelId: { type: string }
+                  scenarios:
+                    type: array
+                    items: { type: object, properties: { scenario: { type: string }, forecast: { type: number }, probability: { type: number } } }
+        '401': { description: Unauthorized }
+        '500': { $ref: '#/components/responses/InternalError' }
   /forecasts/{forecastId}:
     get:
       tags:
@@ -44,10 +134,21 @@ paths:
                     enum: [pending, in_progress, completed, failed]
                   revenueForecast:
                     type: number
+                  riskAdjustedRevenue:
+                    type: number
+                    description: Risk-adjusted revenue when risk_analytics is configured (MISSING_FEATURES 5.1)
                   confidence:
                     type: number
-                  decomposedForecast:
+                  mlForecast:
                     type: object
+                    description: ML forecast with P10/P50/P90 and scenarios when ml-service is used
+                    properties:
+                      pointForecast: { type: number }
+                      uncertainty: { type: object, properties: { p10: { type: number }, p50: { type: number }, p90: { type: number } } }
+                      scenarios: { type: array, items: { type: object, properties: { scenario: { type: string }, probability: { type: number }, forecast: { type: number } } } }
+                      confidence: { type: number }
+                  decomposedForecast:
+                    $ref: '#/components/schemas/ForecastDecomposition'
                   consensusForecast:
                     type: number
                   commitmentLevel:
@@ -85,6 +186,133 @@ paths:
           description: Unauthorized
         '500':
           $ref: '#/components/responses/InternalError'
+  /forecasts/team:
+    post:
+      tags: [Forecasting]
+      summary: Team-level forecast aggregate (MISSING_FEATURES 5.5)
+      description: Aggregates latest forecasts for the given opportunity IDs (total pipeline, risk-adjusted). opportunityIds should be obtained from pipeline/shard/analytics for the team.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [teamId, opportunityIds]
+              properties:
+                teamId: { type: string }
+                opportunityIds: { type: array, items: { type: string } }
+                startDate: { type: string }
+                endDate: { type: string }
+      responses:
+        '200':
+          description: Team aggregate (totalPipeline, totalRiskAdjusted, opportunityCount)
+        '401': { description: Unauthorized }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /forecasts/tenant:
+    get:
+      tags: [Forecasting]
+      summary: Tenant-level forecast aggregate (MISSING_FEATURES 5.5)
+      description: Aggregates latest forecasts for the tenant (total revenue, risk-adjusted, opportunity count). Optional startDate/endDate.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: startDate
+          in: query
+          schema: { type: string }
+        - name: endDate
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Tenant aggregate (totalRevenue, totalRiskAdjusted, opportunityCount)
+        '401': { description: Unauthorized }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /accuracy/actuals:
+    post:
+      tags:
+        - Forecasting
+        - Accuracy
+      summary: Record actual outcome
+      description: Record an actual value for a forecast prediction to enable accuracy tracking (MAPE, bias, R²). If predictionId is omitted, the most recent unstored prediction for the opportunity and forecastType is updated.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId, forecastType, actualValue]
+              properties:
+                opportunityId:
+                  type: string
+                forecastType:
+                  type: string
+                  enum: ['revenue', 'closeDate']
+                actualValue:
+                  type: number
+                actualAt:
+                  type: string
+                  format: date-time
+                predictionId:
+                  type: string
+      responses:
+        '200':
+          description: Prediction updated with actual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForecastPrediction'
+        '401':
+          description: Unauthorized
+        '404':
+          description: No matching prediction found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /accuracy/metrics:
+    get:
+      tags:
+        - Forecasting
+        - Accuracy
+      summary: Get accuracy metrics
+      description: Get forecast accuracy metrics over prediction–actual pairs: MAPE (Mean Absolute Percentage Error), forecast bias (mean(actual - predicted)), R².
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: forecastType
+          in: query
+          schema:
+            type: string
+            enum: ['revenue', 'closeDate']
+        - name: startDate
+          in: query
+          schema:
+            type: string
+        - name: endDate
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Accuracy metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForecastAccuracyMetrics'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /metrics:
+    get:
+      tags: [Health]
+      summary: Prometheus metrics (Plan §8.5.2)
+      description: Exposes http_requests_total, http_request_duration_seconds, forecasts_generated_total. Optional Bearer when metrics.require_auth.
+      responses:
+        '200':
+          description: text/plain; version=0.0.4 (Prometheus format)
+        '401':
+          description: Unauthorized (when metrics.require_auth and invalid Bearer)
   /health:
     get:
       tags:
@@ -115,6 +343,27 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    ForecastDecomposition:
+      type: object
+      description: Decomposition with temporal features and industry seasonality (5.6)
+      properties:
+        decompositionId: { type: string }
+        forecastId: { type: string }
+        tenantId: { type: string }
+        timeDecomposition: { type: object }
+        temporalFeatures:
+          type: object
+          description: month, quarter, isYearEnd for seasonality
+          properties:
+            month: { type: number }
+            quarter: { type: number }
+            isYearEnd: { type: boolean }
+        industrySeasonalityMultiplier: { type: number; description: "From config industry_seasonality by industry and quarter" }
+        industryId: { type: string; description: "Present when opportunity/account has industry" }
+        sourceDecomposition: { type: object }
+        confidenceDecomposition: { type: object }
+        driverDecomposition: { type: object }
+        recommendations: { type: array; items: { type: string } }
     Error:
       type: object
       properties:
@@ -125,3 +374,28 @@ components:
               type: string
             message:
               type: string
+    ForecastPrediction:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        opportunityId: { type: string }
+        forecastId: { type: string }
+        forecastType:
+          type: string
+          enum: ['revenue', 'closeDate']
+        predictedValue: { type: number }
+        predictedAt: { type: string; format: date-time }
+        actualValue: { type: number }
+        actualAt: { type: string; format: date-time }
+        createdAt: { type: string; format: date-time }
+    ForecastAccuracyMetrics:
+      type: object
+      properties:
+        mape: { type: number; description: "Mean Absolute Percentage Error (%)" }
+        forecastBias: { type: number; description: "mean(actual - predicted); >0 under-forecast, <0 over-forecast" }
+        r2: { type: number; description: "R² (coefficient of determination)" }
+        sampleCount: { type: number }
+        forecastType: { type: string }
+        startDate: { type: string }
+        endDate: { type: string }

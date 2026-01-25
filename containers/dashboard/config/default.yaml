@@ -15,10 +15,16 @@ cosmos_db:
   containers:
     dashboards: dashboard_dashboards
     widgets: dashboard_widgets
+    admin_data: dashboard_admin_data
+    widget_cache: dashboard_widget_cache
 
 services:
   logging:
     url: ${LOGGING_URL:-http://localhost:3014}
+  analytics_service:
+    url: ${ANALYTICS_SERVICE_URL:-http://localhost:3005}
+  cache_service:
+    url: ${CACHE_SERVICE_URL:-http://localhost:3035}
 
 rabbitmq:
   url: ${RABBITMQ_URL}

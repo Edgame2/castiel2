@@ -2,17 +2,52 @@ openapi: 3.0.3
 info:
   title: Collaboration Intelligence Service API
   description: |
-    Collaboration Intelligence service.
+    Collaborative intelligence and insights service.
+    
+    Provides collaborative insights generation, memory context management, and sharing services.
   version: 1.0.0
 servers:
   - url: /api/v1
     description: API Version 1
 tags:
   - name: Collaboration Intelligence
-    description: Collaboration Intelligence operations
+    description: Collaboration intelligence operations
   - name: Health
     description: Health check endpoints
 paths:
+  /collaboration/insights:
+    post:
+      tags:
+        - Collaboration Intelligence
+      summary: Generate collaborative insight
+      description: Generate a collaborative insight based on context and participants
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - context
+              properties:
+                context:
+                  type: object
+                  description: Context data for insight generation
+      responses:
+        '201':
+          description: Collaborative insight generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollaborationInsight'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
   /health:
     get:
       tags:
@@ -35,6 +70,19 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
     Error:
       type: object
@@ -46,3 +94,23 @@ components:
               type: string
             message:
               type: string
+    CollaborationInsight:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        insightType:
+          type: string
+        content:
+          type: string
+        participants:
+          type: array
+          items:
+            type: string
+        relevanceScore:
+          type: number
+        createdAt:
+          type: string
+          format: date-time

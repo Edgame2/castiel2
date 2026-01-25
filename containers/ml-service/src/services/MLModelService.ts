@@ -8,6 +8,7 @@ import { getContainer } from '@coder/shared/database';
 import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
 import {
   MLModel,
+  ModelCard,
   CreateMLModelInput,
   UpdateMLModelInput,
   ModelStatus,
@@ -62,6 +63,35 @@ export class MLModelService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Get model card (Plan §11.9, §946): purpose, input, output, limitations for GET /api/v1/ml/models/:id/card
+   */
+  async getModelCard(modelId: string, tenantId: string): Promise<ModelCard> {
+    const model = await this.getById(modelId, tenantId);
+    const purpose = model.description || `Model for ${model.type}`;
+    const input = model.features ?? [];
+    const outputByType: Record<ModelType, string> = {
+      [ModelType.CLASSIFICATION]: 'Class label or probability (0-1)',
+      [ModelType.REGRESSION]: 'Numeric value',
+      [ModelType.CLUSTERING]: 'Cluster assignment',
+      [ModelType.RECOMMENDATION]: 'Ranked recommendations',
+      [ModelType.FORECASTING]: 'Forecast values (point and/or quantiles)',
+      [ModelType.ANOMALY_DETECTION]: 'Anomaly score (0-1) or binary',
+    };
+    const output = outputByType[model.type] || 'See model type and metrics';
+    const limitations = model.limitations ?? [];
+    return {
+      modelId: model.id,
+      name: model.name,
+      type: model.type,
+      version: model.version,
+      purpose,
+      input,
+      output,
+      limitations,
+    };
   }
 
   /**

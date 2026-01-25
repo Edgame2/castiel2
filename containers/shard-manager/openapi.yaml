@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Shard Manager Service API
   description: |
-    Core data model management service for Coder IDE. Shards are the fundamental data entities in the system.
+    Core data model management service for Castiel. Shards are the fundamental data entities in the system.
     
     ## Authentication
     All endpoints (except health checks) require JWT authentication via Bearer token:
@@ -18,7 +18,7 @@ info:
     - **Versioning**: Shard revision history and versioning
   version: 1.0.0
   contact:
-    name: Coder IDE Team
+    name: Castiel Team
 
 servers:
   - url: /api/v1

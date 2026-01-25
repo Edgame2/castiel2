@@ -51,10 +51,20 @@
 - All functions MUST have JSDoc comments
 
 ## Event-Driven Communication
-- Use RabbitMQ for inter-service communication
+- Use RabbitMQ for inter-service communication (RabbitMQ only; no Azure Service Bus or other message brokers)
 - Events MUST include: id, type, version, timestamp, tenantId, source, data
+- Use tenantId for tenant context in events; prefer tenantId over organizationId in new code
 - Event types follow pattern: {module}.{resource}.{action}
 - Document all published and consumed events
+
+## Platform Conventions
+- Queuing: RabbitMQ only for events and job/batch triggers. Do not use Azure Service Bus, Event Grid, or other brokers.
+- Tenant context: Use tenantId in events, DB, and APIs. Prefer tenantId over organizationId in new code.
+
+## When Working on BI Sales Risk
+- **Plans:** documentation/requirements/BI_SALES_RISK_IMPLEMENTATION_PLAN.md, BI_SALES_RISK_SHARD_SCHEMAS.md. **Also:** BI_SALES_RISK_FEATURE_PIPELINE_SPEC.md (buildVector, features), BI_SALES_RISK_DATA_LAKE_LAYOUT.md (paths, Parquet, outcome.outcome.recorded), BI_SALES_RISK_TRAINING_SCRIPTS_SPEC.md (Python in ml-service/scripts). See plan “Related Documentation.”
+- **opportunityId** = id of the c_opportunity shard (APIs, events, Cosmos, features). Use Salesforce field names for shards (Amount, StageName, CloseDate, Probability, IsClosed, IsWon, AccountId, OwnerId, CreatedDate; add LastActivityDate, Industry, IndustryId, CompetitorIds, StageUpdatedAt, StageDates).
+- **Observability (BI/risk):** §8.5 and deployment/monitoring/README. /metrics: prom-client, names `http_requests_total`, `http_request_duration_seconds`, `risk_evaluations_total`, `ml_predictions_total`, `batch_job_duration_seconds`; optional Bearer when metrics.require_auth. App Insights: @azure/monitor-opentelemetry.
 
 ## Performance
 - Use multi-layer caching (in-memory + Redis)

@@ -3,6 +3,8 @@
  * Asynchronous risk evaluation and revenue analytics system (event-driven) with CAIS integration
  */
 
+import './instrumentation';
+
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
 import { initializeDatabase, connectDatabase } from '@coder/shared';
@@ -11,6 +13,7 @@ import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import { loadConfig } from './config';
 import { log } from './utils/logger';
+import { httpRequestsTotal, httpRequestDurationSeconds, register } from './metrics';
 
 let app: FastifyInstance | null = null;
 
@@ -77,10 +80,14 @@ export async function buildApp(): Promise<FastifyInstance> {
     database: config.cosmos_db.database_id,
     containers: {
       evaluations: config.cosmos_db.containers.evaluations,
+      snapshots: config.cosmos_db.containers.snapshots ?? 'risk_snapshots',
+      predictions: config.cosmos_db.containers.predictions ?? 'risk_predictions',
       revenue_at_risk: config.cosmos_db.containers.revenue_at_risk,
       quotas: config.cosmos_db.containers.quotas,
       warnings: config.cosmos_db.containers.warnings,
       simulations: config.cosmos_db.containers.simulations,
+      anomaly_alerts: config.cosmos_db.containers.anomaly_alerts ?? 'risk_anomaly_alerts',
+      sentiment_trends: config.cosmos_db.containers.sentiment_trends ?? 'risk_sentiment_trends',
     },
   });
   
@@ -100,6 +107,13 @@ export async function buildApp(): Promise<FastifyInstance> {
     log.info('Event publisher and consumer initialized', { service: 'risk-analytics' });
   } catch (error) {
     log.warn('Failed to initialize event handlers', { error, service: 'risk-analytics' });
+  }
+
+  try {
+    const { initializeBatchJobWorker } = await import('./events/consumers/BatchJobWorker');
+    await initializeBatchJobWorker();
+  } catch (error) {
+    log.warn('Failed to initialize batch job worker', { error, service: 'risk-analytics' });
   }
 
   fastify.setErrorHandler((error: Error & { validation?: unknown; statusCode?: number }, request, reply) => {
@@ -134,6 +148,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   fastify.addHook('onResponse', async (request, reply) => {
+    const route = (request as { routerPath?: string }).routerPath ?? (request as { routeOptions?: { url?: string } }).routeOptions?.url ?? String((request as { url?: string }).url || '').split('?')[0] || 'unknown';
+    httpRequestsTotal.inc({ method: request.method, route, status: String(reply.statusCode) });
+    httpRequestDurationSeconds.observe({ method: request.method, route }, (reply.elapsedTime ?? 0) / 1000);
     log.debug('Request completed', {
       requestId: request.id,
       method: request.method,
@@ -147,11 +164,28 @@ export async function buildApp(): Promise<FastifyInstance> {
   const { registerRoutes } = await import('./routes');
   await registerRoutes(fastify, config);
 
-  fastify.get('/health', async () => ({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    service: 'risk-analytics',
-  }));
+  fastify.get('/health', async () => {
+    const { getLastRiskSnapshotBackfillAt } = await import('./events/consumers/BatchJobWorker');
+    const last = getLastRiskSnapshotBackfillAt();
+    let mlServiceReachable: 'ok' | 'unreachable' | 'not_configured' = 'not_configured';
+    const mlUrl = config.services?.ml_service?.url;
+    if (typeof mlUrl === 'string' && mlUrl.length > 0) {
+      try {
+        const u = mlUrl.replace(/\/$/, '');
+        const res = await globalThis.fetch(`${u}/health`, { method: 'GET', signal: AbortSignal.timeout(3000) });
+        mlServiceReachable = res?.ok ? 'ok' : 'unreachable';
+      } catch {
+        mlServiceReachable = 'unreachable';
+      }
+    }
+    return {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      service: 'risk-analytics',
+      lastRiskSnapshotBackfillAt: last ? last.toISOString() : null,
+      mlServiceReachable,
+    };
+  });
 
   fastify.get('/ready', async () => {
     let dbStatus = 'unknown';
@@ -170,6 +204,18 @@ export async function buildApp(): Promise<FastifyInstance> {
       timestamp: new Date().toISOString(),
       service: 'risk-analytics',
     };
+  });
+
+  const metricsConf = config.metrics!;
+  fastify.get(metricsConf.path, async (request, reply) => {
+    if (metricsConf.require_auth) {
+      const raw = (request.headers.authorization as string) || '';
+      const token = raw.startsWith('Bearer ') ? raw.slice(7) : raw;
+      if (token !== (metricsConf.bearer_token || '')) {
+        return reply.status(401).send('Unauthorized');
+      }
+    }
+    return reply.type('text/plain; version=0.0.4').send(await register.metrics());
   });
 
   app = fastify;
@@ -194,6 +240,12 @@ export async function start(): Promise<void> {
 
 async function gracefulShutdown(signal: string): Promise<void> {
   log.info(`${signal} received, shutting down gracefully`, { service: 'risk-analytics' });
+  try {
+    const { closeBatchJobWorker } = await import('./events/consumers/BatchJobWorker');
+    await closeBatchJobWorker();
+  } catch (error) {
+    log.error('Error closing batch job worker', error, { service: 'risk-analytics' });
+  }
   try {
     const { closeEventPublisher } = await import('./events/publishers/RiskAnalyticsEventPublisher');
     await closeEventPublisher();

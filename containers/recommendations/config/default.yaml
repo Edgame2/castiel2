@@ -1,6 +1,17 @@
 # recommendations Module Configuration
 # Per ModuleImplementationGuide Section 4
 
+# Application Insights (Plan §8.5.1, FIRST_STEPS §1); init via src/instrumentation.ts
+application_insights:
+  connection_string: ${APPLICATIONINSIGHTS_CONNECTION_STRING:-}
+  disable: ${APPLICATIONINSIGHTS_DISABLE:-false}
+
+# Prometheus metrics (Plan §8.5.2, §8.5.4); deployment/monitoring/README
+metrics:
+  path: ${METRICS_PATH:-/metrics}
+  require_auth: ${METRICS_REQUIRE_AUTH:-false}
+  bearer_token: ${METRICS_BEARER_TOKEN:-}
+
 module:
   name: recommendations
   version: 1.0.0
@@ -18,6 +29,10 @@ cosmos_db:
     recommendations: recommendation_recommendations
     feedback: recommendation_feedback
     metrics: recommendation_metrics
+    # Plan §3.1.4, §927–929
+    remediation_workflows: recommendation_remediation_workflows
+    # Plan §3.1.4, §927: custom mitigation actions catalog (MitigationRankingService)
+    mitigation_actions: recommendation_mitigation_actions
 
 # JWT Configuration (shared with auth service)
 jwt:

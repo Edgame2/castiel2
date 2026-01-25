@@ -72,3 +72,56 @@ export interface ModelSelection {
   confidence: number;
   version?: string;
 }
+
+/** Plan §3.1.4, §927–929: remediation workflow step */
+export type RemediationStepStatus = 'pending' | 'current' | 'completed';
+
+export interface RemediationWorkflowStep {
+  stepNumber: number;
+  actionId: string;
+  description: string;
+  status: RemediationStepStatus;
+  estimatedEffort?: string;
+  completedAt: string | null;
+  completedBy: string | null;
+}
+
+export type RemediationWorkflowStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+
+export interface RemediationWorkflow {
+  id: string;
+  tenantId: string;
+  opportunityId: string;
+  riskId?: string;
+  status: RemediationWorkflowStatus;
+  assignedTo: string;
+  steps: RemediationWorkflowStep[];
+  completedSteps: number;
+  totalSteps: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRemediationWorkflowInput {
+  opportunityId: string;
+  riskId?: string;
+  assignedTo?: string;
+  steps: { actionId: string; description: string; estimatedEffort?: string }[];
+}
+
+/** Plan §427–428, §927: ranked mitigation action for GET /opportunities/:id/mitigation-actions */
+export interface RankedMitigationAction {
+  id: string;
+  actionId: string;
+  title: string;
+  description: string;
+  rank: number;
+  estimatedImpact?: 'high' | 'medium' | 'low';
+  estimatedEffort?: 'low' | 'medium' | 'high';
+}
+
+export interface RankedMitigationResponse {
+  opportunityId: string;
+  tenantId: string;
+  actions: RankedMitigationAction[];
+}

@@ -12,7 +12,10 @@ import { getConfig } from '../config';
 // For >1000 users: Redis Sentinel (master-replica with automatic failover)
 
 const config = getConfig();
-const redisUrl = config.redis?.url || process.env.REDIS_URL || 'redis://localhost:6379';
+const redisUrl = config.redis?.url || process.env.REDIS_URL || '';
+if (!redisUrl) {
+  throw new Error('REDIS_URL must be configured via config.redis.url or REDIS_URL environment variable');
+}
 
 // Parse Redis URL
 function parseRedisUrl(url: string): { host: string; port: number; password?: string; db: number } {
@@ -25,11 +28,7 @@ function parseRedisUrl(url: string): { host: string; port: number; password?: st
       db: parseInt(parsed.pathname?.slice(1) || '0', 10),
     };
   } catch {
-    return {
-      host: 'localhost',
-      port: 6379,
-      db: 0,
-    };
+    throw new Error(`Invalid Redis URL format: ${url}`);
   }
 }
 

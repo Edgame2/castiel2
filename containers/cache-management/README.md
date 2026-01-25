@@ -1,11 +1,15 @@
-# Cache-management Module
+# Cache Management Module
 
-[Description of what this service does]
+Advanced cache management and optimization service for Castiel, providing cache monitoring, optimization, semantic caching, vector search caching, and cache warming capabilities.
 
 ## Features
 
-- Feature 1
-- Feature 2
+- **Cache Monitoring**: Track cache hit rates, response times, and performance metrics
+- **Cache Optimization**: Optimize cache strategies and TTL settings
+- **Semantic Caching**: Semantic similarity-based caching
+- **Vector Search Caching**: Cache vector search results
+- **Cache Warming**: Pre-warm cache with frequently accessed data
+- **Cache Subscriber**: Subscribe to cache events
 
 ## Quick Start
 
@@ -53,11 +57,17 @@ See [OpenAPI Spec](./openapi.yaml)
 
 ### Published Events
 
-- `cache-management.event.name`
+- `cache.metrics.updated` - Cache metrics updated
+- `cache.strategy.updated` - Cache strategy updated
 
 ### Consumed Events
 
-- `other.event.name`
+- (None currently)
+
+## Dependencies
+
+- **cache-service**: For cache operations
+- **embeddings**: For semantic caching
 
 ## Development
 

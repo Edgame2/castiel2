@@ -68,6 +68,10 @@ export async function buildApp(): Promise<FastifyInstance> {
       imports: config.cosmos_db.containers.imports,
       exports: config.cosmos_db.containers.exports,
       migrations: config.cosmos_db.containers.migrations,
+      ...(config.cosmos_db.containers.notifications && { notifications: config.cosmos_db.containers.notifications }),
+      ...(config.cosmos_db.containers.batches && { batches: config.cosmos_db.containers.batches }),
+      ...(config.cosmos_db.containers.preferences && { preferences: config.cosmos_db.containers.preferences }),
+      ...(config.cosmos_db.containers.templates && { templates: config.cosmos_db.containers.templates }),
     },
   });
   
@@ -85,6 +89,24 @@ export async function buildApp(): Promise<FastifyInstance> {
     log.info('Event publisher initialized', { service: 'utility_services' });
   } catch (error) {
     log.warn('Failed to initialize event publisher', { error, service: 'utility_services' });
+  }
+
+  // Start notification event consumer and scheduled job (from notification-manager)
+  try {
+    const { startEventConsumer } = await import('./consumers/eventConsumer');
+    await startEventConsumer();
+    log.info('Notification event consumer started', { service: 'utility_services' });
+  } catch (error) {
+    log.warn('Failed to start notification event consumer', { error, service: 'utility_services' });
+  }
+
+  try {
+    const { ScheduledNotificationJob } = await import('./jobs/ScheduledNotificationJob');
+    const scheduledJob = new ScheduledNotificationJob();
+    scheduledJob.start();
+    log.info('Scheduled notification job started', { service: 'utility_services' });
+  } catch (error) {
+    log.warn('Failed to start scheduled notification job', { error, service: 'utility_services' });
   }
 
   fastify.setErrorHandler((error: Error & { validation?: unknown; statusCode?: number }, request, reply) => {

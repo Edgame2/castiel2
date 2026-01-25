@@ -1,6 +1,6 @@
 # Content Generation Module
 
-AI-powered content generation service for Coder IDE.
+AI-powered content generation service for Castiel.
 
 ## Features
 

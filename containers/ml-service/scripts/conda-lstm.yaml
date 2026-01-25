@@ -1,0 +1,12 @@
+# Conda env for Azure ML ManagedOnlineDeployment of risk-trajectory-lstm (score_lstm_trajectory.py).
+# Used by train_lstm_trajectory.py --deploy. Plan §875.
+name: lstm-trajectory
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.8,<3.12
+  - numpy
+  - pip
+  - pip:
+    - tensorflow>=2.12

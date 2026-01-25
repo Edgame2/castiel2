@@ -1,6 +1,6 @@
 ---
 name: create-event-handlers
-description: Sets up RabbitMQ event publishers and consumers following ModuleImplementationGuide.md Section 9 event-driven patterns. Creates event publishers with proper DomainEvent structure, sets up event consumers with handlers, follows event naming convention ({domain}.{entity}.{action}), includes required event fields (id, type, version, timestamp, tenantId, source, data), and documents published/consumed events. Use when adding event-driven communication, implementing async workflows, or integrating services via events.
+description: Sets up RabbitMQ event publishers and consumers following ModuleImplementationGuide.md Section 9. RabbitMQ only (no Azure Service Bus). Creates publishers with DomainEvent (tenantId preferred), consumers with handlers, naming {domain}.{entity}.{action}, required fields (id, type, version, timestamp, tenantId, source, data). Use when adding event-driven communication, async workflows, or integrating via events.
 ---
 
 # Create Event Handlers
@@ -46,7 +46,8 @@ interface DomainEvent<T = unknown> {
   correlationId?: string;        // Request correlation
   
   // Context
-  organizationId?: string;       // Tenant context
+  tenantId?: string;             // Tenant context (PREFERRED; use for new modules)
+  organizationId?: string;       // DEPRECATED for new modules; prefer tenantId
   userId?: string;               // Actor
   
   // Payload
@@ -106,7 +107,7 @@ function getPublisher(): EventPublisher | null {
 export function createBaseEvent(
   type: string,
   userId?: string,
-  organizationId?: string,
+  tenantId?: string,
   correlationId?: string,
   data?: any
 ) {
@@ -117,7 +118,7 @@ export function createBaseEvent(
     version: '1.0',
     source: '[module-name]',
     correlationId,
-    organizationId,
+    tenantId,
     userId,
     data: data || {},
   };
@@ -144,12 +145,12 @@ export async function publishEvent(event: any, routingKey?: string): Promise<voi
 ```typescript
 import { publishEvent, createBaseEvent } from '../events/publishers/ModuleEventPublisher';
 
-// Publish event
+// Publish event (tenantId for tenant context)
 const event = createBaseEvent(
   'resource.created',
   userId,
   tenantId,
-  requestId,
+  correlationId,
   {
     resourceId: resource.id,
     name: resource.name,
@@ -257,7 +258,7 @@ Create in module root if module publishes events that get logged:
     "timestamp": { "type": "string", "format": "date-time" },
     "version": { "type": "string" },
     "source": { "type": "string" },
-    "organizationId": { "type": "string", "format": "uuid" },
+    "tenantId": { "type": "string", "format": "uuid" },
     "userId": { "type": "string", "format": "uuid" },
     "data": {
       "type": "object",
@@ -294,7 +295,7 @@ rabbitmq:
 - [ ] Event consumer created (if consuming events)
 - [ ] Events follow naming convention: {domain}.{entity}.{action}
 - [ ] Events include all required fields (id, type, version, timestamp, source, data)
-- [ ] Events include tenantId (organizationId) when applicable
+- [ ] Events include tenantId when applicable (RabbitMQ only; no Azure Service Bus)
 - [ ] logs-events.md created (if events are logged)
 - [ ] notifications-events.md created (if events trigger notifications)
 - [ ] RabbitMQ config added to default.yaml

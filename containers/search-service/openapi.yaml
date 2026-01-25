@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Search Service API
-  description: Advanced search and vector search service for Coder IDE
+  description: Advanced search and vector search service for Castiel
   version: 1.0.0
 servers:
   - url: /api/v1

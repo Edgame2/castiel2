@@ -1,0 +1,13 @@
+# Conda env for Azure ML ManagedOnlineDeployment of win-probability (score_win_probability.py).
+# Used by train_win_probability.py --deploy. Plan §876.
+name: win-probability
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.8,<3.12
+  - numpy
+  - scikit-learn
+  - pip
+  - pip:
+    - xgboost

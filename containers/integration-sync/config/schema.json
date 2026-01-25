@@ -58,7 +58,35 @@
       "properties": {
         "url": { "type": "string" },
         "exchange": { "type": "string" },
-        "queue": { "type": "string" }
+        "queue": { "type": "string" },
+        "bindings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "sync_scheduler": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "interval_ms": { "type": "number" },
+        "batch_size": { "type": "number" }
+      }
+    },
+    "token_refresh": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "interval_ms": { "type": "number" },
+        "expiration_threshold_ms": { "type": "number" }
+      }
+    },
+    "sync_limits": {
+      "type": "object",
+      "properties": {
+        "max_records_per_sync": { "type": "number", "minimum": 1, "default": 1000 },
+        "min_interval_minutes": { "type": "number", "minimum": 0, "default": 5 },
+        "max_concurrent_syncs_per_tenant": { "type": "number", "minimum": 1, "maximum": 10, "default": 3 }
       }
     }
   }

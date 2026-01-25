@@ -7,6 +7,7 @@ import { FastifyInstance } from 'fastify';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { ContextService } from '../services/ContextService';
 import { ContextAssemblerService } from '../services/ContextAssemblerService';
+import { FastifyInstance } from 'fastify';
 import { DependencyService } from '../services/DependencyService';
 import { CallGraphService } from '../services/CallGraphService';
 import {
@@ -19,7 +20,7 @@ import {
 
 export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
   const contextService = new ContextService();
-  const assemblerService = new ContextAssemblerService(contextService);
+  const assemblerService = new ContextAssemblerService(contextService, app);
   const dependencyService = new DependencyService(contextService);
   const callGraphService = new CallGraphService(contextService);
 
@@ -584,6 +585,56 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const path = decodeURIComponent(request.params.path);
       const callees = await callGraphService.getCallees(path, tenantId);
       reply.send(callees);
+    }
+  );
+
+  // ===== AI CONTEXT ASSEMBLY ROUTES =====
+
+  /**
+   * Assemble context for AI query
+   * POST /api/v1/context/assemble-ai
+   */
+  app.post<{ Body: ContextAssemblyRequest }>(
+    '/api/v1/context/assemble-ai',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Assemble context for AI query with topic extraction',
+        tags: ['Context Assembly'],
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const userId = request.user!.id;
+
+      const assemblyRequest: ContextAssemblyRequest = {
+        ...request.body,
+        userId,
+      };
+
+      const result = await assemblerService.assembleContextForAI(tenantId, assemblyRequest);
+      reply.send(result);
+    }
+  );
+
+  /**
+   * Extract topics from content
+   * POST /api/v1/context/extract-topics
+   */
+  app.post<{ Body: TopicExtractionRequest }>(
+    '/api/v1/context/extract-topics',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Extract topics from content',
+        tags: ['Context Assembly'],
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+
+      const topics = await (assemblerService as any).extractTopics(tenantId, request.body);
+      reply.send({ topics });
     }
   );
 }

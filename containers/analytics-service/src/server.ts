@@ -62,6 +62,13 @@ export async function buildApp(): Promise<FastifyInstance> {
     throw error;
   }
 
+  try {
+    const { initializeUsageTrackingConsumer } = await import('./events/consumers/UsageTrackingConsumer');
+    await initializeUsageTrackingConsumer();
+  } catch (error) {
+    console.warn('UsageTrackingConsumer init failed (continuing)', error);
+  }
+
   // Register routes
   await registerRoutes(fastify, config);
 
@@ -83,6 +90,12 @@ export async function start(): Promise<void> {
 
 async function gracefulShutdown(signal: string): Promise<void> {
   console.log(`${signal} received, shutting down gracefully`);
+  try {
+    const { closeUsageTrackingConsumer } = await import('./events/consumers/UsageTrackingConsumer');
+    await closeUsageTrackingConsumer();
+  } catch (e) {
+    console.warn('Error closing UsageTrackingConsumer', e);
+  }
   if (app) await app.close();
   await disconnectDatabase();
   process.exit(0);

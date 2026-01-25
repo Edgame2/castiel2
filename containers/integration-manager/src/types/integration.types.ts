@@ -95,6 +95,19 @@ export enum ConflictResolutionMode {
 /**
  * Integration Provider (catalog entry)
  */
+export interface OAuthProviderConfig {
+  authorizationUrl: string;
+  tokenUrl: string;
+  revokeUrl?: string;
+  userInfoUrl?: string;
+  scopes: string[];
+  clientIdEnvVar?: string;
+  clientSecretEnvVar?: string;
+  redirectUri: string;
+  pkce: boolean;
+  additionalParams?: Record<string, string>;
+}
+
 export interface IntegrationProvider {
   id: string;
   category: string; // Partition key
@@ -107,6 +120,7 @@ export interface IntegrationProvider {
   supportedEntities: string[]; // External entity types
   requiresUserScoping?: boolean;
   webhookSupport: boolean;
+  oauthConfig?: OAuthProviderConfig; // OAuth configuration if authMethods includes 'oauth'
   documentationUrl?: string;
   isSystem: boolean;
   isActive: boolean;

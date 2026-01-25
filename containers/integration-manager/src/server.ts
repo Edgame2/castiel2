@@ -66,6 +66,14 @@ export async function buildApp(): Promise<FastifyInstance> {
   // Register routes
   await registerRoutes(fastify, config);
 
+  // Initialize event consumer for sync scheduling
+  try {
+    const { initializeEventConsumer } = await import('./events/consumers/IntegrationManagerEventConsumer');
+    await initializeEventConsumer();
+  } catch (error) {
+    console.warn('Failed to initialize event consumer:', error);
+  }
+
   app = fastify;
   return fastify;
 }
@@ -84,6 +92,12 @@ export async function start(): Promise<void> {
 
 async function gracefulShutdown(signal: string): Promise<void> {
   console.log(`${signal} received, shutting down gracefully`);
+  try {
+    const { closeEventConsumer } = await import('./events/consumers/IntegrationManagerEventConsumer');
+    await closeEventConsumer();
+  } catch (error) {
+    console.error('Error closing event consumer:', error);
+  }
   if (app) await app.close();
   await disconnectDatabase();
   process.exit(0);

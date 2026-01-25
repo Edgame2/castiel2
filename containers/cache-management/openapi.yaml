@@ -2,17 +2,112 @@ openapi: 3.0.3
 info:
   title: Cache Management Service API
   description: |
-    Cache Management service.
+    Advanced cache management and optimization service.
+    
+    Provides cache metrics, optimization, and strategy management.
   version: 1.0.0
 servers:
   - url: /api/v1
     description: API Version 1
 tags:
-  - name: Cache Management
-    description: Cache Management operations
+  - name: Cache
+    description: Cache management operations
   - name: Health
     description: Health check endpoints
 paths:
+  /cache/metrics:
+    get:
+      tags:
+        - Cache
+      summary: Get cache metrics
+      description: Get cache performance metrics
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cacheKey
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cache metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metrics:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CacheMetrics'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /cache/optimize:
+    post:
+      tags:
+        - Cache
+      summary: Optimize cache
+      description: Optimize cache performance by analyzing metrics and adjusting strategies
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cache optimization results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  optimized:
+                    type: integer
+                  freed:
+                    type: integer
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /cache/strategies:
+    post:
+      tags:
+        - Cache
+      summary: Create or update cache strategy
+      description: Create or update a cache strategy for a pattern
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - pattern
+                - ttl
+                - priority
+              properties:
+                pattern:
+                  type: string
+                ttl:
+                  type: integer
+                  description: Time to live in seconds
+                priority:
+                  type: integer
+      responses:
+        '200':
+          description: Cache strategy created or updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheStrategy'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
   /health:
     get:
       tags:
@@ -35,6 +130,19 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
     Error:
       type: object
@@ -46,3 +154,47 @@ components:
               type: string
             message:
               type: string
+    CacheMetrics:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        cacheKey:
+          type: string
+        hitCount:
+          type: integer
+        missCount:
+          type: integer
+        hitRate:
+          type: number
+        averageResponseTime:
+          type: number
+        lastAccessed:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    CacheStrategy:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        pattern:
+          type: string
+        ttl:
+          type: integer
+        priority:
+          type: integer
+        enabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

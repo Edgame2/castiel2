@@ -1,6 +1,17 @@
 # forecasting Module Configuration
 # Per ModuleImplementationGuide Section 4
 
+# Application Insights (Plan §8.5.1, FIRST_STEPS §1); init before other imports via src/instrumentation.ts
+application_insights:
+  connection_string: ${APPLICATIONINSIGHTS_CONNECTION_STRING:-}
+  disable: ${APPLICATIONINSIGHTS_DISABLE:-false}
+
+# Prometheus metrics (Plan §8.5.2, §8.5.4); deployment/monitoring/README
+metrics:
+  path: ${METRICS_PATH:-/metrics}
+  require_auth: ${METRICS_REQUIRE_AUTH:-false}
+  bearer_token: ${METRICS_BEARER_TOKEN:-}
+
 module:
   name: forecasting
   version: 1.0.0
@@ -19,6 +30,7 @@ cosmos_db:
     consensus: forecast_consensus
     commitments: forecast_commitments
     pipeline_health: forecast_pipeline_health
+    predictions: forecast_predictions
 
 # JWT Configuration (shared with auth service)
 jwt:
@@ -53,6 +65,15 @@ rabbitmq:
     - "risk.evaluation.completed"
     - "integration.sync.completed"
     - "workflow.forecast.requested"
+
+# Industry seasonality (MISSING_FEATURES 5.6): multipliers by industry and quarter (Q1–Q4). default used when industry or quarter missing.
+industry_seasonality:
+  default: 1
+  retail:
+    Q4: 1.15
+    Q1: 0.95
+  tech:
+    Q4: 1.1
 
 # Feature Flags
 features: {}

@@ -177,3 +177,29 @@ export interface CacheHealthCheck {
   timestamp: Date;
 }
 
+/**
+ * Cache Metrics (from cache-management)
+ */
+export interface CacheMetrics {
+  id: string;
+  tenantId: string;
+  cacheKey: string;
+  hitCount: number;
+  missCount: number;
+  hitRate: number;
+  averageResponseTime: number;
+  lastAccessed: Date | string;
+  createdAt: Date | string;
+}/**
+ * Cache Strategy (from cache-management)
+ */
+export interface CacheStrategy {
+  id: string;
+  tenantId: string;
+  pattern: string;
+  ttl: number;
+  priority: number;
+  enabled: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}

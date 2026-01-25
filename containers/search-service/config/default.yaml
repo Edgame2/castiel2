@@ -15,6 +15,14 @@ cosmos_db:
   containers:
     queries: search_queries
     analytics: search_analytics
+    web_search_cache: web_search_cache
+
+# Field-weighted relevance scoring (MISSING_FEATURES 2.3): name > description > metadata
+field_weights:
+  name: 1.0
+  description: 0.8
+  metadata: 0.5
+field_weight_boost: 0.2  # Additive boost to vector score (0 = disabled)
 
 services:
   embeddings:
@@ -23,6 +31,8 @@ services:
     url: ${SHARD_MANAGER_URL:-http://localhost:3023}
   logging:
     url: ${LOGGING_URL:-http://localhost:3014}
+  ai_service:
+    url: ${AI_SERVICE_URL:-http://localhost:3006}
 
 rabbitmq:
   url: ${RABBITMQ_URL}

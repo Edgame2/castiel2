@@ -1,0 +1,13 @@
+# deps for training scripts (Azure ML Job or local). Plan §5.6; BI_SALES_RISK_TRAINING_SCRIPTS_SPEC.
+pandas>=1.5.0
+xgboost>=1.7.0
+pyarrow>=10.0.0
+# for train_win_probability.py (§3.2), train_anomaly_isolation_forest.py (§3.4): CalibratedClassifierCV, IsolationForest
+scikit-learn>=1.2.0
+# for train_lstm_trajectory.py (Plan §762; §3.3)
+tensorflow>=2.12.0
+# for train_prophet_forecast.py (Plan §877; §3.5): revenue-forecasting-model
+prophet>=1.1
+# for Azure ML register/deploy (optional when run as Azure ML Job):
+# azure-ai-ml>=1.10.0
+# azure-identity>=1.14.0

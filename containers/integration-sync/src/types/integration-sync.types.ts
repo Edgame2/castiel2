@@ -30,6 +30,7 @@ export interface SyncExecution {
   executionId: string;
   taskId: string;
   tenantId: string;
+  integrationId?: string; // set for sync_limits min_interval and reporting
   status: SyncTaskStatus;
   recordsProcessed: number;
   recordsCreated: number;

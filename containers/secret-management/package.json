@@ -1,7 +1,7 @@
 {
   "name": "@coder/secret-management",
   "version": "1.0.0",
-  "description": "Secret Management Service for Coder IDE",
+  "description": "Secret Management Service for Castiel",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -11,7 +11,8 @@
     "test:unit": "vitest run tests/unit",
     "test:int": "vitest run tests/integration",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run tests/integration"
   },
   "dependencies": {
     "@azure/keyvault-secrets": "^4.7.0",

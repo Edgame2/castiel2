@@ -12,7 +12,8 @@
     "test:integration": "vitest run tests/integration",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@coder/shared": "file:../shared",

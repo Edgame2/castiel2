@@ -1,0 +1,81 @@
+# Prometheus scrape config for BI/risk containers
+# Merge this into prometheus.yml scrape_configs, or include via prometheus.yml:
+#   scrape_configs: !include scrape-config.yaml
+#
+# Override targets per environment: in K8s use e.g. risk-analytics.<namespace>.svc.cluster.local:3048
+# When metrics.require_auth is true, set bearer_token or bearer_token_file per job (or globally).
+
+scrape_configs:
+  # --- risk-analytics (default port 3048) ---
+  - job_name: risk-analytics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['risk-analytics:3048']
+        labels: { service: 'risk-analytics', domain: 'bi-risk' }
+    # When metrics.require_auth is true, add: bearer_token: <secret> or bearer_token_file: /path/to/token
+
+  # --- ml-service (default port 3033) ---
+  - job_name: ml-service
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['ml-service:3033']
+        labels: { service: 'ml-service', domain: 'bi-risk' }
+
+  # --- forecasting (default port 3050) ---
+  - job_name: forecasting
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['forecasting:3050']
+        labels: { service: 'forecasting', domain: 'bi-risk' }
+
+  # --- recommendations (default port 3049) ---
+  - job_name: recommendations
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['recommendations:3049']
+        labels: { service: 'recommendations', domain: 'bi-risk' }
+
+  # --- workflow-orchestrator (default port 3051) ---
+  - job_name: workflow-orchestrator
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['workflow-orchestrator:3051']
+        labels: { service: 'workflow-orchestrator', domain: 'bi-risk' }
+
+  # --- logging (default port 3014) ---
+  - job_name: logging
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['logging:3014']
+        labels: { service: 'logging', domain: 'bi-risk' }
+
+  # --- dashboard-analytics (default port 3055) ---
+  - job_name: dashboard-analytics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['dashboard-analytics:3055']
+        labels: { service: 'dashboard-analytics', domain: 'bi-risk' }
+
+  # --- notification-manager (default port 3001, Plan §8.5.1) ---
+  - job_name: notification-manager
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['notification-manager:3001']
+        labels: { service: 'notification-manager', domain: 'bi-risk' }
+    # When metrics.require_auth is true, add: bearer_token: <secret> or bearer_token_file: /path/to/token

@@ -1,6 +1,6 @@
 # API Gateway
 
-API Gateway for Coder IDE - Routes requests to microservices with authentication, tenant isolation, and rate limiting.
+API Gateway for Castiel - Routes requests to microservices with authentication, tenant isolation, and rate limiting.
 
 ## Overview
 

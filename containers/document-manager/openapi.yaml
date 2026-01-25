@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Document Manager Service API
   description: |
-    Document and file management service for Coder IDE.
+    Document and file management service for Castiel.
     
     ## Authentication
     All endpoints (except health checks) require JWT authentication via Bearer token:
@@ -18,7 +18,7 @@ info:
     - **Document Templates**: Template management
   version: 1.0.0
   contact:
-    name: Coder IDE Team
+    name: Castiel Team
 
 servers:
   - url: /api/v1

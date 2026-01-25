@@ -1,14 +1,17 @@
 {
   "name": "@coder/pipeline-manager",
   "version": "1.0.0",
-  "description": "Pipeline Manager Service - Sales pipeline and opportunity management for Coder IDE",
+  "description": "Pipeline Manager Service - Sales pipeline and opportunity management for Castiel",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "vitest run",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src --ext .ts",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@coder/shared": "file:../shared",
@@ -24,7 +27,7 @@
     "@types/uuid": "^10.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.0"
+    "vitest": "^4.0.0",
+    "@vitest/coverage-v8": "^2.1.0"
   }
 }
-

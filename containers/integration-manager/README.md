@@ -1,6 +1,6 @@
 # Integration Manager Module
 
-Third-party integrations and webhook management service for Coder IDE.
+Third-party integrations and webhook management service for Castiel.
 
 ## Features
 

@@ -340,7 +340,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   );
 
   /**
-   * Optimize cache
+   * Optimize cache (recommendations)
    * POST /api/v1/cache/optimize
    */
   app.post<{ Querystring: { namespace?: string } }>(
@@ -370,4 +370,89 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       reply.send(report);
     }
   );
+
+  // ===== CACHE MANAGEMENT ROUTES (from cache-management) =====
+
+  /**
+   * Get cache metrics
+   * GET /api/v1/cache/metrics
+   */
+  app.get<{ Querystring: { cacheKey?: string } }>(
+    '/api/v1/cache/metrics',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get cache metrics',
+        tags: ['Cache'],
+        querystring: {
+          type: 'object',
+          properties: {
+            cacheKey: { type: 'string' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            description: 'Cache metrics',
+            properties: {
+              metrics: {
+                type: 'array',
+                items: { type: 'object' },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const tenantId = request.user!.tenantId;
+        const { cacheKey } = request.query;
+        const metrics = await cacheService.getCacheMetrics(tenantId, cacheKey);
+        return reply.send({ metrics });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'METRICS_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to retrieve cache metrics',
+          },
+        });
+      }
+    }
+  );
+
+  /**
+   * Optimize cache (execution)
+   * POST /api/v1/cache/optimize-execute
+   */
+  app.post('/api/v1/cache/optimize-execute', {
+    preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+    schema: {
+      description: 'Execute cache optimization',
+      tags: ['Cache'],
+      response: {
+        200: {
+          type: 'object',
+          description: 'Cache optimization result',
+          properties: {
+            optimized: { type: 'number' },
+            freed: { type: 'number' },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const tenantId = request.user!.tenantId;
+      const result = await cacheService.optimizeCache(tenantId);
+      return reply.send(result);
+    } catch (error: any) {
+      return reply.status(error.statusCode || 500).send({
+        error: {
+          code: 'CACHE_OPTIMIZATION_FAILED',
+          message: error.message || 'Failed to optimize cache',
+        },
+      });
+    }
+  });
 }

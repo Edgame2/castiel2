@@ -1,6 +1,6 @@
 # Dashboard Service
 
-Dashboard management service for Coder IDE.
+Dashboard management service for Castiel.
 
 ## Features
 

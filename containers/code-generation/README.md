@@ -1,6 +1,6 @@
 # Code Generation Module
 
-Specialized code generation tasks service for Coder IDE, providing UI component generation, API endpoint generation, database schema generation, test data generation, and configuration generation.
+Specialized code generation tasks service for Castiel, providing UI component generation, API endpoint generation, database schema generation, test data generation, and configuration generation.
 
 ## Features
 
@@ -122,5 +122,5 @@ npm test
 
 ## License
 
-Proprietary - Coder IDE
+Proprietary - Castiel
 

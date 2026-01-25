@@ -41,7 +41,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       openapi: '3.0.3',
       info: {
         title: 'Document Manager Service API',
-        description: 'Document and file management service for Coder IDE',
+        description: 'Document and file management service for Castiel',
         version: '1.0.0',
       },
       servers: [

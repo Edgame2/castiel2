@@ -1,11 +1,16 @@
-# Utility-services Module
+# Utility Services Module
 
-[Description of what this service does]
+Utility and helper services for Castiel, providing import/export functionality, schema migrations, computed fields, field validation, user onboarding, project activity tracking, and service registry.
 
 ## Features
 
-- Feature 1
-- Feature 2
+- **Import/Export**: Import and export data
+- **Schema Migration**: Schema migration management
+- **Computed Fields**: Computed field processing
+- **Field Validation**: Field validation service
+- **User Onboarding**: User onboarding workflows
+- **Project Activity**: Project activity tracking
+- **Service Registry**: Service registry management
 
 ## Quick Start
 
@@ -32,7 +37,9 @@ cp config/default.yaml config/local.yaml
 
 The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers). Ensure the following containers exist:
 
-- `utility-services_data` - Main data container
+- `utility_imports` - Import jobs (partition: `/tenantId`)
+- `utility_exports` - Export jobs (partition: `/tenantId`)
+- `utility_migrations` - Schema migrations (partition: `/tenantId`)
 
 ### Running
 
@@ -53,11 +60,17 @@ See [OpenAPI Spec](./openapi.yaml)
 
 ### Published Events
 
-- `utility-services.event.name`
+- `utility.import.completed` - Import job completed
+- `utility.export.completed` - Export job completed
+- `utility.migration.completed` - Schema migration completed
 
 ### Consumed Events
 
-- `other.event.name`
+- (None currently)
+
+## Dependencies
+
+- Various (low coupling)
 
 ## Development
 

@@ -5,6 +5,18 @@ All notable changes to the Logging module will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Documentation:** `docs/logs-events.md` — DataLakeCollector (`risk.evaluated` → Parquet) and MLAuditConsumer (`risk.evaluated`, `ml.prediction.completed`, `remediation.workflow.completed` → audit Blob). Plan §3.5, FIRST_STEPS §3, DATA_LAKE_LAYOUT.
+- **README:** Configuration reference for `data_lake.*` (connection_string, container, path_prefix, audit_path_prefix) and `rabbitmq.data_lake` / `rabbitmq.ml_audit` (queues, bindings); Consumed Events table for DataLakeCollector and MLAuditConsumer.
+- **MLAuditConsumer (Plan §10):** `risk.prediction.generated` added to `rabbitmq.ml_audit.bindings`. 30/60/90-day risk predictions from risk-analytics (EarlyWarningService.generatePredictions) are written to audit Blob.
+
+## [1.2.0] - 2025-01-24
+
+### Added
+- **Observability (Plan §8.5, FIRST_STEPS §1):** `@azure/monitor-opentelemetry` in `src/instrumentation.ts` (init before other imports; env `APPLICATIONINSIGHTS_CONNECTION_STRING`, `APPLICATIONINSIGHTS_DISABLE`). `GET /metrics` (prom-client): `http_requests_total`, `http_request_duration_seconds`. Config: `application_insights` (connection_string, disable), `metrics` (path, require_auth, bearer_token); schema. Optional Bearer on /metrics when `metrics.require_auth`.
+
 ## [1.1.0] - 2025-01-22
 
 ### Changed

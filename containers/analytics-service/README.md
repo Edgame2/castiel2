@@ -1,6 +1,6 @@
 # Analytics Service Module
 
-Analytics and reporting service for Coder IDE.
+Analytics and reporting service for Castiel.
 
 ## Features
 

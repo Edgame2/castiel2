@@ -3,6 +3,8 @@
  * Orchestrates asynchronous workflows for opportunity change events
  */
 
+import './instrumentation';
+
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
 import { initializeDatabase, connectDatabase } from '@coder/shared';
@@ -11,6 +13,7 @@ import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import { loadConfig } from './config';
 import { log } from './utils/logger';
+import { httpRequestsTotal, httpRequestDurationSeconds, register } from './metrics';
 
 let app: FastifyInstance | null = null;
 
@@ -89,6 +92,13 @@ export async function buildApp(): Promise<FastifyInstance> {
     log.warn('Failed to initialize event handlers', { error, service: 'workflow-orchestrator' });
   }
 
+  try {
+    const { startBatchJobScheduler } = await import('./jobs/BatchJobScheduler');
+    await startBatchJobScheduler();
+  } catch (error) {
+    log.warn('Failed to start batch job scheduler', { error, service: 'workflow-orchestrator' });
+  }
+
   fastify.setErrorHandler((error: Error & { validation?: unknown; statusCode?: number }, request, reply) => {
     log.error('Request error', error, {
       requestId: request.id,
@@ -121,6 +131,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   fastify.addHook('onResponse', async (request, reply) => {
+    const route = (request as { routerPath?: string }).routerPath ?? (request as { routeOptions?: { url?: string } }).routeOptions?.url ?? (String((request as { url?: string }).url || '').split('?')[0] || 'unknown');
+    httpRequestsTotal.inc({ method: request.method, route, status: String(reply.statusCode) });
+    httpRequestDurationSeconds.observe({ method: request.method, route }, (reply.elapsedTime ?? 0) / 1000);
     log.debug('Request completed', {
       requestId: request.id,
       method: request.method,
@@ -133,6 +146,18 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   const { registerRoutes } = await import('./routes');
   await registerRoutes(fastify, config);
+
+  const metricsConf = config.metrics ?? { path: '/metrics', require_auth: false, bearer_token: '' };
+  fastify.get(metricsConf.path || '/metrics', async (request, reply) => {
+    if (metricsConf.require_auth) {
+      const raw = (request.headers.authorization as string) || '';
+      const token = raw.startsWith('Bearer ') ? raw.slice(7) : raw;
+      if (token !== (metricsConf.bearer_token || '')) {
+        return reply.status(401).send('Unauthorized');
+      }
+    }
+    return reply.type('text/plain; version=0.0.4').send(await register.metrics());
+  });
 
   fastify.get('/health', async () => ({
     status: 'healthy',
@@ -181,6 +206,12 @@ export async function start(): Promise<void> {
 
 async function gracefulShutdown(signal: string): Promise<void> {
   log.info(`${signal} received, shutting down gracefully`, { service: 'workflow-orchestrator' });
+  try {
+    const { stopBatchJobScheduler } = await import('./jobs/BatchJobScheduler');
+    stopBatchJobScheduler();
+  } catch (error) {
+    log.error('Error stopping batch job scheduler', error, { service: 'workflow-orchestrator' });
+  }
   try {
     const { closeEventPublisher } = await import('./events/publishers/WorkflowEventPublisher');
     await closeEventPublisher();

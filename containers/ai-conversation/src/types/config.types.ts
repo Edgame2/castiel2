@@ -20,6 +20,7 @@ export interface AIConversationConfig {
       messages: string;
       contexts: string;
       citations: string;
+      citation_configs: string;
     };
   };
   jwt: {
@@ -33,6 +34,7 @@ export interface AIConversationConfig {
     context_service?: { url: string };
     shard_manager?: { url: string };
     embeddings?: { url: string };
+    search_service?: { url: string };
   };
   rabbitmq: {
     url: string;

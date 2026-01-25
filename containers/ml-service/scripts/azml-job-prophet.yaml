@@ -1,0 +1,25 @@
+# Azure ML v2 Command Job: train_prophet_forecast.py (Plan §5.6, §877; TRAINING_SCRIPTS_SPEC §3.5).
+# Submit from containers/ml-service/scripts:
+#   az ml job create --file azml-job-prophet.yaml \
+#     --set inputs.training_data.path=abfs://container@account.dfs.core.windows.net/path \
+#     [--set inputs.deploy_flag.value=--deploy]
+# Input Parquet: (date, revenue) or (ds, y) or (date, pipeline_value) or (date, target_revenue); aggregate by date.
+# Source: /ml_training/revenue_forecasting/, historical closed-won amounts or pipeline by date.
+# Env AZURE_ML_*; for --deploy also DEPLOY_INSTANCE_TYPE, DEPLOY_INSTANCE_COUNT.
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+experiment_name: revenue-forecasting-training
+display_name: prophet-revenue-forecast-train
+code: .
+command: python train_prophet_forecast.py --input-path ${{inputs.training_data}} --model-name ${{inputs.model_name}} ${{inputs.deploy_flag}}
+inputs:
+  training_data:
+    type: uri_folder
+    path: https://REPLACE_WITH_YOUR_DATA_LAKE_OR_DATASET
+  model_name:
+    value: revenue-forecasting-model
+  deploy_flag:
+    value: ""
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+  conda_file: conda-prophet-train.yaml

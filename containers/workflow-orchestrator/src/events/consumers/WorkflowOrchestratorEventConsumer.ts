@@ -33,166 +33,152 @@ export async function initializeEventConsumer(): Promise<void> {
 
     // Handle opportunity change events from integration-manager
     consumer.on('integration.opportunity.updated', async (event) => {
-      log.info('Opportunity change detected, starting analysis workflow', {
-        opportunityId: event.data.opportunityId,
-        tenantId: event.tenantId,
-        service: 'workflow-orchestrator',
-      });
-      
+      const opportunityId = event.data?.opportunityId;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!opportunityId || !tenantId) {
+        log.warn('integration.opportunity.updated missing opportunityId or tenantId', { hasData: !!event.data, service: 'workflow-orchestrator' });
+        return;
+      }
+      log.info('Opportunity change detected, starting analysis workflow', { opportunityId, tenantId, service: 'workflow-orchestrator' });
+
       if (!workflowOrchestratorService) {
         log.error('Workflow orchestrator service not initialized', { service: 'workflow-orchestrator' });
         return;
       }
-      
+
       try {
-        await workflowOrchestratorService.startOpportunityAnalysisWorkflow(
-          event.data.opportunityId,
-          event.tenantId
-        );
-      } catch (error: any) {
-        log.error('Failed to start workflow from opportunity update', error, {
-          opportunityId: event.data.opportunityId,
-          tenantId: event.tenantId,
-          service: 'workflow-orchestrator',
-        });
+        await workflowOrchestratorService.startOpportunityAnalysisWorkflow(opportunityId, tenantId);
+      } catch (error: unknown) {
+        log.error('Failed to start workflow from opportunity update', error instanceof Error ? error : new Error(String(error)), { opportunityId, tenantId, service: 'workflow-orchestrator' });
       }
     });
 
     // Handle shard updates (opportunity type)
     consumer.on('shard.updated', async (event) => {
-      // Only process opportunity-type shards
-      if (event.data.shardType === 'opportunity' || event.data.shardTypeName === 'opportunity') {
-        log.info('Opportunity shard updated, starting analysis workflow', {
-          shardId: event.data.shardId,
-          tenantId: event.tenantId,
-          service: 'workflow-orchestrator',
-        });
-        
-        if (!workflowOrchestratorService) {
-          log.error('Workflow orchestrator service not initialized', { service: 'workflow-orchestrator' });
-          return;
-        }
-        
-        try {
-          await workflowOrchestratorService.startOpportunityAnalysisWorkflow(
-            event.data.shardId,
-            event.tenantId
-          );
-        } catch (error: any) {
-          log.error('Failed to start workflow from shard update', error, {
-            shardId: event.data.shardId,
-            tenantId: event.tenantId,
-            service: 'workflow-orchestrator',
-          });
-        }
+      if (!event.data) {
+        log.warn('shard.updated missing event.data', { service: 'workflow-orchestrator' });
+        return;
+      }
+      const shardId = event.data.shardId ?? event.data.id;
+      const tenantId = event.tenantId ?? event.data.tenantId;
+      if (!shardId || !tenantId) {
+        log.warn('shard.updated missing shardId or tenantId', { hasData: true, service: 'workflow-orchestrator' });
+        return;
+      }
+      if (event.data.shardType !== 'opportunity' && event.data.shardTypeName !== 'opportunity') return;
+
+      log.info('Opportunity shard updated, starting analysis workflow', { shardId, tenantId, service: 'workflow-orchestrator' });
+
+      if (!workflowOrchestratorService) {
+        log.error('Workflow orchestrator service not initialized', { service: 'workflow-orchestrator' });
+        return;
+      }
+
+      try {
+        await workflowOrchestratorService.startOpportunityAnalysisWorkflow(shardId, tenantId);
+      } catch (error: unknown) {
+        log.error('Failed to start workflow from shard update', error instanceof Error ? error : new Error(String(error)), { shardId, tenantId, service: 'workflow-orchestrator' });
       }
     });
 
     // Handle risk evaluation completion
     consumer.on('risk.evaluation.completed', async (event) => {
       if (!workflowOrchestratorService) return;
-      
-      // Extract workflowId from event data
-      const workflowId = event.data.workflowId;
-      if (workflowId) {
-        await workflowOrchestratorService.handleStepCompletion(
-          workflowId,
-          'risk_analysis',
-          {
-            evaluationId: event.data.evaluationId,
-            riskScore: event.data.riskScore,
-            detectedRisks: event.data.detectedRisks,
-          },
-          event.tenantId
-        );
-      }
+      const workflowId = event.data?.workflowId;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!workflowId || !tenantId) return;
+      await workflowOrchestratorService.handleStepCompletion(
+        workflowId,
+        'risk_analysis',
+        {
+          evaluationId: event.data?.evaluationId,
+          riskScore: event.data?.riskScore,
+          detectedRisks: event.data?.detectedRisks,
+        },
+        tenantId
+      );
     });
 
     // Handle risk scoring completion
     consumer.on('risk.scoring.completed', async (event) => {
       if (!workflowOrchestratorService) return;
-      
-      const workflowId = event.data.workflowId;
-      if (workflowId) {
-        await workflowOrchestratorService.handleStepCompletion(
-          workflowId,
-          'risk_scoring',
-          {
-            scoringId: event.data.scoringId,
-            mlRiskScore: event.data.mlRiskScore,
-            modelId: event.data.modelId,
-            confidence: event.data.confidence,
-          },
-          event.tenantId
-        );
-      }
+      const workflowId = event.data?.workflowId;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!workflowId || !tenantId) return;
+      await workflowOrchestratorService.handleStepCompletion(
+        workflowId,
+        'risk_scoring',
+        {
+          scoringId: event.data?.scoringId,
+          mlRiskScore: event.data?.mlRiskScore,
+          modelId: event.data?.modelId,
+          confidence: event.data?.confidence,
+        },
+        tenantId
+      );
     });
 
     // Handle forecast completion
     consumer.on('forecast.completed', async (event) => {
       if (!workflowOrchestratorService) return;
-      
-      const workflowId = event.data.workflowId;
-      if (workflowId) {
-        await workflowOrchestratorService.handleStepCompletion(
-          workflowId,
-          'forecast',
-          {
-            forecastId: event.data.forecastId,
-            revenueForecast: event.data.revenueForecast,
-            confidence: event.data.confidence,
-          },
-          event.tenantId
-        );
-      }
+      const workflowId = event.data?.workflowId;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!workflowId || !tenantId) return;
+      await workflowOrchestratorService.handleStepCompletion(
+        workflowId,
+        'forecast',
+        {
+          forecastId: event.data?.forecastId,
+          revenueForecast: event.data?.revenueForecast,
+          confidence: event.data?.confidence,
+        },
+        tenantId
+      );
     });
 
     // Handle recommendation completion
     consumer.on('recommendation.generation.completed', async (event) => {
       if (!workflowOrchestratorService) return;
-      
-      const workflowId = event.data.workflowId;
-      if (workflowId) {
-        await workflowOrchestratorService.handleStepCompletion(
-          workflowId,
-          'recommendation',
-          {
-            recommendationId: event.data.recommendationId,
-            recommendations: event.data.recommendations,
-            count: event.data.recommendations?.length || 0,
-          },
-          event.tenantId
-        );
-      }
+      const workflowId = event.data?.workflowId;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!workflowId || !tenantId) return;
+      await workflowOrchestratorService.handleStepCompletion(
+        workflowId,
+        'recommendation',
+        {
+          recommendationId: event.data?.recommendationId,
+          recommendations: event.data?.recommendations,
+          count: event.data?.recommendations?.length || 0,
+        },
+        tenantId
+      );
     });
 
     // Handle workflow step failures
     consumer.on('risk.evaluation.failed', async (event) => {
       if (!workflowOrchestratorService) return;
-      
-      const workflowId = event.data.workflowId;
-      if (workflowId) {
-        await workflowOrchestratorService.handleStepFailure(
-          workflowId,
-          'risk_analysis',
-          event.data.error || 'Risk evaluation failed',
-          event.tenantId
-        );
-      }
+      const workflowId = event.data?.workflowId;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!workflowId || !tenantId) return;
+      await workflowOrchestratorService.handleStepFailure(
+        workflowId,
+        'risk_analysis',
+        event.data?.error || 'Risk evaluation failed',
+        tenantId
+      );
     });
 
     consumer.on('recommendation.generation.failed', async (event) => {
       if (!workflowOrchestratorService) return;
-      
-      const workflowId = event.data.workflowId;
-      if (workflowId) {
-        await workflowOrchestratorService.handleStepFailure(
-          workflowId,
-          'recommendation',
-          event.data.error || 'Recommendation generation failed',
-          event.tenantId
-        );
-      }
+      const workflowId = event.data?.workflowId;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!workflowId || !tenantId) return;
+      await workflowOrchestratorService.handleStepFailure(
+        workflowId,
+        'recommendation',
+        event.data?.error || 'Recommendation generation failed',
+        tenantId
+      );
     });
 
     await consumer.start();
@@ -205,6 +191,7 @@ export async function initializeEventConsumer(): Promise<void> {
 
 export async function closeEventConsumer(): Promise<void> {
   if (consumer) {
+    await consumer.stop();
     consumer = null;
   }
 }

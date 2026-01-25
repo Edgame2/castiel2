@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Collaboration Service API
-  description: Real-time collaboration features for Coder IDE
+  description: Real-time collaboration features for Castiel
   version: 1.0.0
 servers:
   - url: /api/v1

@@ -1,6 +1,6 @@
 # Multi-Modal Service Module
 
-Handle multi-modal inputs (images, diagrams, audio, video) for Coder IDE, providing image understanding, diagram parsing, audio transcription, and video analysis.
+Handle multi-modal inputs (images, diagrams, audio, video) for Castiel, providing image understanding, diagram parsing, audio transcription, and video analysis.
 
 ## Features
 
@@ -113,5 +113,5 @@ npm test
 
 ## License
 
-Proprietary - Coder IDE
+Proprietary - Castiel
 

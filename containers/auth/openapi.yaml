@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Authentication Service API
   description: |
-    Authentication service for Coder IDE with multi-provider support.
+    Authentication service for Castiel with multi-provider support.
     
     ## Authentication
     Most endpoints (except health checks and public auth endpoints) require JWT authentication via Bearer token:
@@ -18,7 +18,7 @@ info:
     - **Account Security**: Login attempt tracking, account lockout, email verification
   version: 1.0.0
   contact:
-    name: Coder IDE Team
+    name: Castiel Team
 
 servers:
   - url: /api/v1

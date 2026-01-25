@@ -12,6 +12,8 @@ servers:
 tags:
   - name: Sync
     description: Synchronization operations
+  - name: Webhooks
+    description: Webhook management
   - name: Health
     description: Health check endpoints
 paths:
@@ -32,6 +34,10 @@ paths:
       responses:
         '200':
           description: Sync task status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncTask'
         '401':
           description: Unauthorized
         '404':
@@ -54,14 +60,237 @@ paths:
               type: object
               required:
                 - integrationId
+                - direction
               properties:
                 integrationId:
                   type: string
+                direction:
+                  type: string
+                  enum: [inbound, outbound, bidirectional]
+                entityType:
+                  type: string
+                filters:
+                  type: object
       responses:
         '202':
           description: Sync task started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  taskId:
+                    type: string
+                  status:
+                    type: string
+                  message:
+                    type: string
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /sync/conflicts/{conflictId}/resolve:
+    post:
+      tags:
+        - Sync
+      summary: Resolve sync conflict
+      description: Resolve a synchronization conflict
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conflictId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - resolution
+              properties:
+                resolution:
+                  type: string
+                  enum: [source_wins, target_wins, manual, merge]
+      responses:
+        '200':
+          description: Conflict resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncConflict'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Conflict not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /webhooks:
+    post:
+      tags:
+        - Webhooks
+      summary: Create webhook
+      description: Create a new webhook for an integration
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - integrationId
+                - url
+                - events
+              properties:
+                integrationId:
+                  type: string
+                url:
+                  type: string
+                events:
+                  type: array
+                  items:
+                    type: string
+                secret:
+                  type: string
+      responses:
+        '201':
+          description: Webhook created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Webhook'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /webhooks/{webhookId}:
+    get:
+      tags:
+        - Webhooks
+      summary: Get webhook by ID
+      description: Get webhook details by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Webhook details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Webhook'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Webhook not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags:
+        - Webhooks
+      summary: Update webhook
+      description: Update webhook configuration
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                events:
+                  type: array
+                  items:
+                    type: string
+                active:
+                  type: boolean
+                secret:
+                  type: string
+      responses:
+        '200':
+          description: Webhook updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Webhook'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Webhook not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Webhooks
+      summary: Delete webhook
+      description: Delete a webhook
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Webhook deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Webhook not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /integrations/{integrationId}/webhooks:
+    get:
+      tags:
+        - Webhooks
+      summary: List webhooks for integration
+      description: Get all webhooks for an integration
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: integrationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of webhooks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Webhook'
         '401':
           description: Unauthorized
         '500':
@@ -112,3 +341,99 @@ components:
               type: string
             message:
               type: string
+    SyncTask:
+      type: object
+      properties:
+        taskId:
+          type: string
+        tenantId:
+          type: string
+        integrationId:
+          type: string
+        direction:
+          type: string
+          enum: [inbound, outbound, bidirectional]
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+        entityType:
+          type: string
+        filters:
+          type: object
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        error:
+          type: string
+        recordsProcessed:
+          type: integer
+        recordsCreated:
+          type: integer
+        recordsUpdated:
+          type: integer
+        recordsFailed:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    SyncConflict:
+      type: object
+      properties:
+        conflictId:
+          type: string
+        taskId:
+          type: string
+        tenantId:
+          type: string
+        entityId:
+          type: string
+        entityType:
+          type: string
+        sourceData:
+          type: object
+        targetData:
+          type: object
+        resolutionStrategy:
+          type: string
+          enum: [source_wins, target_wins, manual, merge]
+        resolved:
+          type: boolean
+        resolvedAt:
+          type: string
+          format: date-time
+        resolvedBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    Webhook:
+      type: object
+      properties:
+        webhookId:
+          type: string
+        tenantId:
+          type: string
+        integrationId:
+          type: string
+        url:
+          type: string
+        events:
+          type: array
+          items:
+            type: string
+        secret:
+          type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

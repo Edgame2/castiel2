@@ -1,0 +1,27 @@
+# Azure ML v2 Command Job: train_risk_scoring.py (Plan §5.6, §874; TRAINING_SCRIPTS_SPEC §3.1).
+# Submit from containers/ml-service/scripts:
+#   az ml job create --file azml-job-risk-scoring.yaml \
+#     --set inputs.training_data.path=abfs://container@account.dfs.core.windows.net/path \
+#     [--set inputs.deploy_flag.value=--deploy]
+# Or use azureml:dataset:version for inputs.training_data.path.
+# Env AZURE_ML_SUBSCRIPTION_ID, AZURE_ML_RESOURCE_GROUP, AZURE_ML_WORKSPACE_NAME must be set
+# (or configure workspace in CLI). For --deploy, also DEPLOY_INSTANCE_TYPE, DEPLOY_INSTANCE_COUNT.
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+experiment_name: risk-scoring-training
+display_name: risk-scoring-train
+code: .
+command: python train_risk_scoring.py --input-path ${{inputs.training_data}} --model-name ${{inputs.model_name}} --industry-id ${{inputs.industry_id}} ${{inputs.deploy_flag}}
+inputs:
+  training_data:
+    type: uri_folder
+    path: https://REPLACE_WITH_YOUR_DATA_LAKE_OR_DATASET
+  model_name:
+    value: risk-scoring-global
+  industry_id:
+    value: ""
+  deploy_flag:
+    value: ""
+environment:
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+  conda_file: conda-risk-scoring-train.yaml

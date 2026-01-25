@@ -1,0 +1,19 @@
+---
+description: BI Sales Risk plan and specs when working in risk-analytics, ml-service, forecasting, logging, workflow-orchestrator, recommendations, dashboard-analytics, notification-manager
+globs: containers/risk-analytics/**/*,containers/ml-service/**/*,containers/forecasting/**/*,containers/logging/**/*,containers/workflow-orchestrator/**/*,containers/recommendations/**/*,containers/dashboard-analytics/**/*,containers/notification-manager/**/*
+alwaysApply: false
+---
+
+# BI Sales Risk Context
+
+When editing these containers, use:
+
+- **Plans:** `documentation/requirements/BI_SALES_RISK_IMPLEMENTATION_PLAN.md` (Phases 1–2, §10 tasks), `documentation/requirements/BI_SALES_RISK_SHARD_SCHEMAS.md`
+- **Data Lake / outcome:** `BI_SALES_RISK_DATA_LAKE_LAYOUT.md` — paths, Parquet columns, `opportunity.outcome.recorded` publisher (outcome-sync) and consumer
+- **Features / buildVector:** `BI_SALES_RISK_FEATURE_PIPELINE_SPEC.md` — data sources, feature names, `buildVectorForOpportunity`; ml-service owns it
+- **Training (Python):** `BI_SALES_RISK_TRAINING_SCRIPTS_SPEC.md` — input paths, target columns, `containers/ml-service/scripts/`
+- **Observability:** Plan §8.5 and `deployment/monitoring/README.md` — /metrics (prom-client, optional Bearer), App Insights (@azure/monitor-opentelemetry), metric names
+- **opportunityId** = `c_opportunity` shard `id` everywhere (APIs, events, Cosmos)
+- **Tenant:** `tenantId` only (no `organizationId`)
+- **Queuing:** RabbitMQ only; batch jobs via `workflow.job.trigger` and queue `bi_batch_jobs` (plan §9.3: risk-snapshot-backfill, outcome-sync, risk-clustering, account-health, industry-benchmarks, propagation, model-monitoring)
+- **Shards:** Salesforce fields: Amount, StageName, CloseDate, Probability, IsClosed, IsWon, AccountId, OwnerId, CreatedDate; add LastActivityDate, Industry, IndustryId, CompetitorIds, StageUpdatedAt, StageDates. Relationships: `has_activity`, `has_contact`, `reports_to` (Shard Schemas §7)

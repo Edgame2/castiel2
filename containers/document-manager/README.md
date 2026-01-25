@@ -1,6 +1,6 @@
 # Document Manager Module
 
-Document and file management service for Coder IDE. Handles document upload, download, storage, and metadata management.
+Document and file management service for Castiel. Handles document upload, download, storage, and metadata management.
 
 ## Features
 

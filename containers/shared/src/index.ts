@@ -1,5 +1,5 @@
 /**
- * @coder/shared - Shared utilities for Coder IDE containers
+ * @coder/shared - Shared utilities for Castiel containers
  * @module @coder/shared
  */
 

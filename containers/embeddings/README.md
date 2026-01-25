@@ -1,6 +1,6 @@
 # Embeddings Service
 
-Vector embeddings service for Coder IDE. Stores and searches code embeddings using pgvector.
+Vector embeddings service for Castiel. Stores and searches code embeddings using pgvector.
 
 ## Features
 

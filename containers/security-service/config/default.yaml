@@ -15,6 +15,7 @@ cosmos_db:
   containers:
     scans: security_scans
     findings: security_findings
+    pii_detections: security_pii_detections
 
 services:
   context_service:
@@ -27,6 +28,10 @@ services:
     url: ${WORKFLOW_URL:-http://localhost:3020}
   logging:
     url: ${LOGGING_URL:-http://localhost:3014}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3001}
+  secret_management:
+    url: ${SECRET_MANAGEMENT_URL:-http://localhost:3013}
 
 rabbitmq:
   url: ${RABBITMQ_URL}

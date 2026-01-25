@@ -5,8 +5,12 @@
 
 import { FastifyInstance } from 'fastify';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
+import { getContainer } from '@coder/shared/database';
 import { AnalyticsService } from '../services/AnalyticsService';
 import { ReportService } from '../services/ReportService';
+import { QualityMonitoringService } from '../services/QualityMonitoringService';
+import { AIAnalyticsService } from '../services/AIAnalyticsService';
+import { SignalIntelligenceService } from '../services/SignalIntelligenceService';
 import {
   CreateAnalyticsEventInput,
   AnalyticsQuery,
@@ -18,6 +22,9 @@ import {
 export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
   const analyticsService = new AnalyticsService();
   const reportService = new ReportService(analyticsService);
+  const qualityMonitoringService = new QualityMonitoringService();
+  const aiAnalyticsService = new AIAnalyticsService();
+  const signalIntelligenceService = new SignalIntelligenceService();
 
   // ===== EVENT TRACKING ROUTES =====
 
@@ -525,6 +532,271 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         limit: request.query.limit,
       });
       reply.send(reports);
+    }
+  );
+
+  // ===== QUALITY MONITORING ROUTES (from quality-monitoring) =====
+
+  /**
+   * Get quality metrics
+   * GET /api/v1/analytics/quality/metrics
+   */
+  app.get<{ Querystring: { metricType?: string } }>(
+    '/api/v1/analytics/quality/metrics',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get quality metrics',
+        tags: ['Quality Monitoring'],
+        querystring: {
+          type: 'object',
+          properties: {
+            metricType: { type: 'string' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            description: 'Quality metrics',
+            properties: {
+              metrics: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const tenantId = request.user!.tenantId;
+        const { metricType } = request.query;
+
+        const container = getContainer('quality_metrics');
+        let query = 'SELECT * FROM c WHERE c.tenantId = @tenantId';
+        const parameters: any[] = [{ name: '@tenantId', value: tenantId }];
+
+        if (metricType) {
+          query += ' AND c.metricType = @metricType';
+          parameters.push({ name: '@metricType', value: metricType });
+        }
+
+        query += ' ORDER BY c.measuredAt DESC';
+
+        const { resources: metrics } = await container.items
+          .query({ query, parameters }, { partitionKey: tenantId })
+          .fetchAll();
+
+        return reply.send({ metrics: metrics || [] });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'METRICS_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to retrieve quality metrics',
+          },
+        });
+      }
+    }
+  );
+
+  /**
+   * Record quality metric
+   * POST /api/v1/analytics/quality/metrics
+   */
+  app.post<{ Body: { metricType: string; value: number; threshold: number; status?: string } }>(
+    '/api/v1/analytics/quality/metrics',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Record quality metric',
+        tags: ['Quality Monitoring'],
+        body: {
+          type: 'object',
+          required: ['metricType', 'value', 'threshold'],
+          properties: {
+            metricType: { type: 'string' },
+            value: { type: 'number' },
+            threshold: { type: 'number' },
+            status: { type: 'string', enum: ['normal', 'warning', 'critical'] },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            description: 'Quality metric recorded',
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const tenantId = request.user!.tenantId;
+        const metric = await qualityMonitoringService.recordMetric(tenantId, {
+          ...request.body,
+          status: (request.body.status as any) || 'normal',
+          measuredAt: new Date(),
+        });
+        return reply.status(201).send(metric);
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'METRIC_RECORDING_FAILED',
+            message: error.message || 'Failed to record quality metric',
+          },
+        });
+      }
+    }
+  );
+
+  // ===== AI ANALYTICS ROUTES (from ai-analytics) =====
+
+  /**
+   * Get AI model analytics
+   * GET /api/v1/analytics/ai/models
+   */
+  app.get<{ Querystring: { modelId?: string } }>(
+    '/api/v1/analytics/ai/models',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get AI model analytics',
+        tags: ['AI Analytics'],
+        querystring: {
+          type: 'object',
+          properties: {
+            modelId: { type: 'string' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            description: 'AI model analytics',
+            properties: {
+              models: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const tenantId = request.user!.tenantId;
+        const { modelId } = request.query;
+        const models = await aiAnalyticsService.getModelAnalytics(tenantId, modelId);
+        return reply.send({ models });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'ANALYTICS_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to retrieve model analytics',
+          },
+        });
+      }
+    }
+  );
+
+  /**
+   * Record AI analytics event
+   * POST /api/v1/analytics/ai/events
+   */
+  app.post<{ Body: { eventType: string; modelId?: string; tokens?: number; cost?: number; latencyMs?: number; metadata?: any } }>(
+    '/api/v1/analytics/ai/events',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Record AI analytics event',
+        tags: ['AI Analytics'],
+        body: {
+          type: 'object',
+          required: ['eventType'],
+          properties: {
+            eventType: { type: 'string', enum: ['completion', 'error', 'usage', 'feedback'] },
+            modelId: { type: 'string' },
+            tokens: { type: 'number' },
+            cost: { type: 'number' },
+            latencyMs: { type: 'number' },
+            metadata: { type: 'object' },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            description: 'AI analytics event recorded',
+            properties: {
+              success: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const tenantId = request.user!.tenantId;
+        await aiAnalyticsService.recordEvent(tenantId, {
+          ...request.body,
+          eventType: request.body.eventType as any,
+        });
+        return reply.status(201).send({ success: true });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'EVENT_RECORDING_FAILED',
+            message: error.message || 'Failed to record AI analytics event',
+          },
+        });
+      }
+    }
+  );
+
+  // ===== SIGNAL INTELLIGENCE ROUTES (from signal-intelligence) =====
+
+  /**
+   * Analyze signal
+   * POST /api/v1/analytics/signals/analyze
+   */
+  app.post<{ Body: { signalType: string; source: string; data: any } }>(
+    '/api/v1/analytics/signals/analyze',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Analyze signal',
+        tags: ['Signal Intelligence'],
+        body: {
+          type: 'object',
+          required: ['signalType', 'source', 'data'],
+          properties: {
+            signalType: { type: 'string', enum: ['communication', 'calendar', 'social', 'product_usage', 'competitive'] },
+            source: { type: 'string' },
+            data: { type: 'object' },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            description: 'Signal analyzed',
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { signalType, source, data } = request.body;
+        const tenantId = request.user!.tenantId;
+
+        const signal = await signalIntelligenceService.analyzeSignal(tenantId, {
+          signalType: signalType as any,
+          source,
+          data,
+          analyzed: false,
+        });
+
+        return reply.status(201).send(signal);
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'SIGNAL_ANALYSIS_FAILED',
+            message: error.message || 'Failed to analyze signal',
+          },
+        });
+      }
     }
   );
 }

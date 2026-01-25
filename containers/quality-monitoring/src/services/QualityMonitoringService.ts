@@ -12,9 +12,13 @@ import { v4 as uuidv4 } from 'uuid';
 export interface QualityAnomaly {
   id: string;
   tenantId: string;
-  anomalyType: string;
+  anomalyType?: string;
+  metricType: string;
+  value: number;
+  expectedValue: number;
+  deviation: number;
   severity: 'low' | 'medium' | 'high' | 'critical';
-  description: string;
+  description?: string;
   detectedAt: Date | string;
   resolved: boolean;
   resolvedAt?: Date | string;
@@ -103,26 +107,27 @@ export class QualityMonitoringService {
         const anomaly: QualityAnomaly = {
           id: uuidv4(),
           tenantId,
+          anomalyType: 'statistical_deviation',
           metricType: data.metricType || 'unknown',
           value: currentValue,
           expectedValue: mean,
           deviation: currentValue - mean,
           severity: zScore > 3.5 ? 'critical' : zScore > 3 ? 'high' : 'medium',
+          description: `Metric value ${currentValue} deviates ${zScore.toFixed(2)} standard deviations from expected value ${mean.toFixed(2)}`,
           detectedAt: new Date(),
+          resolved: false,
         };
 
         // Store anomaly
-        await container.items.create(anomaly, { partitionKey: tenantId });
+        const anomaliesContainer = getContainer('quality_anomalies');
+        await anomaliesContainer.items.create(anomaly, { partitionKey: tenantId });
 
         return anomaly;
       }
 
       return null;
-    } catch (error: any) {
-      log.error('Failed to detect anomaly', error, {
-        tenantId,
-        service: 'quality-monitoring',
-      });
+    } catch (error: unknown) {
+      log.error('Failed to detect anomaly', error instanceof Error ? error : new Error(String(error)), { tenantId, service: 'quality-monitoring' });
       return null;
     }
   }
@@ -148,17 +153,9 @@ export class QualityMonitoringService {
 
       // Check for anomalies
       await this.detectAnomaly(tenantId, { metricType: metric.metricType, value: metric.value });
-        ...metric,
-        measuredAt: new Date(),
-      };
-
-      const container = getContainer('quality_metrics');
-      await container.items.create(qualityMetric, { partitionKey: tenantId });
-    } catch (error: any) {
-      log.error('Failed to record quality metric', error, {
-        tenantId,
-        service: 'quality-monitoring',
-      });
+    } catch (error: unknown) {
+      log.error('Failed to record quality metric', error instanceof Error ? error : new Error(String(error)), { tenantId, service: 'quality-monitoring' });
+      throw error;
     }
   }
 }

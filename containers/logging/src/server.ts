@@ -3,6 +3,8 @@
  * Per ModuleImplementationGuide Section 3
  */
 
+import './instrumentation';
+
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
 import { PrismaClient } from '.prisma/logging-client';
@@ -13,13 +15,14 @@ import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { dump } from 'js-yaml';
 import { loadConfig } from './config';
+import { httpRequestsTotal, httpRequestDurationSeconds, register } from './metrics';
 import { registerRoutes } from './routes';
 import { createStorageProvider } from './services/providers/storage/ProviderFactory';
 import { IngestionService } from './services/IngestionService';
 import { ConfigurationService } from './services/ConfigurationService';
 import { createSIEMProvider } from './services/providers/siem/SIEMProviderFactory';
 import { RetentionService } from './services/RetentionService';
-import { AuditEventConsumer } from './events';
+import { AuditEventConsumer, DataLakeCollector, MLAuditConsumer } from './events';
 import { RetentionJob, ArchiveJob, AlertJob, PartitionJob } from './jobs';
 import { createArchiveProvider } from './services/providers/archive';
 import { log } from './utils/logger';
@@ -29,6 +32,8 @@ let app: FastifyInstance | null = null;
 let prisma: PrismaClient | null = null;
 let ingestionService: IngestionService | null = null;
 let eventConsumer: AuditEventConsumer | null = null;
+let dataLakeCollector: DataLakeCollector | null = null;
+let mlAuditConsumer: MLAuditConsumer | null = null;
 let retentionJob: RetentionJob | null = null;
 let archiveJob: ArchiveJob | null = null;
 let alertJob: AlertJob | null = null;
@@ -228,6 +233,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
   
   fastify.addHook('onResponse', async (request, reply) => {
+    const route = (request as { routerPath?: string }).routerPath ?? (request as { routeOptions?: { url?: string } }).routeOptions?.url ?? (String((request as { url?: string }).url || '').split('?')[0] || 'unknown');
+    httpRequestsTotal.inc({ method: request.method, route, status: String(reply.statusCode) });
+    httpRequestDurationSeconds.observe({ method: request.method, route }, (reply.elapsedTime ?? 0) / 1000);
     log.debug('Request completed', {
       requestId: request.id,
       method: request.method,
@@ -239,6 +247,18 @@ export async function buildApp(): Promise<FastifyInstance> {
   
   // Register routes
   await registerRoutes(fastify);
+
+  const metricsConf = config.metrics ?? { path: '/metrics', require_auth: false, bearer_token: '' };
+  fastify.get(metricsConf.path || '/metrics', async (request, reply) => {
+    if (metricsConf.require_auth) {
+      const raw = (request.headers.authorization as string) || '';
+      const token = raw.startsWith('Bearer ') ? raw.slice(7) : raw;
+      if (token !== (metricsConf.bearer_token || '')) {
+        return reply.status(401).send('Unauthorized');
+      }
+    }
+    return reply.type('text/plain; version=0.0.4').send(await register.metrics());
+  });
   
   return fastify;
 }
@@ -269,6 +289,22 @@ export async function start(): Promise<void> {
       } catch (error) {
         log.warn('Failed to start event consumer, running without RabbitMQ', { error });
         // Don't fail startup - RabbitMQ is optional
+      }
+    }
+
+    // DataLakeCollector (risk.evaluated → Parquet) and MLAuditConsumer (risk/ml/remediation → Blob audit)
+    if (config.rabbitmq?.url && config.data_lake?.connection_string) {
+      try {
+        dataLakeCollector = new DataLakeCollector();
+        await dataLakeCollector.start();
+      } catch (error) {
+        log.warn('Failed to start DataLakeCollector', { error });
+      }
+      try {
+        mlAuditConsumer = new MLAuditConsumer();
+        await mlAuditConsumer.start();
+      } catch (error) {
+        log.warn('Failed to start MLAuditConsumer', { error });
       }
     }
     
@@ -379,9 +415,15 @@ export async function shutdown(): Promise<void> {
     partitionJob.stop();
   }
 
-  // Stop event consumer
+  // Stop event consumers
   if (eventConsumer) {
     await eventConsumer.stop();
+  }
+  if (dataLakeCollector) {
+    await dataLakeCollector.stop();
+  }
+  if (mlAuditConsumer) {
+    await mlAuditConsumer.stop();
   }
   
   // Flush remaining logs

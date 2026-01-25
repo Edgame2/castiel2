@@ -1,16 +1,16 @@
 /**
  * Event consumer for data enrichment
- * Consumes shard creation/update events and triggers enrichment
+ * Consumes shard creation/update events and triggers enrichment and embedding generation
  */
 
 import { EventConsumer } from '@coder/shared';
+import { FastifyInstance } from 'fastify';
 import { loadConfig } from '../../config';
 import { log } from '../../utils/logger';
-import { publishEnrichmentEvent } from '../publishers/EnrichmentEventPublisher';
 
 let consumer: EventConsumer | null = null;
 
-export async function initializeEventConsumer(): Promise<void> {
+export async function initializeEventConsumer(app?: FastifyInstance): Promise<void> {
   const config = loadConfig();
   
   if (!config.rabbitmq.url) {
@@ -26,28 +26,36 @@ export async function initializeEventConsumer(): Promise<void> {
       bindings: config.rabbitmq.bindings,
     });
 
-    // Handle shard creation
+    // Handle shard creation (2.4 Embedding Processor)
     consumer.on('shard.created', async (event) => {
-      log.info('Shard created, triggering enrichment', {
-        shardId: event.data.shardId,
-        tenantId: event.tenantId,
-        service: 'data-enrichment',
-      });
-      
-      // Trigger enrichment for new shards
-      await triggerEnrichment(event.data.shardId, event.tenantId);
+      const shardId = event.data?.shardId ?? event.data?.id;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!shardId || !tenantId) {
+        log.warn('shard.created missing shardId or tenantId', {
+          hasData: !!event.data,
+          tenantId: event.tenantId,
+          service: 'data-enrichment',
+        });
+        return;
+      }
+      log.info('Shard created, triggering enrichment', { shardId, tenantId, service: 'data-enrichment' });
+      await triggerEnrichment(shardId, tenantId, app);
     });
 
-    // Handle shard updates
+    // Handle shard updates (2.4 Embedding Processor)
     consumer.on('shard.updated', async (event) => {
-      log.info('Shard updated, triggering re-enrichment', {
-        shardId: event.data.shardId,
-        tenantId: event.tenantId,
-        service: 'data-enrichment',
-      });
-      
-      // Trigger re-enrichment for updated shards
-      await triggerEnrichment(event.data.shardId, event.tenantId);
+      const shardId = event.data?.shardId ?? event.data?.id;
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      if (!shardId || !tenantId) {
+        log.warn('shard.updated missing shardId or tenantId', {
+          hasData: !!event.data,
+          tenantId: event.tenantId,
+          service: 'data-enrichment',
+        });
+        return;
+      }
+      log.info('Shard updated, triggering re-enrichment', { shardId, tenantId, service: 'data-enrichment' });
+      await triggerEnrichment(shardId, tenantId, app);
     });
 
     await consumer.start();
@@ -58,11 +66,10 @@ export async function initializeEventConsumer(): Promise<void> {
   }
 }
 
-async function triggerEnrichment(shardId: string, tenantId: string): Promise<void> {
+async function triggerEnrichment(shardId: string, tenantId: string, app?: FastifyInstance): Promise<void> {
   try {
     const { EnrichmentService } = await import('../../services/EnrichmentService');
-    const enrichmentService = new EnrichmentService();
-    
+    const enrichmentService = new EnrichmentService(app);
     await enrichmentService.triggerEnrichment(shardId, tenantId);
   } catch (error) {
     log.error('Failed to trigger enrichment', error, {

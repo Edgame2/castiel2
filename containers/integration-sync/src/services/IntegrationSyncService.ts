@@ -26,6 +26,7 @@ export class IntegrationSyncService {
   private shardManagerClient: ServiceClient;
   private secretManagementClient: ServiceClient;
   private runningTasks = new Set<string>();
+  private runningTasksByTenant = new Map<string, Set<string>>();
   private app: FastifyInstance | null = null;
 
   constructor(app?: FastifyInstance) {
@@ -142,7 +143,55 @@ export class IntegrationSyncService {
       throw new Error('Sync task is already running');
     }
 
+    const task = await this.getSyncTask(taskId, tenantId);
+    if (!task) {
+      throw new Error('Sync task not found');
+    }
+    if (task.status === 'running') {
+      throw new Error('Sync task is already running');
+    }
+
+    const maxConcurrent = this.config.sync_limits?.max_concurrent_syncs_per_tenant ?? 3;
+    const tenantRunning = this.runningTasksByTenant.get(tenantId)?.size ?? 0;
+    if (tenantRunning >= maxConcurrent) {
+      throw new Error(`Max concurrent syncs per tenant (${maxConcurrent}) reached`);
+    }
+
+    const minIntervalMinutes = this.config.sync_limits?.min_interval_minutes ?? 5;
+    if (minIntervalMinutes > 0) {
+      try {
+        const execContainer = getContainer('integration_executions');
+        const { resources } = await execContainer.items
+          .query(
+            {
+              query: 'SELECT TOP 1 * FROM c WHERE c.integrationId = @integrationId AND c.status = @status AND IS_DEFINED(c.completedAt) ORDER BY c.completedAt DESC',
+              parameters: [
+                { name: '@integrationId', value: task.integrationId },
+                { name: '@status', value: 'completed' },
+              ],
+            },
+            { partitionKey: tenantId }
+          )
+          .fetchAll();
+        const last = resources?.[0];
+        if (last?.completedAt) {
+          const lastAt = new Date(last.completedAt).getTime();
+          const minMs = minIntervalMinutes * 60 * 1000;
+          if (Date.now() - lastAt < minMs) {
+            throw new Error(`Min sync interval (${minIntervalMinutes} min) not elapsed for this integration`);
+          }
+        }
+      } catch (e: unknown) {
+        if (e instanceof Error && e.message.includes('Min sync interval')) throw e;
+      }
+    }
+
     this.runningTasks.add(taskId);
+    if (!this.runningTasksByTenant.has(tenantId)) {
+      this.runningTasksByTenant.set(tenantId, new Set());
+    }
+    this.runningTasksByTenant.get(tenantId)!.add(taskId);
+
     const executionId = uuidv4();
 
     try {
@@ -152,16 +201,6 @@ export class IntegrationSyncService {
         tenantId,
         service: 'integration-sync',
       });
-
-      // Get task
-      const task = await this.getSyncTask(taskId, tenantId);
-      if (!task) {
-        throw new Error('Sync task not found');
-      }
-
-      if (task.status === 'running') {
-        throw new Error('Sync task is already running');
-      }
 
       // Update task status
       task.status = 'running';
@@ -187,6 +226,7 @@ export class IntegrationSyncService {
           id: executionId,
           tenantId,
           ...execution,
+          integrationId: task.integrationId,
           createdAt: new Date(),
         },
         { partitionKey: tenantId }
@@ -255,6 +295,16 @@ export class IntegrationSyncService {
           }
         );
         externalData = fetchResponse.data || [];
+        const maxRec = this.config.sync_limits?.max_records_per_sync ?? 1000;
+        if (externalData.length > maxRec) {
+          log.info('Capping sync to max_records_per_sync', {
+            total: externalData.length,
+            cap: maxRec,
+            integrationId: task.integrationId,
+            service: 'integration-sync',
+          });
+          externalData = externalData.slice(0, maxRec);
+        }
       } catch (error: any) {
         log.error('Failed to fetch data from external system', error, {
           integrationId: task.integrationId,
@@ -347,6 +397,7 @@ export class IntegrationSyncService {
         id: executionId,
         tenantId,
         ...execution,
+        integrationId: task.integrationId,
         updatedAt: new Date(),
       });
 
@@ -398,6 +449,7 @@ export class IntegrationSyncService {
       throw error;
     } finally {
       this.runningTasks.delete(taskId);
+      this.runningTasksByTenant.get(tenantId)?.delete(taskId);
     }
   }
 
@@ -657,6 +709,151 @@ export class IntegrationSyncService {
     } catch (error: any) {
       log.error('Failed to resolve conflict', error, {
         conflictId,
+        tenantId,
+        service: 'integration-sync',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Create webhook
+   */
+  async createWebhook(
+    tenantId: string,
+    integrationId: string,
+    url: string,
+    events: string[],
+    secret?: string
+  ): Promise<Webhook> {
+    const webhookId = uuidv4();
+    try {
+      const webhook: Webhook = {
+        webhookId,
+        tenantId,
+        integrationId,
+        url,
+        events,
+        secret,
+        active: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const container = getContainer('integration_webhooks');
+      await container.items.create(
+        {
+          id: webhookId,
+          tenantId,
+          ...webhook,
+        },
+        { partitionKey: tenantId }
+      );
+
+      return webhook;
+    } catch (error: any) {
+      log.error('Failed to create webhook', error, {
+        webhookId,
+        integrationId,
+        tenantId,
+        service: 'integration-sync',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get webhook by ID
+   */
+  async getWebhook(webhookId: string, tenantId: string): Promise<Webhook | null> {
+    try {
+      const container = getContainer('integration_webhooks');
+      const { resource } = await container.item(webhookId, tenantId).read<Webhook>();
+      return resource || null;
+    } catch (error: any) {
+      log.error('Failed to get webhook', error, {
+        webhookId,
+        tenantId,
+        service: 'integration-sync',
+      });
+      return null;
+    }
+  }
+
+  /**
+   * List webhooks for integration
+   */
+  async listWebhooks(integrationId: string, tenantId: string): Promise<Webhook[]> {
+    try {
+      const container = getContainer('integration_webhooks');
+      const { resources } = await container.items
+        .query<Webhook>({
+          query: 'SELECT * FROM c WHERE c.integrationId = @integrationId AND c.tenantId = @tenantId',
+          parameters: [
+            { name: '@integrationId', value: integrationId },
+            { name: '@tenantId', value: tenantId },
+          ],
+        })
+        .fetchAll();
+      return resources || [];
+    } catch (error: any) {
+      log.error('Failed to list webhooks', error, {
+        integrationId,
+        tenantId,
+        service: 'integration-sync',
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Update webhook
+   */
+  async updateWebhook(
+    webhookId: string,
+    tenantId: string,
+    updates: Partial<Pick<Webhook, 'url' | 'events' | 'active' | 'secret'>>
+  ): Promise<Webhook> {
+    try {
+      const webhook = await this.getWebhook(webhookId, tenantId);
+      if (!webhook) {
+        throw new Error('Webhook not found');
+      }
+
+      const updated: Webhook = {
+        ...webhook,
+        ...updates,
+        updatedAt: new Date(),
+      };
+
+      const container = getContainer('integration_webhooks');
+      await container.item(webhookId, tenantId).replace({
+        id: webhookId,
+        tenantId,
+        ...updated,
+      });
+
+      return updated;
+    } catch (error: any) {
+      log.error('Failed to update webhook', error, {
+        webhookId,
+        tenantId,
+        service: 'integration-sync',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Delete webhook
+   */
+  async deleteWebhook(webhookId: string, tenantId: string): Promise<void> {
+    try {
+      const container = getContainer('integration_webhooks');
+      await container.item(webhookId, tenantId).delete();
+    } catch (error: any) {
+      log.error('Failed to delete webhook', error, {
+        webhookId,
         tenantId,
         service: 'integration-sync',
       });

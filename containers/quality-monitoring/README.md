@@ -1,11 +1,14 @@
-# Quality-monitoring Module
+# Quality Monitoring Module
 
-[Description of what this service does]
+Quality monitoring and anomaly detection service for Castiel, providing anomaly detection, explanation quality assessment, explanation monitoring, explainable AI, and data quality validation.
 
 ## Features
 
-- Feature 1
-- Feature 2
+- **Anomaly Detection**: Detect anomalies in data and AI outputs
+- **Explanation Quality**: Assess explanation quality
+- **Explanation Monitoring**: Monitor AI explanations
+- **Explainable AI**: Generate explainable AI outputs
+- **Data Quality**: Validate data quality
 
 ## Quick Start
 
@@ -53,11 +56,18 @@ See [OpenAPI Spec](./openapi.yaml)
 
 ### Published Events
 
-- `quality-monitoring.event.name`
+- `quality.anomaly.detected` - Anomaly detected
+- `quality.explanation.assessed` - Explanation quality assessed
 
 ### Consumed Events
 
-- `other.event.name`
+- (None currently)
+
+## Dependencies
+
+- **ai-service**: For AI operations
+- **ml-service**: For ML-based quality assessment
+- **analytics-service**: For analytics
 
 ## Development
 

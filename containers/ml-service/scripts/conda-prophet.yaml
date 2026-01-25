@@ -1,0 +1,14 @@
+# Conda env for Azure ML ManagedOnlineDeployment of revenue-forecasting (score_prophet_forecast.py).
+# Used by train_prophet_forecast.py --deploy. Plan §877.
+name: prophet-forecast
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.8,<3.12
+  - numpy
+  - pandas
+  - pip
+  - pip:
+    - prophet
+    - joblib

@@ -1,18 +1,510 @@
 openapi: 3.0.3
 info:
-  title: Utility Services Service API
+  title: Utility Services API
   description: |
-    Utility Services service.
+    Utility and helper services.
+    
+    Provides import/export functionality, schema migrations, computed fields, field validation, onboarding, project activity tracking, service registry, and notification management.
   version: 1.0.0
 servers:
   - url: /api/v1
     description: API Version 1
 tags:
-  - name: Utility Services
-    description: Utility Services operations
+  - name: Utility
+    description: Utility operations (import/export)
+  - name: Notifications
+    description: Notification management
+  - name: Preferences
+    description: Notification preferences
+  - name: Templates
+    description: Notification templates
   - name: Health
     description: Health check endpoints
 paths:
+  /utility/jobs/{jobId}:
+    get:
+      tags:
+        - Utility
+      summary: Get utility job status
+      description: Get status of an import or export job
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: jobType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [import, export]
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ImportJob'
+                  - $ref: '#/components/schemas/ExportJob'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Job not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /utility/import:
+    post:
+      tags:
+        - Utility
+      summary: Create import job
+      description: Create an import job for data import
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - importType
+                - data
+              properties:
+                importType:
+                  type: string
+                data:
+                  type: object
+      responses:
+        '202':
+          description: Import job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJob'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /utility/export:
+    post:
+      tags:
+        - Utility
+      summary: Create export job
+      description: Create an export job for data export
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - exportType
+              properties:
+                exportType:
+                  type: string
+                filters:
+                  type: object
+      responses:
+        '202':
+          description: Export job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /notifications:
+    get:
+      tags:
+        - Notifications
+      summary: Get notifications
+      description: Get notifications for user or organization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: organizationId
+          in: query
+          schema:
+            type: string
+        - name: read
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of notifications
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /notifications/{id}/read:
+    put:
+      tags:
+        - Notifications
+      summary: Mark notification as read
+      description: Mark a notification as read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notification marked as read
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /notifications/read-all:
+    put:
+      tags:
+        - Notifications
+      summary: Mark all notifications as read
+      description: Mark all notifications as read for user or organization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: organizationId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: All notifications marked as read
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /notifications/{id}:
+    delete:
+      tags:
+        - Notifications
+      summary: Delete notification
+      description: Delete a notification
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Notification deleted
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /preferences:
+    get:
+      tags:
+        - Preferences
+      summary: Get effective preferences
+      description: Get effective notification preferences
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scope
+          in: query
+          schema:
+            type: string
+        - name: scopeId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Effective preferences
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /preferences/{scope}/{scopeId}:
+    get:
+      tags:
+        - Preferences
+      summary: Get preference by scope
+      description: Get preference by scope and scope ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scope
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: scopeId
+          in: path
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Preference data
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags:
+        - Preferences
+      summary: Create or update preference
+      description: Create or update notification preference
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scope
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: scopeId
+          in: path
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Preference created or updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Preferences
+      summary: Delete preference
+      description: Delete notification preference
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scope
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: scopeId
+          in: path
+          required: false
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Preference deleted
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /preferences/list/all:
+    get:
+      tags:
+        - Preferences
+      summary: List all preferences
+      description: List all preferences for organization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scope
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of preferences
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /templates:
+    get:
+      tags:
+        - Templates
+      summary: List templates
+      description: List notification templates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: organizationId
+          in: query
+          schema:
+            type: string
+        - name: eventType
+          in: query
+          schema:
+            type: string
+        - name: channel
+          in: query
+          schema:
+            type: string
+        - name: locale
+          in: query
+          schema:
+            type: string
+        - name: enabled
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of templates
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Templates
+      summary: Create template
+      description: Create a notification template
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - eventType
+                - channel
+      responses:
+        '201':
+          description: Template created
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /templates/{id}:
+    get:
+      tags:
+        - Templates
+      summary: Get template by ID
+      description: Get notification template by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Template data
+        '401':
+          description: Unauthorized
+        '404':
+          description: Template not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags:
+        - Templates
+      summary: Update template
+      description: Update notification template
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Template updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Template not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Templates
+      summary: Delete template
+      description: Delete notification template
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Template deleted
+        '401':
+          description: Unauthorized
+        '404':
+          description: Template not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /metrics:
+    get:
+      tags:
+        - Health
+      summary: Prometheus metrics
+      description: Get Prometheus metrics
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
   /health:
     get:
       tags:
@@ -35,6 +527,19 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
     Error:
       type: object
@@ -46,3 +551,55 @@ components:
               type: string
             message:
               type: string
+    ImportJob:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        importType:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        recordsProcessed:
+          type: integer
+        recordsImported:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    ExportJob:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        exportType:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        fileUrl:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time

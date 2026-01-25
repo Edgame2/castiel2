@@ -17,6 +17,8 @@ cosmos_db:
   containers:
     enrichment_jobs: enrichment_jobs
     enrichment_results: enrichment_results
+    enrichment_configurations: enrichment_configurations
+    enrichment_history: enrichment_history
     vectorization_jobs: vectorization_jobs
     shard_relationships: shard_relationships
     shard_acls: shard_acls
@@ -48,6 +50,13 @@ rabbitmq:
   bindings:
     - "shard.created"
     - "shard.updated"
+
+# Re-embedding Scheduler (MISSING_FEATURES 2.5: scheduled batch re-embedding)
+reembedding_scheduler:
+  enabled: ${REEMBEDDING_SCHEDULER_ENABLED:-false}
+  interval_ms: ${REEMBEDDING_INTERVAL_MS:-86400000}  # 24h default
+  tenant_ids: []   # set via env YAML override; when empty, scheduler no-ops
+  shard_type_ids: []  # e.g. ["c_opportunity","c_account"]; when empty, no-ops
 
 # Feature Flags
 features: {}

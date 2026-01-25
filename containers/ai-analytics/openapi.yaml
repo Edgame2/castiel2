@@ -1,18 +1,50 @@
 openapi: 3.0.3
 info:
-  title: Ai Analytics Service API
+  title: AI Analytics Service API
   description: |
-    Ai Analytics service.
+    AI usage analytics and monitoring service.
+    
+    Provides AI model analytics, usage tracking, chat catalog management, and feedback learning.
   version: 1.0.0
 servers:
   - url: /api/v1
     description: API Version 1
 tags:
-  - name: Ai Analytics
-    description: Ai Analytics operations
+  - name: AI Analytics
+    description: AI analytics operations
   - name: Health
     description: Health check endpoints
 paths:
+  /ai-analytics/models:
+    get:
+      tags:
+        - AI Analytics
+      summary: Get AI model analytics
+      description: Get analytics for AI models including usage, tokens, cost, and latency
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: modelId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  models:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AIAnalyticsModel'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
   /health:
     get:
       tags:
@@ -35,6 +67,19 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
     Error:
       type: object
@@ -46,3 +91,30 @@ components:
               type: string
             message:
               type: string
+    AIAnalyticsModel:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        modelId:
+          type: string
+        modelName:
+          type: string
+        usageCount:
+          type: integer
+        totalTokens:
+          type: integer
+        totalCost:
+          type: number
+        averageLatency:
+          type: number
+        errorRate:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

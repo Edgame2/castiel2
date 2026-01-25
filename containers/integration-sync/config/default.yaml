@@ -46,6 +46,26 @@ rabbitmq:
   queue: integration_sync_service
   bindings:
     - "shard.updated"
+    - "integration.sync.scheduled"
+    - "integration.webhook.received"
+
+# Sync Scheduler Configuration
+sync_scheduler:
+  enabled: ${SYNC_SCHEDULER_ENABLED:-true}
+  interval_ms: ${SYNC_SCHEDULER_INTERVAL_MS:-60000}  # 1 minute
+  batch_size: ${SYNC_SCHEDULER_BATCH_SIZE:-100}
+
+# Token Refresh Configuration
+token_refresh:
+  enabled: ${TOKEN_REFRESH_ENABLED:-true}
+  interval_ms: ${TOKEN_REFRESH_INTERVAL_MS:-3600000}  # 1 hour
+  expiration_threshold_ms: ${TOKEN_REFRESH_EXPIRATION_THRESHOLD_MS:-3600000}  # 1 hour
+
+# Sync Limits (per MISSING_FEATURES 1.6)
+sync_limits:
+  max_records_per_sync: ${SYNC_MAX_RECORDS:-1000}
+  min_interval_minutes: ${SYNC_MIN_INTERVAL_MINUTES:-5}
+  max_concurrent_syncs_per_tenant: ${SYNC_MAX_CONCURRENT_PER_TENANT:-3}
 
 # Feature Flags
 features: {}

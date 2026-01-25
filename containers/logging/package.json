@@ -1,7 +1,7 @@
 {
   "name": "@coder/logging",
   "version": "1.0.0",
-  "description": "Audit Logging Service for Coder IDE",
+  "description": "Audit Logging Service for Castiel",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -12,9 +12,12 @@
     "lint": "eslint src --ext .ts",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
-    "prisma:push": "prisma db push --schema=prisma/schema.prisma"
+    "prisma:push": "prisma db push --schema=prisma/schema.prisma",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration"
   },
   "dependencies": {
+    "@azure/monitor-opentelemetry": "^1.0.0",
     "@coder/shared": "file:../shared",
     "@fastify/swagger": "^9.1.0",
     "@fastify/swagger-ui": "^5.0.0",
@@ -22,6 +25,8 @@
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "amqplib": "^0.10.5",
+    "parquetjs": "^0.11.2",
+    "prom-client": "^15.1.0",
     "cron": "^3.1.7",
     "fastify": "^5.1.0",
     "js-yaml": "^4.1.0",

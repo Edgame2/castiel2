@@ -268,7 +268,25 @@ export class RecommendationsService {
         timestamp: new Date().toISOString(),
       });
 
-      // Step 10: Publish outcome to adaptive-learning
+      // Step 10: recordPrediction (REST) and publish outcome to adaptive-learning (MISSING_FEATURES 3.2)
+      const avgScore = withExplanations.length ? withExplanations.reduce((s, r) => s + r.score, 0) / withExplanations.length : 0.5;
+      if (this.config.services.adaptive_learning?.url) {
+        try {
+          const token = this.getServiceToken(request.tenantId);
+          await this.adaptiveLearningClient.post(
+            '/api/v1/adaptive-learning/outcomes/record-prediction',
+            {
+              component: 'recommendations',
+              predictionId: recommendationId,
+              context: { opportunityId: request.opportunityId, count: withExplanations.length },
+              predictedValue: avgScore,
+            },
+            { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': request.tenantId } }
+          );
+        } catch (e: unknown) {
+          log.warn('recordPrediction (adaptive-learning) failed', { error: (e as Error).message, recommendationId, service: 'recommendations' });
+        }
+      }
       await publishRecommendationEvent('adaptive.learning.outcome.recorded', request.tenantId, {
         component: 'recommendations',
         recommendations: withExplanations.map(r => ({

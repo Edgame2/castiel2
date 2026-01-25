@@ -2,17 +2,161 @@ openapi: 3.0.3
 info:
   title: Quality Monitoring Service API
   description: |
-    Quality Monitoring service.
+    Quality monitoring and anomaly detection service.
+    
+    Provides anomaly detection, explanation quality assessment, explanation monitoring, explainable AI generation, and data quality validation.
   version: 1.0.0
 servers:
   - url: /api/v1
     description: API Version 1
 tags:
   - name: Quality Monitoring
-    description: Quality Monitoring operations
+    description: Quality monitoring operations
   - name: Health
     description: Health check endpoints
 paths:
+  /quality/metrics:
+    get:
+      tags:
+        - Quality Monitoring
+      summary: Get quality metrics
+      description: Get quality metrics for monitoring
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: metricType
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Quality metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metrics:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QualityMetric'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Quality Monitoring
+      summary: Record quality metric
+      description: Record a quality metric and trigger anomaly detection
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - metricType
+                - value
+                - threshold
+                - status
+              properties:
+                metricType:
+                  type: string
+                value:
+                  type: number
+                threshold:
+                  type: number
+                status:
+                  type: string
+                  enum: [normal, warning, critical]
+      responses:
+        '204':
+          description: Metric recorded successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /quality/anomalies:
+    get:
+      tags:
+        - Quality Monitoring
+      summary: Get quality anomalies
+      description: Get detected quality anomalies
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: resolved
+          in: query
+          schema:
+            type: boolean
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high, critical]
+      responses:
+        '200':
+          description: List of anomalies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  anomalies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QualityAnomaly'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /quality/anomalies/detect:
+    post:
+      tags:
+        - Quality Monitoring
+      summary: Detect quality anomaly
+      description: Manually trigger anomaly detection for a metric
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - metricType
+                - value
+              properties:
+                metricType:
+                  type: string
+                value:
+                  type: number
+      responses:
+        '200':
+          description: Anomaly detection result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  anomaly:
+                    $ref: '#/components/schemas/QualityAnomaly'
+                    nullable: true
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
   /health:
     get:
       tags:
@@ -35,6 +179,19 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
   schemas:
     Error:
       type: object
@@ -46,3 +203,52 @@ components:
               type: string
             message:
               type: string
+    QualityMetric:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        metricType:
+          type: string
+        value:
+          type: number
+        threshold:
+          type: number
+        status:
+          type: string
+          enum: [normal, warning, critical]
+        measuredAt:
+          type: string
+          format: date-time
+    QualityAnomaly:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        anomalyType:
+          type: string
+        metricType:
+          type: string
+        value:
+          type: number
+        expectedValue:
+          type: number
+        deviation:
+          type: number
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        description:
+          type: string
+        detectedAt:
+          type: string
+          format: date-time
+        resolved:
+          type: boolean
+        resolvedAt:
+          type: string
+          format: date-time

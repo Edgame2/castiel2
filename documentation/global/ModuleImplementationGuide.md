@@ -341,6 +341,8 @@ export function loadConfig(): ModuleConfig {
 │ ❌ Direct database queries to another module's tables       │
 │ ❌ Assumptions about other module's internal state          │
 │ ❌ Circular dependencies between modules                    │
+│ ❌ Azure Service Bus, Event Grid, or other message brokers  │
+│   (use RabbitMQ only for events and job queuing)             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -770,6 +772,8 @@ CREATE INDEX idx_entity_org_created ON module_entities(organization_id, created_
 {domain}.{entity}.{action}
 ```
 
+**Message broker:** All event-driven communication MUST use **RabbitMQ**. Do not use Azure Service Bus, Event Grid, or other message brokers. The `coder_events` exchange and queues use RabbitMQ (config: `config.rabbitmq.url` or env).
+
 **Rules:**
 - All lowercase
 - Dot-separated
@@ -855,7 +859,8 @@ interface DomainEvent<T = unknown> {
   correlationId?: string;        // Request correlation
   
   // Context
-  organizationId?: string;       // Tenant context
+  tenantId?: string;             // Tenant context (PREFERRED for new modules)
+  organizationId?: string;       // DEPRECATED for new modules; prefer tenantId
   userId?: string;               // Actor
   
   // Payload
@@ -870,7 +875,7 @@ const event: DomainEvent<UserCreatedData> = {
   version: "1.0",
   source: "user-management",
   correlationId: "req_456",
-  organizationId: "org_789",
+  tenantId: "tenant_789",
   userId: "user_admin",
   data: {
     userId: "user_new",
@@ -1178,6 +1183,16 @@ consumer.on('{domain}.{entity}.{action}', async (event) => {
 - Loads welcome email template
 - Sends email notification via email provider
 ```
+
+### 9.6 Scheduled and Batch Jobs
+
+When a module needs **scheduled or batch jobs** (e.g. nightly clustering, backfill, benchmarks):
+
+1. **Scheduler:** A scheduler (e.g. `node-cron` in `jobs/BatchJobScheduler.ts` in `workflow-orchestrator` or similar) runs on a schedule and **publishes** to RabbitMQ with a routing key such as `workflow.job.trigger`. Payload: `{ job: string, metadata?: object, triggeredBy: 'scheduler'|'manual', timestamp }`.
+2. **Queue:** A durable queue (e.g. `bi_batch_jobs`) is bound to the `coder_events` exchange for that routing key.
+3. **Workers:** One or more containers have `events/consumers/BatchJobWorker.ts` (or similar) that consume from the queue, execute the job by `job` type, and publish `workflow.job.completed` or `workflow.job.failed` on RabbitMQ.
+
+**Prefer this pattern** over a separate job-queue product so all queuing stays on RabbitMQ. The `jobs/` folder in the scheduler container holds the cron logic; the actual work runs in the consumer container(s).
 
 ---
 
@@ -1714,7 +1729,16 @@ export class NotificationService {
 
 ## 15. Observability Standards
 
-### 15.1 Health Endpoints
+### 15.1 Azure Application Insights
+
+**MANDATORY** for all containers: instrument with **Azure Application Insights** for distributed tracing, dependency tracking, custom events, and exceptions.
+
+- **Config:** `APPLICATIONINSIGHTS_CONNECTION_STRING` (env) or `application_insights.connection_string` in config. Initialize **before** other imports that perform I/O.
+- **Implementation:** Use **`@azure/monitor-opentelemetry`** (OTel-based). Best option: OTel standard, supports multiple exporters, Azure’s recommended path for new Node.js apps. Auto-instrument HTTP, Cosmos DB, and (where supported) RabbitMQ/amqplib.
+- **Custom events:** Track business semantics (e.g. `risk.evaluated`, `ml.prediction`, batch job start/end) with `trackEvent`; include `tenantId`, `modelId`, `duration_ms` where applicable.
+- **Local dev:** Set `APPLICATIONINSIGHTS_DISABLE=true` or `application_insights.disable: true` when connection string is empty to avoid errors.
+
+### 15.2 Health Endpoints
 
 ```typescript
 // GET /health - Liveness (is the process running?)
@@ -1735,7 +1759,7 @@ export class NotificationService {
 }
 ```
 
-### 15.2 Logging Standards
+### 15.3 Logging Standards
 
 ```typescript
 // Use structured logging
@@ -1753,7 +1777,7 @@ logger.info('Notification sent', {
 console.log(`Sent notification ${notification.id} to ${notification.recipient}`);
 ```
 
-### 15.3 Log Levels
+### 15.4 Log Levels
 
 | Level | Usage |
 |-------|-------|
@@ -1762,12 +1786,21 @@ console.log(`Sent notification ${notification.id} to ${notification.recipient}`)
 | INFO | Significant business events |
 | DEBUG | Detailed debugging (disabled in prod) |
 
-### 15.4 Metrics
+### 15.5 Metrics (Prometheus & Grafana)
+
+**MANDATORY:** Each container MUST expose a **Prometheus metrics** endpoint for scraping by **Prometheus** and dashboards in **Grafana**.
+
+- **Endpoint:** `GET /metrics` (or `metrics.path` from config). **Content-Type:** `text/plain; version=0.0.4` (Prometheus exposition format).
+- **Auth (configurable):** When `metrics.require_auth` is true, `/metrics` MUST require `Authorization: Bearer <token>`, validated against `metrics.bearer_token` or `METRICS_BEARER_TOKEN`. Prometheus uses `bearer_token` or `bearer_token_file` in scrape config. When `require_auth` is false (e.g. trusted internal network), no auth.
+- **Implementation:** Use **prom-client** (`Counter`, `Histogram`, `Gauge`). Register with the default registry; on `GET /metrics` return `register.metrics()`. Do not hand-build strings; use prom-client so values are live.
+- **Standard metrics:** Include `http_requests_total{method,route,status}` and `http_request_duration_seconds{method,route}`. Add **app-specific** metrics (e.g. `risk_evaluations_total`, `ml_predictions_total{model=}`, `batch_job_duration_seconds{job=}`).
+- **Prometheus & Grafana in repo:** The repo MUST include **Prometheus scrape config** and **Grafana dashboard JSON** for the module’s services (e.g. `deployment/monitoring/prometheus/`, `deployment/monitoring/grafana/dashboards/`). Scrape config uses `bearer_token` when `metrics.require_auth` is true.
 
 ```typescript
-// Expose Prometheus metrics
-import { Counter, Histogram } from 'prom-client';
+// Expose Prometheus metrics via GET /metrics
+import { Counter, Histogram, register } from 'prom-client';
 
+// App-specific
 const notificationsSent = new Counter({
   name: 'notifications_sent_total',
   help: 'Total notifications sent',
@@ -1781,9 +1814,20 @@ const notificationDuration = new Histogram({
   buckets: [0.1, 0.5, 1, 2, 5],
 });
 
-// Usage
+// GET /metrics (check metrics.require_auth; if true, validate Authorization: Bearer <token>)
+fastify.get('/metrics', async (req, reply) => {
+  if (config.metrics.require_auth) {
+    const auth = req.headers.authorization;
+    if (auth !== `Bearer ${config.metrics.bearer_token}`) {
+      return reply.code(401).send('Unauthorized');
+    }
+  }
+  reply.type('text/plain; version=0.0.4').send(await register.metrics());
+});
+
+// Usage in code
 notificationsSent.inc({ type: 'email', status: 'success' });
-notificationDuration.observe({ type: 'email' }, duration);
+notificationDuration.observe({ type: 'email' }, durationSeconds);
 ```
 
 ---
@@ -1811,7 +1855,7 @@ Before deploying a module, verify ALL items:
 
 - [ ] `openapi.yaml` complete and valid
 - [ ] All endpoints documented
-- [ ] Authentication on all routes (except health)
+- [ ] Authentication on all routes (except `/health`, `/ready`, `/metrics`)
 - [ ] Input validation on all routes
 - [ ] Consistent error responses
 
@@ -1846,10 +1890,11 @@ Before deploying a module, verify ALL items:
 
 ### 16.8 Observability
 
+- [ ] **Azure Application Insights** configured (`APPLICATIONINSIGHTS_CONNECTION_STRING`); initialized before other imports; custom events for key business operations
+- [ ] **GET /metrics** endpoint (Prometheus text format via prom-client); `http_requests_total`, `http_request_duration_seconds`, and app-specific metrics; scrapable by Prometheus for Grafana
 - [ ] `/health` endpoint implemented
 - [ ] `/ready` endpoint implemented
-- [ ] Structured logging
-- [ ] Metrics exposed (if applicable)
+- [ ] Structured logging (no console.log)
 
 ### 16.9 Abstraction
 

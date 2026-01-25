@@ -1,6 +1,6 @@
 # Shard Manager Module
 
-Core data model management service for Coder IDE. Shards are the fundamental data entities in the system, representing all business objects (opportunities, contacts, accounts, etc.).
+Core data model management service for Castiel. Shards are the fundamental data entities in the system, representing all business objects (opportunities, contacts, accounts, etc.).
 
 ## Features
 

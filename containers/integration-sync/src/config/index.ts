@@ -26,6 +26,21 @@ export interface IntegrationSyncConfig {
   jwt: { secret: string };
   services: { [key: string]: { url: string } };
   rabbitmq: { url: string; exchange: string; queue: string; bindings: string[] };
+  sync_scheduler?: {
+    enabled?: boolean;
+    interval_ms?: number;
+    batch_size?: number;
+  };
+  token_refresh?: {
+    enabled?: boolean;
+    interval_ms?: number;
+    expiration_threshold_ms?: number;
+  };
+  sync_limits?: {
+    max_records_per_sync?: number;
+    min_interval_minutes?: number;
+    max_concurrent_syncs_per_tenant?: number;
+  };
   features: { [key: string]: boolean };
 }
 

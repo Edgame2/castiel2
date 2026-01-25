@@ -1,6 +1,6 @@
 # Context Service Module
 
-Centralized context management service for Coder IDE, providing context storage, AST analysis, dependency tree building, call graph construction, and dynamic context assembly.
+Centralized context management service for Castiel, providing context storage, AST analysis, dependency tree building, call graph construction, and dynamic context assembly.
 
 ## Features
 
@@ -114,5 +114,5 @@ npm test
 
 ## License
 
-Proprietary - Coder IDE
+Proprietary - Castiel
 

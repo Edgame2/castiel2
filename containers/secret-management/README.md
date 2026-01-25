@@ -1,6 +1,6 @@
 # Secret Management Service
 
-Centralized, secure, and auditable system for storing, managing, and accessing sensitive credentials across the Coder IDE platform.
+Centralized, secure, and auditable system for storing, managing, and accessing sensitive credentials across the Castiel platform.
 
 ## Features
 
@@ -274,4 +274,4 @@ Operational logs are sent to Logging Service:
 
 ## License
 
-Proprietary - Coder IDE
+Proprietary - Castiel

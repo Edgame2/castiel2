@@ -12,7 +12,8 @@
     "test:integration": "vitest run tests/integration",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@coder/shared": "file:../shared",
@@ -40,6 +41,7 @@
     "@types/amqplib": "^0.10.6",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.7",
+    "@types/uuid": "^10.0.0",
     "@vitest/coverage-v8": "^2.1.0"
   }
 }

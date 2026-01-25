@@ -1,6 +1,6 @@
 # AI Conversation Module
 
-Complete AI conversation and context management system for Coder IDE, providing conversation management, context assembly, grounding, intent analysis, and related AI conversation features.
+Complete AI conversation and context management system for Castiel, providing conversation management, context assembly, grounding, intent analysis, and related AI conversation features.
 
 ## Features
 

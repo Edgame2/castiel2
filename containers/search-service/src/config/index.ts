@@ -6,10 +6,15 @@ export interface SearchServiceConfig {
   module: { name: string; version: string };
   server: { port: number; host: string };
   cosmos_db: { endpoint: string; key: string; database_id: string; containers?: Record<string, string> };
+  /** Field-weighted relevance (MISSING_FEATURES 2.3): name > description > metadata */
+  field_weights?: { name?: number; description?: number; metadata?: number };
+  /** Additive boost to vector score from field-weighted keyword match; 0 = disabled */
+  field_weight_boost?: number;
   services: {
-    embeddings: { url: string };
-    shard_manager: { url: string };
-    logging: { url: string };
+    embeddings?: { url: string };
+    shard_manager?: { url: string };
+    logging?: { url: string };
+    ai_service?: { url: string };
   };
   rabbitmq: { url: string; exchange: string; queue: string };
 }

@@ -8,7 +8,7 @@
 /**
  * Logging Service configuration
  */
-const LOGGING_SERVICE_URL = process.env.LOGGING_SERVICE_URL || 'http://localhost:3014';
+import { loadConfig } from '../../../config';
 const SERVICE_NAME = 'secret-management';
 
 /**
@@ -39,10 +39,11 @@ export class LoggingClient {
   private enabled: boolean;
 
   constructor() {
-    this.baseUrl = LOGGING_SERVICE_URL;
+    const config = loadConfig();
+    this.baseUrl = config.services?.logging?.url || process.env.LOGGING_SERVICE_URL || '';
     this.serviceName = SERVICE_NAME;
     // Only enable if logging service URL is configured
-    this.enabled = !!process.env.LOGGING_SERVICE_URL || process.env.NODE_ENV === 'production';
+    this.enabled = !!this.baseUrl || process.env.NODE_ENV === 'production';
   }
 
   /**

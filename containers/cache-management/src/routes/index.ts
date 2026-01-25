@@ -34,13 +34,12 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const metrics = await cacheManagementService.getCacheMetrics(tenantId, cacheKey);
 
           return reply.send({ metrics });
-        } catch (error: any) {
-          log.error('Failed to get cache metrics', error, { service: 'cache-management' });
-          return reply.status(error.statusCode || 500).send({
-            error: {
-              code: 'METRICS_RETRIEVAL_FAILED',
-              message: error.message || 'Failed to retrieve cache metrics',
-            },
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Failed to get cache metrics', error instanceof Error ? error : new Error(msg), { service: 'cache-management' });
+          return reply.status(statusCode).send({
+            error: { code: 'METRICS_RETRIEVAL_FAILED', message: msg || 'Failed to retrieve cache metrics' },
           });
         }
       }
@@ -70,6 +69,36 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
         });
       }
     });
+
+    // Create or update cache strategy
+    fastify.post<{ Body: { pattern: string; ttl: number; priority: number } }>(
+      '/api/v1/cache/strategies',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Create or update cache strategy',
+          tags: ['Cache'],
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { pattern, ttl, priority } = request.body;
+          const tenantId = request.user!.tenantId;
+
+          const strategy = await cacheManagementService.upsertCacheStrategy(tenantId, pattern, ttl, priority);
+
+          return reply.send(strategy);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Failed to upsert cache strategy', error instanceof Error ? error : new Error(msg), { service: 'cache-management' });
+          return reply.status(statusCode).send({
+            error: { code: 'STRATEGY_UPSERT_FAILED', message: msg || 'Failed to create or update cache strategy' },
+          });
+        }
+      }
+    );
 
     log.info('Cache management routes registered', { service: 'cache-management' });
   } catch (error) {

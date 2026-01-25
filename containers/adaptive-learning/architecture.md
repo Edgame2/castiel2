@@ -1,73 +1,65 @@
-# Adaptive Learning Service Module - Architecture
+# Adaptive Learning Module - Architecture
 
 ## Overview
 
-The Adaptive Learning Service module implements the CAIS (Compound AI System) Adaptive Learning system that automatically learns optimal parameters for AI/ML components based on real-world outcomes.
+The Adaptive Learning module implements a CAIS (Compound AI System) adaptive learning system for automatically learning optimal parameters for AI/ML components. It provides adaptive weight learning, model selection, signal weighting, and performance tracking.
 
 ## Database Architecture
 
 ### Cosmos DB NoSQL Structure
 
+The module uses the following Cosmos DB containers in the shared database:
+
 | Container Name | Partition Key | Description |
 |----------------|---------------|-------------|
-| `adaptive_weights` | `/tenantId` | Learned component weights |
-| `adaptive_model_selections` | `/tenantId` | Model selection history |
-| `adaptive_outcomes` | `/tenantId` | Outcome collection data |
-| `adaptive_performance` | `/tenantId` | Performance metrics |
-| `adaptive_validations` | `/tenantId` | Validation results |
-| `adaptive_rollouts` | `/tenantId` | Rollout status |
+| `adaptive_learning_paths` | `/tenantId` | Learning paths and configurations |
+| `adaptive_progress` | `/tenantId` | Learning progress tracking |
+| `adaptive_skills` | `/tenantId` | Skill definitions and assessments |
+| `adaptive_assessments` | `/tenantId` | Assessment data |
+| `adaptive_assessment_results` | `/tenantId` | Assessment results and outcomes |
 
-## CAIS Services Architecture
+### Partition Key Strategy
 
-### Phase 1: Foundational (8 services)
-- **AdaptiveWeightLearningService**: Learns optimal component weights using Thompson Sampling
-- **AdaptiveModelSelectionService**: Selects best model automatically
-- **SignalWeightingService**: Learns optimal signal weights
-- **AdaptiveFeatureEngineeringService**: Context-aware feature engineering
-- **OutcomeCollectorService**: Collects predictions and outcomes
-- **PerformanceTrackerService**: Tracks component performance
-- **AdaptiveLearningValidationService**: Validates learned parameters
-- **AdaptiveLearningRolloutService**: Manages gradual rollout (10% → 95%)
+All containers are partitioned by `/tenantId` to ensure tenant isolation and efficient tenant-scoped queries.
 
-### Phase 2: Adaptive Intelligence (8 services)
-- **MetaLearningService**: Learns component trust
-- **ActiveLearningService**: Optimizes feedback requests
-- **FeedbackQualityService**: Assesses feedback quality
-- **EpisodicMemoryService**: Learns from notable events
-- **CounterfactualService**: Generates "what-if" scenarios
-- **CausalInferenceService**: Identifies causal relationships
-- **MultiModalIntelligenceService**: Combines multimodal insights
-- **PrescriptiveAnalyticsService**: Generates actionable recommendations
+## Service Architecture
 
-### Phase 3: Autonomous Intelligence (3 services)
-- **ReinforcementLearningService**: Learns optimal action sequences
-- **GraphNeuralNetworkService**: Graph-based relationship analysis
-- **NeuroSymbolicService**: Combines neural and symbolic reasoning
+### Core Services
 
-### Phase 4-7: Additional Services (3 services)
-- **ConflictResolutionLearningService**: Resolves conflicts in learning
-- **HierarchicalMemoryService**: Hierarchical memory management
-- **AdversarialTestingService**: Adversarial testing for robustness
+1. **LearningPathService** - Manages learning paths and configurations
+2. **ProgressService** - Tracks learning progress and outcomes
+3. **SkillService** - Manages skill definitions and assessments
+4. **AssessmentService** - Handles assessment creation and evaluation
 
-## Learning Algorithms
+## Data Flow
 
-- **Thompson Sampling**: Multi-armed bandit for weight learning
-- **Q-Learning**: Reinforcement learning for action sequences
-- **Bootstrap Validation**: Statistical validation with confidence intervals
-- **Inverse Decay Learning Rate**: Adaptive learning rates
+```
+User Request
+    ↓
+API Gateway
+    ↓
+Adaptive Learning Service
+    ↓
+AI Service / ML Service (for learning)
+    ↓
+Cosmos DB (store results)
+    ↓
+Event Publisher (RabbitMQ)
+```
 
-## Safety Mechanisms
+## Event Publishing
 
-- **Statistical Validation**: Validates improvements before applying
-- **Automatic Rollback**: Rolls back on degradation or user issues
-- **Gradual Rollout**: 10% → 95% over 5 weeks
-- **Circuit Breakers**: Resilience when services unavailable
-- **Default Fallbacks**: Always available
+The module publishes events to RabbitMQ:
+- `adaptive.learning.path.created`
+- `adaptive.learning.progress.updated`
+- `adaptive.learning.assessment.completed`
 
-## Dependencies
+## External Dependencies
 
-- **AI Service**: For AI model access
-- **Shard Manager**: For data access
-- **Logging**: For audit logging
-- **Redis**: For caching learned parameters
+- **AI Service**: For AI-powered learning recommendations
+- **ML Service**: For machine learning model training
+- **Logging Service**: For audit logging
 
+## Configuration
+
+All configuration is managed via `config/default.yaml` with environment variable overrides. Service URLs are config-driven, not hardcoded.

@@ -9,6 +9,33 @@ import { DomainEvent } from '@coder/shared';
 
 export function mapEventToNotificationInput(event: DomainEvent<any>): NotificationInput | null {
   const eventData = event.data || {};
+
+  // anomaly.detected (Plan §7.2): BI/risk uses tenantId only; notify owner when high/medium severity.
+  // recipientId requires eventData.ownerId (opportunity OwnerId). risk-analytics should include ownerId when publishing.
+  if (event.type === 'anomaly.detected') {
+    const orgId = eventData.tenantId || (event as { tenantId?: string }).tenantId || (event as { organizationId?: string }).organizationId || eventData.organizationId;
+    const recipientId = eventData.ownerId || eventData.userId || (event as { userId?: string }).userId;
+    if (!orgId || !recipientId) return null;
+    const severity = String(eventData.severity || 'medium').toLowerCase();
+    const criticality: NotificationCriticality =
+      severity === 'high' ? 'HIGH' : severity === 'medium' ? 'MEDIUM' : 'LOW';
+    const channels: NotificationChannel[] = severity === 'high' ? ['IN_APP', 'EMAIL'] : ['IN_APP'];
+    return {
+      organizationId: orgId,
+      eventType: 'anomaly.detected',
+      eventCategory: 'INCIDENTS',
+      sourceModule: 'risk-analytics',
+      sourceResourceId: eventData.opportunityId,
+      sourceResourceType: 'opportunity',
+      recipientId,
+      title: 'Anomaly detected',
+      body: eventData.description || `Anomaly (${eventData.anomalyType || 'unknown'}) for opportunity ${eventData.opportunityId || ''}.`,
+      criticality,
+      channelsRequested: channels,
+      metadata: { opportunityId: eventData.opportunityId, anomalyType: eventData.anomalyType, severity, detectedAt: eventData.detectedAt },
+    };
+  }
+
   const userId = event.userId || eventData.userId;
   const organizationId = event.organizationId || eventData.organizationId;
 
@@ -28,7 +55,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
         sourceResourceType: 'user',
         recipientId: userId,
         recipientEmail: eventData.email,
-        title: 'Welcome to Coder IDE',
+        title: 'Welcome to Castiel',
         body: `Welcome ${eventData.firstName || 'User'}! Your account has been created.`,
         criticality: 'MEDIUM',
         channelsRequested: ['EMAIL', 'IN_APP'],

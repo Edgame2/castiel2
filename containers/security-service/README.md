@@ -1,6 +1,6 @@
 # Security Service Module
 
-Security analysis and protection service for Coder IDE, providing secret scanning, vulnerability scanning, PII detection, SAST/DAST/SCA, and code obfuscation.
+Security analysis and protection service for Castiel, providing secret scanning, vulnerability scanning, PII detection, SAST/DAST/SCA, and code obfuscation.
 
 ## Features
 
@@ -119,5 +119,5 @@ npm test
 
 ## License
 
-Proprietary - Coder IDE
+Proprietary - Castiel
 

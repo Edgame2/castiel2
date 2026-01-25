@@ -1,6 +1,6 @@
 # Prompt Service Module
 
-Prompt management and A/B testing service for Coder IDE.
+Prompt management and A/B testing service for Castiel.
 
 ## Features
 

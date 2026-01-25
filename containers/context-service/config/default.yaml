@@ -30,6 +30,12 @@ services:
     url: ${AI_SERVICE_URL:-http://localhost:3006}
   logging:
     url: ${LOGGING_URL:-http://localhost:3014}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3023}
+  search_service:
+    url: ${SEARCH_SERVICE_URL:-http://localhost:3029}
+  cache_service:
+    url: ${CACHE_SERVICE_URL:-http://localhost:3035}
 
 rabbitmq:
   url: ${RABBITMQ_URL}

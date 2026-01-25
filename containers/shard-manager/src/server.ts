@@ -34,7 +34,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       openapi: '3.0.3',
       info: {
         title: 'Shard Manager Service API',
-        description: 'Core data model management service for Coder IDE',
+        description: 'Core data model management service for Castiel',
         version: '1.0.0',
       },
       servers: [

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: ML Service API
-  description: Machine learning model management service for Coder IDE
+  description: Machine learning model management service for Castiel
   version: 1.0.0
 servers:
   - url: /api/v1
@@ -9,6 +9,8 @@ servers:
 tags:
   - name: Models
   - name: Training
+  - name: Predictions
+  - name: Features
   - name: Health
 components:
   securitySchemes:
@@ -19,14 +21,38 @@ components:
 security:
   - bearerAuth: []
 paths:
+  /metrics:
+    get:
+      tags: [Health]
+      summary: Prometheus metrics (Plan §8.5.2, FIRST_STEPS §1)
+      description: Exposes http_requests_total, http_request_duration_seconds, ml_predictions_total, ml_prediction_duration_seconds (label model). Optional Bearer when metrics.require_auth.
+      security: []
+      responses:
+        '200':
+          description: text/plain; version=0.0.4 (Prometheus format)
+        '401':
+          description: Unauthorized (when metrics.require_auth and invalid Bearer)
   /health:
     get:
       tags: [Health]
-      summary: Health check
+      summary: Health check (Plan §11.7)
+      description: Includes azureMl.endpoints reachability (ok, degraded, not_configured).
       security: []
       responses:
         '200':
           description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  timestamp: { type: string, format: date-time }
+                  azureMl:
+                    type: object
+                    properties:
+                      status: { type: string, enum: [ok, degraded, not_configured] }
+                      endpoints: { type: object, additionalProperties: { type: string, enum: [ok, unreachable] } }
   /ready:
     get:
       tags: [Health]
@@ -37,4 +63,342 @@ paths:
           description: Service is ready
         '503':
           description: Service is not ready
+  /ml/forecast/predict:
+    post:
+      tags: [Predictions]
+      summary: Revenue forecast with P10/P50/P90 and scenarios (MISSING_FEATURES 5.1)
+      description: Returns pointForecast, uncertainty (p10, p50, p90), and best/base/worst scenarios. Uses deployed model when modelId is provided and READY/DEPLOYED; otherwise feature-based heuristic. Consumed by forecasting service.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+                tenantId: { type: string }
+                level: { type: string }
+                modelId: { type: string }
+                features:
+                  type: object
+                  properties:
+                    opportunityValue: { type: number }
+                    probability: { type: number }
+                    stage: { type: string }
+                    daysInStage: { type: number }
+      responses:
+        '200':
+          description: pointForecast, uncertainty (p10, p50, p90), scenarios, confidence
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pointForecast: { type: number }
+                  uncertainty: { type: object, properties: { p10: { type: number }, p50: { type: number }, p90: { type: number } } }
+                  scenarios: { type: array, items: { type: object, properties: { scenario: { type: string }, probability: { type: number }, forecast: { type: number } } } }
+                  confidence: { type: number }
+  /ml/forecast/period:
+    post:
+      tags: [Predictions]
+      summary: Prophet revenue-forecast period (Plan §877)
+      description: Prophet revenue-forecast for one period. Body history [[date, value], ...] (chronological), periods (default 1). Uses azure_ml.endpoints.revenue_forecasting. 503 when endpoint not configured. Consumed by forecasting service getMLForecast.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [history]
+              properties:
+                history:
+                  type: array
+                  items: { type: array }
+                  description: "Chronological [dateString, value] pairs, e.g. [['2024-01-01', 100], ...]"
+                periods: { type: number, minimum: 1, maximum: 365, default: 1 }
+      responses:
+        '200':
+          description: p10, p50, p90 (scalars for first period), modelId
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  p10: { type: number }
+                  p50: { type: number }
+                  p90: { type: number }
+                  modelId: { type: string }
+        '503':
+          description: revenue_forecasting endpoint not configured
+  /ml/risk-scoring/predict:
+    post:
+      tags: [Predictions]
+      summary: Risk-scoring prediction (MISSING_FEATURES 4.2, BI_SALES_RISK Plan §5.4)
+      description: Predict risk score. When features missing, buildVector('risk-scoring'). If azure_ml.endpoints['risk-scoring-model'] configured, tries Azure ML first; then Cosmos model (modelId) or heuristic. Consumed by risk-analytics.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+                modelId: { type: string }
+                features: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: Risk score and optional confidence, modelId
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  riskScore: { type: number, minimum: 0, maximum: 1 }
+                  confidence: { type: number }
+                  modelId: { type: string }
+  /ml/features/build:
+    post:
+      tags: [Features]
+      summary: Build feature vector for opportunity (FIRST_STEPS §6, FEATURE_PIPELINE_SPEC)
+      description: Builds Record<string, number> from shard-manager and risk-analytics (risk-snapshots or latest-evaluation fallback). Purpose: risk-scoring | win-probability | lstm | anomaly | forecasting.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId, purpose]
+              properties:
+                opportunityId: { type: string }
+                purpose: { type: string, enum: [risk-scoring, win-probability, lstm, anomaly, forecasting] }
+      responses:
+        '200':
+          description: Feature vector
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  features: { type: object, additionalProperties: { type: number } }
+        '404':
+          description: Opportunity not found
+  /ml/win-probability/predict:
+    post:
+      tags: [Predictions]
+      summary: Win-probability prediction (BI_SALES_RISK Plan §5.4, §5.7)
+      description: Predict win probability. buildVector('win-probability') then Azure ML win-probability-model when configured; on failure uses heuristic (vector.probability or 0.5).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+      responses:
+        '200':
+          description: Win probability in [0,1]
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  probability: { type: number, minimum: 0, maximum: 1 }
+  /ml/win-probability/explain:
+    post:
+      tags: [Predictions]
+      summary: Win-probability explain (Plan §905, §11.2)
+      description: Top drivers for win-probability. Phase 1: top features by magnitude from buildVector; Phase 2: tree importance or SHAP.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+      responses:
+        '200':
+          description: topDrivers (feature, contribution, direction)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  topDrivers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        feature: { type: string }
+                        contribution: { type: number }
+                        direction: { type: string, enum: [increases, decreases] }
+  /ml/anomaly/predict:
+    post:
+      tags: [Predictions]
+      summary: Anomaly prediction (Plan §5.5)
+      description: Anomaly detection (Isolation Forest) for an opportunity. buildVector('anomaly') then Azure ML anomaly endpoint. Requires azure_ml.endpoints.anomaly. Returns isAnomaly (-1=anomaly, 1=normal), anomalyScore (higher=more anomalous).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+      responses:
+        '200':
+          description: isAnomaly, anomalyScore
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isAnomaly: { type: number, description: '-1=anomaly, 1=normal (sklearn)' }
+                  anomalyScore: { type: number, description: 'Higher = more anomalous' }
+        '404':
+          description: Opportunity not found
+        '503':
+          description: Anomaly endpoint not configured
+  /ml/risk-trajectory/predict:
+    post:
+      tags: [Predictions]
+      summary: LSTM risk-trajectory (Plan §5.5, §875)
+      description: 30/60/90-day risk from risk-trajectory-lstm. Body sequence from risk_snapshots [[riskScore, activity_count_30d, days_since_last_activity], ...] (pad to 30). Requires azure_ml.endpoints.risk_trajectory_lstm. Caller (risk-analytics) builds sequence; fallback to rules when unavailable.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sequence]
+              properties:
+                sequence: { type: array, items: { type: array, items: { type: number } } }
+                opportunityId: { type: string }
+      responses:
+        '200':
+          description: risk_30, risk_60, risk_90, confidence
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  risk_30: { type: number }
+                  risk_60: { type: number }
+                  risk_90: { type: number }
+                  confidence: { type: number }
+        '503':
+          description: risk_trajectory_lstm endpoint not configured
+  /ml/model-selection/risk-scoring:
+    get:
+      tags: [Models]
+      summary: Model selection risk-scoring (Plan §5.4, §874)
+      description: Select risk-scoring model (global vs industry). Stub: industry when industryId and risk_scoring_industry endpoint; else global. Full: >3000 examples, >5% improvement.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: industryId
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: modelId, confidence
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  modelId: { type: string }
+                  confidence: { type: number }
+  /ml/model-selection/win-probability:
+    get:
+      tags: [Models]
+      summary: Model selection win-probability (Plan §5.4, §874)
+      description: Select win-probability model. Stub: win-probability-model or win_probability when endpoint configured.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: modelId, confidence
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  modelId: { type: string }
+                  confidence: { type: number }
+  /ml/model-monitoring/run:
+    post:
+      tags: [Predictions]
+      summary: Model monitoring run (Plan §940, §9.3)
+      description: Internal. Called by risk-analytics BatchJobWorker. Run drift (PSI) and performance (Brier, MAE) checks. Stub returns driftChecked=0, performanceChecked=0 until wired. Full impl will publish ml.model.drift.detected / ml.model.performance.degraded.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenantIds: { type: array, items: { type: string } }
+      responses:
+        '200':
+          description: driftChecked, performanceChecked (stub 0,0)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  driftChecked: { type: number }
+                  performanceChecked: { type: number }
+  /ml/models/{id}/card:
+    get:
+      tags: [Models]
+      summary: Model card (Plan §11.9, §946)
+      description: Purpose, input (feature IDs), output (by type), limitations. From ml_models; limitations writable via PUT /ml/models/:id.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: modelId, name, type, version, purpose, input, output, limitations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  modelId: { type: string }
+                  name: { type: string }
+                  type: { type: string }
+                  version: { type: number }
+                  purpose: { type: string }
+                  input: { type: array, items: { type: string } }
+                  output: { type: string }
+                  limitations: { type: array, items: { type: string } }
+        '404':
+          description: Model not found
 

@@ -9,6 +9,7 @@ import { ConversationService } from '../services/ConversationService';
 import { MessageService } from '../services/MessageService';
 import { CommentService } from '../services/CommentService';
 import { ReactionService } from '../services/ReactionService';
+import { CollaborationIntelligenceService } from '../services/CollaborationIntelligenceService';
 import {
   CreateConversationInput,
   UpdateConversationInput,
@@ -26,6 +27,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   const messageService = new MessageService(conversationService);
   const commentService = new CommentService(messageService);
   const reactionService = new ReactionService(messageService);
+  const collaborationIntelligenceService = new CollaborationIntelligenceService();
 
   // ===== CONVERSATION ROUTES =====
 
@@ -743,6 +745,51 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         userId
       );
       reply.send(message);
+    }
+  );
+
+  // ===== COLLABORATION INTELLIGENCE ROUTES (from collaboration-intelligence) =====
+
+  /**
+   * Generate collaborative insight
+   * POST /api/v1/collaboration/insights
+   */
+  app.post<{ Body: { context: any } }>(
+    '/api/v1/collaboration/insights',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Generate collaborative insight',
+        tags: ['Collaboration Intelligence'],
+        body: {
+          type: 'object',
+          required: ['context'],
+          properties: {
+            context: { type: 'object' },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            description: 'Collaborative insight generated',
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { context } = request.body;
+        const tenantId = request.user!.tenantId;
+        const insight = await collaborationIntelligenceService.generateInsight(tenantId, context);
+        return reply.status(201).send(insight);
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'INSIGHT_GENERATION_FAILED',
+            message: error.message || 'Failed to generate collaborative insight',
+          },
+        });
+      }
     }
   );
 }

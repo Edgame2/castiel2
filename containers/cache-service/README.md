@@ -1,6 +1,6 @@
 # Cache Service Module
 
-Caching and cache management service for Coder IDE.
+Caching and cache management service for Castiel.
 
 ## Features
 

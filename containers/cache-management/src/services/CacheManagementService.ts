@@ -76,12 +76,8 @@ export class CacheManagementService {
         .fetchNext();
 
       return resources;
-    } catch (error: any) {
-      log.error('Failed to get cache metrics', error, {
-        tenantId,
-        cacheKey,
-        service: 'cache-management',
-      });
+    } catch (error: unknown) {
+      log.error('Failed to get cache metrics', error instanceof Error ? error : new Error(String(error)), { tenantId, cacheKey, service: 'cache-management' });
       return [];
     }
   }
@@ -136,12 +132,8 @@ export class CacheManagementService {
 
       await container.items.create(strategy, { partitionKey: tenantId });
       return strategy;
-    } catch (error: any) {
-      log.error('Failed to upsert cache strategy', error, {
-        tenantId,
-        pattern,
-        service: 'cache-management',
-      });
+    } catch (error: unknown) {
+      log.error('Failed to upsert cache strategy', error instanceof Error ? error : new Error(String(error)), { tenantId, pattern, service: 'cache-management' });
       throw error;
     }
   }
@@ -152,7 +144,17 @@ export class CacheManagementService {
   async optimizeCache(tenantId: string): Promise<{ optimized: number; freed: number }> {
     try {
       // Get cache metrics
-      const metrics = await this.getCacheMetrics(tenantId);
+      const metricsList = await this.getCacheMetrics(tenantId);
+      
+      // Calculate aggregate metrics
+      const totalMetrics = metricsList.length;
+      const totalHits = metricsList.reduce((sum, m) => sum + m.hitCount, 0);
+      const totalMisses = metricsList.reduce((sum, m) => sum + m.missCount, 0);
+      const totalRequests = totalHits + totalMisses;
+      const avgHitRate = totalRequests > 0 ? totalHits / totalRequests : 0;
+      const avgResponseTime = metricsList.length > 0
+        ? metricsList.reduce((sum, m) => sum + m.averageResponseTime, 0) / metricsList.length
+        : 0;
       
       // Get cache strategies
       const container = getContainer('cache_strategies');
@@ -168,23 +170,16 @@ export class CacheManagementService {
       let freed = 0;
 
       // Analyze metrics and identify optimization opportunities
-      if (metrics.hitRate < 0.5) {
+      if (avgHitRate < 0.5 && totalMetrics > 0) {
         // Low hit rate - evict least recently used entries
-        const evictionThreshold = metrics.totalEntries * 0.2; // Evict 20% of entries
-        freed += Math.floor(evictionThreshold);
-        optimized += 1;
-      }
-
-      if (metrics.memoryUsage > 0.8) {
-        // High memory usage - evict low-priority entries
-        const memoryEviction = metrics.totalEntries * 0.15; // Evict 15% for memory
-        freed += Math.floor(memoryEviction);
+        const evictionThreshold = Math.floor(totalMetrics * 0.2); // Evict 20% of entries
+        freed += evictionThreshold;
         optimized += 1;
       }
 
       // Update strategies based on metrics
       for (const strategy of strategies || []) {
-        if (strategy.ttl && metrics.avgAge > strategy.ttl * 1.5) {
+        if (strategy.ttl && avgResponseTime > strategy.ttl * 1.5) {
           // Entries are older than expected - reduce TTL
           strategy.ttl = Math.floor(strategy.ttl * 0.8);
           await container.item(strategy.id, tenantId).replace({
@@ -208,11 +203,8 @@ export class CacheManagementService {
         optimized,
         freed,
       };
-    } catch (error: any) {
-      log.error('Failed to optimize cache', error, {
-        tenantId,
-        service: 'cache-management',
-      });
+    } catch (error: unknown) {
+      log.error('Failed to optimize cache', error instanceof Error ? error : new Error(String(error)), { tenantId, service: 'cache-management' });
       throw error;
     }
   }

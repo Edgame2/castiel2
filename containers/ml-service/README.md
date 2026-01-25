@@ -41,6 +41,16 @@ The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers)
 | server.port | number | 3033 | Server port |
 | cosmos_db.endpoint | string | - | Cosmos DB endpoint URL (required) |
 | ai_service.url | string | - | AI Service URL (required) |
+| services.shard_manager.url | string | - | Shard-manager URL for `buildVectorForOpportunity` (FEATURE_PIPELINE_SPEC §6, FIRST_STEPS §6). Required for features/build, win-probability, risk-scoring. |
+| services.risk_analytics.url | string | - | risk-analytics URL for risk-snapshots and latest-evaluation in `buildVectorForOpportunity`. |
+| feature_pipeline.stage_labels | string[] | (code) | Label encoding for `StageName` (FEATURE_PIPELINE_SPEC §6). Default in code: Unknown, Discovery, Proposal, Negotiation, Closed Won, Closed Lost. |
+| feature_pipeline.industry_labels | string[] | (code) | Label encoding for `IndustryId`. Default in code: `['general']`. |
+| features | object | {} | Feature flags for BI/risk (Plan §895). E.g. use_win_probability_ml, use_risk_scoring_ml (key → boolean). |
+| azure_ml.workspace_name | string | "" | Azure ML Workspace name; env `AZURE_ML_WORKSPACE_NAME` (Plan §867, §8.2). |
+| azure_ml.resource_group | string | castiel-ml-prod-rg | Azure ML resource group; env `AZURE_ML_RESOURCE_GROUP` (Plan §5.1). |
+| azure_ml.subscription_id | string | "" | Azure subscription; env `AZURE_ML_SUBSCRIPTION_ID`. |
+| azure_ml.endpoints | object | {} | ModelId → scoring URL; keys `win-probability-model`, `risk-scoring-model`. Env: `AZURE_ML_WIN_PROBABILITY_URL`, `AZURE_ML_RISK_SCORING_URL`. |
+| azure_ml.api_key | string | "" | Optional; env `AZURE_ML_API_KEY`. |
 
 ## API Reference
 
@@ -48,8 +58,13 @@ The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/v1/ml/risk-scoring/predict` | Predict risk score |
-| POST | `/api/v1/ml/forecast/predict` | Predict forecast |
+| POST | `/api/v1/ml/features/build` | Build feature vector for an opportunity (body: `opportunityId`, `purpose`: risk-scoring \| win-probability \| lstm \| anomaly \| forecasting). Returns `{ features: Record<string, number> }`. FEATURE_PIPELINE_SPEC §6, FIRST_STEPS §6. |
+| POST | `/api/v1/ml/risk-scoring/predict` | Predict risk score (buildVector when features missing; Azure ML or Cosmos/heuristic; Plan §5.4) |
+| POST | `/api/v1/ml/win-probability/predict` | Predict win probability (Azure ML win-probability-model or heuristic; BI_SALES_RISK Plan §5.4) |
+| POST | `/api/v1/ml/anomaly/predict` | Anomaly detection (Isolation Forest; buildVector 'anomaly' → Azure ML anomaly endpoint; Plan §5.5). Returns `{ isAnomaly, anomalyScore }`. |
+| POST | `/api/v1/ml/risk-trajectory/predict` | LSTM 30/60/90-day risk (Plan §5.5, §875). Body `{ sequence: number[][] }` from risk_snapshots; returns `{ risk_30, risk_60, risk_90, confidence }`. Requires `azure_ml.endpoints.risk_trajectory_lstm`. |
+| POST | `/api/v1/ml/forecast/predict` | Revenue forecast with P10/P50/P90 and scenarios (MISSING_FEATURES 5.1) |
+| POST | `/api/v1/ml/forecast/period` | Prophet revenue-forecast for one period (Plan §877). Body `{ history: [[date, value], ...], periods? }`. Returns `{ p10, p50, p90, modelId }`. Requires `azure_ml.endpoints.revenue_forecasting`. 503 when not configured. Consumed by forecasting getMLForecast. |
 | POST | `/api/v1/ml/recommendations` | Get ML recommendations |
 | GET | `/api/v1/ml/models` | List models |
 | POST | `/api/v1/ml/models` | Create model |
@@ -64,6 +79,7 @@ The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers)
 - `ml.model.trained` - Model training completed
 - `ml.model.deployed` - Model deployed
 - `ml.prediction.made` - Prediction made
+- `ml.prediction.completed` (Plan §7.1, §3.5) - Emitted after each prediction from `predictWinProbability`, `predictRiskScore`, `predictForecast`. Payload: `{ modelId, opportunityId?, inferenceMs }`. Consumed by: **logging** (MLAuditConsumer), **analytics-service** (UsageTrackingConsumer).
 
 ## Dependencies
 

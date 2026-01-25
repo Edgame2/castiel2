@@ -1,11 +1,15 @@
-# Ai-analytics Module
+# AI Analytics Module
 
-[Description of what this service does]
+AI usage analytics and monitoring service for Castiel, providing AI analytics, chat catalog, AI configuration, model seeding, proactive insights, and feedback learning.
 
 ## Features
 
-- Feature 1
-- Feature 2
+- **AI Analytics**: Track AI usage and performance
+- **Chat Catalog**: Manage AI chat catalogs
+- **AI Configuration**: AI configuration management
+- **Model Seeding**: Seed AI models
+- **Proactive Insights**: Generate proactive insights
+- **Feedback Learning**: Feedback loop for AI improvement
 
 ## Quick Start
 
@@ -53,11 +57,18 @@ See [OpenAPI Spec](./openapi.yaml)
 
 ### Published Events
 
-- `ai-analytics.event.name`
+- `ai.analytics.event.recorded` - AI analytics event recorded
+- `ai.feedback.received` - AI feedback received
 
 ### Consumed Events
 
-- `other.event.name`
+- (None currently)
+
+## Dependencies
+
+- **ai-service**: For AI operations
+- **ai-insights**: For insight generation
+- **analytics-service**: For analytics integration
 
 ## Development
 

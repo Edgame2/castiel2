@@ -5,9 +5,28 @@ import { load } from 'yaml';
 export interface CacheServiceConfig {
   module: { name: string; version: string };
   server: { port: number; host: string };
-  cache: { enabled: boolean; url: string; ttl: number };
+  redis?: {
+    url?: string;
+    host?: string;
+    port?: number;
+    password?: string;
+    ttl?: number;
+  };
+  cosmos_db?: {
+    endpoint?: string;
+    key?: string;
+    database_id?: string;
+    containers?: {
+      metrics?: string;
+      strategies?: string;
+    };
+  };
+  jwt?: {
+    secret?: string;
+  };
   services: {
-    logging: { url: string };
+    logging?: { url: string };
+    embeddings?: { url: string };
   };
   rabbitmq: { url: string; exchange: string; queue: string };
 }

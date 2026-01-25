@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Migration Service Module Configuration",
+  "type": "object",
+  "required": ["module", "server", "cosmos_db", "rabbitmq"],
+  "properties": {
+    "module": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "server": {
+      "type": "object",
+      "required": ["port", "host"],
+      "properties": {
+        "port": { "type": ["integer", "string"], "minimum": 1, "maximum": 65535 },
+        "host": { "type": "string" }
+      }
+    },
+    "cosmos_db": {
+      "type": "object",
+      "required": ["endpoint", "key"],
+      "properties": {
+        "endpoint": { "type": "string", "format": "uri" },
+        "key": { "type": "string" },
+        "database_id": { "type": "string", "default": "castiel" },
+        "containers": {
+          "type": "object",
+          "properties": {
+            "migrations": { "type": "string" },
+            "steps": { "type": "string" },
+            "plans": { "type": "string" }
+          }
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "properties": {
+        "context_service": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
+        },
+        "execution": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
+        },
+        "quality": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
+        },
+        "knowledge_base": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
+        },
+        "logging": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
+        }
+      }
+    },
+    "rabbitmq": {
+      "type": "object",
+      "required": ["url", "exchange", "queue"],
+      "properties": {
+        "url": { "type": "string", "format": "uri" },
+        "exchange": { "type": "string" },
+        "queue": { "type": "string" }
+      }
+    }
+  }
+}

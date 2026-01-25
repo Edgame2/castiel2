@@ -1,7 +1,7 @@
 {
   "name": "@coder/shared",
   "version": "1.0.0",
-  "description": "Shared utilities, types, and services for Coder IDE containers",
+  "description": "Shared utilities, types, and services for Castiel containers",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

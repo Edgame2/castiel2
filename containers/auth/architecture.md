@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Authentication module provides identity verification and session lifecycle management for the Coder IDE system. This module has been migrated from PostgreSQL to Azure Cosmos DB NoSQL to align with the system's database architecture.
+The Authentication module provides identity verification and session lifecycle management for the Castiel system. This module has been migrated from PostgreSQL to Azure Cosmos DB NoSQL to align with the system's database architecture.
 
 ## Database Architecture
 

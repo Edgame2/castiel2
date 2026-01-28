@@ -67,6 +67,10 @@ npm start
 
 See [OpenAPI Spec](./openapi.yaml)
 
+## Batch jobs (Plan §9.3)
+
+**BatchJobWorker** consumes `workflow.job.trigger` from queue `bi_batch_jobs`. Jobs: `risk-snapshot-backfill`, `outcome-sync`, `industry-benchmarks`, `risk-clustering`, `account-health`, `propagation`, `model-monitoring`. `model-monitoring` calls ml-service `POST /api/v1/ml/model-monitoring/run` (requires `services.ml_service.url`). `risk-snapshot-backfill` requires `data_lake.connection_string`. Config: `rabbitmq.batch_jobs`, `outcome_sync.tenant_ids`. See [model-monitoring](../../deployment/monitoring/runbooks/model-monitoring.md), [backfill-failure](../../deployment/monitoring/runbooks/backfill-failure.md).
+
 ## Events
 
 ### Published Events
@@ -88,6 +92,7 @@ See [OpenAPI Spec](./openapi.yaml)
 - `integration.sync.completed` - Log only; evaluations triggered by shard/opportunity events
 - `workflow.risk.analysis.requested` - Process workflow-triggered risk analysis
 - `workflow.risk.scoring.requested` - Process risk scoring workflow request
+- `workflow.job.trigger` - **BatchJobWorker** consumes from `bi_batch_jobs`; runs risk-snapshot-backfill, outcome-sync, industry-benchmarks, risk-clustering, account-health, propagation, model-monitoring (see Batch jobs above).
 - `opportunity.outcome.recorded` - RiskAnalyticsEventConsumer → OutcomeDataLakeWriter appends to Data Lake `/ml_outcomes/...` (Plan §904, DATA_LAKE_LAYOUT §2.2). Requires `data_lake.connection_string`; when unset, handler skipped.
 
 ## Dependencies

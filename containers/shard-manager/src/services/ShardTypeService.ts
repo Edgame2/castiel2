@@ -214,5 +214,199 @@ export class ShardTypeService {
       isActive: false,
     });
   }
+
+  /**
+   * Validate test data against shard type schema
+   */
+  async validateTestData(
+    shardTypeId: string,
+    tenantId: string,
+    testData: any
+  ): Promise<{
+    valid: boolean;
+    errors: Array<{ path: string; message: string }>;
+    warnings: Array<{ path: string; message: string }>;
+  }> {
+    const shardType = await this.getById(shardTypeId, tenantId);
+    const errors: Array<{ path: string; message: string }> = [];
+    const warnings: Array<{ path: string; message: string }> = [];
+
+    // Basic validation: check if schema exists
+    if (!shardType.schema || typeof shardType.schema !== 'object') {
+      errors.push({
+        path: 'schema',
+        message: 'Shard type schema is invalid or missing',
+      });
+      return { valid: false, errors, warnings };
+    }
+
+    // Simple validation: check required fields if schema has them
+    if (shardType.schema.required && Array.isArray(shardType.schema.required)) {
+      for (const requiredField of shardType.schema.required) {
+        if (!(requiredField in testData)) {
+          errors.push({
+            path: requiredField,
+            message: `Required field '${requiredField}' is missing`,
+          });
+        }
+      }
+    }
+
+    // Type validation for known fields
+    if (shardType.schema.properties && typeof shardType.schema.properties === 'object') {
+      for (const [fieldName, fieldSchema] of Object.entries(shardType.schema.properties as any)) {
+        if (testData[fieldName] !== undefined) {
+          const fieldValue = testData[fieldName];
+          const fieldDef = fieldSchema as any;
+
+          // Type checking
+          if (fieldDef.type) {
+            const expectedType = fieldDef.type;
+            const actualType = Array.isArray(fieldValue) ? 'array' : typeof fieldValue;
+
+            if (expectedType === 'string' && actualType !== 'string') {
+              errors.push({
+                path: fieldName,
+                message: `Field '${fieldName}' must be a string, got ${actualType}`,
+              });
+            } else if (expectedType === 'number' && actualType !== 'number') {
+              errors.push({
+                path: fieldName,
+                message: `Field '${fieldName}' must be a number, got ${actualType}`,
+              });
+            } else if (expectedType === 'boolean' && actualType !== 'boolean') {
+              errors.push({
+                path: fieldName,
+                message: `Field '${fieldName}' must be a boolean, got ${actualType}`,
+              });
+            } else if (expectedType === 'array' && actualType !== 'array') {
+              errors.push({
+                path: fieldName,
+                message: `Field '${fieldName}' must be an array, got ${actualType}`,
+              });
+            } else if (expectedType === 'object' && (actualType !== 'object' || Array.isArray(fieldValue))) {
+              errors.push({
+                path: fieldName,
+                message: `Field '${fieldName}' must be an object, got ${actualType}`,
+              });
+            }
+          }
+
+          // Additional validations
+          if (fieldDef.type === 'string' && fieldDef.minLength && fieldValue.length < fieldDef.minLength) {
+            warnings.push({
+              path: fieldName,
+              message: `Field '${fieldName}' is shorter than minimum length (${fieldDef.minLength})`,
+            });
+          }
+
+          if (fieldDef.type === 'number' && fieldDef.minimum !== undefined && fieldValue < fieldDef.minimum) {
+            warnings.push({
+              path: fieldName,
+              message: `Field '${fieldName}' is less than minimum value (${fieldDef.minimum})`,
+            });
+          }
+        }
+      }
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  }
+
+  /**
+   * Get shard type usage statistics
+   */
+  async getStatistics(
+    shardTypeId: string,
+    tenantId: string
+  ): Promise<{
+    shardCount: number;
+    tenantsUsing: number;
+    lastCreated: Date | null;
+    avgShardSize: number;
+  }> {
+    const shardType = await this.getById(shardTypeId, tenantId);
+    const shardContainer = getContainer('shard_shards');
+
+    // Count shards of this type for the tenant
+    const tenantShardsQuery = `
+      SELECT COUNT(1) as count, MAX(c.createdAt) as lastCreated
+      FROM c
+      WHERE c.tenantId = @tenantId AND c.shardTypeId = @shardTypeId
+    `;
+
+    const tenantResult = await shardContainer.items
+      .query<{ count: number; lastCreated: string | null }>({
+        query: tenantShardsQuery,
+        parameters: [
+          { name: '@tenantId', value: tenantId },
+          { name: '@shardTypeId', value: shardTypeId },
+        ],
+      })
+      .fetchAll();
+
+    const shardCount = tenantResult.resources[0]?.count || 0;
+    const lastCreated = tenantResult.resources[0]?.lastCreated
+      ? new Date(tenantResult.resources[0].lastCreated)
+      : null;
+
+    // Count distinct tenants using this shard type (across all tenants)
+    // Note: This is a simplified approach - in production, you might want to cache this
+    const allTenantsQuery = `
+      SELECT DISTINCT c.tenantId
+      FROM c
+      WHERE c.shardTypeId = @shardTypeId
+    `;
+
+    const allTenantsResult = await shardContainer.items
+      .query<{ tenantId: string }>({
+        query: allTenantsQuery,
+        parameters: [{ name: '@shardTypeId', value: shardTypeId }],
+      })
+      .fetchAll();
+
+    const tenantsUsing = new Set(allTenantsResult.resources.map((r) => r.tenantId)).size;
+
+    // Calculate average shard size (approximate - using JSON string length)
+    const sizeQuery = `
+      SELECT c.id, c.structuredData, c.unstructuredData
+      FROM c
+      WHERE c.tenantId = @tenantId AND c.shardTypeId = @shardTypeId
+    `;
+
+    const sizeResult = await shardContainer.items
+      .query<{ structuredData?: any; unstructuredData?: any }>({
+        query: sizeQuery,
+        parameters: [
+          { name: '@tenantId', value: tenantId },
+          { name: '@shardTypeId', value: shardTypeId },
+        ],
+      })
+      .fetchNext();
+
+    let totalSize = 0;
+    let sizeCount = 0;
+
+    for (const shard of sizeResult.resources) {
+      const shardSize =
+        JSON.stringify(shard.structuredData || {}).length +
+        JSON.stringify(shard.unstructuredData || {}).length;
+      totalSize += shardSize;
+      sizeCount++;
+    }
+
+    const avgShardSize = sizeCount > 0 ? totalSize / sizeCount : 0;
+
+    return {
+      shardCount,
+      tenantsUsing,
+      lastCreated,
+      avgShardSize: Math.round(avgShardSize),
+    };
+  }
 }
 

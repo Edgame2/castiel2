@@ -23,11 +23,12 @@
 | Purpose | Path pattern | Format | Columns (min) |
 |---------|--------------|--------|---------------|
 | Risk evaluations (for risk-scoring, outcome) | `/risk_evaluations/year=YYYY/month=MM/day=DD/*.parquet` | Parquet | tenantId, opportunityId, riskScore, categoryScores, timestamp; **target:** derived from opportunity outcome (IsWon) or riskScore |
+| ML outcomes (for target_win, target_risk; join with risk_evaluations) | `/ml_outcomes/year=YYYY/month=MM/day=DD/*.parquet` | Parquet | tenantId, opportunityId, outcome, competitorId?, closeDate, amount, recordedAt ([DATA_LAKE_LAYOUT](./BI_SALES_RISK_DATA_LAKE_LAYOUT.md) §2.2). Writer: risk-analytics OutcomeDataLakeWriter. |
 | Risk snapshots (for LSTM) | `/risk_snapshots/...` or same as risk_evaluations with snapshotDate | Parquet | opportunityId, snapshotDate, riskScore, (activity_count_30d, days_since_last_activity if present) |
 | ML inference logs (for drift) | `/ml_inference_logs/year=.../month=.../*.parquet` | Parquet | feature columns + modelId, timestamp |
 | Training-ready (pre-joined) | `/ml_training/risk_scoring/year=.../*.parquet` | Parquet | Feature names from Feature Pipeline Spec + `target_risk` or `target_win` |
 
-**Convention:** Training scripts accept `--input-dataset` (Azure ML Dataset pointing to Data Lake) or `--input-path` (abfs path). Pipeline/feature job can precompute `/ml_training/{model_id}/` from raw `risk_evaluations` + shard-manager (or Node `buildFeatureVector` output logged to Data Lake).
+**Convention:** Training scripts accept `--input-dataset` (Azure ML Dataset pointing to Data Lake) or `--input-path` (abfs path). Pipeline/feature job (e.g. `prepare_training_data.py`) can precompute `/ml_training/{model_id}/` from `/risk_evaluations` + `/ml_outcomes` (and optionally shard-manager or Node `buildFeatureVector`). See [DATA_LAKE_LAYOUT](./BI_SALES_RISK_DATA_LAKE_LAYOUT.md) §2.4.
 
 ### 2.2 Target Columns
 

@@ -4,13 +4,16 @@ Integration synchronization and adapter management service for Castiel, providin
 
 ## Features
 
+- **Async Data Flow**: All integration data flows through RabbitMQ for asynchronous processing
 - **Sync Task Management**: Create, execute, and monitor sync tasks
 - **Bidirectional Synchronization**: Two-way data synchronization between Castiel and external systems
 - **Webhook Management**: Webhook endpoint configuration and delivery
 - **Conflict Resolution**: Automatic and manual conflict resolution strategies
 - **Adapter Management**: Integration adapter orchestration
-- **Execution Tracking**: Track sync execution history and performance
+- **Execution Tracking**: Track sync execution history and performance (updated asynchronously via events)
 - **Sync Limits**: Configurable max records per sync (default 1000), min interval between syncs per integration (default 5 min), max concurrent syncs per tenant (default 3)
+- **Batch Processing**: Automatic batch event publishing for large syncs (>100 records)
+- **Event-Driven Architecture**: Integration data published to RabbitMQ for async mapping, storage, and vectorization
 
 ## Quick Start
 
@@ -56,18 +59,55 @@ npm start
 
 See [OpenAPI Spec](./openapi.yaml)
 
+## Architecture
+
+### Async Data Flow
+
+Integration data now flows asynchronously through RabbitMQ:
+
+1. **Fetch**: Integration adapter fetches data from external system
+2. **Publish Raw**: `IntegrationSyncService` publishes `integration.data.raw` (or `integration.data.raw.batch`) events
+3. **Map**: `CRMDataMappingConsumer` (in integration-processors) consumes events, applies field mappings, stores shards
+4. **Store**: Shards created via shard-manager API
+5. **Vectorize**: Data-enrichment consumes `shard.created` events for vectorization
+6. **Downstream**: Opportunity events trigger risk → forecast → recommendations chain
+
+### Event Flow Diagram
+
+```
+External System → Integration Adapter → IntegrationSyncService
+                                              ↓
+                                    RabbitMQ (integration.data.raw)
+                                              ↓
+                                    CRMDataMappingConsumer
+                                    (integration-processors)
+                                              ↓
+                                    Shard Manager API
+                                              ↓
+                                    RabbitMQ (shard.created)
+                                              ↓
+                                    Data Enrichment (vectorization)
+                                    Risk Analytics (evaluation)
+                                    Forecasting (forecast)
+                                    Recommendations (recommendations)
+```
+
 ## Events
 
 ### Published Events
 
 - `integration.sync.started` - Sync task started
-- `integration.sync.completed` - Sync task completed
+- `integration.sync.completed` - Sync task completed (published when all records mapped)
 - `integration.sync.failed` - Sync task failed
+- `integration.data.raw` - Raw data fetched from external system (single record)
+- `integration.data.raw.batch` - Batch of raw data records (for large syncs)
 - `integration.conflict.detected` - Conflict detected during sync
 
 ### Consumed Events
 
-- `shard.updated` - Trigger sync when shards are updated
+- `integration.data.mapped` - Record successfully mapped and stored (updates sync execution stats)
+- `integration.data.mapping.failed` - Mapping failed for a record (updates sync execution stats)
+- `shard.updated` - Trigger sync when shards are updated (bidirectional sync)
 
 ## Dependencies
 

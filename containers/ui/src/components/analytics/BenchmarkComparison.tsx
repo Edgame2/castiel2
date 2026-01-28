@@ -53,7 +53,7 @@ export function BenchmarkComparison({
           <XAxis dataKey="name" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => (metricLabel.includes('Rate') ? `${(v * 100).toFixed(0)}%` : v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))} />
           <Tooltip
-            formatter={(v: number) => [metricLabel.includes('Rate') ? `${(v * 100).toFixed(1)}%` : v, metricLabel]}
+            formatter={(v: number | undefined) => [v != null ? (metricLabel.includes('Rate') ? `${(v * 100).toFixed(1)}%` : v) : '—', metricLabel]}
             labelFormatter={(n) => n}
           />
           <Bar dataKey="value" fill="#8b5cf6" radius={[2, 2, 0, 0]} name={metricLabel} />

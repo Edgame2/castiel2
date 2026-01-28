@@ -430,7 +430,7 @@ All under `/api/v1`; `authenticateRequest`, `tenantEnforcementMiddleware`, `X-Te
 | POST | `/api/v1/remediation-workflows` | RemediationWorkflowService.createWorkflow | Create remediation workflow |
 | GET | `/api/v1/remediation-workflows` | RemediationWorkflowService.list | List by opportunity/tenant/user |
 | GET | `/api/v1/remediation-workflows/:id` | RemediationWorkflowService.get | Get workflow |
-| PUT | `/api/v1/remediation-workflows/:id/steps/:stepNumber/complete` | RemediationWorkflowService.completeStep | Complete step |
+| PUT or POST | `/api/v1/remediation-workflows/:id/steps/:stepNumber/complete` | RemediationWorkflowService.completeStep | Complete step. Both PUT and POST are accepted. |
 | PUT | `/api/v1/remediation-workflows/:id/cancel` | RemediationWorkflowService.cancel | Cancel |
 
 ### 4.5 dashboard / dashboard-analytics (Extend)

@@ -66,6 +66,7 @@ rabbitmq:
   queue: recommendations_service
   bindings:
     - "opportunity.updated"
+    - "integration.opportunity.updated"
     - "risk.evaluation.completed"
     - "forecast.completed"
     - "shard.updated"

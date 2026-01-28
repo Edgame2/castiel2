@@ -53,6 +53,40 @@ export async function initializeEventConsumer(): Promise<void> {
       }
     });
 
+    // Handle integration opportunity updates
+    // Note: Sequential processing after risk and forecast is ensured by risk.evaluation.completed and forecast.completed handlers below
+    // This handler processes integration.opportunity.updated events, but recommendations will be triggered
+    // after risk evaluation and forecast completion via their respective completion events
+    consumer.on('integration.opportunity.updated', async (event) => {
+      const data = event?.data ?? {};
+      const opportunityId = data.opportunityId;
+      const tenantId = event.tenantId ?? data.tenantId;
+      if (!opportunityId || !tenantId) {
+        log.warn('integration.opportunity.updated missing opportunityId or tenantId', { hasData: !!event?.data, service: 'recommendations' });
+        return;
+      }
+      log.info('Integration opportunity updated, will generate recommendations after risk and forecast', {
+        opportunityId,
+        tenantId,
+        service: 'recommendations',
+      });
+
+      // Note: We don't generate recommendations immediately here because:
+      // 1. Risk evaluation is triggered by integration.opportunity.updated in risk-analytics
+      // 2. Risk evaluation publishes risk.evaluation.completed when done
+      // 3. Forecasting consumes risk.evaluation.completed and publishes forecast.completed when done
+      // 4. Our forecast.completed handler will generate recommendations sequentially
+      // This ensures recommendations are generated with the latest risk and forecast data
+      
+      // If risk/forecast evaluation is disabled or not available, we can generate recommendations directly
+      // For now, we wait for forecast.completed to ensure sequential processing
+      log.debug('Waiting for forecast.completed before generating recommendations', {
+        opportunityId,
+        tenantId,
+        service: 'recommendations',
+      });
+    });
+
     // Handle risk evaluation completion
     consumer.on('risk.evaluation.completed', async (event) => {
       const opportunityId = event.data?.opportunityId;

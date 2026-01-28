@@ -2,6 +2,39 @@
 
 All notable changes to this module will be documented in this file.
 
+## [1.4.0] - 2026-01-28
+
+### Added
+- **Async Data Flow**: Integration data now flows through RabbitMQ for asynchronous processing
+  - `IntegrationSyncService.executeSyncTask()` publishes `integration.data.raw` events instead of directly storing shards
+  - Support for batch events (`integration.data.raw.batch`) for large syncs (>100 records)
+  - Idempotency key generation for each record: `${integrationId}-${externalId}-${syncTaskId}`
+  - Correlation ID tracking for sync execution
+- **Mapping Configuration**: Added mapping configuration options to config schema
+  - `mapping.queue_name` - RabbitMQ queue for mapping consumer
+  - `mapping.batch_size` - Batch size for batch events (default: 50)
+  - `mapping.batch_threshold` - Threshold to use batch events (default: 100)
+  - `mapping.retry_attempts`, `mapping.timeout_seconds`, `mapping.prefetch`, etc.
+- **Event Tracking**: Sync execution stats updated asynchronously via `integration.data.mapped` and `integration.data.mapping.failed` events
+  - `SyncTaskEventConsumer` now consumes mapping completion events
+  - Sync execution status changes from `processing` to `completed` when all records mapped
+- **Event Schemas**: Added new event schemas to `logs-events.md`
+  - `integration.data.raw` - Single raw record event
+  - `integration.data.raw.batch` - Batch raw records event
+  - `integration.data.mapped` - Mapping success event
+  - `integration.data.mapping.failed` - Mapping failure event
+
+### Changed
+- **Breaking**: `IntegrationSyncService.executeSyncTask()` no longer directly creates/updates shards
+  - Now publishes events to RabbitMQ for async processing
+  - Sync execution status is `processing` initially, updated asynchronously
+  - Direct shard creation/update code removed
+- **Credential Retrieval**: Fixed to use `credentialSecretName` instead of non-existent `credentialSecretId`
+  - Falls back to connection-based retrieval if credentialSecretName not available
+
+### Fixed
+- **Credential Access**: Fixed field name mismatch in `IntegrationSyncService` (was using `credentialSecretId`, now uses `credentialSecretName`)
+
 ## [1.3.0] - 2026-01-23
 
 ### Fixed

@@ -58,6 +58,95 @@ Events published and consumed by the Integration Sync module for scheduled syncs
 
 ---
 
+### integration.data.raw
+
+**Description**: Emitted when raw data is fetched from an external integration and needs to be processed.
+
+**Triggered When**:
+- IntegrationSyncService.executeSyncTask() fetches data from external system (for small syncs or webhooks)
+
+**Event Type**: `integration.data.raw`
+
+**data**: 
+- `integrationId` (string)
+- `tenantId` (string)
+- `entityType` (string) - e.g., "Opportunity", "Account"
+- `rawData` (object) - Raw data from external system
+- `externalId` (string) - External system ID
+- `syncTaskId` (string) - Sync task ID
+- `idempotencyKey` (string) - Format: `${integrationId}-${externalId}-${syncTaskId}`
+- `correlationId` (string) - Correlation ID for tracking
+- `metadata` (object, optional) - Additional metadata (direction, filters, etc.)
+
+---
+
+### integration.data.raw.batch
+
+**Description**: Emitted when a batch of raw data records is fetched (for large syncs).
+
+**Triggered When**:
+- IntegrationSyncService.executeSyncTask() fetches large number of records (> batch_threshold, default: 100)
+
+**Event Type**: `integration.data.raw.batch`
+
+**data**:
+- `integrationId` (string)
+- `tenantId` (string)
+- `entityType` (string)
+- `records` (array) - Array of records, each with:
+  - `rawData` (object)
+  - `externalId` (string)
+  - `idempotencyKey` (string)
+- `syncTaskId` (string)
+- `correlationId` (string)
+- `batchSize` (number) - Number of records in batch
+- `metadata` (object, optional)
+
+---
+
+### integration.data.mapped
+
+**Description**: Emitted when raw data has been successfully mapped and stored as a shard.
+
+**Triggered When**:
+- CRMDataMappingConsumer successfully processes integration.data.raw event and creates/updates shard
+
+**Event Type**: `integration.data.mapped`
+
+**data**:
+- `integrationId` (string)
+- `tenantId` (string)
+- `shardId` (string) - ID of created/updated shard
+- `externalId` (string)
+- `syncTaskId` (string)
+- `idempotencyKey` (string)
+- `correlationId` (string)
+- `success` (boolean) - Always true for this event
+- `duration` (number) - Processing duration in milliseconds
+
+---
+
+### integration.data.mapping.failed
+
+**Description**: Emitted when mapping fails for a raw data record.
+
+**Triggered When**:
+- CRMDataMappingConsumer fails to process integration.data.raw event (after max retries)
+
+**Event Type**: `integration.data.mapping.failed`
+
+**data**:
+- `integrationId` (string)
+- `tenantId` (string)
+- `externalId` (string, optional)
+- `syncTaskId` (string)
+- `idempotencyKey` (string, optional)
+- `correlationId` (string)
+- `error` (string) - Error message
+- `retryAttempt` (number) - Retry attempt number (0 = first attempt)
+
+---
+
 ## Consumed Events
 
 ### integration.sync.scheduled

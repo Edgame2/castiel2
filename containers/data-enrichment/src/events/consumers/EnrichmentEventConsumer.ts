@@ -27,9 +27,12 @@ export async function initializeEventConsumer(app?: FastifyInstance): Promise<vo
     });
 
     // Handle shard creation (2.4 Embedding Processor)
+    // Only vectorize Document, Email, Meeting, Message, CalendarEvent shards (not Opportunity, Account, Contact)
     consumer.on('shard.created', async (event) => {
       const shardId = event.data?.shardId ?? event.data?.id;
       const tenantId = event.tenantId ?? event.data?.tenantId;
+      const shardTypeId = event.data?.shardTypeId;
+      
       if (!shardId || !tenantId) {
         log.warn('shard.created missing shardId or tenantId', {
           hasData: !!event.data,
@@ -38,14 +41,38 @@ export async function initializeEventConsumer(app?: FastifyInstance): Promise<vo
         });
         return;
       }
-      log.info('Shard created, triggering enrichment', { shardId, tenantId, service: 'data-enrichment' });
+
+      // Filter: Only vectorize multi-modal content shards (Document, Email, Meeting, Message, CalendarEvent)
+      // Do NOT vectorize CRM shards (Opportunity, Account, Contact)
+      const vectorizableShardTypes = ['document', 'email', 'meeting', 'message', 'calendarevent'];
+      const shardTypeLower = shardTypeId?.toLowerCase();
+
+      if (!shardTypeLower || !vectorizableShardTypes.includes(shardTypeLower)) {
+        log.debug('Skipping vectorization for non-vectorizable shard type', {
+          shardId,
+          shardTypeId,
+          tenantId,
+          service: 'data-enrichment',
+        });
+        return;
+      }
+
+      log.info('Shard created, triggering enrichment', {
+        shardId,
+        shardTypeId,
+        tenantId,
+        service: 'data-enrichment',
+      });
       await triggerEnrichment(shardId, tenantId, app);
     });
 
     // Handle shard updates (2.4 Embedding Processor)
+    // Only vectorize Document, Email, Meeting, Message, CalendarEvent shards (not Opportunity, Account, Contact)
     consumer.on('shard.updated', async (event) => {
       const shardId = event.data?.shardId ?? event.data?.id;
       const tenantId = event.tenantId ?? event.data?.tenantId;
+      const shardTypeId = event.data?.shardTypeId;
+      
       if (!shardId || !tenantId) {
         log.warn('shard.updated missing shardId or tenantId', {
           hasData: !!event.data,
@@ -54,7 +81,28 @@ export async function initializeEventConsumer(app?: FastifyInstance): Promise<vo
         });
         return;
       }
-      log.info('Shard updated, triggering re-enrichment', { shardId, tenantId, service: 'data-enrichment' });
+
+      // Filter: Only vectorize multi-modal content shards (Document, Email, Meeting, Message, CalendarEvent)
+      // Do NOT vectorize CRM shards (Opportunity, Account, Contact)
+      const vectorizableShardTypes = ['document', 'email', 'meeting', 'message', 'calendarevent'];
+      const shardTypeLower = shardTypeId?.toLowerCase();
+
+      if (!shardTypeLower || !vectorizableShardTypes.includes(shardTypeLower)) {
+        log.debug('Skipping vectorization for non-vectorizable shard type', {
+          shardId,
+          shardTypeId,
+          tenantId,
+          service: 'data-enrichment',
+        });
+        return;
+      }
+
+      log.info('Shard updated, triggering re-enrichment', {
+        shardId,
+        shardTypeId,
+        tenantId,
+        service: 'data-enrichment',
+      });
       await triggerEnrichment(shardId, tenantId, app);
     });
 

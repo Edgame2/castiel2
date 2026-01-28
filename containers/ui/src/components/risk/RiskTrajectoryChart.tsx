@@ -51,8 +51,8 @@ export function RiskTrajectoryChart({
           <XAxis dataKey="name" tick={{ fontSize: 11 }} />
           <YAxis domain={[0, 1]} tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(v * 100)}%`} />
           <Tooltip
-            formatter={(v: number, _name: string, props: { payload?: { confidence?: number } }) =>
-              [typeof v === 'number' ? `${(v * 100).toFixed(0)}%` : v, 'Risk']
+            formatter={(v: number | undefined) =>
+              [v != null && typeof v === 'number' ? `${(v * 100).toFixed(0)}%` : '—', 'Risk']
             }
             labelFormatter={(n) => n}
             content={({ active, payload }) => {

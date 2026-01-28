@@ -50,7 +50,8 @@
             "training_jobs": { "type": "string" },
             "evaluations": { "type": "string" },
             "predictions": { "type": "string" },
-            "jobs": { "type": "string" }
+            "jobs": { "type": "string" },
+            "win_probability": { "type": "string", "description": "Plan §3.1.3, Gap 9: ml_win_probability_predictions for trend API" }
           }
         }
       }
@@ -78,7 +79,8 @@
       "properties": {
         "use_win_probability_ml": { "type": "boolean" },
         "use_risk_scoring_ml": { "type": "boolean" },
-        "use_revenue_forecasting_ml": { "type": "boolean" }
+        "use_revenue_forecasting_ml": { "type": "boolean" },
+        "persist_win_probability": { "type": "boolean", "description": "When true, persist each win-probability prediction to ml_win_probability_predictions for trend API (Gap 9)." }
       },
       "additionalProperties": { "type": "boolean" }
     },

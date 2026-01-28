@@ -102,6 +102,7 @@ rabbitmq:
   bindings:
     - "opportunity.updated"
     - "integration.opportunity.updated"
+    - "integration.opportunities.updated.batch"
     - "shard.created"
     - "shard.updated"
     - "risk.catalog.updated"
@@ -146,6 +147,10 @@ thresholds:
 # Plan §11.11, §944: map atRiskReasons to mitigation playbooks. reason (string) -> playbook/action id or label.
 # Example: "No executive sponsor": "exec-alignment", "Competitor mentioned": "competitor-battlecard"
 at_risk_reasons_mitigation: {}
+
+# Batch Processing Configuration
+batch_processing:
+  concurrency: ${BATCH_PROCESSING_CONCURRENCY:-10}  # Parallel processing limit for batch events
 
 # Legacy; feature_flags preferred (Plan §8.1)
 features: {}

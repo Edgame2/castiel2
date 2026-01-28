@@ -177,6 +177,7 @@ export class IntegrationConnectionService {
     returnUrl: string;
     error?: string;
     connectionId?: string;
+    integrationId?: string;
   }> {
     const oauthState = this.oauthStates.get(state);
     if (!oauthState) {
@@ -248,6 +249,7 @@ export class IntegrationConnectionService {
         success: true,
         returnUrl: oauthState.returnUrl,
         connectionId: connection.id,
+        integrationId: integration.id, // Include integrationId for easier lookup
       };
     } catch (error: any) {
       log.error('OAuth callback failed', error, {

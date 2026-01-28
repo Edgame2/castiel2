@@ -9,6 +9,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { BenchmarkComparison } from '@/components/analytics/BenchmarkComparison';
+import { ClusterVisualization } from '@/components/analytics/ClusterVisualization';
 
 const apiBase = typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '') : '';
 
@@ -221,6 +222,10 @@ export default function IndustryBenchmarksPage() {
           </div>
         </div>
       )}
+
+      <div className="mt-6">
+        <ClusterVisualization title="Risk clusters" apiBaseUrl={apiBase} />
+      </div>
 
       {comparison && !loadingComparison && (
         <div className="mt-6 rounded-lg border p-4 bg-white dark:bg-gray-900">

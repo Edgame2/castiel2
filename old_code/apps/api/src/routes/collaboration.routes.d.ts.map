@@ -1,1 +1,0 @@
-{"version":3,"file":"collaboration.routes.d.ts","sourceRoot":"","sources":["collaboration.routes.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,eAAe,EAAE,MAAM,SAAS,CAAC;AAE1C,OAAO,EAAE,eAAe,EAAE,MAAM,qCAAqC,CAAC;AACtE,OAAO,EAAE,mBAAmB,EAAE,MAAM,qBAAqB,CAAC;AAE1D,wBAAsB,2BAA2B,CAC7C,MAAM,EAAE,eAAe,EACvB,UAAU,EAAE,mBAAmB,EAC/B,eAAe,EAAE,eAAe,GACjC,OAAO,CAAC,IAAI,CAAC,CA2Bf"}

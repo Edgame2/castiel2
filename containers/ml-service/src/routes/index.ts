@@ -1058,6 +1058,47 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   );
 
   /**
+   * Win-probability trend (Gap 6, Plan §4.2). GET /api/v1/ml/win-probability/:opportunityId/trend
+   */
+  app.get<{ Params: { opportunityId: string }; Querystring: { from?: string; to?: string } }>(
+    '/api/v1/ml/win-probability/:opportunityId/trend',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Historical win-probability points for an opportunity. Reads from ml_win_probability_predictions. Query: from, to (ISO date).',
+        tags: ['Predictions'],
+        params: { type: 'object', properties: { opportunityId: { type: 'string' } }, required: ['opportunityId'] },
+        querystring: { type: 'object', properties: { from: { type: 'string' }, to: { type: 'string' } } },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              points: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    date: { type: 'string' },
+                    probability: { type: 'number' },
+                    confidence: { type: 'number' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const { opportunityId } = request.params;
+      const { from, to } = request.query;
+      const out = await predictionService.getProbabilityTrend(tenantId, opportunityId, from, to);
+      reply.send(out);
+    }
+  );
+
+  /**
    * Anomaly prediction (Plan §5.5). buildVector('anomaly') → Azure ML anomaly endpoint.
    * POST /api/v1/ml/anomaly/predict
    */

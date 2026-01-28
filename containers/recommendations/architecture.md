@@ -47,8 +47,9 @@ The Recommendations module provides asynchronous recommendation generation with 
 ### Consumed Events
 
 - `opportunity.updated` - Trigger recommendations when opportunity changes
+- `integration.opportunity.updated` - Trigger recommendations when opportunities change via integration sync (waits for risk and forecast to complete)
 - `risk.evaluation.completed` - Generate risk-based recommendations
-- `forecast.completed` - Generate forecast-based recommendations
+- `forecast.completed` - Generate forecast-based recommendations (ensures sequential processing after risk and forecast)
 - `workflow.recommendation.requested` - Triggered by workflow-orchestrator
 
 ## CAIS Integration (Hybrid Approach)

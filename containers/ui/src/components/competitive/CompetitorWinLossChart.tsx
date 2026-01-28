@@ -59,7 +59,7 @@ export function CompetitorWinLossChart({
             <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
             <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
             <Tooltip
-              formatter={(v: number) => [`${v}%`, 'Win rate']}
+              formatter={(v: number | undefined) => [v != null ? `${v}%` : '—', 'Win rate']}
               labelFormatter={(n) => n}
               content={({ active, payload }) => {
                 if (!active || !payload?.[0]) return null;

@@ -1,3 +1,4 @@
+import path from "path";
 import type { NextConfig } from "next";
 
 // Bundle analyzer configuration
@@ -9,8 +10,10 @@ const nextConfig: NextConfig = {
   // Performance optimizations
   reactStrictMode: true,
 
-  // Enable Turbopack for Next.js 16 (default bundler)
-  turbopack: {},
+  // Enable Turbopack for Next.js 16 (default bundler). Explicit root silences "inferred workspace root" warning when multiple lockfiles exist.
+  turbopack: {
+    root: path.resolve(process.cwd(), "..", ".."),
+  },
 
   // Image optimization
   images: {

@@ -5,6 +5,7 @@
 
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
+import { EventPublisher } from '@coder/shared';
 import { FastifyInstance } from 'fastify';
 import { loadConfig } from '../config';
 import { log } from '../utils/logger';
@@ -25,9 +26,17 @@ export class IntegrationSyncService {
   private integrationManagerClient: ServiceClient;
   private shardManagerClient: ServiceClient;
   private secretManagementClient: ServiceClient;
+  private eventPublisher: EventPublisher | null = null;
   private runningTasks = new Set<string>();
   private runningTasksByTenant = new Map<string, Set<string>>();
   private app: FastifyInstance | null = null;
+  private activeSyncExecutions = new Map<string, {
+    total: number;
+    processed: number;
+    created: number;
+    updated: number;
+    failed: number;
+  }>();
 
   constructor(app?: FastifyInstance) {
     this.app = app || null;
@@ -54,6 +63,21 @@ export class IntegrationSyncService {
       retries: 3,
       circuitBreaker: { enabled: true },
     });
+
+    // Initialize event publisher for raw data events
+    if (this.config.rabbitmq?.url) {
+      this.eventPublisher = new EventPublisher(
+        {
+          url: this.config.rabbitmq.url,
+          exchange: this.config.rabbitmq.exchange || 'coder_events',
+          exchangeType: 'topic',
+        },
+        'integration-sync'
+      );
+      this.eventPublisher.connect().catch((error) => {
+        log.error('Failed to connect event publisher', error, { service: 'integration-sync' });
+      });
+    }
   }
 
   /**
@@ -256,25 +280,30 @@ export class IntegrationSyncService {
         throw new Error(`Integration not found: ${task.integrationId}`);
       }
 
-      // Step 2: Get credentials from secret-management
-      let credentials: any;
-      try {
-        credentials = await this.secretManagementClient.get<any>(
-          `/api/v1/secrets/${integration.credentialSecretId}/value`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'X-Tenant-ID': tenantId,
-            },
-          }
-        );
-      } catch (error: any) {
-        log.error('Failed to get integration credentials', error, {
-          secretId: integration.credentialSecretId,
-          tenantId,
-          service: 'integration-sync',
-        });
-        throw new Error('Failed to retrieve integration credentials');
+      // Step 2: Get credentials from secret-management via connection
+      // Note: IntegrationSyncService should use connection-based credential retrieval
+      // For now, we'll use credentialSecretName if available, otherwise skip credential retrieval
+      // (credentials will be retrieved by integration-manager adapter when fetching)
+      let credentials: any = null;
+      if (integration.credentialSecretName) {
+        try {
+          credentials = await this.secretManagementClient.get<any>(
+            `/api/v1/secrets/${integration.credentialSecretName}/value`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'X-Tenant-ID': tenantId,
+              },
+            }
+          );
+        } catch (error: any) {
+          log.warn('Failed to get integration credentials (will be retrieved by adapter)', error, {
+            secretName: integration.credentialSecretName,
+            tenantId,
+            service: 'integration-sync',
+          });
+          // Continue without credentials - adapter will retrieve them
+        }
       }
 
       // Step 3: Fetch data from external system (via integration-manager adapter)
@@ -314,83 +343,137 @@ export class IntegrationSyncService {
         // Continue with empty data - will result in 0 records processed
       }
 
-      // Step 4: Transform and sync data to shards
-      let recordsProcessed = 0;
-      let recordsCreated = 0;
-      let recordsUpdated = 0;
+      // Step 4: Publish raw data events to RabbitMQ for async processing
+      // Generate correlation ID for this sync execution
+      const correlationId = uuidv4();
+      
+      // Initialize sync execution tracking
+      this.activeSyncExecutions.set(executionId, {
+        total: externalData.length,
+        processed: 0,
+        created: 0,
+        updated: 0,
+        failed: 0,
+      });
+
+      const batchThreshold = this.config.mapping?.batch_threshold ?? 100;
+      const batchSize = this.config.mapping?.batch_size ?? 50;
+      const entityType = task.entityType || 'opportunity';
+
+      let recordsPublished = 0;
       let recordsFailed = 0;
 
-      for (const item of externalData) {
-        try {
-          recordsProcessed++;
-          
-          // Transform external data to shard format
-          const shardData = this.transformToShard(item, integration, task.entityType);
-          
-          // Check if shard already exists (by external ID)
-          const existingShard = await this.findShardByExternalId(
-            shardData.externalId,
-            task.entityType,
-            tenantId,
-            token
-          );
+      if (externalData.length > batchThreshold) {
+        // Large sync: Use batch events
+        log.info('Publishing batch events for large sync', {
+          taskId,
+          executionId,
+          totalRecords: externalData.length,
+          batchSize,
+          tenantId,
+          service: 'integration-sync',
+        });
 
-          if (existingShard) {
-            // Update existing shard
-            await this.shardManagerClient.put<any>(
-              `/api/v1/shards/${existingShard.id}`,
-              {
-                ...existingShard,
-                ...shardData,
-                updatedAt: new Date(),
-              },
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  'X-Tenant-ID': tenantId,
-                },
-              }
-            );
-            recordsUpdated++;
-          } else {
-            // Create new shard
-            await this.shardManagerClient.post<any>(
-              '/api/v1/shards',
-              {
-                ...shardData,
-                createdAt: new Date(),
-              },
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  'X-Tenant-ID': tenantId,
-                },
-              }
-            );
-            recordsCreated++;
-          }
-        } catch (error: any) {
-          recordsFailed++;
-          log.error('Failed to sync record', error, {
-            item,
-            tenantId,
-            service: 'integration-sync',
+        // Group records into batches
+        for (let i = 0; i < externalData.length; i += batchSize) {
+          const batch = externalData.slice(i, i + batchSize);
+          const batchRecords = batch.map((item) => {
+            const externalId = item.id || item.externalId || uuidv4();
+            const idempotencyKey = `${task.integrationId}-${externalId}-${task.taskId}`;
+            return {
+              rawData: item,
+              externalId,
+              idempotencyKey,
+            };
           });
-          
-          // Store conflict if bidirectional sync
-          if (task.direction === 'bidirectional') {
-            await this.storeConflict(task.taskId, tenantId, item, error.message);
+
+          try {
+            await this.publishRawDataEvent(
+              'integration.data.raw.batch',
+              task.integrationId,
+              tenantId,
+              {
+                integrationId: task.integrationId,
+                tenantId,
+                entityType,
+                records: batchRecords,
+                syncTaskId: task.taskId,
+                correlationId,
+                batchSize: batchRecords.length,
+                metadata: {
+                  direction: task.direction,
+                  filters: task.filters,
+                },
+              }
+            );
+            recordsPublished += batchRecords.length;
+          } catch (error: any) {
+            recordsFailed += batchRecords.length;
+            log.error('Failed to publish batch event', error, {
+              taskId,
+              batchIndex: Math.floor(i / batchSize),
+              tenantId,
+              service: 'integration-sync',
+            });
+          }
+        }
+      } else {
+        // Small sync or webhook: Publish individual events
+        for (const item of externalData) {
+          try {
+            // Detect data type and route to appropriate event
+            const dataType = this.detectDataType(entityType, item);
+            const eventType = this.getEventType(dataType) as any;
+            const externalId = item.id || item.externalId || item.documentId || item.emailId || item.messageId || item.meetingId || item.eventId || uuidv4();
+            const idempotencyKey = `${task.integrationId}-${externalId}-${task.taskId}`;
+
+            // Transform data for event-specific format
+            const eventData = this.transformDataForEvent(
+              dataType,
+              item,
+              {
+                integrationId: task.integrationId,
+                tenantId,
+                entityType,
+                externalId,
+                syncTaskId: task.taskId,
+                idempotencyKey,
+                correlationId,
+                integrationSource: task.integrationId, // Can be enhanced with actual source detection
+                metadata: {
+                  direction: task.direction,
+                  filters: task.filters,
+                },
+              }
+            );
+
+            await this.publishRawDataEvent(
+              eventType,
+              task.integrationId,
+              tenantId,
+              eventData
+            );
+            recordsPublished++;
+          } catch (error: any) {
+            recordsFailed++;
+            log.error('Failed to publish raw data event', error, {
+              item,
+              tenantId,
+              service: 'integration-sync',
+            });
           }
         }
       }
 
-      // Update execution with actual results
-      execution.recordsProcessed = recordsProcessed;
-      execution.recordsCreated = recordsCreated;
-      execution.recordsUpdated = recordsUpdated;
+      // Update execution status to "processing" (mapping will update stats asynchronously)
+      execution.status = 'processing';
+      execution.recordsProcessed = recordsPublished;
+      execution.recordsCreated = 0; // Will be updated by mapping consumer
+      execution.recordsUpdated = 0; // Will be updated by mapping consumer
       execution.recordsFailed = recordsFailed;
-      execution.status = 'completed';
-      execution.completedAt = new Date();
+
+      // Execution stats will be updated asynchronously via integration.data.mapped events
+      // For now, mark as processing - will be updated by event consumer
 
       // Update execution
       await executionContainer.item(executionId, tenantId).replace({
@@ -401,20 +484,23 @@ export class IntegrationSyncService {
         updatedAt: new Date(),
       });
 
-      // Update task
-      task.status = 'completed';
-      task.completedAt = new Date();
+      // Update task status to processing (will be updated when mapping completes)
+      task.status = 'processing';
       task.recordsProcessed = execution.recordsProcessed;
-      task.recordsCreated = execution.recordsCreated;
-      task.recordsUpdated = execution.recordsUpdated;
       task.recordsFailed = execution.recordsFailed;
       await this.updateSyncTask(task, tenantId);
 
-      // Publish completion event
-      await publishIntegrationSyncEvent('integration.sync.completed', tenantId, {
+      // Note: integration.sync.completed will be published when all records are mapped
+      // (tracked via integration.data.mapped events)
+
+      log.info('Sync task events published', {
         taskId,
         executionId,
-        recordsProcessed: execution.recordsProcessed,
+        recordsPublished,
+        recordsFailed,
+        correlationId,
+        tenantId,
+        service: 'integration-sync',
       });
 
       return execution;
@@ -454,21 +540,283 @@ export class IntegrationSyncService {
   }
 
   /**
-   * Transform external data to shard format
+   * Detect data type from entity type and raw data
    */
-  private transformToShard(externalItem: any, integration: any, entityType?: string): any {
-    // Basic transformation - can be enhanced with integration-specific mappings
-    return {
-      shardType: entityType || 'opportunity',
-      name: externalItem.name || externalItem.title || externalItem.id,
-      data: externalItem,
-      externalId: externalItem.id || externalItem.externalId,
-      externalSource: integration.type,
-      metadata: {
-        integrationId: integration.id,
-        syncedAt: new Date(),
-      },
+  private detectDataType(entityType: string, rawData: any): 'crm' | 'document' | 'email' | 'message' | 'meeting' | 'event' {
+    const entityTypeLower = entityType?.toLowerCase() || '';
+
+    // Check entity type first
+    if (['opportunity', 'account', 'contact', 'lead'].includes(entityTypeLower)) {
+      return 'crm';
+    }
+    if (['document', 'file', 'attachment'].includes(entityTypeLower)) {
+      return 'document';
+    }
+    if (['email', 'message'].includes(entityTypeLower)) {
+      // Distinguish between email and message based on source or structure
+      if (rawData?.threadId || rawData?.subject || rawData?.from || rawData?.to) {
+        return 'email';
+      }
+      return 'message';
+    }
+    if (['meeting', 'call', 'recording'].includes(entityTypeLower)) {
+      return 'meeting';
+    }
+    if (['event', 'calendar', 'appointment'].includes(entityTypeLower)) {
+      return 'event';
+    }
+
+    // Fallback: Check raw data structure
+    if (rawData?.mimeType || rawData?.fileUrl || rawData?.documentUrl || rawData?.blobUrl) {
+      return 'document';
+    }
+    if (rawData?.recordingUrl || rawData?.transcriptUrl || rawData?.meetingId) {
+      return 'meeting';
+    }
+    if (rawData?.startTime || rawData?.endTime || rawData?.attendees) {
+      if (rawData?.recordingUrl || rawData?.transcriptUrl) {
+        return 'meeting';
+      }
+      return 'event';
+    }
+    if (rawData?.channelId || rawData?.messageId || rawData?.threadId) {
+      if (rawData?.subject || rawData?.from || rawData?.to) {
+        return 'email';
+      }
+      return 'message';
+    }
+
+    // Default to CRM
+    return 'crm';
+  }
+
+  /**
+   * Get event type based on data type
+   */
+  private getEventType(dataType: 'crm' | 'document' | 'email' | 'message' | 'meeting' | 'event'): string {
+    switch (dataType) {
+      case 'crm':
+        return 'integration.data.raw';
+      case 'document':
+        return 'integration.document.detected';
+      case 'email':
+        return 'integration.email.received';
+      case 'message':
+        return 'integration.message.received';
+      case 'meeting':
+        return 'integration.meeting.completed';
+      case 'event':
+        return 'integration.event.created';
+      default:
+        return 'integration.data.raw';
+    }
+  }
+
+  /**
+   * Transform raw data to event-specific format
+   */
+  private transformDataForEvent(dataType: 'crm' | 'document' | 'email' | 'message' | 'meeting' | 'event', rawData: any, metadata: any): any {
+    const baseData = {
+      integrationId: metadata.integrationId,
+      tenantId: metadata.tenantId,
+      externalId: rawData.id || rawData.externalId || rawData.documentId || rawData.emailId || rawData.messageId || rawData.meetingId || rawData.eventId || uuidv4(),
+      syncTaskId: metadata.syncTaskId,
+      correlationId: metadata.correlationId,
+      metadata: metadata.metadata || {},
     };
+
+    switch (dataType) {
+      case 'crm':
+        return {
+          ...baseData,
+          entityType: metadata.entityType,
+          rawData,
+          idempotencyKey: metadata.idempotencyKey,
+        };
+      case 'document':
+        return {
+          ...baseData,
+          documentId: rawData.id || rawData.documentId || baseData.externalId,
+          externalUrl: rawData.url || rawData.fileUrl || rawData.documentUrl || rawData.blobUrl,
+          title: rawData.title || rawData.name || rawData.filename,
+          mimeType: rawData.mimeType || rawData.contentType,
+          size: rawData.size || rawData.fileSize,
+          integrationSource: rawData.integrationSource || metadata.integrationSource,
+          sourcePath: rawData.path || rawData.sourcePath,
+          parentFolderId: rawData.parentFolderId || rawData.folderId,
+          parentFolderName: rawData.parentFolderName || rawData.folderName,
+          createdBy: rawData.createdBy,
+          modifiedBy: rawData.modifiedBy,
+          createdAt: rawData.createdAt,
+          modifiedAt: rawData.modifiedAt,
+        };
+      case 'email':
+        return {
+          ...baseData,
+          emailId: rawData.id || rawData.emailId || baseData.externalId,
+          threadId: rawData.threadId,
+          from: rawData.from,
+          to: rawData.to || rawData.recipients,
+          subject: rawData.subject,
+          body: rawData.body || rawData.htmlBody || rawData.textBody,
+          attachments: rawData.attachments || [],
+          receivedAt: rawData.receivedAt || rawData.createdAt,
+        };
+      case 'message':
+        return {
+          ...baseData,
+          messageId: rawData.id || rawData.messageId || baseData.externalId,
+          channelId: rawData.channelId,
+          from: rawData.from || rawData.sender,
+          text: rawData.text || rawData.content || rawData.message,
+          mentions: rawData.mentions || [],
+          reactions: rawData.reactions || [],
+          receivedAt: rawData.receivedAt || rawData.createdAt,
+        };
+      case 'meeting':
+        return {
+          ...baseData,
+          meetingId: rawData.id || rawData.meetingId || baseData.externalId,
+          title: rawData.title || rawData.name,
+          description: rawData.description,
+          startTime: rawData.startTime || rawData.start,
+          endTime: rawData.endTime || rawData.end,
+          duration: rawData.duration,
+          timezone: rawData.timezone,
+          integrationSource: rawData.integrationSource || metadata.integrationSource,
+          externalUrl: rawData.url || rawData.meetingUrl,
+          recordingUrl: rawData.recordingUrl,
+          transcriptUrl: rawData.transcriptUrl,
+          organizer: rawData.organizer,
+          participants: rawData.participants || [],
+        };
+      case 'event':
+        return {
+          ...baseData,
+          eventId: rawData.id || rawData.eventId || baseData.externalId,
+          title: rawData.title || rawData.summary,
+          description: rawData.description,
+          startTime: rawData.startTime || rawData.start,
+          endTime: rawData.endTime || rawData.end,
+          duration: rawData.duration,
+          timezone: rawData.timezone,
+          isAllDay: rawData.isAllDay,
+          location: rawData.location,
+          locationType: rawData.locationType,
+          meetingUrl: rawData.meetingUrl,
+          organizer: rawData.organizer,
+          attendees: rawData.attendees || [],
+          recurrence: rawData.recurrence,
+          status: rawData.status,
+          integrationSource: rawData.integrationSource || metadata.integrationSource,
+          externalUrl: rawData.url || rawData.eventUrl,
+        };
+      default:
+        return {
+          ...baseData,
+          entityType: metadata.entityType,
+          rawData,
+          idempotencyKey: metadata.idempotencyKey,
+        };
+    }
+  }
+
+  /**
+   * Publish raw data event to RabbitMQ
+   */
+  private async publishRawDataEvent(
+    eventType: 'integration.data.raw' | 'integration.data.raw.batch' | 'integration.document.detected' | 'integration.email.received' | 'integration.message.received' | 'integration.meeting.completed' | 'integration.event.created',
+    integrationId: string,
+    tenantId: string,
+    data: any
+  ): Promise<void> {
+    if (!this.eventPublisher) {
+      // Fallback to existing publisher if eventPublisher not initialized
+      await publishIntegrationSyncEvent(eventType, tenantId, data);
+      return;
+    }
+
+    try {
+      await this.eventPublisher.publish(eventType, tenantId, data, {
+        correlationId: data.correlationId,
+      });
+    } catch (error: any) {
+      log.error('Failed to publish raw data event', error, {
+        eventType,
+        integrationId,
+        tenantId,
+        service: 'integration-sync',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Update sync execution stats from mapping events
+   * Called by event consumer when integration.data.mapped events are received
+   */
+  async updateSyncExecutionStats(
+    executionId: string,
+    tenantId: string,
+    stats: { created?: number; updated?: number; failed?: number }
+  ): Promise<void> {
+    const tracking = this.activeSyncExecutions.get(executionId);
+    if (!tracking) {
+      log.warn('Sync execution tracking not found', { executionId, tenantId, service: 'integration-sync' });
+      return;
+    }
+
+    if (stats.created) tracking.created += stats.created;
+    if (stats.updated) tracking.updated += stats.updated;
+    if (stats.failed) tracking.failed += stats.failed;
+    tracking.processed = tracking.created + tracking.updated + tracking.failed;
+
+    // Update Cosmos DB execution record periodically (every 10 records or every 5 seconds)
+    // This will be handled by a periodic updater or event consumer
+
+    // Check if all records processed
+    if (tracking.processed >= tracking.total) {
+      // All records processed - mark as completed
+      const executionContainer = getContainer('integration_executions');
+      const execution = await executionContainer.item(executionId, tenantId).read();
+      if (execution.resource) {
+        await executionContainer.item(executionId, tenantId).replace({
+          ...execution.resource,
+          status: 'completed',
+          recordsCreated: tracking.created,
+          recordsUpdated: tracking.updated,
+          recordsFailed: tracking.failed,
+          recordsProcessed: tracking.processed,
+          completedAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        // Update task
+        const task = await this.getSyncTask(execution.resource.taskId, tenantId);
+        if (task) {
+          task.status = 'completed';
+          task.completedAt = new Date();
+          task.recordsProcessed = tracking.processed;
+          task.recordsCreated = tracking.created;
+          task.recordsUpdated = tracking.updated;
+          task.recordsFailed = tracking.failed;
+          await this.updateSyncTask(task, tenantId);
+        }
+
+        // Publish completion event
+        await publishIntegrationSyncEvent('integration.sync.completed', tenantId, {
+          taskId: execution.resource.taskId,
+          executionId,
+          recordsProcessed: tracking.processed,
+          recordsCreated: tracking.created,
+          recordsUpdated: tracking.updated,
+          recordsFailed: tracking.failed,
+        });
+
+        // Clean up tracking
+        this.activeSyncExecutions.delete(executionId);
+      }
+    }
   }
 
   /**

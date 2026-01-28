@@ -5,6 +5,11 @@ All notable changes to the Shard Manager module will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **BI Sales Risk shard fields (Gap 7):** `docs/BI_SALES_RISK_SHARD_FIELDS.md` summarizing c_opportunity, c_account, c_contact `structuredData` (including NEW optional fields) from BI_SALES_RISK_SHARD_SCHEMAS. States these are optional; shard-manager does not validate or reject documents that omit them. README section and cross-ref.
+
 ## [1.0.0] - 2025-01-22
 
 ### Added

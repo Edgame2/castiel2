@@ -94,6 +94,15 @@ export async function buildApp(): Promise<FastifyInstance> {
     throw error;
   }
 
+  // Initialize event publisher
+  try {
+    const { initializeEventPublisher } = await import('./events/publishers/ShardEventPublisher');
+    await initializeEventPublisher();
+  } catch (error) {
+    console.warn('Failed to initialize event publisher', error);
+    // Don't fail startup if event publisher fails
+  }
+
   // Register routes
   await registerRoutes(fastify, config);
 
@@ -126,6 +135,12 @@ async function gracefulShutdown(signal: string): Promise<void> {
   console.log(`${signal} received, shutting down gracefully`);
   if (app) {
     await app.close();
+  }
+  try {
+    const { closeEventPublisher } = await import('./events/publishers/ShardEventPublisher');
+    await closeEventPublisher();
+  } catch (error) {
+    console.warn('Failed to close event publisher', error);
   }
   await disconnectDatabase();
   process.exit(0);

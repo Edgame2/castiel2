@@ -37,6 +37,7 @@ class CircuitBreaker {
   private state: CircuitState = CircuitState.CLOSED;
   private failures: number = 0;
   private lastFailureTime: number = 0;
+  private firstFailureTime: number = 0; // Track first failure in current window
   private threshold: number;
   private timeout: number;
 
@@ -48,11 +49,27 @@ class CircuitBreaker {
   recordSuccess(): void {
     this.failures = 0;
     this.state = CircuitState.CLOSED;
+    this.firstFailureTime = 0;
   }
 
   recordFailure(): void {
-    this.failures++;
-    this.lastFailureTime = Date.now();
+    const now = Date.now();
+    
+    // Reset failure count if failures are outside the timeout window
+    // This implements a sliding window (failures within timeout period)
+    if (this.firstFailureTime > 0 && (now - this.firstFailureTime) > this.timeout) {
+      // Failures are old, reset window
+      this.failures = 1;
+      this.firstFailureTime = now;
+    } else {
+      // Increment failure count
+      this.failures++;
+      if (this.firstFailureTime === 0) {
+        this.firstFailureTime = now;
+      }
+    }
+    
+    this.lastFailureTime = now;
 
     if (this.failures >= this.threshold) {
       this.state = CircuitState.OPEN;
@@ -157,11 +174,20 @@ export class ServiceClient {
           throw lastError;
         }
 
-        // Retry on network errors or 5xx errors
-        if (attempt < maxRetries) {
-          // Exponential backoff
-          const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
-          await new Promise(resolve => setTimeout(resolve, delay));
+        // Retry on network errors, 5xx errors, or 429 (rate limit)
+        const shouldRetry = !lastError.response || 
+          lastError.response.status >= 500 || 
+          lastError.response.status === 429;
+        
+        if (shouldRetry && attempt < maxRetries) {
+          // Exponential backoff with jitter
+          const baseDelay = 1000; // 1 second initial
+          const delay = Math.min(baseDelay * Math.pow(2, attempt), 10000); // Max 10 seconds
+          // Add jitter (±20%)
+          const jitter = delay * 0.2 * (Math.random() * 2 - 1);
+          const finalDelay = Math.max(0, delay + jitter);
+          
+          await new Promise(resolve => setTimeout(resolve, finalDelay));
           continue;
         }
 

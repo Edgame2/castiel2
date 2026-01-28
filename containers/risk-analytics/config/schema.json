@@ -161,6 +161,12 @@
       "type": "object",
       "description": "Plan §11.11, §944: map atRiskReason string to mitigation playbook/action id or label",
       "additionalProperties": { "type": "string" }
+    },
+    "batch_processing": {
+      "type": "object",
+      "properties": {
+        "concurrency": { "type": "number", "minimum": 1, "default": 10 }
+      }
     }
   }
 }

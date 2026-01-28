@@ -186,6 +186,95 @@ services:
       - coder-network
     restart: unless-stopped
 
+  # Integration Processors - Light (fast processing: CRM mapping, ML aggregation, entity linking)
+  integration-processors-light:
+    build:
+      context: ./containers/integration-processors
+      dockerfile: Dockerfile
+    container_name: integration-processors-light
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3000
+      - CONSUMER_TYPE=light
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - SHARD_MANAGER_URL=${SHARD_MANAGER_URL:-http://shard-manager:3023}
+      - INTEGRATION_MANAGER_URL=${INTEGRATION_MANAGER_URL:-http://integration-manager:3012}
+      - AUTH_URL=${AUTH_URL:-http://auth:3021}
+      - LOGGING_URL=${LOGGING_URL:-http://logging:3014}
+      - SECRET_MANAGEMENT_URL=${SECRET_MANAGEMENT_URL:-http://secret-management:3003}
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - coder-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # Integration Processors - Heavy (slow processing: document processing, meeting processing, etc.)
+  integration-processors-heavy:
+    build:
+      context: ./containers/integration-processors
+      dockerfile: Dockerfile
+    container_name: integration-processors-heavy
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3000
+      - CONSUMER_TYPE=heavy
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - SHARD_MANAGER_URL=${SHARD_MANAGER_URL:-http://shard-manager:3023}
+      - INTEGRATION_MANAGER_URL=${INTEGRATION_MANAGER_URL:-http://integration-manager:3012}
+      - AUTH_URL=${AUTH_URL:-http://auth:3021}
+      - LOGGING_URL=${LOGGING_URL:-http://logging:3014}
+      - SECRET_MANAGEMENT_URL=${SECRET_MANAGEMENT_URL:-http://secret-management:3003}
+      - AZURE_BLOB_CONNECTION_STRING=${AZURE_BLOB_CONNECTION_STRING}
+      - AZURE_COMPUTER_VISION_ENDPOINT=${AZURE_COMPUTER_VISION_ENDPOINT}
+      - AZURE_COMPUTER_VISION_KEY=${AZURE_COMPUTER_VISION_KEY}
+      - AZURE_SPEECH_ENDPOINT=${AZURE_SPEECH_ENDPOINT}
+      - AZURE_SPEECH_KEY=${AZURE_SPEECH_KEY}
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - coder-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
 networks:
   coder-network:
     driver: bridge

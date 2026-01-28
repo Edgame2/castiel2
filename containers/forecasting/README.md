@@ -59,6 +59,12 @@ npm start
 
 See [OpenAPI Spec](./openapi.yaml)
 
+### BI/risk (Plan §10, FIRST_STEPS §8)
+
+- **GET /api/v1/forecasts/:period/scenarios** – ForecastingService.getScenarioForecast; tenant aggregate or stub.
+- **GET /api/v1/forecasts/:period/risk-adjusted** – getRiskAdjustedForecast; risk from risk-analytics when configured.
+- **GET /api/v1/forecasts/:period/ml** – getMLForecast; ml-service `POST /api/v1/ml/forecast/period` when configured; 503 when not.
+
 ### Multi-level aggregates (5.5)
 
 - **POST /api/v1/forecasts/team** – Team-level: body `{ teamId, opportunityIds, startDate?, endDate? }`; returns totalPipeline, totalRiskAdjusted, opportunityCount. opportunityIds from pipeline/shard/analytics.
@@ -81,7 +87,8 @@ See [OpenAPI Spec](./openapi.yaml)
 ### Consumed Events
 
 - `opportunity.updated` - Update forecasts when opportunities change
-- `risk.evaluation.completed` - Update forecasts when risk evaluations complete
+- `integration.opportunity.updated` - Update forecasts when opportunities change via integration sync (waits for risk evaluation to complete)
+- `risk.evaluation.completed` - Update forecasts when risk evaluations complete (ensures sequential processing after risk evaluation)
 - `integration.sync.completed` - Update forecasts after sync
 - `workflow.forecast.requested` - Process workflow-triggered forecast
 
@@ -89,7 +96,7 @@ See [OpenAPI Spec](./openapi.yaml)
 
 - **risk-analytics**: For risk data
 - **analytics-service**: For analytics
-- **ml-service**: For ML-based forecasting (P10/P50/P90, scenarios; `POST /api/v1/ml/forecast/predict`). When `risk_analytics` is configured, `riskAdjustedRevenue` is computed from the latest risk evaluation.
+- **ml-service**: For ML-based forecasting (P10/P50/P90, scenarios); `GET .../ml` and `GET .../scenarios` call `POST /api/v1/ml/forecast/period` when `services.ml_service.url` set. When `risk_analytics` is configured, `riskAdjustedRevenue` is from risk-analytics.
 - **adaptive-learning**: For CAIS integration
 - **pipeline-manager**: For pipeline data
 

@@ -27,6 +27,9 @@ export default function RootLayout({
           <Link href="/analytics/benchmarks" className="font-medium hover:underline">Benchmarks</Link>
           <Link href="/analytics/portfolios" className="font-medium hover:underline">Portfolios</Link>
           <Link href="/settings/competitors" className="font-medium hover:underline">Competitors</Link>
+          <Link href="/settings/industries" className="font-medium hover:underline">Industries</Link>
+          <Link href="/settings/integrations" className="font-medium hover:underline">Integrations</Link>
+          <Link href="/admin" className="font-medium hover:underline text-purple-600">Admin</Link>
         </nav>
         {children}
       </body>

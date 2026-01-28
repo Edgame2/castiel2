@@ -1,0 +1,164 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["server", "cosmos_db"],
+  "properties": {
+    "module": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "server": {
+      "type": "object",
+      "required": ["port"],
+      "properties": {
+        "port": { "type": "number" },
+        "host": { "type": "string" }
+      }
+    },
+    "cosmos_db": {
+      "type": "object",
+      "required": ["endpoint", "key", "database_id"],
+      "properties": {
+        "endpoint": { "type": "string" },
+        "key": { "type": "string" },
+        "database_id": { "type": "string" },
+        "containers": {
+          "type": "object",
+          "properties": {
+            "suggested_links": { "type": "string" },
+            "entity_linking_settings": { "type": "string" },
+            "linking_rules": { "type": "string" },
+            "processing_settings": { "type": "string" }
+          }
+        }
+      }
+    },
+    "jwt": {
+      "type": "object",
+      "required": ["secret"],
+      "properties": {
+        "secret": { "type": "string" }
+      }
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" }
+        }
+      }
+    },
+    "rabbitmq": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "exchange": { "type": "string" },
+        "queues": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "consumer": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["light", "heavy", "all"], "default": "all" }
+      }
+    },
+    "mapping": {
+      "type": "object",
+      "properties": {
+        "queue_name": { "type": "string", "default": "integration_data_raw" },
+        "prefetch": { "type": "number", "minimum": 1, "default": 20 },
+        "prefetch_auto_adjust": { "type": "boolean", "default": true },
+        "prefetch_min": { "type": "number", "minimum": 1, "default": 1 },
+        "prefetch_max": { "type": "number", "minimum": 1, "default": 100 },
+        "prefetch_adjustment_interval_ms": { "type": "number", "minimum": 1000, "default": 60000 },
+        "prefetch_target_processing_time_ms": { "type": "number", "minimum": 1, "default": 1000 },
+        "prefetch_min_samples": { "type": "number", "minimum": 1, "default": 10 },
+        "opportunity_batch_threshold": { "type": "number", "minimum": 1, "default": 100 },
+        "opportunity_batch_timeout_ms": { "type": "number", "minimum": 1000, "default": 5000 },
+        "batch_concurrency": { "type": "number", "minimum": 1, "default": 10 },
+        "config_cache_ttl": { "type": "number", "minimum": 1, "default": 600 },
+        "validation_strictness": { "type": "string", "enum": ["strict", "lenient", "audit"], "default": "lenient" },
+        "config_cache_use_redis": { "type": "boolean", "default": true },
+        "retry": {
+          "type": "object",
+          "properties": {
+            "max_retries": { "type": "number", "minimum": 0, "default": 3 },
+            "initial_backoff_ms": { "type": "number", "minimum": 1, "default": 1000 },
+            "max_backoff_ms": { "type": "number", "minimum": 1, "default": 10000 },
+            "backoff_multiplier": { "type": "number", "minimum": 1, "default": 2 }
+          }
+        },
+        "circuit_breaker": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "threshold": { "type": "number", "minimum": 1, "default": 5 },
+            "timeout_ms": { "type": "number", "minimum": 1, "default": 60000 }
+          }
+        },
+        "idempotency": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "ttl_seconds": { "type": "number", "minimum": 1, "default": 86400 },
+            "use_redis": { "type": "boolean", "default": true },
+            "fallback_to_memory": { "type": "boolean", "default": true }
+          }
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "default": "/metrics" },
+        "require_auth": { "type": "boolean", "default": false },
+        "bearer_token": { "type": "string" }
+      }
+    },
+    "azure": {
+      "type": "object",
+      "properties": {
+        "blob_storage": {
+          "type": "object",
+          "properties": {
+            "connection_string": { "type": "string" },
+            "containers": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            }
+          }
+        },
+        "cognitive_services": {
+          "type": "object",
+          "properties": {
+            "computer_vision": {
+              "type": "object",
+              "properties": {
+                "endpoint": { "type": "string" },
+                "key": { "type": "string" }
+              }
+            },
+            "speech": {
+              "type": "object",
+              "properties": {
+                "endpoint": { "type": "string" },
+                "key": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": { "type": "boolean" }
+    }
+  }
+}

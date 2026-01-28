@@ -62,7 +62,7 @@ function WidgetBlock({ w }: { w: ManagerWidget }) {
           type: String(x.type ?? 'unknown'),
           severity: (['low', 'medium', 'high'].includes(sev) ? sev : 'medium') as 'low' | 'medium' | 'high',
           description: String(x.description ?? x.message ?? ''),
-          ...(x.opportunityId && { opportunityId: String(x.opportunityId) }),
+          ...(x.opportunityId ? { opportunityId: String(x.opportunityId) } : {}),
         };
       });
       return (

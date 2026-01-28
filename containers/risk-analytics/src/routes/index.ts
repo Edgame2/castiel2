@@ -19,13 +19,14 @@ import { TrustLevelService } from '../services/TrustLevelService';
 import { RiskAIValidationService } from '../services/RiskAIValidationService';
 import { RiskExplainabilityService } from '../services/RiskExplainabilityService';
 import { getSnapshots } from '../services/RiskSnapshotService';
-import { getCompetitorsForOpportunity, trackCompetitor, getDashboard, analyzeWinLossByCompetitor, recordWinLossReasons, getWinLossReasons } from '../services/CompetitiveIntelligenceService';
+import { listCompetitors, getCompetitorsForOpportunity, trackCompetitor, getDashboard, analyzeWinLossByCompetitor, recordWinLossReasons, getWinLossReasons } from '../services/CompetitiveIntelligenceService';
 import { getPrioritizedOpportunities } from '../services/PrioritizedOpportunitiesService';
 import { getTopAtRiskReasons } from '../services/AtRiskReasonsService';
 import { StakeholderGraphService } from '../services/StakeholderGraphService';
 import { executeQuickAction } from '../services/QuickActionsService';
 import { getAnomalies, runStatisticalDetection, persistAndPublishMLAnomaly, type RunStatisticalDetectionResult } from '../services/AnomalyDetectionService';
 import { getSentimentTrends } from '../services/SentimentTrendsService';
+import { LeadingIndicatorsService } from '../services/LeadingIndicatorsService';
 import { RiskClusteringService } from '../services/RiskClusteringService';
 import { AccountHealthService } from '../services/AccountHealthService';
 import { RiskPropagationService } from '../services/RiskPropagationService';
@@ -54,6 +55,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     const riskClusteringService = new RiskClusteringService(fastify);
     const accountHealthService = new AccountHealthService(fastify);
     const riskPropagationService = new RiskPropagationService(fastify);
+    const leadingIndicatorsService = new LeadingIndicatorsService(fastify);
 
     const mlServiceClient = new ServiceClient({
       baseURL: config.services?.ml_service?.url || '',
@@ -359,6 +361,68 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           return reply.status(statusCode).send({
             error: { code: 'WIN_PROBABILITY_EXPLAIN_PROXY_FAILED', message: msg || 'Failed to get win-probability explain from ml-service' },
           });
+        }
+      }
+    );
+
+    // Win-probability trend proxy to ml-service (Gap 6, Plan §3.2). On 503 or missing ml_service.url return { points: [] }.
+    fastify.get<{ Params: { opportunityId: string }; Querystring: { from?: string; to?: string } }>(
+      '/api/v1/opportunities/:opportunityId/win-probability/trend',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Historical win-probability points (proxies to ml-service GET /api/v1/ml/win-probability/:opportunityId/trend). On 503 or missing ml_service URL returns { points: [] }.',
+          tags: ['Risk Evaluation'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { opportunityId: { type: 'string' } } },
+          querystring: { type: 'object', properties: { from: { type: 'string' }, to: { type: 'string' } } },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                points: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      date: { type: 'string' },
+                      probability: { type: 'number' },
+                      confidence: { type: 'number' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { opportunityId } = request.params;
+          const { from, to } = request.query;
+          const tenantId = request.user!.tenantId;
+          const base = config.services?.ml_service?.url;
+          if (!base) {
+            return reply.send({ points: [] });
+          }
+          const token = generateServiceToken(fastify, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
+          const qs = new URLSearchParams();
+          if (from) qs.set('from', from);
+          if (to) qs.set('to', to);
+          const path = `/api/v1/ml/win-probability/${encodeURIComponent(opportunityId)}/trend${qs.toString() ? `?${qs.toString()}` : ''}`;
+          const res = await mlServiceClient.get<{ points: { date: string; probability: number; confidence?: number }[] }>(
+            path,
+            { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId } }
+          );
+          return reply.send(res ?? { points: [] });
+        } catch (error: unknown) {
+          const status = (error as { response?: { status?: number } })?.response?.status;
+          if (status === 503) {
+            return reply.send({ points: [] });
+          }
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Win-probability trend proxy failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return reply.send({ points: [] });
         }
       }
     );
@@ -733,6 +797,55 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       }
     );
 
+    // Leading indicators (Gap 5, Plan §4). LeadingIndicatorsService.getLeadingIndicators.
+    fastify.get<{ Params: { opportunityId: string } }>(
+      '/api/v1/opportunities/:opportunityId/leading-indicators',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Leading-indicator status for an opportunity (LeadingIndicatorsCard). From risk_snapshots, risk_evaluations, early-warnings, shard-manager.',
+          tags: ['Risk Evaluation'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { opportunityId: { type: 'string' } }, required: ['opportunityId'] },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                indicators: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      name: { type: 'string' },
+                      status: { type: 'string', enum: ['ok', 'warning', 'critical', 'unknown'] },
+                      value: { type: 'number' },
+                      detail: { type: 'string' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { opportunityId } = request.params;
+          const tenantId = request.user!.tenantId;
+          const out = await leadingIndicatorsService.getLeadingIndicators(opportunityId, tenantId);
+          return reply.send(out);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Leading-indicators get failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return reply.status(statusCode).send({
+            error: { code: 'LEADING_INDICATORS_FAILED', message: msg || 'Failed to get leading indicators' },
+          });
+        }
+      }
+    );
+
     // Quick actions (Plan §942, §11.10): create_task, log_activity, start_remediation. Publishes opportunity.quick_action.requested; 202 Accepted.
     fastify.post<{ Params: { opportunityId: string }; Body: { action: string; payload?: Record<string, unknown> } }>(
       '/api/v1/opportunities/:opportunityId/quick-actions',
@@ -1020,6 +1133,52 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('risk-propagation failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           return reply.status(statusCode).send({ error: { code: 'RISK_PROPAGATION_FAILED', message: msg || 'Failed to analyze risk propagation' } });
+        }
+      }
+    );
+
+    // List competitor catalog (Plan Gap 4: for CompetitorSelectModal)
+    fastify.get<{ Querystring?: Record<string, never> }>(
+      '/api/v1/competitors',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'List competitors in the tenant catalog (for CompetitorSelectModal and settings).',
+          tags: ['Competitive Intelligence'],
+          security: [{ bearerAuth: [] }],
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                competitors: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      name: { type: 'string' },
+                      aliases: { type: 'array', items: { type: 'string' } },
+                      industry: { type: 'string' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const tenantId = request.user!.tenantId;
+          const competitors = await listCompetitors(tenantId);
+          return reply.send({ competitors });
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('List competitors failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return reply.status(statusCode).send({
+            error: { code: 'LIST_COMPETITORS_FAILED', message: msg || 'Failed to list competitors' },
+          });
         }
       }
     );

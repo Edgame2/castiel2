@@ -9,7 +9,11 @@ import Link from 'next/link';
 import { AnomalyCard } from '@/components/dashboard/AnomalyCard';
 import { RemediationWorkflowCard } from '@/components/remediation/RemediationWorkflowCard';
 import { ExplainabilityCard } from '@/components/risk/ExplainabilityCard';
+import { LeadingIndicatorsCard } from '@/components/dashboard/LeadingIndicatorsCard';
+import { LinkCompetitorCard } from '@/components/competitive/LinkCompetitorCard';
+import { SentimentTrendChart } from '@/components/analytics/SentimentTrendChart';
 import { StakeholderGraph } from '@/components/analytics/StakeholderGraph';
+import { WinProbabilityTrendChart } from '@/components/forecast/WinProbabilityTrendChart';
 
 const sampleAnomalies = [
   { id: 'a1', anomalyType: 'revenue_spike', severity: 'medium' as const, description: 'Revenue 2σ above trend', detectedAt: '2026-01-20' },
@@ -55,6 +59,18 @@ export default async function OpportunityDetailPage({ params }: Props) {
         </div>
         <div className="max-w-sm">
           <StakeholderGraph opportunityId={id} title="Stakeholder graph" />
+        </div>
+        <div className="max-w-sm">
+          <LeadingIndicatorsCard opportunityId={id} title="Leading indicators" />
+        </div>
+        <div className="max-w-sm">
+          <SentimentTrendChart opportunityId={id} title="Sentiment trend" />
+        </div>
+        <div className="max-w-sm">
+          <WinProbabilityTrendChart opportunityId={id} title="Win probability trend" />
+        </div>
+        <div className="max-w-sm">
+          <LinkCompetitorCard opportunityId={id} title="Competitors" />
         </div>
       </div>
       <p className="text-sm text-muted-foreground">

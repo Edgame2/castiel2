@@ -51,6 +51,12 @@ npm start
 
 See [OpenAPI Spec](./openapi.yaml)
 
+### BI/risk (Plan §10, §6.4)
+
+- **GET /api/v1/dashboards/executive** – DashboardAnalyticsService.getExecutiveDashboard; revenue-at-risk, competitive-intel, forecasting; risk_heatmap, industry_benchmark (stub when not wired).
+- **GET /api/v1/dashboards/board** – getBoardDashboard; same sources.
+- **GET /api/v1/dashboards/manager** – manager view; prioritized opportunities via risk-analytics `GET /api/v1/risk-analysis/tenant/prioritized-opportunities` when configured.
+
 ## Events
 
 ### Published Events
@@ -66,6 +72,8 @@ See [OpenAPI Spec](./openapi.yaml)
 - **dashboard**: For dashboard CRUD operations
 - **analytics-service**: For analytics data
 - **cache-service**: For cache operations
+- **risk-analytics** (Plan §10): revenue-at-risk, prioritised opportunities, competitive-intel, risk_heatmap
+- **forecasting**: scenarios, risk-adjusted, ML forecast for executive/board
 
 ## Development
 

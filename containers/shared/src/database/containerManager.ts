@@ -31,7 +31,10 @@ export function getContainer(containerName: string): Container {
  */
 export async function ensureContainer(
   containerName: string,
-  partitionKey: string = '/tenantId' // Default to tenantId for multi-tenancy
+  partitionKey: string = '/tenantId', // Default to tenantId for multi-tenancy
+  options?: {
+    defaultTtl?: number; // Default TTL in seconds (-1 = never expire, null/undefined = no default TTL)
+  }
 ): Promise<Container> {
   try {
     const client = CosmosDBClient.getInstance();
@@ -45,12 +48,19 @@ export async function ensureContainer(
     } catch (error: any) {
       // Container doesn't exist, create it
       if (error.code === 404) {
-        const { container } = await database.containers.create({
+        const containerDefinition: any = {
           id: containerName,
           partitionKey: {
             paths: [partitionKey],
           },
-        });
+        };
+
+        // Add defaultTtl if specified
+        if (options?.defaultTtl !== undefined) {
+          containerDefinition.defaultTtl = options.defaultTtl;
+        }
+
+        const { container } = await database.containers.create(containerDefinition);
         return container;
       }
       throw error;

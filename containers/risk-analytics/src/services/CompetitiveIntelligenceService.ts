@@ -51,6 +51,37 @@ export interface CompetitorForOpportunity {
   winLikelihood?: number;
 }
 
+export interface CompetitorCatalogItem {
+  id: string;
+  name: string;
+  aliases?: string[];
+  industry?: string;
+}
+
+/**
+ * List competitors in the tenant catalog (Plan Gap 4: for CompetitorSelectModal).
+ * Queries the competitors container; partition key tenantId.
+ */
+export async function listCompetitors(tenantId: string): Promise<CompetitorCatalogItem[]> {
+  try {
+    const container = getContainer('competitors');
+    const { resources } = await container.items
+      .query<{ id: string; name?: string; aliases?: string[]; industry?: string }>(
+        { query: 'SELECT c.id, c.name, c.aliases, c.industry FROM c', parameters: [] },
+        { partitionKey: tenantId }
+      )
+      .fetchAll();
+    return (resources ?? []).map((r) => ({
+      id: r.id,
+      name: r.name ?? 'Unknown',
+      ...(Array.isArray(r.aliases) && r.aliases.length > 0 && { aliases: r.aliases }),
+      ...(typeof r.industry === 'string' && r.industry && { industry: r.industry }),
+    }));
+  } catch (e) {
+    return [];
+  }
+}
+
 /**
  * Get competitors linked to an opportunity from risk_competitor_tracking.
  * Enriches name from competitors container when available.

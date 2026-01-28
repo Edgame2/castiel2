@@ -614,6 +614,7 @@ The Risk Analytics module consumes the following events:
 |-------|---------|-------------|
 | `opportunity.updated` | RiskAnalyticsEventConsumer | Trigger risk evaluation when opportunity is updated (honors `auto_evaluation.trigger_on_opportunity_update`) |
 | `integration.opportunity.updated` | RiskAnalyticsEventConsumer | Trigger risk evaluation when opportunity is updated via integration sync (honors `auto_evaluation.trigger_on_opportunity_update`) |
+| `integration.opportunities.updated.batch` | RiskAnalyticsEventConsumer | Trigger parallel risk evaluations for batch opportunity updates (processes opportunities in parallel with concurrency limit) |
 | `shard.created` | RiskAnalyticsEventConsumer | Trigger risk evaluation when opportunity shard is created (honors `auto_evaluation.trigger_on_shard_update`) |
 | `shard.updated` | RiskAnalyticsEventConsumer | Trigger risk evaluation when opportunity shard is updated (honors `auto_evaluation.trigger_on_shard_update`) |
 | `risk.catalog.updated` | RiskAnalyticsEventConsumer | Re-evaluate opportunities whose evaluations reference the updated risk (honors `auto_evaluation.trigger_on_risk_catalog_update`; limit `max_reevaluations_per_catalog_event`) |

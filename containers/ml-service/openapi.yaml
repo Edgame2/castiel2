@@ -249,6 +249,42 @@ paths:
                         feature: { type: string }
                         contribution: { type: number }
                         direction: { type: string, enum: [increases, decreases] }
+  /ml/win-probability/{opportunityId}/trend:
+    get:
+      tags: [Predictions]
+      summary: Win-probability trend (Gap 6, Plan §4.2)
+      description: Historical win-probability points for an opportunity from ml_win_probability_predictions. Query from, to (ISO date). Returns empty points when container not configured or no data.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+          description: ISO date (inclusive)
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+          description: ISO date (inclusive)
+      responses:
+        '200':
+          description: points (date, probability, confidence?)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  points:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date: { type: string }
+                        probability: { type: number }
+                        confidence: { type: number }
   /ml/anomaly/predict:
     post:
       tags: [Predictions]

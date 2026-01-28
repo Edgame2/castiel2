@@ -208,6 +208,117 @@ export async function initializeEventConsumer(): Promise<void> {
       }
     });
 
+    // Handle batch opportunity change events from integration sync
+    consumer.on('integration.opportunities.updated.batch', async (event) => {
+      if (skipAllAuto || skipOnOpportunity) {
+        log.debug('Auto risk evaluation skipped (config)', { event: 'integration.opportunities.updated.batch', service: 'risk-analytics' });
+        return;
+      }
+      const data = event?.data ?? {};
+      const opportunityIds = data.opportunityIds ?? [];
+      const tenantId = event.tenantId ?? data.tenantId;
+      const batchSize = data.batchSize ?? opportunityIds.length;
+      
+      if (!Array.isArray(opportunityIds) || opportunityIds.length === 0 || !tenantId) {
+        log.warn('integration.opportunities.updated.batch missing opportunityIds or tenantId', {
+          hasData: !!event?.data,
+          opportunityIdsCount: Array.isArray(opportunityIds) ? opportunityIds.length : 0,
+          service: 'risk-analytics',
+        });
+        return;
+      }
+
+      log.info('Batch opportunity change detected, starting parallel risk evaluations', {
+        opportunityCount: opportunityIds.length,
+        tenantId,
+        batchSize,
+        service: 'risk-analytics',
+      });
+
+      if (!riskEvaluationService) {
+        log.error('Risk evaluation service not initialized', { service: 'risk-analytics' });
+        return;
+      }
+
+      // Process opportunities in parallel with concurrency limit
+      const concurrency = config.batch_processing?.concurrency || 10;
+      let processedCount = 0;
+      let successCount = 0;
+      let failureCount = 0;
+
+      for (let i = 0; i < opportunityIds.length; i += concurrency) {
+        const batch = opportunityIds.slice(i, i + concurrency);
+        
+        const results = await Promise.allSettled(
+          batch.map(async (opportunityId: string) => {
+            try {
+              await riskEvaluationService.evaluateRisk({
+                opportunityId,
+                tenantId,
+                trigger: 'opportunity_updated',
+                options: {
+                  includeHistorical: true,
+                  includeAI: true,
+                  includeSemanticDiscovery: false,
+                },
+              });
+              
+              // Try to publish outcome for closed opportunities
+              try {
+                await tryPublishOutcomeOnShardUpdate(opportunityId, tenantId);
+              } catch (e) {
+                log.debug('tryPublishOutcomeOnShardUpdate failed (batch)', {
+                  opportunityId,
+                  tenantId,
+                  err: e instanceof Error ? e.message : String(e),
+                  service: 'risk-analytics',
+                });
+              }
+              
+              return { opportunityId, success: true };
+            } catch (error: unknown) {
+              log.error('Failed to evaluate risk from batch opportunity update', error instanceof Error ? error : new Error(String(error)), {
+                opportunityId,
+                tenantId,
+                service: 'risk-analytics',
+              });
+              return { opportunityId, success: false };
+            }
+          })
+        );
+
+        // Track results
+        for (const result of results) {
+          processedCount++;
+          if (result.status === 'fulfilled' && result.value.success) {
+            successCount++;
+          } else {
+            failureCount++;
+          }
+        }
+
+        // Log progress for large batches
+        if (opportunityIds.length > 50 && (i + concurrency) % 50 === 0) {
+          log.info('Batch risk evaluation progress', {
+            processed: processedCount,
+            total: opportunityIds.length,
+            success: successCount,
+            failures: failureCount,
+            service: 'risk-analytics',
+          });
+        }
+      }
+
+      log.info('Batch opportunity risk evaluation completed', {
+        opportunityCount: opportunityIds.length,
+        processed: processedCount,
+        success: successCount,
+        failures: failureCount,
+        tenantId,
+        service: 'risk-analytics',
+      });
+    });
+
     // Handle workflow-triggered risk analysis
     consumer.on('workflow.risk.analysis.requested', async (event) => {
       const data = event?.data ?? {};

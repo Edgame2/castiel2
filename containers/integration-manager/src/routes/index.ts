@@ -4,7 +4,7 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { authenticateRequest, tenantEnforcementMiddleware, generateServiceToken } from '@coder/shared';
+import { authenticateRequest, tenantEnforcementMiddleware, generateServiceToken, ServiceClient, EventPublisher } from '@coder/shared';
 import { IntegrationProviderService } from '../services/IntegrationProviderService';
 import { IntegrationService } from '../services/IntegrationService';
 import { IntegrationCatalogService } from '../services/IntegrationCatalogService';
@@ -15,6 +15,7 @@ import { SyncTaskService } from '../services/SyncTaskService';
 import { ContentGenerationService } from '../services/ContentGenerationService';
 import { ContentTemplateService } from '../services/ContentTemplateService';
 import { TemplateService } from '../services/TemplateService';
+import { integrationHealthRoutes } from './integrationHealth.routes';
 import {
   CreateIntegrationInput,
   UpdateIntegrationInput,
@@ -24,6 +25,7 @@ import {
   IntegrationStatus,
   SyncStatus,
   SyncJobType,
+  SyncTrigger,
 } from '../types/integration.types';
 import {
   CreateIntegrationCatalogInput,
@@ -47,6 +49,12 @@ import {
   ResolveConflictInput,
   ConflictResolutionStrategy,
 } from '../types/bidirectional-sync.types';
+import {
+  UpdateSystemSettingsInput,
+  RateLimitSettings,
+  ProcessingCapacitySettings,
+  FeatureFlags,
+} from '../types/system-settings.types';
 
 export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
   const integrationProviderService = new IntegrationProviderService();
@@ -56,7 +64,25 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     throw new Error('Secret management service URL must be configured in config/services/secret_management/url');
   }
   const secretManagementUrl = config.services.secret_management.url;
-  const integrationService = new IntegrationService(secretManagementUrl);
+  
+  // Initialize event publisher for cache invalidation
+  let eventPublisher: EventPublisher | null = null;
+  if (config.rabbitmq?.url) {
+    try {
+      eventPublisher = new EventPublisher(
+        {
+          url: config.rabbitmq.url,
+          exchange: config.rabbitmq.exchange || 'coder_events',
+          exchangeType: 'topic',
+        },
+        'integration-manager'
+      );
+    } catch (error: any) {
+      console.warn('Failed to initialize event publisher for cache invalidation', error);
+    }
+  }
+  
+  const integrationService = new IntegrationService(secretManagementUrl, eventPublisher || undefined);
   const integrationConnectionService = new IntegrationConnectionService(
     app,
     integrationService,
@@ -323,6 +349,332 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     }
   );
 
+  // ===== TENANT INTEGRATION CONNECTION ROUTES =====
+
+  // Get available integration types
+  app.get(
+    '/api/v1/integrations/available',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get available integration types for tenant',
+        tags: ['Integrations', 'Connections'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              integrationTypes: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const tenantId = request.user!.tenantId;
+        // Get catalog entries that are visible to this tenant
+        const catalogResult = await integrationCatalogService.listIntegrations({
+          filter: { visibility: 'public' },
+        });
+        return reply.send({
+          integrationTypes: catalogResult.integrations,
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'INTEGRATION_TYPES_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to get available integration types',
+          },
+        });
+      }
+    }
+  );
+
+  // Get OAuth authorization URL
+  app.get<{
+    Params: { integrationType: string };
+    Querystring: { redirectUri?: string };
+  }>(
+    '/api/v1/integrations/oauth-url/:integrationType',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get OAuth authorization URL for integration type',
+        tags: ['Integrations', 'Connections'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            integrationType: { type: 'string' },
+          },
+        },
+        querystring: {
+          type: 'object',
+          properties: {
+            redirectUri: { type: 'string', format: 'uri' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              authorizationUrl: { type: 'string', format: 'uri' },
+              state: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const tenantId = request.user!.tenantId;
+        const userId = request.user!.id;
+        const { integrationType } = request.params;
+        const { redirectUri } = request.query;
+
+        // Get integration catalog entry
+        const catalogEntry = await integrationCatalogService.getIntegration(integrationType);
+        if (!catalogEntry) {
+          return reply.status(404).send({
+            error: {
+              code: 'INTEGRATION_TYPE_NOT_FOUND',
+              message: 'Integration type not found',
+            },
+          });
+        }
+
+        // Check if OAuth is supported
+        if (!catalogEntry.authMethods.includes('oauth')) {
+          return reply.status(400).send({
+            error: {
+              code: 'OAUTH_NOT_SUPPORTED',
+              message: 'Integration type does not support OAuth',
+            },
+          });
+        }
+
+        // Create a temporary integration instance for OAuth flow
+        // In a real scenario, you might want to create the integration first
+        // For now, we'll use the catalog entry to generate the OAuth URL
+        const returnUrl = redirectUri || '/settings/integrations';
+        
+        // Use the connection service to start OAuth flow
+        // Note: This requires an integration instance, so we might need to create one first
+        // For simplicity, we'll create a minimal integration instance
+        const tempIntegration = await integrationService.create({
+          integrationId: catalogEntry.integrationId,
+          name: `${catalogEntry.displayName} (Connecting)`,
+          tenantId,
+          userId,
+          credentialSecretName: '', // Will be set after OAuth
+          authMethod: 'oauth',
+        });
+
+        const result = await integrationConnectionService.startOAuthFlow(
+          tempIntegration.id,
+          tenantId,
+          userId,
+          returnUrl
+        );
+
+        return reply.send({
+          authorizationUrl: result.authorizationUrl,
+          state: result.state,
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'OAUTH_URL_GENERATION_FAILED',
+            message: error.message || 'Failed to generate OAuth URL',
+          },
+        });
+      }
+    }
+  );
+
+  // Connect integration (OAuth2)
+  app.post<{
+    Body: {
+      integrationType: string;
+      authorizationCode: string;
+      redirectUri: string;
+      state: string;
+    };
+  }>(
+    '/api/v1/integrations/connect',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Connect integration using OAuth2 authorization code',
+        tags: ['Integrations', 'Connections'],
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          required: ['integrationType', 'authorizationCode', 'redirectUri', 'state'],
+          properties: {
+            integrationType: { type: 'string' },
+            authorizationCode: { type: 'string' },
+            redirectUri: { type: 'string', format: 'uri' },
+            state: { type: 'string' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              integration: { type: 'object' },
+              success: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const tenantId = request.user!.tenantId;
+        const userId = request.user!.id;
+        const { integrationType, authorizationCode, redirectUri, state } = request.body;
+
+        // Handle OAuth callback (this will create the connection)
+        // The state should have been created in a previous /oauth-url call
+        // and contains the integrationId
+        const result = await integrationConnectionService.handleOAuthCallback(authorizationCode, state);
+        
+        if (!result.success) {
+          return reply.status(400).send({
+            error: {
+              code: 'OAUTH_CONNECTION_FAILED',
+              message: result.error || 'OAuth connection failed',
+            },
+          });
+        }
+
+        // Get the integration using the integrationId from the result
+        let integration = null;
+        if (result.integrationId) {
+          try {
+            integration = await integrationService.getById(result.integrationId, tenantId);
+          } catch (error) {
+            log.warn('Failed to get integration after OAuth connection', {
+              integrationId: result.integrationId,
+              error,
+            });
+          }
+        }
+
+        return reply.send({
+          integration: integration || {},
+          success: true,
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'INTEGRATION_CONNECTION_FAILED',
+            message: error.message || 'Failed to connect integration',
+          },
+        });
+      }
+    }
+  );
+
+  // Connect integration (API Key)
+  app.post<{
+    Body: {
+      integrationType: string;
+      apiKey: string;
+      apiSecret?: string;
+      instanceUrl?: string;
+      displayName?: string;
+    };
+  }>(
+    '/api/v1/integrations/connect-api-key',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Connect integration using API key',
+        tags: ['Integrations', 'Connections'],
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          required: ['integrationType', 'apiKey'],
+          properties: {
+            integrationType: { type: 'string' },
+            apiKey: { type: 'string' },
+            apiSecret: { type: 'string' },
+            instanceUrl: { type: 'string', format: 'uri' },
+            displayName: { type: 'string' },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            properties: {
+              integration: { type: 'object' },
+              success: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const tenantId = request.user!.tenantId;
+        const userId = request.user!.id;
+        const { integrationType, apiKey, apiSecret, instanceUrl, displayName } = request.body;
+
+        // Get integration catalog entry
+        const catalogEntry = await integrationCatalogService.getIntegration(integrationType);
+        if (!catalogEntry) {
+          return reply.status(404).send({
+            error: {
+              code: 'INTEGRATION_TYPE_NOT_FOUND',
+              message: 'Integration type not found',
+            },
+          });
+        }
+
+        // Create integration instance
+        const integration = await integrationService.create({
+          integrationId: catalogEntry.integrationId,
+          name: displayName || catalogEntry.displayName,
+          tenantId,
+          userId,
+          credentialSecretName: '', // Will be set by connection service
+          authMethod: 'apikey',
+          instanceUrl,
+        });
+
+        // Create connection with API key
+        const connection = await integrationConnectionService.connectWithApiKey(
+          integration.id,
+          tenantId,
+          userId,
+          apiKey,
+          displayName
+        );
+
+        // Update integration with connection status
+        await integrationService.update(integration.id, tenantId, {
+          status: 'connected',
+          connectionStatus: 'active',
+        });
+
+        return reply.status(201).send({
+          integration,
+          success: true,
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'API_KEY_CONNECTION_FAILED',
+            message: error.message || 'Failed to connect integration with API key',
+          },
+        });
+      }
+    }
+  );
+
   /**
    * List integrations
    * GET /api/v1/integrations
@@ -371,6 +723,1085 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         continuationToken: request.query.continuationToken,
       });
       reply.send(result);
+    }
+  );
+
+  // ===== SYNC CONFIGURATION ROUTES =====
+
+  // Get sync configuration
+  app.get<{ Params: { id: string } }>(
+    '/api/v1/integrations/:id/sync-config',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get sync configuration for integration',
+        tags: ['Integrations', 'Sync'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              syncConfig: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const tenantId = request.user!.tenantId;
+
+        const integration = await integrationService.getById(id, tenantId);
+        
+        return reply.send({
+          syncConfig: integration.syncConfig || null,
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'SYNC_CONFIG_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to get sync configuration',
+          },
+        });
+      }
+    }
+  );
+
+  // Update sync configuration
+  app.put<{
+    Params: { id: string };
+    Body: {
+      enabledEntities?: string[];
+      schedule?: {
+        frequency: 'manual' | '15min' | 'hourly' | 'daily' | 'weekly' | 'custom';
+        cronExpression?: string;
+        timezone?: string;
+      };
+      direction?: 'one-way' | 'bidirectional';
+      filters?: Array<{
+        entityType: string;
+        field: string;
+        operator: 'equals' | 'contains' | 'greaterThan' | 'lessThan';
+        value: any;
+      }>;
+      syncEnabled?: boolean;
+      entityMappings?: any[];
+      pullFilters?: any[];
+      conflictResolution?: string;
+      maxRecordsPerSync?: number;
+    };
+  }>(
+    '/api/v1/integrations/:id/sync-config',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Update sync configuration for integration',
+        tags: ['Integrations', 'Sync'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        body: {
+          type: 'object',
+          properties: {
+            enabledEntities: { type: 'array', items: { type: 'string' } },
+            schedule: { type: 'object' },
+            direction: { type: 'string', enum: ['one-way', 'bidirectional'] },
+            filters: { type: 'array' },
+            syncEnabled: { type: 'boolean' },
+            entityMappings: { type: 'array' },
+            pullFilters: { type: 'array' },
+            conflictResolution: { type: 'string' },
+            maxRecordsPerSync: { type: 'number' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              syncConfig: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const tenantId = request.user!.tenantId;
+        const body = request.body;
+
+        // Get existing integration
+        const integration = await integrationService.getById(id, tenantId);
+        
+        // Build updated sync config
+        const existingSyncConfig = integration.syncConfig || {};
+        const updatedSyncConfig: any = {
+          ...existingSyncConfig,
+        };
+
+        // Map request body to sync config structure
+        if (body.syncEnabled !== undefined) {
+          updatedSyncConfig.syncEnabled = body.syncEnabled;
+        }
+        if (body.direction) {
+          updatedSyncConfig.syncDirection = body.direction === 'one-way' ? 'inbound' : 'bidirectional';
+        }
+        if (body.schedule) {
+          if (body.schedule.frequency === 'manual') {
+            updatedSyncConfig.syncFrequency = { type: 'manual' };
+          } else if (body.schedule.frequency === 'custom' && body.schedule.cronExpression) {
+            updatedSyncConfig.syncFrequency = {
+              type: 'cron',
+              cronExpression: body.schedule.cronExpression,
+            };
+          } else {
+            // Map frequency to interval minutes
+            const intervalMap: Record<string, number> = {
+              '15min': 15,
+              'hourly': 60,
+              'daily': 1440,
+              'weekly': 10080,
+            };
+            if (intervalMap[body.schedule.frequency]) {
+              updatedSyncConfig.syncFrequency = {
+                type: 'interval',
+                intervalMinutes: intervalMap[body.schedule.frequency],
+              };
+            }
+          }
+        }
+        if (body.enabledEntities !== undefined) {
+          // Update entity mappings enabled status
+          if (existingSyncConfig.entityMappings) {
+            updatedSyncConfig.entityMappings = existingSyncConfig.entityMappings.map((mapping: any) => ({
+              ...mapping,
+              enabled: body.enabledEntities!.includes(mapping.externalEntity),
+            }));
+          }
+        }
+        if (body.filters) {
+          updatedSyncConfig.pullFilters = body.filters.map((filter) => ({
+            field: filter.field,
+            operator: filter.operator === 'greaterThan' ? 'gt' : filter.operator === 'lessThan' ? 'lt' : filter.operator,
+            value: filter.value,
+          }));
+        }
+        if (body.entityMappings !== undefined) {
+          updatedSyncConfig.entityMappings = body.entityMappings;
+        }
+        if (body.pullFilters !== undefined) {
+          updatedSyncConfig.pullFilters = body.pullFilters;
+        }
+        if (body.conflictResolution !== undefined) {
+          updatedSyncConfig.conflictResolution = body.conflictResolution;
+        }
+        if (body.maxRecordsPerSync !== undefined) {
+          updatedSyncConfig.maxRecordsPerSync = body.maxRecordsPerSync;
+        }
+
+        // Update integration with new sync config
+        const updatedIntegration = await integrationService.update(id, tenantId, {
+          syncConfig: updatedSyncConfig,
+        });
+
+        return reply.send({
+          syncConfig: updatedIntegration.syncConfig,
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'SYNC_CONFIG_UPDATE_FAILED',
+            message: error.message || 'Failed to update sync configuration',
+          },
+        });
+      }
+    }
+  );
+
+  // Trigger manual sync
+  app.post<{
+    Params: { id: string };
+    Body: {
+      entityTypes?: string[];
+      fullSync?: boolean;
+    };
+  }>(
+    '/api/v1/integrations/:id/sync',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Trigger manual sync for integration',
+        tags: ['Integrations', 'Sync'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        body: {
+          type: 'object',
+          properties: {
+            entityTypes: { type: 'array', items: { type: 'string' } },
+            fullSync: { type: 'boolean' },
+          },
+        },
+        response: {
+          202: {
+            type: 'object',
+            properties: {
+              syncTaskId: { type: 'string' },
+              status: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const tenantId = request.user!.tenantId;
+        const userId = request.user!.id;
+        const { entityTypes, fullSync } = request.body;
+
+        // Get integration
+        const integration = await integrationService.getById(id, tenantId);
+
+        // Determine job type
+        const jobType = fullSync ? SyncJobType.FULL : SyncJobType.INCREMENTAL;
+
+        // Build entity mappings if specific entities requested
+        let entityMappings;
+        if (entityTypes && entityTypes.length > 0 && integration.syncConfig?.entityMappings) {
+          entityMappings = integration.syncConfig.entityMappings.filter((mapping: any) =>
+            entityTypes.includes(mapping.externalEntity)
+          );
+        } else {
+          entityMappings = integration.syncConfig?.entityMappings;
+        }
+
+        // Create sync task
+        const input: CreateSyncTaskInput = {
+          integrationId: id,
+          jobType,
+          trigger: SyncTrigger.MANUAL,
+          tenantId,
+          userId,
+          entityMappings,
+        };
+
+        const task = await syncTaskService.create(input);
+
+        return reply.status(202).send({
+          syncTaskId: task.id,
+          status: task.status === SyncStatus.RUNNING ? 'running' : 'queued',
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'SYNC_TRIGGER_FAILED',
+            message: error.message || 'Failed to trigger sync',
+          },
+        });
+      }
+    }
+  );
+
+  // ===== FIELD MAPPING ROUTES =====
+
+  // Get field mappings for entity type
+  app.get<{ Params: { id: string; entityType: string } }>(
+    '/api/v1/integrations/:id/field-mappings/:entityType',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get field mappings for entity type',
+        tags: ['Integrations', 'Field Mappings'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            entityType: { type: 'string' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              fieldMappings: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { id, entityType } = request.params;
+        const tenantId = request.user!.tenantId;
+
+        const integration = await integrationService.getById(id, tenantId);
+        
+        // Find entity mapping for this entity type
+        const entityMapping = integration.syncConfig?.entityMappings?.find(
+          (mapping: any) => mapping.externalEntity === entityType || mapping.externalEntityName === entityType
+        );
+
+        return reply.send({
+          fieldMappings: entityMapping?.fieldMappings || [],
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'FIELD_MAPPINGS_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to get field mappings',
+          },
+        });
+      }
+    }
+  );
+
+  // Update field mappings for entity type
+  app.put<{
+    Params: { id: string; entityType: string };
+    Body: { fieldMappings: any[] };
+  }>(
+    '/api/v1/integrations/:id/field-mappings/:entityType',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Update field mappings for entity type',
+        tags: ['Integrations', 'Field Mappings'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            entityType: { type: 'string' },
+          },
+        },
+        body: {
+          type: 'object',
+          required: ['fieldMappings'],
+          properties: {
+            fieldMappings: { type: 'array' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              fieldMappings: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { id, entityType } = request.params;
+        const tenantId = request.user!.tenantId;
+        const { fieldMappings } = request.body;
+
+        const integration = await integrationService.getById(id, tenantId);
+        
+        // Get or create sync config
+        const syncConfig = integration.syncConfig || {
+          syncEnabled: false,
+          syncDirection: 'inbound',
+          entityMappings: [],
+          conflictResolution: 'last_write_wins',
+        };
+
+        // Find or create entity mapping
+        let entityMapping = syncConfig.entityMappings.find(
+          (mapping: any) => mapping.externalEntity === entityType || mapping.externalEntityName === entityType
+        );
+
+        if (!entityMapping) {
+          // Create new entity mapping
+          entityMapping = {
+            id: require('uuid').v4(),
+            externalEntity: entityType,
+            shardTypeId: '', // Will need to be set based on entity type
+            fieldMappings: [],
+            enabled: true,
+          };
+          syncConfig.entityMappings.push(entityMapping);
+        }
+
+        // Update field mappings
+        entityMapping.fieldMappings = fieldMappings;
+
+        // Update integration
+        const updatedIntegration = await integrationService.update(id, tenantId, {
+          syncConfig,
+        });
+
+        // Find updated entity mapping
+        const updatedEntityMapping = updatedIntegration.syncConfig?.entityMappings?.find(
+          (mapping: any) => mapping.externalEntity === entityType || mapping.externalEntityName === entityType
+        );
+
+        return reply.send({
+          fieldMappings: updatedEntityMapping?.fieldMappings || [],
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'FIELD_MAPPINGS_UPDATE_FAILED',
+            message: error.message || 'Failed to update field mappings',
+          },
+        });
+      }
+    }
+  );
+
+  // Get available external fields
+  app.get<{ Params: { id: string; entityType: string } }>(
+    '/api/v1/integrations/:id/external-fields/:entityType',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get available external fields for entity type',
+        tags: ['Integrations', 'Field Mappings'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            entityType: { type: 'string' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              fields: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { id, entityType } = request.params;
+        const tenantId = request.user!.tenantId;
+
+        const integration = await integrationService.getById(id, tenantId);
+        
+        // Get provider to determine field schema
+        const provider = await integrationProviderService.getById(integration.integrationId, 'crm'); // Default category
+        
+        // For now, return common CRM fields based on entity type
+        // In a real implementation, this would query the adapter or provider schema
+        const commonFields: Record<string, any[]> = {
+          Opportunity: [
+            { name: 'Id', label: 'ID', type: 'string', required: true },
+            { name: 'Name', label: 'Name', type: 'string', required: true },
+            { name: 'Amount', label: 'Amount', type: 'number', required: false },
+            { name: 'StageName', label: 'Stage', type: 'string', required: false },
+            { name: 'CloseDate', label: 'Close Date', type: 'date', required: false },
+            { name: 'Probability', label: 'Probability', type: 'number', required: false },
+            { name: 'AccountId', label: 'Account ID', type: 'string', required: false },
+            { name: 'OwnerId', label: 'Owner ID', type: 'string', required: false },
+          ],
+          Account: [
+            { name: 'Id', label: 'ID', type: 'string', required: true },
+            { name: 'Name', label: 'Name', type: 'string', required: true },
+            { name: 'Industry', label: 'Industry', type: 'string', required: false },
+            { name: 'Type', label: 'Type', type: 'string', required: false },
+          ],
+          Contact: [
+            { name: 'Id', label: 'ID', type: 'string', required: true },
+            { name: 'FirstName', label: 'First Name', type: 'string', required: false },
+            { name: 'LastName', label: 'Last Name', type: 'string', required: true },
+            { name: 'Email', label: 'Email', type: 'string', required: false },
+            { name: 'Phone', label: 'Phone', type: 'string', required: false },
+            { name: 'AccountId', label: 'Account ID', type: 'string', required: false },
+          ],
+        };
+
+        const fields = commonFields[entityType] || [];
+
+        return reply.send({ fields });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'EXTERNAL_FIELDS_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to get external fields',
+          },
+        });
+      }
+    }
+  );
+
+  // Get available internal fields (from shard type)
+  app.get<{ Params: { id: string; entityType: string } }>(
+    '/api/v1/integrations/:id/internal-fields/:entityType',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get available internal fields for entity type',
+        tags: ['Integrations', 'Field Mappings'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            entityType: { type: 'string' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              fields: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { id, entityType } = request.params;
+        const tenantId = request.user!.tenantId;
+
+        const integration = await integrationService.getById(id, tenantId);
+        
+        // Find entity mapping to get shard type
+        const entityMapping = integration.syncConfig?.entityMappings?.find(
+          (mapping: any) => mapping.externalEntity === entityType || mapping.externalEntityName === entityType
+        );
+
+        if (!entityMapping?.shardTypeId) {
+          return reply.status(404).send({
+            error: {
+              code: 'SHARD_TYPE_NOT_FOUND',
+              message: 'Shard type not configured for this entity type',
+            },
+          });
+        }
+
+        // Get shard type from shard-manager
+        const shardManagerClient = new ServiceClient({
+          baseURL: config.services.shard_manager?.url,
+          timeout: 10000,
+          retries: 2,
+        });
+
+        const token = generateServiceToken(app, {
+          serviceId: 'integration-manager',
+          serviceName: 'integration-manager',
+          tenantId,
+        });
+
+        const shardTypeResponse = await shardManagerClient.get(
+          `/api/v1/shard-types/${entityMapping.shardTypeId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'X-Tenant-ID': tenantId,
+            },
+          }
+        );
+
+        const shardType = shardTypeResponse.data;
+
+        // Extract fields from JSON schema
+        const fields: any[] = [];
+        if (shardType.schema?.properties) {
+          for (const [fieldName, fieldSchema] of Object.entries(shardType.schema.properties as Record<string, any>)) {
+            fields.push({
+              name: fieldName,
+              label: fieldSchema.title || fieldName,
+              type: fieldSchema.type || 'string',
+              required: shardType.schema.required?.includes(fieldName) || false,
+              description: fieldSchema.description,
+            });
+          }
+        }
+
+        return reply.send({ fields });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'INTERNAL_FIELDS_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to get internal fields',
+          },
+        });
+      }
+    }
+  );
+
+  // Get available transform functions
+  app.get(
+    '/api/v1/integrations/transform-functions',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get available transform functions',
+        tags: ['Integrations', 'Field Mappings'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              transforms: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        // Get transform functions from FieldMapperService
+        const { FieldMapperService } = await import('@coder/shared/services');
+        const fieldMapper = new FieldMapperService();
+
+        // Built-in transforms
+        const transforms = [
+          {
+            name: 'dateToISO',
+            description: 'Convert date to ISO 8601 string',
+            parameters: [],
+          },
+          {
+            name: 'dateToUnix',
+            description: 'Convert date to Unix timestamp',
+            parameters: [],
+          },
+          {
+            name: 'stringToNumber',
+            description: 'Convert string to number',
+            parameters: [],
+          },
+          {
+            name: 'roundToDecimals',
+            description: 'Round number to specified decimal places',
+            parameters: [
+              { name: 'decimals', type: 'number', required: false, default: 2 },
+            ],
+          },
+          {
+            name: 'toLowerCase',
+            description: 'Convert string to lowercase',
+            parameters: [],
+          },
+          {
+            name: 'toUpperCase',
+            description: 'Convert string to uppercase',
+            parameters: [],
+          },
+          {
+            name: 'trim',
+            description: 'Trim whitespace from string',
+            parameters: [],
+          },
+          {
+            name: 'arrayToString',
+            description: 'Join array elements into string',
+            parameters: [
+              { name: 'separator', type: 'string', required: false, default: ', ' },
+            ],
+          },
+          {
+            name: 'arrayFirst',
+            description: 'Get first element of array',
+            parameters: [],
+          },
+          {
+            name: 'booleanToString',
+            description: 'Convert boolean to string',
+            parameters: [],
+          },
+          {
+            name: 'booleanToYesNo',
+            description: 'Convert boolean to Yes/No',
+            parameters: [],
+          },
+          {
+            name: 'nullToDefault',
+            description: 'Replace null/undefined with default value',
+            parameters: [
+              { name: 'default', type: 'any', required: false },
+            ],
+          },
+        ];
+
+        return reply.send({ transforms });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'TRANSFORM_FUNCTIONS_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to get transform functions',
+          },
+        });
+      }
+    }
+  );
+
+  // Test field mappings
+  app.post<{
+    Params: { id: string; entityType: string };
+    Body: { testData: any; fieldMappings?: any[] };
+  }>(
+    '/api/v1/integrations/:id/field-mappings/:entityType/test',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Test field mappings with sample data',
+        tags: ['Integrations', 'Field Mappings'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            entityType: { type: 'string' },
+          },
+        },
+        body: {
+          type: 'object',
+          required: ['testData'],
+          properties: {
+            testData: { type: 'object' },
+            fieldMappings: { type: 'array' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              transformedData: { type: 'object' },
+              valid: { type: 'boolean' },
+              errors: { type: 'array' },
+              warnings: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { id, entityType } = request.params;
+        const tenantId = request.user!.tenantId;
+        const { testData, fieldMappings: testMappings } = request.body;
+
+        const integration = await integrationService.getById(id, tenantId);
+        
+        // Use provided mappings or get from integration
+        let fieldMappings = testMappings;
+        if (!fieldMappings) {
+          const entityMapping = integration.syncConfig?.entityMappings?.find(
+            (mapping: any) => mapping.externalEntity === entityType || mapping.externalEntityName === entityType
+          );
+          fieldMappings = entityMapping?.fieldMappings || [];
+        }
+
+        // Use FieldMapperService to test mappings
+        const { FieldMapperService } = await import('@coder/shared/services');
+        const fieldMapper = new FieldMapperService();
+
+        // Load custom transforms if any
+        if (integration.syncConfig?.customTransforms) {
+          fieldMapper.loadCustomTransforms(id, integration.syncConfig.customTransforms);
+        }
+
+        // Apply mappings
+        const transformedData: Record<string, any> = {};
+        const errors: string[] = [];
+        const warnings: string[] = [];
+
+        for (const mapping of fieldMappings) {
+          const externalField = mapping.externalField || mapping.externalFieldName;
+          const shardField = mapping.shardField || mapping.internalFieldName;
+          
+          if (!externalField || !shardField) {
+            warnings.push(`Mapping missing external or internal field: ${JSON.stringify(mapping)}`);
+            continue;
+          }
+
+          try {
+            let value = testData[externalField];
+            
+            // Apply default value if needed
+            if ((value === null || value === undefined || value === '') && mapping.defaultValue !== undefined) {
+              value = mapping.defaultValue;
+            }
+
+            // Apply transform if specified
+            if (mapping.transform && value !== null && value !== undefined && value !== '') {
+              value = fieldMapper.applyTransform(
+                value,
+                mapping.transform,
+                mapping.transformOptions,
+                id
+              );
+            }
+
+            transformedData[shardField] = value;
+
+            // Check required fields
+            if (mapping.required && (value === null || value === undefined || value === '')) {
+              errors.push(`Required field ${shardField} is missing or empty`);
+            }
+          } catch (error: any) {
+            errors.push(`Failed to map field ${externalField} to ${shardField}: ${error.message}`);
+          }
+        }
+
+        return reply.send({
+          transformedData,
+          valid: errors.length === 0,
+          errors,
+          warnings,
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'FIELD_MAPPING_TEST_FAILED',
+            message: error.message || 'Failed to test field mappings',
+          },
+        });
+      }
+    }
+  );
+
+  // Export field mappings
+  app.get<{ Params: { id: string; entityType: string } }>(
+    '/api/v1/integrations/:id/field-mappings/:entityType/export',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Export field mappings as JSON',
+        tags: ['Integrations', 'Field Mappings'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            entityType: { type: 'string' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              fieldMappings: { type: 'array' },
+              exportedAt: { type: 'string', format: 'date-time' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { id, entityType } = request.params;
+        const tenantId = request.user!.tenantId;
+
+        const integration = await integrationService.getById(id, tenantId);
+        
+        const entityMapping = integration.syncConfig?.entityMappings?.find(
+          (mapping: any) => mapping.externalEntity === entityType || mapping.externalEntityName === entityType
+        );
+
+        return reply.send({
+          fieldMappings: entityMapping?.fieldMappings || [],
+          exportedAt: new Date().toISOString(),
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'FIELD_MAPPINGS_EXPORT_FAILED',
+            message: error.message || 'Failed to export field mappings',
+          },
+        });
+      }
+    }
+  );
+
+  // Import field mappings
+  app.post<{
+    Params: { id: string; entityType: string };
+    Body: { fieldMappings: any[] };
+  }>(
+    '/api/v1/integrations/:id/field-mappings/:entityType/import',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Import field mappings from JSON',
+        tags: ['Integrations', 'Field Mappings'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            entityType: { type: 'string' },
+          },
+        },
+        body: {
+          type: 'object',
+          required: ['fieldMappings'],
+          properties: {
+            fieldMappings: { type: 'array' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              fieldMappings: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { id, entityType } = request.params;
+        const tenantId = request.user!.tenantId;
+        const { fieldMappings } = request.body;
+
+        // Use the same logic as PUT endpoint
+        const integration = await integrationService.getById(id, tenantId);
+        
+        const syncConfig = integration.syncConfig || {
+          syncEnabled: false,
+          syncDirection: 'inbound',
+          entityMappings: [],
+          conflictResolution: 'last_write_wins',
+        };
+
+        let entityMapping = syncConfig.entityMappings.find(
+          (mapping: any) => mapping.externalEntity === entityType || mapping.externalEntityName === entityType
+        );
+
+        if (!entityMapping) {
+          entityMapping = {
+            id: require('uuid').v4(),
+            externalEntity: entityType,
+            shardTypeId: '',
+            fieldMappings: [],
+            enabled: true,
+          };
+          syncConfig.entityMappings.push(entityMapping);
+        }
+
+        entityMapping.fieldMappings = fieldMappings;
+
+        const updatedIntegration = await integrationService.update(id, tenantId, {
+          syncConfig,
+        });
+
+        const updatedEntityMapping = updatedIntegration.syncConfig?.entityMappings?.find(
+          (mapping: any) => mapping.externalEntity === entityType || mapping.externalEntityName === entityType
+        );
+
+        return reply.send({
+          fieldMappings: updatedEntityMapping?.fieldMappings || [],
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'FIELD_MAPPINGS_IMPORT_FAILED',
+            message: error.message || 'Failed to import field mappings',
+          },
+        });
+      }
+    }
+  );
+
+  // Get sync history
+  app.get<{
+    Params: { id: string };
+    Querystring: {
+      limit?: number;
+      offset?: number;
+    };
+  }>(
+    '/api/v1/integrations/:id/sync-history',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get sync history for integration',
+        tags: ['Integrations', 'Sync'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        querystring: {
+          type: 'object',
+          properties: {
+            limit: { type: 'number', minimum: 1, maximum: 100, default: 50 },
+            offset: { type: 'number', minimum: 0, default: 0 },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              history: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params;
+        const tenantId = request.user!.tenantId;
+        const { limit = 50, offset = 0 } = request.query;
+
+        // Verify integration exists
+        await integrationService.getById(id, tenantId);
+
+        // Get sync tasks for this integration
+        const result = await syncTaskService.list(tenantId, {
+          integrationId: id,
+          limit: limit + offset, // Fetch more to handle offset
+        });
+
+        // Apply offset and limit
+        const history = result.items.slice(offset, offset + limit).map((task) => ({
+          syncTaskId: task.id,
+          startedAt: task.startedAt,
+          completedAt: task.completedAt,
+          status: task.status === SyncStatus.RUNNING ? 'running' : 
+                  task.status === SyncStatus.SUCCESS ? 'completed' : 
+                  task.status === SyncStatus.FAILED ? 'failed' : 'completed',
+          recordsProcessed: task.stats.recordsProcessed,
+          recordsFailed: task.stats.recordsFailed,
+          duration: task.durationMs || (task.completedAt && task.startedAt 
+            ? task.completedAt.getTime() - task.startedAt.getTime() 
+            : undefined),
+          errors: task.errors?.map((e) => e.message) || [],
+        }));
+
+        return reply.send({
+          history,
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'SYNC_HISTORY_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to get sync history',
+          },
+        });
+      }
     }
   );
 
@@ -1363,15 +2794,92 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   );
 
   // ===== INTEGRATION CATALOG ROUTES (Super Admin) =====
+  // Legacy routes at /api/v1/super-admin/integration-catalog (kept for backward compatibility)
+  // New routes at /api/v1/admin/integrations/catalog (as per plan specification)
 
-  // Create integration in catalog
-  app.post<{ Body: CreateIntegrationCatalogInput }>(
-    '/api/v1/super-admin/integration-catalog',
+  // ===== NEW ADMIN ROUTES: /api/v1/admin/integrations/catalog =====
+
+  // List all integration types
+  app.get<{ Querystring: { category?: string; limit?: number; offset?: number } }>(
+    '/api/v1/admin/integrations/catalog',
     {
       preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
       schema: {
-        description: 'Create new integration in catalog (Super Admin only)',
-        tags: ['Super Admin', 'Integration Catalog'],
+        description: 'List all integration types in catalog (Super Admin only)',
+        tags: ['Admin', 'Integration Catalog'],
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (request, reply) => {
+      try {
+        // TODO: Add super admin role check
+        const result = await integrationCatalogService.listIntegrations({
+          filter: request.query.category ? { category: request.query.category } : undefined,
+          limit: request.query.limit,
+          offset: request.query.offset,
+        });
+        return reply.send({
+          integrationTypes: result.integrations,
+          total: result.total,
+          limit: result.limit,
+          offset: result.offset,
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'CATALOG_LIST_FAILED',
+            message: error.message || 'Failed to list integration catalog',
+          },
+        });
+      }
+    }
+  );
+
+  // Get single integration type
+  app.get<{ Params: { id: string } }>(
+    '/api/v1/admin/integrations/catalog/:id',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get single integration type by ID (Super Admin only)',
+        tags: ['Admin', 'Integration Catalog'],
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (request, reply) => {
+      try {
+        // TODO: Add super admin role check
+        const catalogEntry = await integrationCatalogService.getIntegration(request.params.id);
+        if (!catalogEntry) {
+          return reply.status(404).send({
+            error: {
+              code: 'INTEGRATION_NOT_FOUND',
+              message: 'Integration type not found',
+            },
+          });
+        }
+        return reply.send({
+          integrationType: catalogEntry,
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'CATALOG_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to get integration catalog entry',
+          },
+        });
+      }
+    }
+  );
+
+  // Create integration type
+  app.post<{ Body: CreateIntegrationCatalogInput }>(
+    '/api/v1/admin/integrations/catalog',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Create new integration type in catalog (Super Admin only)',
+        tags: ['Admin', 'Integration Catalog'],
         security: [{ bearerAuth: [] }],
       },
     },
@@ -1379,7 +2887,9 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       try {
         // TODO: Add super admin role check
         const catalogEntry = await integrationCatalogService.createIntegration(request.body);
-        return reply.status(201).send(catalogEntry);
+        return reply.status(201).send({
+          integrationType: catalogEntry,
+        });
       } catch (error: any) {
         return reply.status(error.statusCode || 500).send({
           error: {
@@ -1390,6 +2900,85 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       }
     }
   );
+
+  // Update integration type
+  app.put<{ Params: { id: string }; Body: UpdateIntegrationCatalogInput }>(
+    '/api/v1/admin/integrations/catalog/:id',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Update integration type in catalog (Super Admin only)',
+        tags: ['Admin', 'Integration Catalog'],
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (request, reply) => {
+      try {
+        // TODO: Add super admin role check
+        const catalogEntry = await integrationCatalogService.updateIntegration(
+          request.params.id,
+          request.body
+        );
+        if (!catalogEntry) {
+          return reply.status(404).send({
+            error: {
+              code: 'INTEGRATION_NOT_FOUND',
+              message: 'Integration type not found',
+            },
+          });
+        }
+        return reply.send({
+          integrationType: catalogEntry,
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'CATALOG_UPDATE_FAILED',
+            message: error.message || 'Failed to update integration catalog entry',
+          },
+        });
+      }
+    }
+  );
+
+  // Delete integration type
+  app.delete<{ Params: { id: string } }>(
+    '/api/v1/admin/integrations/catalog/:id',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Delete integration type from catalog (Super Admin only)',
+        tags: ['Admin', 'Integration Catalog'],
+        security: [{ bearerAuth: [] }],
+      },
+    },
+    async (request, reply) => {
+      try {
+        // TODO: Add super admin role check
+        const deleted = await integrationCatalogService.deleteIntegration(request.params.id);
+        if (!deleted) {
+          return reply.status(404).send({
+            error: {
+              code: 'INTEGRATION_NOT_FOUND',
+              message: 'Integration type not found',
+            },
+          });
+        }
+        return reply.status(200).send({
+          success: true,
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'CATALOG_DELETE_FAILED',
+            message: error.message || 'Failed to delete integration catalog entry',
+          },
+        });
+      }
+    }
+  );
+
+  // ===== LEGACY ROUTES: /api/v1/super-admin/integration-catalog (kept for backward compatibility) =====
 
   // List integrations in catalog
   app.get<{ Querystring: { category?: string; limit?: number; offset?: number } }>(
@@ -2040,6 +3629,9 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     }
   );
 
+  // ===== INTEGRATION HEALTH & MONITORING ROUTES =====
+  await integrationHealthRoutes(app, integrationService, syncTaskService);
+
   // Clear adapter cache
   app.post(
     '/api/v1/integrations/adapters/cache/clear',
@@ -2257,6 +3849,427 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           error: {
             code: 'CONFLICT_STATS_FAILED',
             message: error.message || 'Failed to get conflict statistics',
+          },
+        });
+      }
+    }
+  );
+
+  // ===== SYSTEM SETTINGS ROUTES (Admin) =====
+
+  const { SystemSettingsService } = await import('../services/SystemSettingsService');
+  const systemSettingsService = new SystemSettingsService();
+
+  // Get all system settings
+  app.get(
+    '/api/v1/admin/settings',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get all system settings (Super Admin only)',
+        tags: ['Admin', 'System Settings'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              settings: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        // TODO: Add super admin role check
+        const settings = await systemSettingsService.getSettings();
+        return reply.send({ settings });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'SETTINGS_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to get system settings',
+          },
+        });
+      }
+    }
+  );
+
+  // Update system settings
+  app.put<{ Body: UpdateSystemSettingsInput }>(
+    '/api/v1/admin/settings',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Update system settings (Super Admin only)',
+        tags: ['Admin', 'System Settings'],
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          properties: {
+            rateLimits: { type: 'object' },
+            capacity: { type: 'object' },
+            queueConfig: { type: 'object' },
+            featureFlags: { type: 'object' },
+            azureServices: { type: 'object' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              settings: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        // TODO: Add super admin role check
+        const userId = request.user!.id;
+        const settings = await systemSettingsService.updateSettings(request.body, userId);
+        return reply.send({ settings });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'SETTINGS_UPDATE_FAILED',
+            message: error.message || 'Failed to update system settings',
+          },
+        });
+      }
+    }
+  );
+
+  // Get rate limit settings
+  app.get(
+    '/api/v1/admin/settings/rate-limits',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get rate limit settings (Super Admin only)',
+        tags: ['Admin', 'System Settings'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              rateLimits: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        // TODO: Add super admin role check
+        const rateLimits = await systemSettingsService.getRateLimits();
+        return reply.send({ rateLimits });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'RATE_LIMITS_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to get rate limit settings',
+          },
+        });
+      }
+    }
+  );
+
+  // Update rate limit settings
+  app.put<{ Body: RateLimitSettings }>(
+    '/api/v1/admin/settings/rate-limits',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Update rate limit settings (Super Admin only)',
+        tags: ['Admin', 'System Settings'],
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          required: ['global'],
+          properties: {
+            global: {
+              type: 'object',
+              properties: {
+                requestsPerSecond: { type: 'number' },
+                requestsPerMinute: { type: 'number' },
+                requestsPerHour: { type: 'number' },
+              },
+            },
+            defaultByIntegrationType: { type: 'object' },
+            tenantOverrides: { type: 'object' },
+            bypassTenants: { type: 'array', items: { type: 'string' } },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              rateLimits: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        // TODO: Add super admin role check
+        const userId = request.user!.id;
+        const rateLimits = await systemSettingsService.updateRateLimits(request.body, userId);
+        return reply.send({ rateLimits });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'RATE_LIMITS_UPDATE_FAILED',
+            message: error.message || 'Failed to update rate limit settings',
+          },
+        });
+      }
+    }
+  );
+
+  // Get processing capacity settings
+  app.get(
+    '/api/v1/admin/settings/capacity',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get processing capacity settings (Super Admin only)',
+        tags: ['Admin', 'System Settings'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              capacity: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        // TODO: Add super admin role check
+        const capacity = await systemSettingsService.getCapacity();
+        return reply.send({ capacity });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'CAPACITY_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to get processing capacity settings',
+          },
+        });
+      }
+    }
+  );
+
+  // Update processing capacity settings
+  app.put<{ Body: ProcessingCapacitySettings }>(
+    '/api/v1/admin/settings/capacity',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Update processing capacity settings (Super Admin only)',
+        tags: ['Admin', 'System Settings'],
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          required: ['lightProcessors', 'heavyProcessors'],
+          properties: {
+            lightProcessors: {
+              type: 'object',
+              properties: {
+                minInstances: { type: 'number' },
+                maxInstances: { type: 'number' },
+                autoScaleThreshold: { type: 'number' },
+                prefetch: { type: 'number' },
+                concurrentProcessing: { type: 'number' },
+                memoryLimitMB: { type: 'number' },
+              },
+            },
+            heavyProcessors: {
+              type: 'object',
+              properties: {
+                minInstances: { type: 'number' },
+                maxInstances: { type: 'number' },
+                autoScaleThreshold: { type: 'number' },
+                prefetch: { type: 'number' },
+                concurrentProcessing: { type: 'number' },
+                memoryLimitMB: { type: 'number' },
+              },
+            },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              capacity: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        // TODO: Add super admin role check
+        const userId = request.user!.id;
+        const capacity = await systemSettingsService.updateCapacity(request.body, userId);
+        return reply.send({ capacity });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'CAPACITY_UPDATE_FAILED',
+            message: error.message || 'Failed to update processing capacity settings',
+          },
+        });
+      }
+    }
+  );
+
+  // Get feature flags
+  app.get(
+    '/api/v1/admin/settings/feature-flags',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get feature flags (Super Admin only)',
+        tags: ['Admin', 'System Settings'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              featureFlags: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        // TODO: Add super admin role check
+        const featureFlags = await systemSettingsService.getFeatureFlags();
+        return reply.send({ featureFlags });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'FEATURE_FLAGS_RETRIEVAL_FAILED',
+            message: error.message || 'Failed to get feature flags',
+          },
+        });
+      }
+    }
+  );
+
+  // Update feature flags
+  app.put<{ Body: FeatureFlags }>(
+    '/api/v1/admin/settings/feature-flags',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Update feature flags (Super Admin only)',
+        tags: ['Admin', 'System Settings'],
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          properties: {
+            documentProcessing: { type: 'boolean' },
+            emailProcessing: { type: 'boolean' },
+            meetingTranscription: { type: 'boolean' },
+            entityLinking: { type: 'boolean' },
+            mlFieldAggregation: { type: 'boolean' },
+            suggestedLinks: { type: 'boolean' },
+            bidirectionalSync: { type: 'boolean' },
+            webhooks: { type: 'boolean' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              featureFlags: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        // TODO: Add super admin role check
+        const userId = request.user!.id;
+        const featureFlags = await systemSettingsService.updateFeatureFlags(request.body, userId);
+        return reply.send({ featureFlags });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'FEATURE_FLAGS_UPDATE_FAILED',
+            message: error.message || 'Failed to update feature flags',
+          },
+        });
+      }
+    }
+  );
+
+  // Toggle single feature flag
+  app.patch<{ Params: { flagName: string }; Body: { enabled: boolean } }>(
+    '/api/v1/admin/settings/feature-flags/:flagName',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Toggle a single feature flag (Super Admin only)',
+        tags: ['Admin', 'System Settings'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            flagName: { type: 'string' },
+          },
+        },
+        body: {
+          type: 'object',
+          required: ['enabled'],
+          properties: {
+            enabled: { type: 'boolean' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              featureFlag: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  enabled: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        // TODO: Add super admin role check
+        const userId = request.user!.id;
+        const featureFlags = await systemSettingsService.toggleFeatureFlag(
+          request.params.flagName,
+          request.body.enabled,
+          userId
+        );
+        return reply.send({
+          featureFlag: {
+            name: request.params.flagName,
+            enabled: featureFlags[request.params.flagName],
+          },
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'FEATURE_FLAG_TOGGLE_FAILED',
+            message: error.message || 'Failed to toggle feature flag',
           },
         });
       }

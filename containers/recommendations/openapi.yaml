@@ -266,6 +266,41 @@ paths:
           description: Workflow or step not found
         '500':
           $ref: '#/components/responses/InternalError'
+    put:
+      tags:
+        - Remediation
+      summary: Complete a step (Plan §4.4)
+      description: Same as POST. PUT is per Plan §4.4; POST remains supported for backward compatibility.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: stepNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                completedBy: { type: string }
+      responses:
+        '200':
+          description: Updated RemediationWorkflow
+        '400':
+          description: Step already completed or workflow completed/cancelled
+        '404':
+          description: Workflow or step not found
+        '500':
+          $ref: '#/components/responses/InternalError'
   /remediation-workflows/{id}/cancel:
     put:
       tags:

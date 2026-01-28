@@ -210,29 +210,96 @@ export class PredictionService {
   /**
    * Win-probability prediction (BI_SALES_RISK Plan §5.4, §5.7).
    * buildVector('win-probability') → AzureMLClient('win-probability-model'); on failure use heuristic (vector.probability or 0.5).
+   * When feature_flags.persist_win_probability, upserts to ml_win_probability_predictions for trend API (Gap 9).
    */
   async predictWinProbability(tenantId: string, opportunityId: string): Promise<{ probability: number }> {
     const t0 = Date.now();
     let modelId = 'heuristic';
     let vec = await this.featureService.buildVectorForOpportunity(tenantId, opportunityId, 'win-probability');
     if (vec == null) {
+      const out = { probability: 0.5 };
       publishMlPredictionCompleted(tenantId, { modelId, opportunityId, inferenceMs: Date.now() - t0 });
-      return { probability: 0.5 };
+      this.tryPersistWinProbability(tenantId, opportunityId, out.probability, modelId);
+      return out;
     }
     if (this.azureMlClient.hasEndpoint('win-probability-model')) {
       try {
         const p = await this.azureMlClient.predict('win-probability-model', vec);
         modelId = 'win-probability-model';
+        const out = { probability: Math.min(1, Math.max(0, p)) };
         publishMlPredictionCompleted(tenantId, { modelId, opportunityId, inferenceMs: Date.now() - t0 });
-        return { probability: p };
+        this.tryPersistWinProbability(tenantId, opportunityId, out.probability, modelId);
+        return out;
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         console.warn('Azure ML win-probability-model failed, using heuristic', { opportunityId, error: msg, service: 'ml-service' });
       }
     }
     const p = (vec.probability != null && !isNaN(vec.probability)) ? vec.probability : 0.5;
+    const out = { probability: Math.min(1, Math.max(0, p)) };
     publishMlPredictionCompleted(tenantId, { modelId, opportunityId, inferenceMs: Date.now() - t0 });
-    return { probability: Math.min(1, Math.max(0, p)) };
+    this.tryPersistWinProbability(tenantId, opportunityId, out.probability, modelId);
+    return out;
+  }
+
+  /**
+   * Persist win-probability to ml_win_probability_predictions when feature_flags.persist_win_probability (Gap 9).
+   */
+  private tryPersistWinProbability(tenantId: string, opportunityId: string, probability: number, modelId?: string): void {
+    if (!this.config.feature_flags?.persist_win_probability) return;
+    try {
+      const name = this.config.cosmos_db?.containers?.win_probability ?? 'ml_win_probability_predictions';
+      const container = getContainer(name);
+      const id = `${tenantId}_${opportunityId}_${Date.now()}`;
+      const doc = { id, tenantId, opportunityId, probability, modelId: modelId ?? 'heuristic', createdAt: new Date().toISOString() };
+      container.items.upsert(doc).then(() => {}).catch(() => {});
+    } catch {
+      // container not registered or write error; ignore
+    }
+  }
+
+  /**
+   * Get win-probability trend for an opportunity (Gap 6, Plan §4.2). Reads from ml_win_probability_predictions.
+   */
+  async getProbabilityTrend(
+    tenantId: string,
+    opportunityId: string,
+    from?: string,
+    to?: string
+  ): Promise<{ points: { date: string; probability: number; confidence?: number }[] }> {
+    let container;
+    try {
+      const name = this.config.cosmos_db?.containers?.win_probability ?? 'ml_win_probability_predictions';
+      container = getContainer(name);
+    } catch {
+      return { points: [] };
+    }
+    let query = 'SELECT c.createdAt, c.probability FROM c WHERE c.tenantId = @tenantId AND c.opportunityId = @opportunityId';
+    const parameters: { name: string; value: string }[] = [
+      { name: '@tenantId', value: tenantId },
+      { name: '@opportunityId', value: opportunityId },
+    ];
+    if (from) {
+      query += ' AND c.createdAt >= @from';
+      parameters.push({ name: '@from', value: from });
+    }
+    if (to) {
+      query += ' AND c.createdAt <= @to';
+      parameters.push({ name: '@to', value: to });
+    }
+    query += ' ORDER BY c.createdAt ASC';
+    try {
+      const { resources } = await container.items
+        .query<{ createdAt?: string; probability?: number }>({ query, parameters }, { partitionKey: tenantId })
+        .fetchAll();
+      const points = (resources ?? []).map((r) => ({
+        date: (r.createdAt || '').slice(0, 10),
+        probability: typeof r.probability === 'number' ? r.probability : 0.5,
+      }));
+      return { points };
+    } catch {
+      return { points: [] };
+    }
   }
 
   /**

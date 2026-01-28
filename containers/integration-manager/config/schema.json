@@ -45,7 +45,8 @@
             "templates": { "type": "string" },
             "template_versions": { "type": "string" },
             "context_templates": { "type": "string" },
-            "email_templates": { "type": "string" }
+            "email_templates": { "type": "string" },
+            "system_settings": { "type": "string" }
           }
         }
       }

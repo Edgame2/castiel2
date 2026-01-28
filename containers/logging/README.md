@@ -71,7 +71,8 @@ pnpm start
 | **data_lake.container** | string | risk | Blob container for Parquet and ML audit blobs. |
 | **data_lake.path_prefix** | string | /risk_evaluations | Path prefix for DataLakeCollector Parquet output. |
 | **data_lake.audit_path_prefix** | string | /ml_audit | Path prefix for MLAuditConsumer audit JSON blobs. |
-| **rabbitmq.data_lake.queue** | string | logging_data_lake | Queue for DataLakeCollector. Bindings: `risk.evaluated`. |
+| **data_lake.ml_inference_logs_prefix** | string | /ml_inference_logs | Path for DataLakeCollector inference logs (`risk.evaluated`, `ml.prediction.completed` → `/ml_inference_logs/...`). Plan §940, DATA_LAKE_LAYOUT §2.3. |
+| **rabbitmq.data_lake.queue** | string | logging_data_lake | Queue for DataLakeCollector. Bindings: `risk.evaluated`, `ml.prediction.completed`. |
 | **rabbitmq.ml_audit.queue** | string | logging_ml_audit | Queue for MLAuditConsumer. Bindings: `risk.evaluated`, `risk.prediction.generated`, `ml.prediction.completed`, `remediation.workflow.completed`, `hitl.approval.requested`, `hitl.approval.completed`, `ml.model.drift.detected`, `ml.model.performance.degraded` (Plan §972, §940). |
 | defaults.hash_chain.enabled | boolean | true | Enable tamper-evident logging |
 | defaults.redaction.enabled | boolean | true | Enable sensitive data redaction |

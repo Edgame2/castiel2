@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **BI Sales Risk – Salesforce-to-shard mapping (Gap 7):** `docs/salesforce-to-shard-mapping.md` and README section. Audit of BidirectionalSyncService (uses fieldMappings for conflict detection; does not build structuredData). Recommended `entityMappings[].fieldMappings` for c_opportunity, c_account, c_contact NEW fields when upstream (e.g. Salesforce) provides them. Adapters/sync layer can add these mappings when wired.
+
 ## [1.1.0] - 2026-01-23
 
 ### Fixed

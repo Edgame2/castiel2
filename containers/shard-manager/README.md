@@ -122,6 +122,10 @@ For detailed event documentation including schemas and examples, see:
 
 The Shard Manager module does not consume events from other modules. It only publishes events.
 
+## BI Sales Risk – Shard Fields
+
+Optional `structuredData` fields for c_opportunity, c_account, c_contact used by BI Sales Risk. Shard-manager does not validate or reject documents that omit them. See [docs/BI_SALES_RISK_SHARD_FIELDS.md](./docs/BI_SALES_RISK_SHARD_FIELDS.md) and [BI_SALES_RISK_SHARD_SCHEMAS.md](../../documentation/requirements/BI_SALES_RISK_SHARD_SCHEMAS.md).
+
 ## Development
 
 ### Running Tests

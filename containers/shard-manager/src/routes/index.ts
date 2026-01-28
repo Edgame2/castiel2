@@ -1088,5 +1088,290 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
     }
   );
 
+  // ===== ADMIN SHARD TYPE ROUTES =====
+
+  /**
+   * List all shard types (Admin)
+   * GET /api/v1/admin/shard-types
+   */
+  fastify.get<{
+    Querystring: {
+      isActive?: boolean;
+      isSystem?: boolean;
+      limit?: number;
+    };
+  }>(
+    '/api/v1/admin/shard-types',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'List all shard types (Admin only)',
+        tags: ['Admin', 'Shard Types'],
+        querystring: {
+          type: 'object',
+          properties: {
+            isActive: { type: 'boolean' },
+            isSystem: { type: 'boolean' },
+            limit: { type: 'number', minimum: 1, maximum: 1000, default: 100 },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              shardTypes: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      // TODO: Add super admin role check
+      const shardTypes = await shardTypeService.list(tenantId, {
+        isActive: request.query.isActive,
+        isSystem: request.query.isSystem,
+        limit: request.query.limit,
+      });
+      reply.send({ shardTypes });
+    }
+  );
+
+  /**
+   * Get single shard type (Admin)
+   * GET /api/v1/admin/shard-types/:id
+   */
+  fastify.get<{ Params: { id: string } }>(
+    '/api/v1/admin/shard-types/:id',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get single shard type by ID (Admin only)',
+        tags: ['Admin', 'Shard Types'],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              shardType: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      // TODO: Add super admin role check
+      const shardType = await shardTypeService.getById(request.params.id, tenantId);
+      reply.send({ shardType });
+    }
+  );
+
+  /**
+   * Create shard type (Admin)
+   * POST /api/v1/admin/shard-types
+   */
+  fastify.post<{ Body: CreateShardTypeInput }>(
+    '/api/v1/admin/shard-types',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Create a new shard type (Admin only)',
+        tags: ['Admin', 'Shard Types'],
+        body: {
+          type: 'object',
+          required: ['name', 'schema'],
+          properties: {
+            name: { type: 'string' },
+            description: { type: 'string' },
+            schema: { type: 'object' },
+            displayConfig: { type: 'object' },
+            isSystem: { type: 'boolean' },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            properties: {
+              shardType: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const userId = request.user!.id;
+      // TODO: Add super admin role check
+
+      const input: CreateShardTypeInput = {
+        ...request.body,
+        tenantId,
+        createdBy: userId,
+      };
+
+      const shardType = await shardTypeService.create(input);
+      reply.code(201).send({ shardType });
+    }
+  );
+
+  /**
+   * Update shard type (Admin)
+   * PUT /api/v1/admin/shard-types/:id
+   */
+  fastify.put<{ Params: { id: string }; Body: UpdateShardTypeInput }>(
+    '/api/v1/admin/shard-types/:id',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Update shard type (Admin only)',
+        tags: ['Admin', 'Shard Types'],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        body: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            description: { type: 'string' },
+            schema: { type: 'object' },
+            displayConfig: { type: 'object' },
+            isActive: { type: 'boolean' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              shardType: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      // TODO: Add super admin role check
+      const shardType = await shardTypeService.update(
+        request.params.id,
+        tenantId,
+        request.body
+      );
+      reply.send({ shardType });
+    }
+  );
+
+  /**
+   * Validate test data against shard type (Admin)
+   * POST /api/v1/admin/shard-types/:id/validate
+   */
+  fastify.post<{ Params: { id: string }; Body: { testData: any } }>(
+    '/api/v1/admin/shard-types/:id/validate',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Validate test data against shard type schema (Admin only)',
+        tags: ['Admin', 'Shard Types'],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        body: {
+          type: 'object',
+          required: ['testData'],
+          properties: {
+            testData: { type: 'object' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              valid: { type: 'boolean' },
+              errors: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    path: { type: 'string' },
+                    message: { type: 'string' },
+                  },
+                },
+              },
+              warnings: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    path: { type: 'string' },
+                    message: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      // TODO: Add super admin role check
+      const result = await shardTypeService.validateTestData(
+        request.params.id,
+        tenantId,
+        request.body.testData
+      );
+      reply.send(result);
+    }
+  );
+
+  /**
+   * Get shard type usage statistics (Admin)
+   * GET /api/v1/admin/shard-types/:id/stats
+   */
+  fastify.get<{ Params: { id: string } }>(
+    '/api/v1/admin/shard-types/:id/stats',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get shard type usage statistics (Admin only)',
+        tags: ['Admin', 'Shard Types'],
+        params: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              shardCount: { type: 'number' },
+              tenantsUsing: { type: 'number' },
+              lastCreated: { type: 'string', format: 'date-time', nullable: true },
+              avgShardSize: { type: 'number' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      // TODO: Add super admin role check
+      const stats = await shardTypeService.getStatistics(request.params.id, tenantId);
+      reply.send(stats);
+    }
+  );
+
   log.info('Shard manager routes registered', { service: 'shard-manager' });
 }

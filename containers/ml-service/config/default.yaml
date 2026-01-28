@@ -30,6 +30,7 @@ cosmos_db:
     evaluations: ml_evaluations
     predictions: ml_predictions
     jobs: multimodal_jobs
+    win_probability: ml_win_probability_predictions
 
 services:
   ai_service:
@@ -53,6 +54,7 @@ feature_flags:
   use_win_probability_ml: true
   use_risk_scoring_ml: true
   use_revenue_forecasting_ml: true
+  persist_win_probability: true
 
 # Legacy; feature_flags preferred (Plan §8.1).
 features: {}

@@ -115,6 +115,27 @@ export class ShardEmbeddingService {
         throw new Error(`Shard not found: ${shardId}`);
       }
 
+      // Filter: Only vectorize multi-modal content shards (Document, Email, Meeting, Message, CalendarEvent)
+      // Do NOT vectorize CRM shards (Opportunity, Account, Contact)
+      const vectorizableShardTypes = ['document', 'email', 'meeting', 'message', 'calendarevent'];
+      const shardTypeLower = shard.shardTypeId?.toLowerCase();
+
+      if (!shardTypeLower || !vectorizableShardTypes.includes(shardTypeLower)) {
+        log.debug('Skipping vectorization for non-vectorizable shard type', {
+          shardId,
+          shardTypeId: shard.shardTypeId,
+          tenantId,
+          service: 'data-enrichment',
+        });
+        return {
+          shardId,
+          vectorsGenerated: 0,
+          templateUsed: 'none',
+          isDefaultTemplate: false,
+          processingTimeMs: Date.now() - startTime,
+        };
+      }
+
       // Check if already has recent vectors
       if (!options?.forceRegenerate && this.hasRecentVectors(shard)) {
         log.info('Shard already has recent vectors', {

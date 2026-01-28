@@ -14,6 +14,7 @@ import {
   PermissionLevel,
   ShardSource,
 } from '../types/shard.types';
+import { publishShardEvent } from '../events/publishers/ShardEventPublisher';
 
 export class ShardService {
   private containerName = 'shard_shards';
@@ -86,6 +87,16 @@ export class ShardService {
       if (!resource) {
         throw new Error('Failed to create shard');
       }
+
+      // Publish shard.created event
+      await publishShardEvent('shard.created', input.tenantId, {
+        shardId: resource.id,
+        shardTypeId: resource.shardTypeId,
+        shardTypeName: resource.shardTypeName,
+        opportunityId: resource.structuredData?.opportunityId || resource.structuredData?.id,
+      }, {
+        userId: input.userId,
+      });
 
       return resource as Shard;
     } catch (error: any) {
@@ -191,6 +202,16 @@ export class ShardService {
         throw new Error('Failed to update shard');
       }
 
+      // Publish shard.updated event
+      await publishShardEvent('shard.updated', tenantId, {
+        shardId: resource.id,
+        shardTypeId: resource.shardTypeId,
+        shardTypeName: resource.shardTypeName,
+        opportunityId: resource.structuredData?.opportunityId || resource.structuredData?.id,
+      }, {
+        userId: input.userId,
+      });
+
       return resource as Shard;
     } catch (error: any) {
       if (error.code === 404) {
@@ -227,6 +248,14 @@ export class ShardService {
     };
 
     await container.item(shardId, tenantId).replace(deleted);
+
+    // Publish shard.deleted event
+    await publishShardEvent('shard.deleted', tenantId, {
+      shardId: existing.id,
+      shardTypeId: existing.shardTypeId,
+      shardTypeName: existing.shardTypeName,
+      opportunityId: existing.structuredData?.opportunityId || existing.structuredData?.id,
+    });
   }
 
   /**

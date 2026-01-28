@@ -60,6 +60,9 @@ export interface RiskAnalyticsConfig {
     trigger_on_risk_catalog_update?: boolean;
     max_reevaluations_per_catalog_event?: number;
   };
+  batch_processing?: {
+    concurrency?: number;
+  };
   features?: { [key: string]: boolean };
   feature_flags?: {
     early_warning_lstm?: boolean;

@@ -43,7 +43,7 @@ export function ScenarioForecastChart({
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis dataKey="name" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${(v / 1e3).toFixed(0)}k`)} />
-          <Tooltip formatter={(v: number) => [v.toLocaleString(), 'Forecast']} labelFormatter={(n) => n} />
+          <Tooltip formatter={(v: number | undefined) => [v != null ? v.toLocaleString() : '—', 'Forecast']} labelFormatter={(n) => n} />
           <Bar dataKey="value" radius={[2, 2, 0, 0]}>
             {chartData.map((_, i) => <Cell key={i} fill={chartData[i].fill} />)}
           </Bar>

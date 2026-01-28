@@ -62,6 +62,7 @@ rabbitmq:
   queue: forecasting_service
   bindings:
     - "opportunity.updated"
+    - "integration.opportunity.updated"
     - "risk.evaluation.completed"
     - "integration.sync.completed"
     - "workflow.forecast.requested"

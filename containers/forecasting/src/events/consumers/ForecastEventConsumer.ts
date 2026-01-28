@@ -58,6 +58,39 @@ export async function initializeEventConsumer(): Promise<void> {
       }
     });
 
+    // Handle integration opportunity updates
+    // Note: Sequential processing after risk evaluation is ensured by risk.evaluation.completed handler below
+    // This handler processes integration.opportunity.updated events, but forecasting will be triggered
+    // after risk evaluation completes via risk.evaluation.completed event
+    consumer.on('integration.opportunity.updated', async (event) => {
+      const data = event?.data ?? {};
+      const opportunityId = data.opportunityId;
+      const tenantId = event.tenantId ?? data.tenantId;
+      if (!opportunityId || !tenantId) {
+        log.warn('integration.opportunity.updated missing opportunityId or tenantId', { hasData: !!event?.data, service: 'forecasting' });
+        return;
+      }
+      log.info('Integration opportunity updated, will generate forecast after risk evaluation', {
+        opportunityId,
+        tenantId,
+        service: 'forecasting',
+      });
+
+      // Note: We don't generate forecast immediately here because:
+      // 1. Risk evaluation is triggered by integration.opportunity.updated in risk-analytics
+      // 2. Risk evaluation publishes risk.evaluation.completed when done
+      // 3. Our risk.evaluation.completed handler will generate the forecast sequentially
+      // This ensures forecasts are generated with the latest risk data
+      
+      // If risk evaluation is disabled or not available, we can generate forecast directly
+      // For now, we wait for risk.evaluation.completed to ensure sequential processing
+      log.debug('Waiting for risk.evaluation.completed before generating forecast', {
+        opportunityId,
+        tenantId,
+        service: 'forecasting',
+      });
+    });
+
     // Handle risk evaluation completion
     consumer.on('risk.evaluation.completed', async (event) => {
       const opportunityId = event.data?.opportunityId;

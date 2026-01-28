@@ -82,10 +82,19 @@ export async function connectDatabase(config?: CosmosDBConfig): Promise<void> {
   await dbClient.connect();
 
   // Ensure all configured containers exist
+  // Note: Special handling for containers that need TTL or other options
   if (Object.keys(containerMappings).length > 0) {
     for (const logicalName in containerMappings) {
       const physicalName = containerMappings[logicalName];
-      await ensureContainer(physicalName, '/tenantId'); // Default partition key to /tenantId
+      
+      // Special handling for suggested_links container (30 days TTL)
+      if (logicalName === 'suggested_links' || physicalName.includes('suggested_links')) {
+        await ensureContainer(physicalName, '/tenantId', {
+          defaultTtl: 2592000, // 30 days in seconds
+        });
+      } else {
+        await ensureContainer(physicalName, '/tenantId'); // Default partition key to /tenantId
+      }
     }
   }
 

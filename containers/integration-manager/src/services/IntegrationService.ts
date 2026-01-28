@@ -5,7 +5,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { getContainer } from '@coder/shared/database';
-import { ServiceClient } from '@coder/shared/services';
+import { ServiceClient, EventPublisher } from '@coder/shared';
 import { BadRequestError, NotFoundError, ForbiddenError } from '@coder/shared/utils/errors';
 import {
   Integration,
@@ -19,13 +19,15 @@ import {
 export class IntegrationService {
   private containerName = 'integration_integrations';
   private secretManagementClient: ServiceClient;
+  private eventPublisher: EventPublisher | null = null;
 
-  constructor(secretManagementUrl: string) {
+  constructor(secretManagementUrl: string, eventPublisher?: EventPublisher) {
     this.secretManagementClient = new ServiceClient({
       baseUrl: secretManagementUrl,
       timeout: 10000,
       retries: 2,
     });
+    this.eventPublisher = eventPublisher || null;
   }
 
   /**
@@ -150,6 +152,20 @@ export class IntegrationService {
         throw new Error('Failed to update integration');
       }
 
+      // Publish integration.updated event for cache invalidation
+      if (this.eventPublisher) {
+        try {
+          await this.eventPublisher.publish('integration.updated', tenantId, {
+            integrationId,
+            tenantId,
+            updatedAt: updated.updatedAt.toISOString(),
+          });
+        } catch (error: any) {
+          // Non-critical - log but don't fail the update
+          console.warn('Failed to publish integration.updated event', error);
+        }
+      }
+
       return resource as Integration;
     } catch (error: any) {
       if (error.code === 404) {
@@ -164,6 +180,22 @@ export class IntegrationService {
    */
   async delete(integrationId: string, tenantId: string): Promise<void> {
     const existing = await this.getById(integrationId, tenantId);
+    
+    // Publish integration.deleted event for cache invalidation (before deletion)
+    if (this.eventPublisher) {
+      try {
+        await this.eventPublisher.publish('integration.deleted', tenantId, {
+          integrationId,
+          tenantId,
+        });
+      } catch (error: any) {
+        // Non-critical - log but don't fail the delete
+        console.warn('Failed to publish integration.deleted event', error);
+      }
+    }
+    
+    const container = getContainer(this.containerName);
+    await container.item(integrationId, tenantId).delete();
 
     // Deactivate instead of deleting
     await this.update(integrationId, tenantId, {

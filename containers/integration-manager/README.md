@@ -66,6 +66,10 @@ Third-party integrations and webhook management service for Castiel.
 - `webhook.failed` - Webhook delivery failed
 - `sync.task.completed` - Sync task completed
 
+## BI Sales Risk – Field Mapping
+
+For syncing c_opportunity, c_account, c_contact from Salesforce (or similar CRM), optional `structuredData` fields and recommended `entityMappings[].fieldMappings` are documented in [docs/salesforce-to-shard-mapping.md](./docs/salesforce-to-shard-mapping.md). See also [BI_SALES_RISK_SHARD_SCHEMAS](../../documentation/requirements/BI_SALES_RISK_SHARD_SCHEMAS.md) and shard-manager [docs/BI_SALES_RISK_SHARD_FIELDS](../shard-manager/docs/BI_SALES_RISK_SHARD_FIELDS.md).
+
 ## Dependencies
 
 - **Shard Manager**: For data synchronization

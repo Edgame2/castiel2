@@ -37,6 +37,7 @@ The Forecasting module provides forecasting and prediction services for the Cast
 
 **Consumed Events**:
 - `opportunity.updated` - Update forecasts when opportunities change
-- `risk.evaluation.completed` - Update forecasts when risk evaluations complete
+- `integration.opportunity.updated` - Update forecasts when opportunities change via integration sync (waits for risk evaluation to complete)
+- `risk.evaluation.completed` - Update forecasts when risk evaluations complete (ensures sequential processing after risk evaluation)
 - `integration.sync.completed` - Update forecasts after sync
 - `workflow.forecast.requested` - Process workflow-triggered forecast

@@ -1,0 +1,116 @@
+# integration-processors Module Configuration
+# Per ModuleImplementationGuide Section 4
+
+module:
+  name: integration-processors
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3000}
+  host: ${HOST:-0.0.0.0}
+
+# Cosmos DB Configuration (shared database, prefixed containers)
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    suggested_links: integration_suggested_links
+    entity_linking_settings: integration_entity_linking_settings
+    linking_rules: integration_linking_rules
+    processing_settings: integration_processing_settings
+
+# JWT Configuration (shared with auth service)
+jwt:
+  secret: ${JWT_SECRET}
+
+# External Service URLs (from config, not hardcoded)
+services:
+  auth:
+    url: ${AUTH_URL:-http://localhost:3021}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  integration_manager:
+    url: ${INTEGRATION_MANAGER_URL:-http://localhost:3012}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3002}
+  secret_management:
+    url: ${SECRET_MANAGEMENT_URL:-http://localhost:3003}
+
+# RabbitMQ Configuration
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queues:
+    integration_data_raw: integration_data_raw
+    integration_data_raw_dlq: integration_data_raw.dlq
+    integration_documents: integration_documents
+    integration_communications: integration_communications
+    integration_meetings: integration_meetings
+    integration_events: integration_events
+    shard_ml_aggregation: shard_ml_aggregation
+    entity_linking: entity_linking
+  dlq:
+    max_retries: ${DLQ_MAX_RETRIES:-3}
+    alert_threshold: ${DLQ_ALERT_THRESHOLD:-100}  # Alert when DLQ depth exceeds this
+
+# Consumer Configuration
+consumer:
+  type: ${CONSUMER_TYPE:-all}  # light, heavy, or all
+
+# Metrics Configuration (Prometheus)
+metrics:
+  path: ${METRICS_PATH:-/metrics}
+  require_auth: ${METRICS_REQUIRE_AUTH:-false}
+  bearer_token: ${METRICS_BEARER_TOKEN:-}
+
+# Mapping Configuration
+mapping:
+  queue_name: ${MAPPING_QUEUE_NAME:-integration_data_raw}
+  prefetch: ${MAPPING_PREFETCH:-20}  # Initial prefetch (used if auto_adjust is disabled)
+  prefetch_auto_adjust: ${MAPPING_PREFETCH_AUTO_ADJUST:-true}  # Enable dynamic prefetch adjustment
+  prefetch_min: ${MAPPING_PREFETCH_MIN:-1}  # Minimum prefetch value
+  prefetch_max: ${MAPPING_PREFETCH_MAX:-100}  # Maximum prefetch value
+  prefetch_adjustment_interval_ms: ${MAPPING_PREFETCH_ADJUSTMENT_INTERVAL_MS:-60000}  # How often to adjust (default: 1 minute)
+  prefetch_target_processing_time_ms: ${MAPPING_PREFETCH_TARGET_PROCESSING_TIME_MS:-1000}  # Target processing time per message (default: 1 second)
+  prefetch_min_samples: ${MAPPING_PREFETCH_MIN_SAMPLES:-10}  # Minimum samples before adjusting
+  batch_concurrency: ${MAPPING_BATCH_CONCURRENCY:-10}
+  config_cache_ttl: ${MAPPING_CONFIG_CACHE_TTL:-600}
+  config_cache_use_redis: ${CONFIG_CACHE_USE_REDIS:-true}  # Use Redis for distributed config caching
+  validation_strictness: ${MAPPING_VALIDATION_STRICTNESS:-lenient}  # strict, lenient, audit
+  retry:
+    max_retries: ${MAPPING_RETRY_MAX_RETRIES:-3}
+    initial_backoff_ms: ${MAPPING_RETRY_INITIAL_BACKOFF_MS:-1000}
+    max_backoff_ms: ${MAPPING_RETRY_MAX_BACKOFF_MS:-10000}
+    backoff_multiplier: ${MAPPING_RETRY_BACKOFF_MULTIPLIER:-2}
+  circuit_breaker:
+    enabled: ${MAPPING_CIRCUIT_BREAKER_ENABLED:-true}
+    threshold: ${MAPPING_CIRCUIT_BREAKER_THRESHOLD:-5}  # Failures before opening
+    timeout_ms: ${MAPPING_CIRCUIT_BREAKER_TIMEOUT_MS:-60000}  # Time before half-open attempt
+  idempotency:
+    enabled: ${IDEMPOTENCY_ENABLED:-true}
+    ttl_seconds: ${IDEMPOTENCY_TTL_SECONDS:-86400}  # 24 hours
+    use_redis: ${IDEMPOTENCY_USE_REDIS:-true}  # Use Redis for distributed idempotency
+    fallback_to_memory: ${IDEMPOTENCY_FALLBACK_TO_MEMORY:-true}  # Fallback to in-memory if Redis unavailable
+  opportunity_batch_threshold: ${OPPORTUNITY_BATCH_THRESHOLD:-100}  # Threshold for batch opportunity events
+  opportunity_batch_timeout_ms: ${OPPORTUNITY_BATCH_TIMEOUT_MS:-5000}  # Timeout for batch opportunity events (default: 5 seconds)
+  opportunity_debounce_use_redis: ${OPPORTUNITY_DEBOUNCE_USE_REDIS:-true}  # Use Redis for distributed debouncing (default: true)
+
+# Azure Services Configuration
+azure:
+  blob_storage:
+    connection_string: ${AZURE_BLOB_CONNECTION_STRING}
+    containers:
+      documents: integration-documents
+      recordings: integration-recordings
+      attachments: integration-attachments
+  cognitive_services:
+    computer_vision:
+      endpoint: ${AZURE_COMPUTER_VISION_ENDPOINT}
+      key: ${AZURE_COMPUTER_VISION_KEY}
+    speech:
+      endpoint: ${AZURE_SPEECH_ENDPOINT}
+      key: ${AZURE_SPEECH_KEY}
+
+# Feature Flags
+features: {}

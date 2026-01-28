@@ -49,7 +49,7 @@ The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers)
 | azure_ml.workspace_name | string | "" | Azure ML Workspace name; env `AZURE_ML_WORKSPACE_NAME` (Plan §867, §8.2). |
 | azure_ml.resource_group | string | castiel-ml-prod-rg | Azure ML resource group; env `AZURE_ML_RESOURCE_GROUP` (Plan §5.1). |
 | azure_ml.subscription_id | string | "" | Azure subscription; env `AZURE_ML_SUBSCRIPTION_ID`. |
-| azure_ml.endpoints | object | {} | ModelId → scoring URL; keys `win-probability-model`, `risk-scoring-model`. Env: `AZURE_ML_WIN_PROBABILITY_URL`, `AZURE_ML_RISK_SCORING_URL`. |
+| azure_ml.endpoints | object | {} | ModelId → scoring URL (win-probability-model, risk-scoring-model, risk_trajectory_lstm, revenue_forecasting, anomaly, etc.). Env: `AZURE_ML_WIN_PROBABILITY_URL`, `AZURE_ML_RISK_SCORING_URL`; Plan §8.2: `AZURE_ML_ENDPOINT_WIN_PROB`, `AZURE_ML_ENDPOINT_RISK_GLOBAL`, `AZURE_ML_ENDPOINT_LSTM`, etc. See [ml-training-jobs](../../deployment/monitoring/runbooks/ml-training-jobs.md). |
 | azure_ml.api_key | string | "" | Optional; env `AZURE_ML_API_KEY`. |
 
 ## API Reference

@@ -29,6 +29,7 @@ cosmos_db:
     template_versions: template_versions
     context_templates: template_context_templates
     email_templates: template_email_templates
+    system_settings: system_settings
 
 services:
   logging:

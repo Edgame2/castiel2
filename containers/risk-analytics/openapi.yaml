@@ -192,6 +192,48 @@ paths:
           description: ml-service URL not configured
         '500':
           $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/win-probability/trend:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Win-probability trend (Gap 6, Plan §3.2)
+      description: Proxies to ml-service GET /api/v1/ml/win-probability/:opportunityId/trend. Returns { points: [] } when services.ml_service.url is not set or ml-service returns 503.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: points (date, probability, confidence?)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  points:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date: { type: string }
+                        probability: { type: number }
+                        confidence: { type: number }
+        '500':
+          $ref: '#/components/responses/InternalError'
   /opportunities/{opportunityId}/risk-predictions:
     get:
       tags:
@@ -671,6 +713,67 @@ paths:
                         period: { type: string }
                         score: { type: number }
                         sampleSize: { type: number }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/leading-indicators:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Get leading indicators for opportunity (Gap 5, Plan §4)
+      description: Leading-indicator status from risk_snapshots, risk_evaluations, early-warnings, optional shard-manager. For LeadingIndicatorsCard.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: indicators (id, name, status ok|warning|critical|unknown, value?, detail?)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  indicators:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
+                        status: { type: string, enum: [ok, warning, critical, unknown] }
+                        value: { type: number }
+                        detail: { type: string }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /competitors:
+    get:
+      tags:
+        - Competitive Intelligence
+      summary: List competitors (Plan Gap 4)
+      description: List competitors in the tenant catalog for CompetitorSelectModal and settings.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: competitors (id, name, aliases?, industry?)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  competitors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
+                        aliases: { type: array, items: { type: string } }
+                        industry: { type: string }
         '500':
           $ref: '#/components/responses/InternalError'
   /competitors/{competitorId}/track:

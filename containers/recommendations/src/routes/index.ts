@@ -333,38 +333,49 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       }
     );
 
+    const completeStepSchema = {
+      description: 'Complete a remediation workflow step (Plan §928, §4.4). Publishes remediation.step.completed or remediation.workflow.completed when all done. PUT is per Plan §4.4; POST remains supported.',
+      tags: ['Remediation'],
+      security: [{ bearerAuth: [] }],
+      params: { type: 'object', properties: { id: { type: 'string' }, stepNumber: { type: 'string' } }, required: ['id', 'stepNumber'] },
+      body: { type: 'object', properties: { completedBy: { type: 'string' } } },
+      response: { 200: { type: 'object' } },
+    };
+
+    const handleCompleteStep = async (
+      request: { params: { id: string; stepNumber: string }; body?: { completedBy?: string }; user?: { tenantId: string; id: string } },
+      reply: { status: (code: number) => { send: (body: unknown) => unknown } }
+    ) => {
+      try {
+        const { id, stepNumber } = request.params;
+        const stepNum = parseInt(stepNumber, 10);
+        if (Number.isNaN(stepNum) || stepNum < 1) {
+          return reply.status(400).send({ error: { code: 'INVALID_STEP_NUMBER', message: 'stepNumber must be a positive integer' } });
+        }
+        const tenantId = request.user!.tenantId;
+        const completedBy = request.body?.completedBy ?? request.user!.id;
+        const w = await completeStep(id, stepNum, tenantId, completedBy);
+        return reply.send(w);
+      } catch (error: unknown) {
+        const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+        const msg = error instanceof Error ? error.message : String(error);
+        log.error('Complete remediation step failed', error instanceof Error ? error : new Error(msg), { service: 'recommendations' });
+        return reply.status(statusCode).send({ error: { code: 'REMEDIATION_STEP_COMPLETE_FAILED', message: msg } });
+      }
+    };
+
     // POST /api/v1/remediation-workflows/:id/steps/:stepNumber/complete
     fastify.post<{ Params: { id: string; stepNumber: string }; Body: { completedBy?: string } }>(
       '/api/v1/remediation-workflows/:id/steps/:stepNumber/complete',
-      {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-        schema: {
-          description: 'Complete a remediation workflow step (Plan §928). Publishes remediation.step.completed or remediation.workflow.completed when all done.',
-          tags: ['Remediation'],
-          security: [{ bearerAuth: [] }],
-          params: { type: 'object', properties: { id: { type: 'string' }, stepNumber: { type: 'string' } }, required: ['id', 'stepNumber'] },
-          body: { type: 'object', properties: { completedBy: { type: 'string' } } },
-          response: { 200: { type: 'object' } },
-        },
-      },
-      async (request, reply) => {
-        try {
-          const { id, stepNumber } = request.params;
-          const stepNum = parseInt(stepNumber, 10);
-          if (Number.isNaN(stepNum) || stepNum < 1) {
-            return reply.status(400).send({ error: { code: 'INVALID_STEP_NUMBER', message: 'stepNumber must be a positive integer' } });
-          }
-          const tenantId = request.user!.tenantId;
-          const completedBy = request.body?.completedBy ?? request.user!.id;
-          const w = await completeStep(id, stepNum, tenantId, completedBy);
-          return reply.send(w);
-        } catch (error: unknown) {
-          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
-          const msg = error instanceof Error ? error.message : String(error);
-          log.error('Complete remediation step failed', error instanceof Error ? error : new Error(msg), { service: 'recommendations' });
-          return reply.status(statusCode).send({ error: { code: 'REMEDIATION_STEP_COMPLETE_FAILED', message: msg } });
-        }
-      }
+      { preHandler: [authenticateRequest(), tenantEnforcementMiddleware()], schema: completeStepSchema },
+      handleCompleteStep as any
+    );
+
+    // PUT /api/v1/remediation-workflows/:id/steps/:stepNumber/complete (Plan §4.4; POST also supported)
+    fastify.put<{ Params: { id: string; stepNumber: string }; Body: { completedBy?: string } }>(
+      '/api/v1/remediation-workflows/:id/steps/:stepNumber/complete',
+      { preHandler: [authenticateRequest(), tenantEnforcementMiddleware()], schema: completeStepSchema },
+      handleCompleteStep as any
     );
 
     // PUT /api/v1/remediation-workflows/:id/cancel (Plan §928, §435)

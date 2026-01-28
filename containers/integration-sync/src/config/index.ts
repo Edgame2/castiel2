@@ -41,6 +41,24 @@ export interface IntegrationSyncConfig {
     min_interval_minutes?: number;
     max_concurrent_syncs_per_tenant?: number;
   };
+  mapping?: {
+    queue_name?: string;
+    dlq_name?: string;
+    batch_size?: number;
+    batch_threshold?: number;
+    batch_concurrency?: number;
+    retry_attempts?: number;
+    retry_backoff_ms?: number;
+    timeout_seconds?: number;
+    prefetch?: number;
+    idempotency_ttl?: number;
+    config_cache_ttl?: number;
+    circuit_breaker_threshold?: number;
+    circuit_breaker_timeout?: number;
+    opportunity_batch_threshold?: number;
+    opportunity_batch_size?: number;
+    publish_opportunity_events?: 'immediate' | 'batch' | 'debounce' | 'none';
+  };
   features: { [key: string]: boolean };
 }
 

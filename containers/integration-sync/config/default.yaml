@@ -67,5 +67,24 @@ sync_limits:
   min_interval_minutes: ${SYNC_MIN_INTERVAL_MINUTES:-5}
   max_concurrent_syncs_per_tenant: ${SYNC_MAX_CONCURRENT_PER_TENANT:-3}
 
+# Mapping Configuration
+mapping:
+  queue_name: ${MAPPING_QUEUE_NAME:-integration_data_raw}
+  dlq_name: ${MAPPING_DLQ_NAME:-integration_data_raw.dlq}
+  batch_size: ${MAPPING_BATCH_SIZE:-50}
+  batch_threshold: ${MAPPING_BATCH_THRESHOLD:-100}
+  batch_concurrency: ${MAPPING_BATCH_CONCURRENCY:-10}
+  retry_attempts: ${MAPPING_RETRY_ATTEMPTS:-3}
+  retry_backoff_ms: ${MAPPING_RETRY_BACKOFF_MS:-1000}
+  timeout_seconds: ${MAPPING_TIMEOUT_SECONDS:-30}
+  prefetch: ${MAPPING_PREFETCH:-20}
+  idempotency_ttl: ${MAPPING_IDEMPOTENCY_TTL:-86400}
+  config_cache_ttl: ${MAPPING_CONFIG_CACHE_TTL:-600}
+  circuit_breaker_threshold: ${MAPPING_CIRCUIT_BREAKER_THRESHOLD:-5}
+  circuit_breaker_timeout: ${MAPPING_CIRCUIT_BREAKER_TIMEOUT:-60000}
+  opportunity_batch_threshold: ${MAPPING_OPPORTUNITY_BATCH_THRESHOLD:-100}
+  opportunity_batch_size: ${MAPPING_OPPORTUNITY_BATCH_SIZE:-50}
+  publish_opportunity_events: ${MAPPING_PUBLISH_OPPORTUNITY_EVENTS:-immediate}
+
 # Feature Flags
 features: {}

@@ -52,6 +52,9 @@ export async function buildApp(): Promise<FastifyInstance> {
         { name: 'Risk Scoring', description: 'ML-based risk scoring' },
         { name: 'Revenue', description: 'Revenue at risk calculations' },
         { name: 'Health', description: 'Health check endpoints' },
+        { name: 'Sales Methodology', description: 'Plan W8 tenant sales methodology (stages, requirements, MEDDIC)' },
+        { name: 'Reactivation', description: 'W9 Layer 6 reactivation evaluation and events' },
+        { name: 'Tenant ML Config', description: 'W10 tenant ML configuration (risk tolerance, decision/model preferences)' },
       ],
       components: {
         securitySchemes: {
@@ -88,6 +91,12 @@ export async function buildApp(): Promise<FastifyInstance> {
       simulations: config.cosmos_db.containers.simulations,
       anomaly_alerts: config.cosmos_db.containers.anomaly_alerts ?? 'risk_anomaly_alerts',
       sentiment_trends: config.cosmos_db.containers.sentiment_trends ?? 'risk_sentiment_trends',
+      explanations: config.cosmos_db.containers.explanations ?? 'risk_explanations',
+      global_feature_importance: config.cosmos_db.containers.global_feature_importance ?? 'risk_global_feature_importance',
+      decisions: config.cosmos_db.containers.decisions ?? 'risk_decisions',
+      rules: config.cosmos_db.containers.rules ?? 'risk_rules',
+      sales_methodology: config.cosmos_db.containers.sales_methodology ?? 'risk_sales_methodology',
+      tenant_ml_config: config.cosmos_db.containers.tenant_ml_config ?? 'risk_tenant_ml_config',
     },
   });
   

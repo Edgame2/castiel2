@@ -5,7 +5,7 @@
  */
 
 import * as amqp from 'amqplib';
-import { DomainEvent, PublishEventOptions } from '../types/events';
+import type { PublishEventOptions } from '../types/events.types';
 import { createEvent } from './EventSchema';
 
 /**
@@ -22,7 +22,7 @@ export interface RabbitMQConfig {
  * Publishes events to RabbitMQ topic exchange
  */
 export class EventPublisher {
-  private connection: amqp.Connection | null = null;
+  private connection: amqp.ChannelModel | null = null;
   private channel: amqp.Channel | null = null;
   private config: RabbitMQConfig;
   private exchange: string;
@@ -47,8 +47,9 @@ export class EventPublisher {
     }
 
     try {
-      this.connection = await amqp.connect(this.config.url);
-      this.channel = await this.connection.createChannel();
+      const conn = await amqp.connect(this.config.url);
+      this.connection = conn;
+      this.channel = await conn.createChannel();
 
       // Assert exchange exists
       await this.channel.assertExchange(this.exchange, this.config.exchangeType!, {

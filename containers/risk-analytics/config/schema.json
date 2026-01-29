@@ -43,7 +43,13 @@
             "industry_benchmarks": { "type": "string", "description": "Plan §953 analytics_industry_benchmarks" },
             "clusters": { "type": "string", "description": "Plan §914 risk_clusters" },
             "association_rules": { "type": "string", "description": "Plan §914 risk_association_rules" },
-            "account_health": { "type": "string", "description": "Plan §917 risk_account_health" }
+            "account_health": { "type": "string", "description": "Plan §917 risk_account_health" },
+            "explanations": { "type": "string", "description": "Plan W5 Layer 4 risk_explanations" },
+            "global_feature_importance": { "type": "string", "description": "Plan W5 Layer 4 risk_global_feature_importance" },
+            "decisions": { "type": "string", "description": "Plan W5 Layer 6 risk_decisions" },
+            "rules": { "type": "string", "description": "Plan W5 Layer 6 risk_rules" },
+            "sales_methodology": { "type": "string", "description": "Plan W8 risk_sales_methodology" },
+            "tenant_ml_config": { "type": "string", "description": "Plan W10 risk_tenant_ml_config" }
           },
           "required": ["evaluations", "revenue_at_risk", "quotas", "warnings", "simulations"]
         }

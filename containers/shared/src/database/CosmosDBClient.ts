@@ -28,12 +28,12 @@ export class CosmosDBClient {
   private static instance: CosmosDBClient | null = null;
   private client: CosmosClient;
   private database: Database;
-  private config: CosmosDBConfig;
+  private _config: CosmosDBConfig;
   private isConnected: boolean = false;
   private containerCache: Map<string, Container> = new Map();
 
   private constructor(config: CosmosDBConfig) {
-    this.config = config;
+    this._config = config;
 
     // Create optimized connection policy
     const connectionPolicy: ConnectionPolicy = {
@@ -102,6 +102,13 @@ export class CosmosDBClient {
    */
   getDatabase(): Database {
     return this.database;
+  }
+
+  /**
+   * Get config (for tests / advanced use)
+   */
+  getConfig(): CosmosDBConfig {
+    return this._config;
   }
 
   /**

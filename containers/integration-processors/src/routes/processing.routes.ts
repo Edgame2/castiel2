@@ -6,7 +6,6 @@
 import { FastifyInstance } from 'fastify';
 import { authenticateRequest, tenantEnforcementMiddleware, getContainer } from '@coder/shared';
 import { log } from '../utils/logger';
-import { loadConfig } from '../config';
 
 /**
  * Document processing configuration
@@ -63,6 +62,7 @@ interface ProcessingPriority {
  * Data processing settings
  */
 interface DataProcessingSettings {
+  id?: string; // Cosmos document id when loaded from DB
   tenantId: string;
   documentProcessing: DocumentProcessingConfig;
   emailProcessing: EmailProcessingConfig;
@@ -145,6 +145,12 @@ export async function processingRoutes(app: FastifyInstance): Promise<void> {
             type: 'object',
             properties: {
               settings: { type: 'object' },
+            },
+          },
+          500: {
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
             },
           },
         },
@@ -334,7 +340,7 @@ export async function processingRoutes(app: FastifyInstance): Promise<void> {
             updatedAt: new Date(),
           };
 
-          await container.items.create(settings, { partitionKey: tenantId });
+          await container.items.create(settings, { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]);
         }
 
         return reply.send({ settings });

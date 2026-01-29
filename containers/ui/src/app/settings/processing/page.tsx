@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 interface DocumentProcessingConfig {
   enabled: boolean;

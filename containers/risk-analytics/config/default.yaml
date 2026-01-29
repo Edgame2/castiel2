@@ -64,6 +64,16 @@ cosmos_db:
     association_rules: risk_association_rules
     # Plan §3.1.1, §917 account health (batch: account-health job → AccountHealthService.calculateAccountHealth)
     account_health: risk_account_health
+    # Plan W5 Layer 4: Explanation and global feature importance (ALL_LAYERS_DETAILED_REQUIREMENTS)
+    explanations: risk_explanations
+    global_feature_importance: risk_global_feature_importance
+    # Plan W5 Layer 6: Decision Engine (COMPREHENSIVE_LAYER_REQUIREMENTS_SUMMARY)
+    decisions: risk_decisions
+    rules: risk_rules
+    # Plan W8: Sales Methodology (REQUIREMENTS_GAP_ANALYSIS Gap 2)
+    sales_methodology: risk_sales_methodology
+    # Plan W10: Tenant ML Configuration (REQUIREMENTS_GAP_ANALYSIS Gap 4)
+    tenant_ml_config: risk_tenant_ml_config
 
 # JWT Configuration (shared with auth service)
 jwt:
@@ -93,6 +103,8 @@ services:
     url: ${SEARCH_SERVICE_URL:-http://localhost:3029}
   recommendations:
     url: ${RECOMMENDATIONS_URL:-}
+  llm_service:
+    url: ${LLM_SERVICE_URL:-http://localhost:3062}
 
 # RabbitMQ Configuration
 rabbitmq:

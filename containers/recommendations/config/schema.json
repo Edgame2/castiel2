@@ -45,6 +45,8 @@
           "properties": {
             "recommendations": { "type": "string" },
             "feedback": { "type": "string" },
+            "feedback_aggregation": { "type": "string" },
+            "recommendation_config": { "type": "string" },
             "metrics": { "type": "string" },
             "remediation_workflows": { "type": "string" },
             "mitigation_actions": { "type": "string" }

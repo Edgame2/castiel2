@@ -26,11 +26,18 @@ cosmos_db:
   containers:
     models: ml_models
     features: ml_features
+    feature_snapshots: ml_feature_snapshots
+    feature_metadata: ml_feature_metadata
     training_jobs: ml_training_jobs
     evaluations: ml_evaluations
     predictions: ml_predictions
     jobs: multimodal_jobs
     win_probability: ml_win_probability_predictions
+    # W6 Layer 8 – Learning Loop
+    drift_metrics: ml_drift_metrics
+    improvement_opportunity: ml_improvement_opportunity
+    # Super Admin §4.4.2 – ML monitoring alert rules (partitionKey: tenantId)
+    alert_rules: ml_alert_rules
 
 services:
   ai_service:
@@ -45,6 +52,8 @@ services:
     url: ${SHARD_MANAGER_URL:-http://localhost:3002}
   risk_analytics:
     url: ${RISK_ANALYTICS_URL:-http://localhost:3048}
+  risk_catalog:
+    url: ${RISK_CATALOG_URL:-http://localhost:3047}
 
 # Feature pipeline (BI_SALES_RISK_FEATURE_PIPELINE_SPEC §6): label encoding for buildVectorForOpportunity. Defaults in code if absent.
 feature_pipeline: {}

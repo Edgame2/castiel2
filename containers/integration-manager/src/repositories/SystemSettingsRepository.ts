@@ -3,8 +3,13 @@
  * Manages system settings storage in Cosmos DB
  */
 
-import { getContainer } from '@coder/shared/database';
-import { SystemSettings, UpdateSystemSettingsInput } from '../types/system-settings.types';
+import { getContainer } from '@coder/shared';
+import {
+  SystemSettings,
+  UpdateSystemSettingsInput,
+  FeatureFlags,
+  AzureServiceSettings,
+} from '../types/system-settings.types';
 import { log } from '../utils/logger';
 
 export class SystemSettingsRepository {
@@ -57,7 +62,7 @@ export class SystemSettingsRepository {
         // Create new
         const { resource } = await container.items.create(updated, {
           partitionKey: 'system',
-        });
+        } as Parameters<typeof container.items.create>[1]);
         if (!resource) {
           throw new Error('Failed to create system settings');
         }
@@ -87,10 +92,12 @@ export class SystemSettingsRepository {
       rateLimits: updates.rateLimits ? { ...existing.rateLimits, ...updates.rateLimits } : existing.rateLimits,
       capacity: updates.capacity ? { ...existing.capacity, ...updates.capacity } : existing.capacity,
       queueConfig: updates.queueConfig ? { ...existing.queueConfig, ...updates.queueConfig } : existing.queueConfig,
-      featureFlags: updates.featureFlags ? { ...existing.featureFlags, ...updates.featureFlags } : existing.featureFlags,
-      azureServices: updates.azureServices
+      featureFlags: (updates.featureFlags
+        ? { ...existing.featureFlags, ...updates.featureFlags }
+        : existing.featureFlags) as FeatureFlags,
+      azureServices: (updates.azureServices
         ? { ...existing.azureServices, ...updates.azureServices }
-        : existing.azureServices,
+        : existing.azureServices) as AzureServiceSettings | undefined,
       updatedAt: new Date(),
       updatedBy,
     };

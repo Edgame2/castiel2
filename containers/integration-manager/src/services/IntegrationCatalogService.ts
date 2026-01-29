@@ -4,8 +4,6 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
 import { IntegrationCatalogRepository } from '../repositories/IntegrationCatalogRepository';
 import {
   IntegrationCatalogEntry,
@@ -19,13 +17,9 @@ import {
 } from '../types/integration-catalog.types';
 
 export class IntegrationCatalogService {
-  private config: ReturnType<typeof loadConfig>;
   private catalogRepository: IntegrationCatalogRepository;
-  private app: FastifyInstance | null = null;
 
-  constructor(app?: FastifyInstance) {
-    this.app = app || null;
-    this.config = loadConfig();
+  constructor(_app?: FastifyInstance) {
     this.catalogRepository = new IntegrationCatalogRepository();
   }
 

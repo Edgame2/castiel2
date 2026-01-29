@@ -4,7 +4,6 @@
  * @module @coder/shared/database
  */
 
-import { CosmosDBClient } from './CosmosDBClient';
 
 /**
  * Connection pool configuration

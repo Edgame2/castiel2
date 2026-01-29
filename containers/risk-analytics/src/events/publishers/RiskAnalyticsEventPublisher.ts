@@ -220,3 +220,183 @@ export async function publishOpportunityOutcomeRecorded(payload: {
     throw e;
   }
 }
+
+/**
+ * Publish ml.explanation.requested (W5 Layer 4). Payload: requestId, opportunityId?, evaluationId?.
+ */
+export async function publishMlExplanationRequested(
+  tenantId: string,
+  data: { requestId: string; opportunityId?: string; evaluationId?: string }
+): Promise<void> {
+  if (!publisher) return;
+  try {
+    await publisher.publish('ml.explanation.requested', tenantId, data);
+  } catch (e) {
+    log.error('Failed to publish ml.explanation.requested', e instanceof Error ? e : new Error(String(e)), { service: 'risk-analytics' });
+  }
+}
+
+/**
+ * Publish ml.explanation.completed (W5 Layer 4). Payload: requestId, opportunityId?, evaluationId?, durationMs.
+ */
+export async function publishMlExplanationCompleted(
+  tenantId: string,
+  data: { requestId: string; opportunityId?: string; evaluationId?: string; durationMs: number }
+): Promise<void> {
+  if (!publisher) return;
+  try {
+    await publisher.publish('ml.explanation.completed', tenantId, data);
+  } catch (e) {
+    log.error('Failed to publish ml.explanation.completed', e instanceof Error ? e : new Error(String(e)), { service: 'risk-analytics' });
+  }
+}
+
+/**
+ * Publish ml.explanation.failed (W5 Layer 4). Payload: requestId?, opportunityId?, evaluationId?, error, durationMs.
+ */
+export async function publishMlExplanationFailed(
+  tenantId: string,
+  data: { requestId?: string; opportunityId?: string; evaluationId?: string; error: string; durationMs: number }
+): Promise<void> {
+  if (!publisher) return;
+  try {
+    await publisher.publish('ml.explanation.failed', tenantId, data);
+  } catch (e) {
+    log.error('Failed to publish ml.explanation.failed', e instanceof Error ? e : new Error(String(e)), { service: 'risk-analytics' });
+  }
+}
+
+/**
+ * Publish decision.evaluation.requested (W5 Layer 6). Payload: requestId, opportunityId, correlationId?.
+ */
+export async function publishDecisionEvaluationRequested(
+  tenantId: string,
+  data: { requestId: string; opportunityId: string; correlationId?: string }
+): Promise<void> {
+  if (!publisher) return;
+  try {
+    await publisher.publish('decision.evaluation.requested', tenantId, data);
+  } catch (e) {
+    log.error('Failed to publish decision.evaluation.requested', e instanceof Error ? e : new Error(String(e)), { service: 'risk-analytics' });
+  }
+}
+
+/**
+ * Publish decision.evaluation.completed (W5 Layer 6). Payload: requestId, decisionId, opportunityId, durationMs, correlationId?.
+ */
+export async function publishDecisionEvaluationCompleted(
+  tenantId: string,
+  data: { requestId: string; decisionId: string; opportunityId: string; durationMs: number; correlationId?: string }
+): Promise<void> {
+  if (!publisher) return;
+  try {
+    await publisher.publish('decision.evaluation.completed', tenantId, data);
+  } catch (e) {
+    log.error('Failed to publish decision.evaluation.completed', e instanceof Error ? e : new Error(String(e)), { service: 'risk-analytics' });
+  }
+}
+
+/**
+ * Publish action.execution.requested (W5 Layer 6). Payload: requestId, actionId, opportunityId, actionType, correlationId?.
+ */
+export async function publishActionExecutionRequested(
+  tenantId: string,
+  data: { requestId: string; actionId: string; opportunityId: string; actionType: string; correlationId?: string }
+): Promise<void> {
+  if (!publisher) return;
+  try {
+    await publisher.publish('action.execution.requested', tenantId, data);
+  } catch (e) {
+    log.error('Failed to publish action.execution.requested', e instanceof Error ? e : new Error(String(e)), { service: 'risk-analytics' });
+  }
+}
+
+/**
+ * Publish action.execution.completed (W5 Layer 6). Payload: requestId, actionId, opportunityId, durationMs, correlationId?.
+ */
+export async function publishActionExecutionCompleted(
+  tenantId: string,
+  data: { requestId: string; actionId: string; opportunityId: string; durationMs: number; correlationId?: string }
+): Promise<void> {
+  if (!publisher) return;
+  try {
+    await publisher.publish('action.execution.completed', tenantId, data);
+  } catch (e) {
+    log.error('Failed to publish action.execution.completed', e instanceof Error ? e : new Error(String(e)), { service: 'risk-analytics' });
+  }
+}
+
+/**
+ * Publish action.execution.failed (W5 Layer 6). Payload: requestId, actionId, opportunityId, error, correlationId?.
+ */
+export async function publishActionExecutionFailed(
+  tenantId: string,
+  data: { requestId: string; actionId: string; opportunityId: string; error: string; correlationId?: string }
+): Promise<void> {
+  if (!publisher) return;
+  try {
+    await publisher.publish('action.execution.failed', tenantId, data);
+  } catch (e) {
+    log.error('Failed to publish action.execution.failed', e instanceof Error ? e : new Error(String(e)), { service: 'risk-analytics' });
+  }
+}
+
+/**
+ * Publish action.rolled_back (W5 Layer 6). Payload: requestId, actionId, opportunityId, correlationId?.
+ */
+export async function publishActionRolledBack(
+  tenantId: string,
+  data: { requestId: string; actionId: string; opportunityId: string; correlationId?: string }
+): Promise<void> {
+  if (!publisher) return;
+  try {
+    await publisher.publish('action.rolled_back', tenantId, data);
+  } catch (e) {
+    log.error('Failed to publish action.rolled_back', e instanceof Error ? e : new Error(String(e)), { service: 'risk-analytics' });
+  }
+}
+
+/**
+ * Publish reactivation.opportunity.identified (W9 Layer 6). Payload: opportunityId, dormantFeatures, reactivationPrediction, identifiedAt.
+ */
+export async function publishReactivationOpportunityIdentified(
+  tenantId: string,
+  data: {
+    opportunityId: string;
+    dormantFeatures: Record<string, unknown>;
+    reactivationPrediction: Record<string, unknown>;
+    identifiedAt?: string;
+  }
+): Promise<void> {
+  if (!publisher) return;
+  try {
+    await publisher.publish('reactivation.opportunity.identified', tenantId, {
+      ...data,
+      identifiedAt: data.identifiedAt ?? new Date().toISOString(),
+    });
+  } catch (e) {
+    log.error('Failed to publish reactivation.opportunity.identified', e instanceof Error ? e : new Error(String(e)), { opportunityId: data.opportunityId, service: 'risk-analytics' });
+  }
+}
+
+/**
+ * Publish reactivation.strategy.generated (W9 Layer 6). Payload: opportunityId, reactivationStrategy, generatedAt.
+ */
+export async function publishReactivationStrategyGenerated(
+  tenantId: string,
+  data: {
+    opportunityId: string;
+    reactivationStrategy: Record<string, unknown>;
+    generatedAt?: string;
+  }
+): Promise<void> {
+  if (!publisher) return;
+  try {
+    await publisher.publish('reactivation.strategy.generated', tenantId, {
+      ...data,
+      generatedAt: data.generatedAt ?? new Date().toISOString(),
+    });
+  } catch (e) {
+    log.error('Failed to publish reactivation.strategy.generated', e instanceof Error ? e : new Error(String(e)), { opportunityId: data.opportunityId, service: 'risk-analytics' });
+  }
+}

@@ -203,6 +203,7 @@ export interface CreateIntegrationInput {
   userScoped?: boolean;
   allowedShardTypes?: string[];
   searchEnabled?: boolean;
+  searchableEntities?: string[];
 }
 
 /**
@@ -217,6 +218,10 @@ export interface UpdateIntegrationInput {
   allowedShardTypes?: string[];
   searchEnabled?: boolean;
   status?: IntegrationStatus;
+  connectionStatus?: ConnectionStatus;
+  connectionError?: string;
+  lastConnectionTestAt?: Date;
+  lastConnectionTestResult?: 'success' | 'failed';
 }
 
 /**

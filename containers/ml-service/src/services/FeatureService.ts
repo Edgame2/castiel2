@@ -12,6 +12,7 @@ import { FastifyInstance } from 'fastify';
 import {
   Feature,
 } from '../types/ml.types';
+import type { DormantOpportunityFeatures, TenantMLConfigView } from '../types/feature-store.types';
 import { loadConfig } from '../config';
 
 /** Purpose for buildVectorForOpportunity (FEATURE_PIPELINE_SPEC §1). */
@@ -26,6 +27,7 @@ export class FeatureService {
   private adaptiveLearningClient: ServiceClient;
   private shardManagerClient: ServiceClient | null = null;
   private riskAnalyticsClient: ServiceClient | null = null;
+  private riskCatalogClient: ServiceClient | null = null;
   private app: FastifyInstance | null = null;
   private config: ReturnType<typeof loadConfig>;
 
@@ -59,6 +61,259 @@ export class FeatureService {
         circuitBreaker: { enabled: true },
       });
     }
+    const rcUrl = this.config.services.risk_catalog?.url;
+    if (rcUrl) {
+      this.riskCatalogClient = new ServiceClient({
+        baseURL: rcUrl,
+        timeout: 15000,
+        retries: 2,
+        circuitBreaker: { enabled: true },
+      });
+    }
+  }
+
+  /**
+   * W7 Gap 1 – Get tenant catalog view from risk-catalog (Layer 2).
+   * Returns raw view; use FeatureStoreService.extractRiskCatalogFeatures for RiskCatalogFeatures.
+   */
+  async getTenantCatalogView(
+    tenantId: string,
+    industry?: string,
+    stage?: string
+  ): Promise<{
+    tenantRiskCategories: string[];
+    categoryDefinitions: Record<string, { name: string; description?: string; defaultPonderation?: number }>;
+    riskTemplates: Array<{ id: string; riskId: string; name: string; category: string; industryId?: string; applicableStages: string[] }>;
+    industrySpecificRisks: string[];
+    methodologyRisks: string[];
+  } | null> {
+    if (!this.riskCatalogClient) return null;
+    const token = this.getServiceToken(tenantId);
+    const headers: Record<string, string> = { 'X-Tenant-ID': tenantId };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const params = new URLSearchParams();
+    if (industry) params.set('industry', industry);
+    if (stage) params.set('stage', stage);
+    const qs = params.toString();
+    try {
+      const response = await this.riskCatalogClient.get<{
+        tenantRiskCategories: string[];
+        categoryDefinitions: Record<string, { name: string; description?: string; defaultPonderation?: number }>;
+        riskTemplates: Array<{ id: string; riskId: string; name: string; category: string; industryId?: string; applicableStages: string[] }>;
+        industrySpecificRisks: string[];
+        methodologyRisks: string[];
+      }>(`/api/v1/risk-catalog/tenant-catalog${qs ? `?${qs}` : ''}`, { headers });
+      return response;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('ml-service: risk-catalog tenant-catalog unavailable', { error: msg, tenantId, service: 'ml-service' });
+      return null;
+    }
+  }
+
+  /**
+   * W10 – Get tenant ML configuration from risk-analytics (Layer 3 model selection, thresholds).
+   * Returns null if risk-analytics is not configured or returns 404.
+   */
+  async getTenantMLConfig(tenantId: string): Promise<TenantMLConfigView | null> {
+    if (!this.riskAnalyticsClient) return null;
+    const token = this.getServiceToken(tenantId);
+    const headers: Record<string, string> = { 'X-Tenant-ID': tenantId };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    try {
+      const response = await this.riskAnalyticsClient.get<{
+        modelPreferences?: { preferIndustryModels?: boolean; minConfidenceThreshold?: number };
+      }>('/api/v1/tenant-ml-config', { headers });
+      return response ? { modelPreferences: response.modelPreferences } : null;
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) return null;
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('ml-service: risk-analytics tenant-ml-config unavailable', { error: msg, tenantId, service: 'ml-service' });
+      return null;
+    }
+  }
+
+  /**
+   * W8 – Get tenant sales methodology from risk-analytics (Layer 2 extractMethodologyFeatures).
+   * Returns null if risk-analytics is not configured or returns 404.
+   */
+  async getTenantMethodology(tenantId: string): Promise<{
+    methodologyType: string;
+    stages: Array<{
+      stageId: string;
+      stageName: string;
+      displayName: string;
+      order: number;
+      requirements: Array<{ requirementId: string; name: string; mandatory: boolean }>;
+      exitCriteria: Array<{ criteriaId: string; mandatory: boolean }>;
+      typicalDurationDays: { min: number; avg: number; max: number };
+      expectedActivities: string[];
+    }>;
+    requiredFields: Array<{ fieldName: string; stages: string[]; dataType: string }>;
+    risks: Array<{ riskId: string; stage: string; description: string; severity: string }>;
+  } | null> {
+    if (!this.riskAnalyticsClient) return null;
+    const token = this.getServiceToken(tenantId);
+    const headers: Record<string, string> = { 'X-Tenant-ID': tenantId };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    try {
+      const response = await this.riskAnalyticsClient.get<{
+        methodologyType: string;
+        stages: Array<{
+          stageId: string;
+          stageName: string;
+          displayName: string;
+          order: number;
+          requirements: Array<{ requirementId: string; name: string; mandatory: boolean }>;
+          exitCriteria: Array<{ criteriaId: string; mandatory: boolean }>;
+          typicalDurationDays: { min: number; avg: number; max: number };
+          expectedActivities: string[];
+        }>;
+        requiredFields: Array<{ fieldName: string; stages: string[]; dataType: string }>;
+        risks: Array<{ riskId: string; stage: string; description: string; severity: string }>;
+      }>(`/api/v1/sales-methodology`, { headers });
+      return response;
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) return null;
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('ml-service: risk-analytics sales-methodology unavailable', { error: msg, tenantId, service: 'ml-service' });
+      return null;
+    }
+  }
+
+  /**
+   * Get opportunity structuredData from shard-manager for methodology/feature extraction.
+   * Returns null if shard-manager not configured or opportunity not found.
+   */
+  async getOpportunityStructuredData(tenantId: string, opportunityId: string): Promise<Record<string, unknown> | null> {
+    if (!this.shardManagerClient) return null;
+    const token = this.getServiceToken(tenantId);
+    const headers: Record<string, string> = { 'X-Tenant-ID': tenantId };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    try {
+      const shard = await this.shardManagerClient.get<{ structuredData?: Record<string, unknown> }>(`/api/v1/shards/${opportunityId}`, { headers });
+      return shard?.structuredData ?? null;
+    } catch (e: unknown) {
+      if ((e as { response?: { status?: number } })?.response?.status === 404) return null;
+      throw e;
+    }
+  }
+
+  /**
+   * W9 – Get related activities for an opportunity (c_email, c_call, c_meeting) for dormant feature extraction.
+   */
+  private async getOpportunityActivities(tenantId: string, opportunityId: string): Promise<Array<{ createdAt?: string | Date }>> {
+    if (!this.shardManagerClient) return [];
+    const token = this.getServiceToken(tenantId);
+    const headers: Record<string, string> = { 'X-Tenant-ID': tenantId };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const activityTypes = ['c_email', 'c_call', 'c_meeting'];
+    const activities: Array<{ createdAt?: string | Date }> = [];
+    for (const t of activityTypes) {
+      try {
+        const related = await this.shardManagerClient.get<Array<{ shard?: { createdAt?: string | Date } }>>(
+          `/api/v1/shards/${opportunityId}/related?direction=both&targetShardTypeId=${encodeURIComponent(t)}&limit=500`,
+          { headers }
+        );
+        const list = Array.isArray(related) ? related : [];
+        for (const r of list) {
+          if (r?.shard) activities.push(r.shard);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return activities;
+  }
+
+  /**
+   * W9 – Extract dormant opportunity features (Layer 2, FR-1.9).
+   * Uses opportunity structuredData and related activities from shard-manager.
+   */
+  async extractDormantOpportunityFeatures(tenantId: string, opportunityId: string): Promise<DormantOpportunityFeatures | null> {
+    const opportunity = await this.getOpportunityStructuredData(tenantId, opportunityId);
+    if (!opportunity) return null;
+    const activities = await this.getOpportunityActivities(tenantId, opportunityId);
+    const now = Date.now();
+    const MS_PER_DAY = 86400000;
+    const toMs = (v: unknown): number => {
+      if (v instanceof Date) return v.getTime();
+      if (typeof v === 'string') return new Date(v).getTime();
+      if (typeof v === 'number' && !isNaN(v)) return v;
+      return 0;
+    };
+
+    const lastActivityDate = opportunity.LastActivityDate as string | undefined;
+    const actDate = lastActivityDate
+      ? new Date(lastActivityDate).getTime()
+      : (activities.length > 0 ? Math.max(...activities.map((a) => toMs(a.createdAt))) : null);
+    const daysSinceLastActivity = actDate != null ? Math.max(0, Math.floor((now - actDate) / MS_PER_DAY)) : 999;
+
+    const stageUpdatedAt = (opportunity.StageUpdatedAt as string) ?? (opportunity.StageDates as Record<string, string>)?.[opportunity.StageName as string];
+    const daysSinceLastStageChange = stageUpdatedAt
+      ? Math.max(0, Math.floor((now - new Date(stageUpdatedAt).getTime()) / MS_PER_DAY))
+      : (opportunity.CreatedDate ? Math.max(0, Math.floor((now - new Date(opportunity.CreatedDate as string).getTime()) / MS_PER_DAY)) : 999);
+
+    const daysSinceOwnerContact = daysSinceLastActivity;
+    const daysSinceCustomerResponse = daysSinceLastActivity;
+
+    const cutoff7 = now - 7 * MS_PER_DAY;
+    const cutoff30 = now - 30 * MS_PER_DAY;
+    const cutoff90 = now - 90 * MS_PER_DAY;
+    const activityCountLast7Days = activities.filter((a) => toMs(a.createdAt) >= cutoff7).length;
+    const activityCountLast30Days = activities.filter((a) => toMs(a.createdAt) >= cutoff30).length;
+    const activityCountLast90Days = activities.filter((a) => toMs(a.createdAt) >= cutoff90).length;
+
+    const prev30 = activityCountLast30Days - activityCountLast7Days;
+    const activityVelocityChange = prev30 > 0 ? (activityCountLast7Days - prev30 / (23 / 7)) / (prev30 / (23 / 7)) : 0;
+
+    const createdMs = opportunity.CreatedDate ? new Date(opportunity.CreatedDate as string).getTime() : now;
+    const timeElapsed = Math.max(0, Math.floor((now - createdMs) / MS_PER_DAY));
+    const closeDate = opportunity.CloseDate as string | undefined;
+    const closeMs = closeDate ? new Date(closeDate).getTime() : null;
+    const timeToClose = closeMs != null ? (closeMs <= now ? 0 : Math.floor((closeMs - now) / MS_PER_DAY)) : 0;
+
+    const customerEngagementScore = activityCountLast30Days > 0 ? Math.min(1, activityCountLast30Days / 10) : 0;
+    const ownerEngagementScore = activityCountLast30Days > 0 ? Math.min(1, activityCountLast30Days / 8) : 0;
+    const stakeholderEngagementScore = customerEngagementScore;
+
+    let dormancyCategory: 'recently_dormant' | 'long_dormant' | 'likely_lost' = 'recently_dormant';
+    let dormancyReason: string | undefined;
+    if (daysSinceLastActivity >= 90) {
+      dormancyCategory = 'likely_lost';
+      dormancyReason = 'No activity for 90+ days';
+    } else if (daysSinceLastActivity >= 30) {
+      dormancyCategory = 'long_dormant';
+      dormancyReason = 'No activity for 30+ days';
+    } else if (daysSinceLastActivity >= 14) {
+      dormancyCategory = 'recently_dormant';
+      dormancyReason = 'No activity for 14+ days';
+    }
+
+    return {
+      daysSinceLastActivity,
+      daysSinceLastStageChange,
+      daysSinceOwnerContact,
+      daysSinceCustomerResponse,
+      activityVelocityChange,
+      activityCountLast7Days,
+      activityCountLast30Days,
+      activityCountLast90Days,
+      customerEngagementScore,
+      ownerEngagementScore,
+      stakeholderEngagementScore,
+      previouslyReactivated: false,
+      reactivationSuccessRate: 0,
+      timeToClose,
+      timeElapsed,
+      recentAccountActivity: false,
+      economicIndicators: [],
+      competitorActivity: false,
+      dormancyCategory,
+      dormancyReason,
+    };
   }
 
   /**

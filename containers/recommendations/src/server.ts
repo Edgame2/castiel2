@@ -79,6 +79,8 @@ export async function buildApp(): Promise<FastifyInstance> {
     containers: {
       recommendations: config.cosmos_db.containers.recommendations,
       feedback: config.cosmos_db.containers.feedback,
+      feedback_aggregation: config.cosmos_db.containers.feedback_aggregation ?? 'recommendation_feedback_aggregation',
+      recommendation_config: config.cosmos_db.containers.recommendation_config ?? 'recommendation_config',
       metrics: config.cosmos_db.containers.metrics,
       remediation_workflows: config.cosmos_db.containers.remediation_workflows ?? 'recommendation_remediation_workflows',
       mitigation_actions: config.cosmos_db.containers.mitigation_actions ?? 'recommendation_mitigation_actions',
@@ -173,7 +175,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     let dbStatus = 'unknown';
     try {
       // Check Cosmos DB connection by reading a container
-      const { getContainer } = await import('@coder/shared/database');
+      const { getContainer } = await import('@coder/shared');
       const container = getContainer('recommendation_recommendations');
       await container.read();
       dbStatus = 'ok';

@@ -89,7 +89,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
  * Seed all system permissions
  */
 export async function seedSystemPermissions(): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as unknown as { permission: { upsert: (args: unknown) => Promise<unknown> } };
   
   log.info('Seeding system permissions', { service: 'user-management' });
   
@@ -127,7 +127,12 @@ export async function seedSystemPermissions(): Promise<void> {
  * Seed system roles for an organization
  */
 export async function seedOrganizationRoles(organizationId: string): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as unknown as {
+    organization: { findUnique: (args: unknown) => Promise<{ name: string } | null> };
+    permission: { findMany: (args: unknown) => Promise<{ id: string; code: string }[]> };
+    role: { upsert: (args: unknown) => Promise<{ id: string; name: string }> };
+    rolePermission: { deleteMany: (args: unknown) => Promise<unknown>; createMany: (args: unknown) => Promise<unknown> };
+  };
   
   // Verify organization exists
   const organization = await db.organization.findUnique({

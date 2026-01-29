@@ -36,6 +36,7 @@ data_lake:
   connection_string: ${DATA_LAKE_CONNECTION_STRING:-}
   container: ${DATA_LAKE_CONTAINER:-risk}
   path_prefix: ${DATA_LAKE_PATH_PREFIX:-/risk_evaluations}
+  feedback_path_prefix: ${DATA_LAKE_FEEDBACK_PATH_PREFIX:-/feedback}
   audit_path_prefix: ${DATA_LAKE_AUDIT_PATH_PREFIX:-/ml_audit}
   ml_inference_logs_prefix: ${DATA_LAKE_ML_INFERENCE_LOGS_PREFIX:-/ml_inference_logs}
 
@@ -53,12 +54,13 @@ rabbitmq:
     - "secret.#"
     - "plan.#"
     - "notification.#"
-  # DataLakeCollector: risk.evaluated → Parquet
+  # DataLakeCollector: risk.evaluated, ml.prediction.completed, recommendation.feedback.received → Parquet
   data_lake:
     queue: logging_data_lake
     bindings:
       - "risk.evaluated"
       - "ml.prediction.completed"
+      - "recommendation.feedback.received"
   # MLAuditConsumer: risk/ml/remediation/HITL/model-monitoring → Blob audit (Plan §3.5, §10, §972, §940)
   ml_audit:
     queue: logging_ml_audit

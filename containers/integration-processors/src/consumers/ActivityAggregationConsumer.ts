@@ -4,12 +4,11 @@
  * @module integration-processors/consumers
  */
 
-import { EventConsumer, ServiceClient, EventPublisher } from '@coder/shared';
+import { EventConsumer } from '@coder/shared';
 import { loadConfig } from '../config';
 import { log } from '../utils/logger';
 import { BaseConsumer, ConsumerDependencies } from './index';
 import { ActivityAggregationService, SourceShardData } from '../services/ActivityAggregationService';
-import { ActivityStructuredData } from '@coder/shared/types/shards';
 
 interface ShardCreatedEvent {
   shardId: string;

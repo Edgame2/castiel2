@@ -56,6 +56,17 @@ export interface RecommendationFeedback {
   tenantId: string;
   timestamp: Date | string;
   comment?: string;
+  /** Feedback type ID (e.g. feedback_type_act_on_it); when set, takes precedence over action for display */
+  feedbackTypeId?: string;
+  /** Optional full metadata per FR-1.4 */
+  metadata?: {
+    recommendation?: { type?: string; source?: string; confidence?: number; text?: string };
+    opportunity?: { id?: string; stage?: string; amount?: number; probability?: number; industry?: string; daysToClose?: number };
+    user?: { role?: string; teamId?: string; historicalActionRate?: number };
+    timing?: { recommendationGeneratedAt?: string; recommendationShownAt?: string; timeToFeedbackMs?: number; timeVisibleMs?: number };
+    display?: { location?: string; position?: number; deviceType?: string };
+    secondaryTypes?: string[];
+  };
 }
 
 export interface LearnedWeights {

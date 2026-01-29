@@ -31,6 +31,8 @@ The Risk Analytics module publishes the following events to the `coder_events` e
 | `risk.cluster.updated` | Risk clustering batch completed (Plan §7.1, §914). Payload: clusterIds, ruleCount. Published by RiskClusteringService.computeAndPersistForTenant. Consumers: logging, cache invalidation. | Logging |
 | `ml.model.drift.detected` | (Plan §940) Published by **ml-service** ModelMonitoringService when PSI on `prediction` from `/ml_inference_logs` exceeds `model_monitoring.psi_threshold`. Payload: modelId, segment?, metric (e.g. `psi`), delta. Consumers: logging (MLAuditConsumer), alerting. | Logging |
 | `ml.model.performance.degraded` | (Plan §940) Published by **ml-service** ModelMonitoringService when Brier or MAE (from ml_evaluations) exceeds `model_monitoring.brier_threshold` or `model_monitoring.mae_threshold`. Payload: modelId, metric (`brier`\|`mae`), value, threshold. Consumers: logging, alerting. | Logging |
+| `reactivation.opportunity.identified` | (W9 Layer 6, FR-6.7) Dormant opportunity meets reactivation threshold. Payload: opportunityId, dormantFeatures, reactivationPrediction, identifiedAt. Publisher: ReactivationService when POST /api/v1/reactivation/evaluate evaluates an opportunity and prediction meets minProbability. | Logging (audit) |
+| `reactivation.strategy.generated` | (W9 Layer 6, FR-6.7) Reactivation strategy generated for an opportunity. Payload: opportunityId, reactivationStrategy, generatedAt. Publisher: ReactivationService when includeStrategy and llm-service returns strategy. | Logging (audit) |
 
 ---
 

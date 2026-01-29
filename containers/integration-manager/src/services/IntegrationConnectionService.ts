@@ -3,8 +3,7 @@
  * Manages OAuth flows and credential storage using Secret Management service
  */
 
-import { ServiceClient, generateServiceToken } from '@coder/shared';
-import { getContainer } from '@coder/shared/database';
+import { ServiceClient, generateServiceToken, getContainer } from '@coder/shared';
 import { FastifyInstance } from 'fastify';
 import { randomBytes, createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,12 +15,15 @@ import {
   IntegrationConnection,
   OAuthState,
   OAuthTokens,
-  ConnectionCredentials,
   CreateConnectionInput,
   UpdateConnectionInput,
-  OAuthConfig,
 } from '../types/integration-connection.types';
-import { Integration } from '../types/integration.types';
+import {
+  Integration,
+  IntegrationStatus,
+  ConnectionStatus,
+  OAuthProviderConfig,
+} from '../types/integration.types';
 
 export class IntegrationConnectionService {
   private config: ReturnType<typeof loadConfig>;
@@ -89,13 +91,13 @@ export class IntegrationConnectionService {
     }
 
     // Get provider
-    const provider = await this.providerService.getById(integration.integrationId);
+    const provider = await this.providerService.getByProviderName(integration.providerName);
     if (!provider) {
       throw new Error('Integration provider not found');
     }
 
     // Check if provider supports OAuth
-    if (!provider.authMethods.includes('oauth')) {
+    if (!provider.authMethods.includes('oauth' as any)) {
       throw new Error('Integration does not support OAuth');
     }
 
@@ -149,7 +151,7 @@ export class IntegrationConnectionService {
 
     if (oauthConfig.additionalParams) {
       for (const [key, value] of Object.entries(oauthConfig.additionalParams)) {
-        authUrl.searchParams.set(key, value);
+        authUrl.searchParams.set(key, String(value));
       }
     }
 
@@ -196,13 +198,17 @@ export class IntegrationConnectionService {
         throw new Error('Integration not found');
       }
 
-      const provider = await this.providerService.getById(integration.integrationId);
+      const provider = await this.providerService.getByProviderName(integration.providerName);
       if (!provider) {
         throw new Error('Integration provider not found');
       }
 
-      // TODO: Get OAuth config from provider
-      const oauthConfig: OAuthProviderConfig = {
+      const oauthConfig: OAuthProviderConfig = provider.oauthConfig
+        ? {
+            ...provider.oauthConfig,
+            redirectUri: provider.oauthConfig.redirectUri || `${this.config.server.host}/api/v1/integrations/oauth/callback`,
+          }
+        : {
         authorizationUrl: '',
         tokenUrl: '',
         redirectUri: `${this.config.server.host}/api/v1/integrations/oauth/callback`,
@@ -232,8 +238,8 @@ export class IntegrationConnectionService {
 
       // Update integration status
       await this.integrationService.update(integration.id, oauthState.tenantId, {
-        status: 'connected',
-        connectionStatus: 'active',
+        status: IntegrationStatus.CONNECTED,
+        connectionStatus: ConnectionStatus.ACTIVE,
         lastConnectionTestAt: new Date(),
         lastConnectionTestResult: 'success',
       });
@@ -260,7 +266,7 @@ export class IntegrationConnectionService {
 
       try {
         await this.integrationService.update(oauthState.integrationId, oauthState.tenantId, {
-          connectionStatus: 'error',
+          connectionStatus: ConnectionStatus.ERROR,
           connectionError: error.message,
           lastConnectionTestAt: new Date(),
           lastConnectionTestResult: 'failed',
@@ -346,7 +352,7 @@ export class IntegrationConnectionService {
         return false;
       }
 
-      const provider = await this.providerService.getById(integration.integrationId);
+      const provider = await this.providerService.getByProviderName(integration.providerName);
       if (!provider || !provider.oauthConfig) {
         return false;
       }
@@ -797,11 +803,11 @@ export class IntegrationConnectionService {
   // Helpers
   // =====================
 
-  private getClientId(config: OAuthConfig): string {
+  private getClientId(config: OAuthProviderConfig): string {
     return process.env[config.clientIdEnvVar || ''] || config.additionalParams?.client_id || '';
   }
 
-  private getClientSecret(config: OAuthConfig): string {
+  private getClientSecret(config: OAuthProviderConfig): string {
     return process.env[config.clientSecretEnvVar || ''] || config.additionalParams?.client_secret || '';
   }
 }

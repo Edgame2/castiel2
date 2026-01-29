@@ -5,7 +5,7 @@
 
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
-import { DomainEvent, PublishEventOptions } from '../types/events';
+import { DomainEvent, PublishEventOptions } from '../types/events.types';
 
 /**
  * Event schema validator

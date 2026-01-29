@@ -13,12 +13,13 @@
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "type-check": "tsc --noEmit",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "migrate:001": "tsx migrations/001_create_feedback_containers.ts",
+    "migrate:002": "tsx migrations/002_seed_feedback_types.ts"
   },
   "dependencies": {
     "@azure/monitor-opentelemetry": "^1.0.0",
     "@coder/shared": "file:../shared",
-    "prom-client": "^15.1.0",
     "@fastify/swagger": "^9.1.0",
     "@fastify/swagger-ui": "^5.0.0",
     "ajv": "^8.17.1",
@@ -27,6 +28,8 @@
     "fastify": "^5.1.0",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
+    "prom-client": "^15.1.0",
+    "uuid": "^11.1.0",
     "winston": "^3.17.0",
     "yaml": "^2.7.1",
     "zod": "^3.24.1",
@@ -37,12 +40,13 @@
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^25.0.5",
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
     "@vitest/coverage-v8": "^2.1.0",
     "eslint": "^8.56.0",
-    "typescript": "^5.9.3",
     "tsx": "^4.19.2",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.0"
   }
 }

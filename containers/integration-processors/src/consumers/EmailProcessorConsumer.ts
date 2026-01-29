@@ -4,7 +4,7 @@
  * @module integration-processors/consumers
  */
 
-import { EventConsumer, ServiceClient, EventPublisher, EntityLinkingService } from '@coder/shared';
+import { EventConsumer } from '@coder/shared';
 import { loadConfig } from '../config';
 import { log } from '../utils/logger';
 import { BaseConsumer, ConsumerDependencies } from './index';
@@ -70,8 +70,6 @@ export class EmailProcessorConsumer implements BaseConsumer {
   private config: ReturnType<typeof loadConfig>;
   private blobStorageService: BlobStorageService | null = null;
   private documentDownloadService: DocumentDownloadService;
-  private entityLinkingService: EntityLinkingService | null = null;
-
   constructor(private deps: ConsumerDependencies) {
     this.config = loadConfig();
     this.documentDownloadService = new DocumentDownloadService();
@@ -83,11 +81,6 @@ export class EmailProcessorConsumer implements BaseConsumer {
         connectionString: this.config.azure.blob_storage.connection_string,
         containerName,
       });
-    }
-
-    // Initialize entity linking service if AI service is available
-    if (deps.aiService) {
-      this.entityLinkingService = new EntityLinkingService(deps.shardManager, deps.aiService);
     }
   }
 

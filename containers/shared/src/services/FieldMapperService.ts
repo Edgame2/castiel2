@@ -701,7 +701,7 @@ export class FieldMapperService {
    */
   validateMappedData(
     data: Record<string, any>,
-    schema?: any
+    _schema?: unknown
   ): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];

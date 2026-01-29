@@ -44,7 +44,9 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
           
           // If not in body, get from user's active organization membership
           if (!organizationId) {
-            const db = getDatabaseClient();
+            const db = getDatabaseClient() as unknown as {
+              organizationMembership: { findFirst: (args: unknown) => Promise<{ organizationId: string } | null> };
+            };
             const membership = await db.organizationMembership.findFirst({
               where: {
                 userId,
@@ -70,7 +72,7 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
         requirePermission('teams.team.create'),
       ],
     },
-    async (
+    (async (
       request: FastifyRequest<{
         Body: {
           name: string;
@@ -142,15 +144,16 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to create team',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // List user's teams
   fastify.get(
     '/api/v1/teams',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Querystring: {
           organizationId?: string;
@@ -176,15 +179,16 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to list teams',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Get team details
   fastify.get(
     '/api/v1/teams/:teamId',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           teamId: string;
@@ -227,15 +231,16 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to get team',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Update team
   fastify.put(
     '/api/v1/teams/:teamId',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           teamId: string;
@@ -264,7 +269,7 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
         }
 
         // Get before state for audit logging
-        const beforeTeam = await teamService.getTeam(teamId);
+        void (await teamService.getTeam(teamId));
 
         const team = await teamService.updateTeam(teamId, requestUser.id, updates);
 
@@ -309,15 +314,16 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to update team',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Delete team
   fastify.delete(
     '/api/v1/teams/:teamId',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           teamId: string;
@@ -381,15 +387,16 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to delete team',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Add team member
   fastify.post(
     '/api/v1/teams/:teamId/members',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           teamId: string;
@@ -464,15 +471,16 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to add team member',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Remove team member
   fastify.delete(
     '/api/v1/teams/:teamId/members/:userId',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           teamId: string;
@@ -537,8 +545,9 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to remove team member',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 }
 

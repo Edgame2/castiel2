@@ -28,7 +28,7 @@ export function setupHealthCheck(server: FastifyInstance): void {
         },
       },
     },
-  }, async (request, reply) => {
+  }, async (_request, reply) => {
     return reply.send({
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -52,7 +52,7 @@ export function setupHealthCheck(server: FastifyInstance): void {
         },
       },
     },
-  }, async (request, reply) => {
+  }, async (_request, reply) => {
     const checks: Record<string, { status: string; message?: string }> = {};
 
     // Check database connection

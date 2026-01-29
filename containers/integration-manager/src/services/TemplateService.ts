@@ -4,8 +4,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { getContainer } from '@coder/shared/database';
-import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
+import { getContainer, BadRequestError, NotFoundError } from '@coder/shared';
 import {
   Template,
   TemplateVersion,
@@ -117,7 +116,7 @@ export class TemplateService {
       const container = getContainer(this.templateContainerName);
       const { resource } = await container.items.create(template, {
         partitionKey: input.tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create template');
@@ -151,7 +150,7 @@ export class TemplateService {
       const { resource } = await container.item(templateId, tenantId).read<Template>();
 
       if (!resource) {
-        throw new NotFoundError(`Template ${templateId} not found`);
+        throw new NotFoundError('Template', templateId);
       }
 
       return resource;
@@ -160,7 +159,7 @@ export class TemplateService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Template ${templateId} not found`);
+        throw new NotFoundError('Template', templateId);
       }
       throw error;
     }
@@ -220,7 +219,7 @@ export class TemplateService {
       return resource as Template;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Template ${templateId} not found`);
+        throw new NotFoundError('Template', templateId);
       }
       throw error;
     }
@@ -335,7 +334,7 @@ export class TemplateService {
     userId: string,
     input: { content: string; variables?: TemplateVariable[]; changelog?: string }
   ): Promise<TemplateVersion> {
-    const template = await this.getById(templateId, tenantId);
+    await this.getById(templateId, tenantId);
     const versions = await this.getVersions(tenantId, templateId);
     const nextVersion = versions.length + 1;
 
@@ -355,7 +354,7 @@ export class TemplateService {
       const container = getContainer(this.versionContainerName);
       const { resource } = await container.items.create(version, {
         partitionKey: tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create template version');
@@ -384,7 +383,7 @@ export class TemplateService {
       .fetchNext();
 
     if (resources.length === 0) {
-      throw new NotFoundError(`Template version ${version} not found`);
+      throw new NotFoundError('Template version', String(version));
     }
 
     return resources[0];

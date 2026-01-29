@@ -12,9 +12,8 @@ import { loadConfig } from '../config';
 /**
  * Map shard type to relationship type for entity linking
  */
-function getRelationshipType(sourceShardType: string, targetShardType: string): string {
+function getRelationshipType(sourceShardType: string, _targetShardType: string): string {
   const sourceTypeLower = sourceShardType.toLowerCase();
-  const targetTypeLower = targetShardType.toLowerCase();
 
   // Map based on source shard type
   const relationshipMap: Record<string, string> = {
@@ -73,10 +72,8 @@ async function createShardRelationship(
 export async function suggestedLinksRoutes(app: FastifyInstance): Promise<void> {
   const config = loadConfig();
   const shardManagerUrl =
-    config.services.shard_manager?.url ||
-    process.env.SHARD_MANAGER_URL ||
-    'http://localhost:3023';
-  const shardManager = new ServiceClient({ url: shardManagerUrl }, 'integration-processors');
+    config.services?.shard_manager?.url ?? process.env.SHARD_MANAGER_URL ?? '';
+  const shardManager = new ServiceClient({ baseURL: shardManagerUrl });
   // Get pending suggested links
   app.get<{
     Querystring: {
@@ -123,7 +120,7 @@ export async function suggestedLinksRoutes(app: FastifyInstance): Promise<void> 
         };
       } catch (error: any) {
         log.error('Failed to get suggested links', error, { tenantId, service: 'integration-processors' });
-        reply.code(500).send({ error: 'Failed to get suggested links' });
+        return reply.code(500).send({ error: 'Failed to get suggested links' });
       }
     }
   );
@@ -216,7 +213,7 @@ export async function suggestedLinksRoutes(app: FastifyInstance): Promise<void> 
         return { success: true, link };
       } catch (error: any) {
         log.error('Failed to approve suggested link', error, { id, tenantId, service: 'integration-processors' });
-        reply.code(500).send({ error: 'Failed to approve suggested link' });
+        return reply.code(500).send({ error: 'Failed to approve suggested link' });
       }
     }
   );
@@ -274,7 +271,7 @@ export async function suggestedLinksRoutes(app: FastifyInstance): Promise<void> 
         return { success: true };
       } catch (error: any) {
         log.error('Failed to reject suggested link', error, { id, tenantId, service: 'integration-processors' });
-        reply.code(500).send({ error: 'Failed to reject suggested link' });
+        return reply.code(500).send({ error: 'Failed to reject suggested link' });
       }
     }
   );

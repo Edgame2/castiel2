@@ -3,8 +3,9 @@
  * Manages integration catalog entries and visibility rules
  */
 
-import { getContainer } from '@coder/shared/database';
+import { getContainer } from '@coder/shared';
 import { v4 as uuidv4 } from 'uuid';
+import { AuthMethod } from '../types/integration.types';
 import {
   IntegrationCatalogEntry,
   CreateIntegrationCatalogInput,
@@ -30,7 +31,7 @@ export class IntegrationCatalogRepository {
       description: input.description,
       icon: input.icon || 'plug',
       color: input.color || '#6b7280',
-      authMethods: input.authMethods,
+      authMethods: input.authMethods as AuthMethod[],
       supportedEntities: input.supportedEntities,
       requiresUserScoping: false,
       webhookSupport: input.webhookSupport || false,
@@ -187,6 +188,7 @@ export class IntegrationCatalogRepository {
     const updated: IntegrationCatalogEntry = {
       ...existing,
       ...input,
+      authMethods: (input.authMethods ?? existing.authMethods) as AuthMethod[],
       updatedAt: new Date(),
       updatedBy: input.updatedBy,
     };

@@ -29,6 +29,12 @@ export interface RiskAnalyticsConfig {
       clusters?: string;
       association_rules?: string;
       account_health?: string;
+      explanations?: string;
+      global_feature_importance?: string;
+      decisions?: string;
+      rules?: string;
+      sales_methodology?: string;
+      tenant_ml_config?: string;
     };
   };
   data_lake?: {

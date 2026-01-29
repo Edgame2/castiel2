@@ -4,51 +4,54 @@
  * Publishes user management events to RabbitMQ.
  */
 
-import { EventPublisher, getChannel, closeConnection } from '@coder/shared';
+import { getEventPublisher, connectEventPublisher, closeConnection } from '@coder/shared';
 import { getConfig } from '../../config';
 import { log } from '../../utils/logger';
-import { UserManagementEvent } from '../../types/events';
+import type { UserManagementEvent } from '../../types/events';
 
-let eventPublisher: EventPublisher | null = null;
+/**
+ * Get the shared event publisher instance (used for publishing).
+ */
+function getPublisher() {
+  const config = getConfig();
+  if (!config.rabbitmq?.url) return null;
+  return getEventPublisher(
+    { url: config.rabbitmq.url, exchange: config.rabbitmq.exchange || 'coder.events' },
+    'user-management'
+  );
+}
 
 /**
  * Initialize event publisher and test connection
  */
 export async function initializeEventPublisher(): Promise<void> {
-  if (eventPublisher) {
-    return;
-  }
-
   const config = getConfig();
-  
   if (!config.rabbitmq?.url) {
     log.warn('RabbitMQ URL not configured, events will not be published', { service: 'user-management' });
     return;
   }
-
   try {
-    // Test connection by getting channel
-    await getChannel();
-    
-    // Create publisher instance
-    eventPublisher = new EventPublisher(config.rabbitmq.exchange || 'coder.events');
-    
+    await connectEventPublisher(
+      { url: config.rabbitmq.url, exchange: config.rabbitmq.exchange || 'coder.events' },
+      'user-management'
+    );
     log.info('Event publisher initialized', { service: 'user-management', exchange: config.rabbitmq.exchange || 'coder.events' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     log.error('Failed to initialize event publisher', error, { service: 'user-management' });
-    // Don't throw - allow service to start without events
   }
 }
+
+export { closeConnection };
 
 /**
  * Create base event structure
  */
 export function createBaseEvent(
-  type: string,
+  type: UserManagementEvent['type'],
   userId?: string,
   organizationId?: string,
   correlationId?: string,
-  data?: any
+  data?: Record<string, unknown>
 ): Partial<UserManagementEvent> {
   return {
     type,
@@ -56,11 +59,11 @@ export function createBaseEvent(
     userId,
     organizationId,
     actorId: userId || 'system',
-    data: data || {},
+    data: (data ?? {}) as UserManagementEvent['data'],
     metadata: {
       correlationId,
     },
-  };
+  } as Partial<UserManagementEvent>;
 }
 
 /**
@@ -90,21 +93,21 @@ export function extractEventMetadata(request: any): {
  * Publish event safely (handles errors gracefully)
  */
 export async function publishEventSafely(event: UserManagementEvent): Promise<void> {
-  if (!eventPublisher) {
+  const publisher = getPublisher();
+  if (!publisher) {
     log.debug('Event publisher not initialized, skipping event', { type: event.type, service: 'user-management' });
     return;
   }
-
+  const tenantId = event.organizationId ?? 'global';
   try {
-    await eventPublisher.publish(event.type, event);
+    await publisher.publish(event.type, tenantId, event.data ?? {});
     log.debug('Event published', { type: event.type, userId: event.userId, service: 'user-management' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     log.error('Failed to publish event', error, {
       type: event.type,
       userId: event.userId,
       service: 'user-management',
     });
-    // Don't throw - event publishing failures shouldn't break the request
   }
 }
 
@@ -114,9 +117,8 @@ export async function publishEventSafely(event: UserManagementEvent): Promise<vo
 export async function closeEventPublisher(): Promise<void> {
   try {
     await closeConnection();
-    eventPublisher = null;
     log.info('Event publisher closed', { service: 'user-management' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     log.error('Error closing event publisher', error, { service: 'user-management' });
   }
 }

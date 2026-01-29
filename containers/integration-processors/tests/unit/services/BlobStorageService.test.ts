@@ -68,9 +68,7 @@ describe('BlobStorageService', () => {
     it('should create container if it does not exist', async () => {
       await service.ensureContainer();
 
-      expect(mockContainerClient.createIfNotExists).toHaveBeenCalledWith({
-        access: 'private',
-      });
+      expect(mockContainerClient.createIfNotExists).toHaveBeenCalledWith();
     });
 
     it('should throw error if container client not initialized', async () => {

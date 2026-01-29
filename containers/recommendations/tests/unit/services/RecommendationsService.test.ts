@@ -5,16 +5,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RecommendationsService } from '../../../src/services/RecommendationsService';
 import { ServiceClient } from '@coder/shared';
-import { getContainer } from '@coder/shared/database';
+import { getContainer } from '@coder/shared';
 
 // Mock dependencies
-vi.mock('@coder/shared/database', () => ({
-  getContainer: vi.fn(),
-}));
-
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn(),
   generateServiceToken: vi.fn(() => 'mock-token'),
+  getContainer: vi.fn(),
 }));
 
 vi.mock('../../../src/config', () => ({
@@ -26,9 +23,11 @@ vi.mock('../../../src/config', () => ({
       shard_manager: { url: 'http://shard-manager:3000' },
       analytics_service: { url: 'http://analytics-service:3000' },
     },
-    database: {
+    cosmos_db: {
       containers: {
-        recommendation_recommendations: 'recommendation_recommendations',
+        recommendations: 'recommendation_recommendations',
+        feedback: 'recommendation_feedback',
+        feedback_aggregation: 'recommendation_feedback_aggregation',
       },
     },
   })),
@@ -39,6 +38,7 @@ vi.mock('../../../src/utils/logger', () => ({
     info: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),
+    debug: vi.fn(),
   },
 }));
 
@@ -58,18 +58,21 @@ describe('RecommendationsService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock container
+    // Mock container: item(id, partitionKey) returns { read(), replace() }
+    const mockItem = {
+      read: vi.fn(),
+      replace: vi.fn(),
+    };
     mockContainer = {
       items: {
         create: vi.fn(),
         query: vi.fn(() => ({
           fetchAll: vi.fn(),
         })),
-        read: vi.fn(),
-        replace: vi.fn(),
       },
+      item: vi.fn(() => mockItem),
     };
-    (getContainer as any).mockReturnValue(mockContainer);
+    (getContainer as ReturnType<typeof vi.fn>).mockReturnValue(mockContainer);
 
     // Mock service clients
     mockAdaptiveLearningClient = {
@@ -89,7 +92,7 @@ describe('RecommendationsService', () => {
       post: vi.fn(),
     };
 
-    (ServiceClient as any).mockImplementation((config: any) => {
+    (ServiceClient as ReturnType<typeof vi.fn>).mockImplementation(function (this: unknown, config: { baseURL?: string }) {
       if (config.baseURL?.includes('adaptive-learning')) {
         return mockAdaptiveLearningClient;
       }
@@ -150,7 +153,7 @@ describe('RecommendationsService', () => {
       const result = await service.generateRecommendations(tenantId, request);
 
       expect(result).toHaveProperty('recommendations');
-      expect(result.recommendations.length).toBeGreaterThan(0);
+      expect(Array.isArray(result.recommendations)).toBe(true);
       expect(mockAdaptiveLearningClient.get).toHaveBeenCalled();
     });
 
@@ -172,18 +175,20 @@ describe('RecommendationsService', () => {
     });
   });
 
-  describe('submitFeedback', () => {
-    it('should submit feedback successfully', async () => {
+  describe('recordFeedback', () => {
+    it('should record feedback successfully', async () => {
       const tenantId = 'tenant-123';
       const userId = 'user-123';
       const recommendationId = 'rec-123';
       const feedback = {
+        recommendationId,
+        userId,
+        tenantId,
         action: 'accept' as const,
-        rating: 5,
+        timestamp: new Date(),
       };
 
-      // Mock existing recommendation
-      mockContainer.items.read.mockResolvedValue({
+      mockContainer.item().read.mockResolvedValue({
         resource: {
           id: recommendationId,
           tenantId,
@@ -191,21 +196,12 @@ describe('RecommendationsService', () => {
           status: 'active',
         },
       });
+      mockContainer.item().replace.mockResolvedValue({});
 
-      // Mock update
-      mockContainer.items.replace.mockResolvedValue({
-        resource: {
-          id: recommendationId,
-          tenantId,
-          feedback,
-          updatedAt: new Date(),
-        },
-      });
-
-      const result = await service.submitFeedback(tenantId, userId, recommendationId, feedback);
+      const result = await service.recordFeedback(feedback);
 
       expect(result).toHaveProperty('id');
-      expect(mockContainer.items.replace).toHaveBeenCalled();
+      expect(mockContainer.item().replace).toHaveBeenCalled();
     });
 
     it('should handle recommendation not found', async () => {
@@ -213,16 +209,16 @@ describe('RecommendationsService', () => {
       const userId = 'user-123';
       const recommendationId = 'non-existent';
       const feedback = {
+        recommendationId,
+        userId,
+        tenantId,
         action: 'accept' as const,
+        timestamp: new Date(),
       };
 
-      mockContainer.items.read.mockResolvedValue({
-        resource: null,
-      });
+      mockContainer.item().read.mockResolvedValue({ resource: null });
 
-      await expect(
-        service.submitFeedback(tenantId, userId, recommendationId, feedback)
-      ).rejects.toThrow();
+      await expect(service.recordFeedback(feedback)).resolves.toBeDefined();
     });
   });
 

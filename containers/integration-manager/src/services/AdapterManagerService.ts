@@ -4,29 +4,24 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { ServiceClient, generateServiceToken } from '@coder/shared';
-import { getContainer } from '@coder/shared/database';
 import { log } from '../utils/logger';
 import { IntegrationConnectionService } from './IntegrationConnectionService';
 import { IntegrationService } from './IntegrationService';
 import { IntegrationAdapter, IntegrationAdapterFactory } from '../types/adapter.types';
 import { adapterRegistry } from './AdapterRegistry';
-import { Integration } from '../types/integration.types';
 
 export class AdapterManagerService {
   private adapterInstances: Map<string, IntegrationAdapter> = new Map();
   private connectionService: IntegrationConnectionService;
   private integrationService: IntegrationService;
-  private app: FastifyInstance | null = null;
 
   constructor(
     connectionService: IntegrationConnectionService,
     integrationService: IntegrationService,
-    app?: FastifyInstance
+    _app?: FastifyInstance
   ) {
     this.connectionService = connectionService;
     this.integrationService = integrationService;
-    this.app = app || null;
   }
 
   /**
@@ -198,9 +193,9 @@ export class AdapterManagerService {
    * Record connection usage (internal helper)
    */
   private async recordConnectionUsage(
-    connectionId: string,
-    integrationId: string,
-    tenantId: string
+    _connectionId: string,
+    _integrationId: string,
+    _tenantId: string
   ): Promise<void> {
     // This would update connection usage statistics
     // For now, it's a no-op, but can be enhanced to track usage metrics

@@ -55,29 +55,33 @@ vi.mock('../../../src/utils/logger', () => ({
 }));
 
 vi.mock('../../../src/services/BlobStorageService', () => ({
-  BlobStorageService: vi.fn().mockImplementation(() => ({
-    uploadFile: vi.fn(),
-    ensureContainer: vi.fn(),
-  })),
+  BlobStorageService: vi.fn().mockImplementation(function (this: any) {
+    this.uploadFile = vi.fn();
+    this.ensureContainer = vi.fn();
+    return this;
+  }),
 }));
 
 vi.mock('../../../src/services/DocumentDownloadService', () => ({
-  DocumentDownloadService: vi.fn().mockImplementation(() => ({
-    downloadDocument: vi.fn(),
-  })),
+  DocumentDownloadService: vi.fn().mockImplementation(function (this: any) {
+    this.downloadDocument = vi.fn();
+    return this;
+  }),
 }));
 
 vi.mock('../../../src/services/TranscriptionService', () => ({
-  TranscriptionService: vi.fn().mockImplementation(() => ({
-    downloadTranscript: vi.fn(),
-    transcribeAudio: vi.fn(),
-  })),
+  TranscriptionService: vi.fn().mockImplementation(function (this: any) {
+    this.downloadTranscript = vi.fn();
+    this.transcribeAudio = vi.fn();
+    return this;
+  }),
 }));
 
 vi.mock('../../../src/services/MeetingAnalysisService', () => ({
-  MeetingAnalysisService: vi.fn().mockImplementation(() => ({
-    analyzeMeeting: vi.fn(),
-  })),
+  MeetingAnalysisService: vi.fn().mockImplementation(function (this: any) {
+    this.analyzeMeeting = vi.fn();
+    return this;
+  }),
 }));
 
 describe('MeetingProcessorConsumer', () => {
@@ -187,11 +191,11 @@ describe('MeetingProcessorConsumer', () => {
         'https://example.com/transcript.json'
       );
 
-      // Verify transcript was stored in blob
+      // Verify transcript was stored in blob (uploadFile(path, buffer, contentType))
       expect(mockBlobStorageService.uploadFile).toHaveBeenCalledWith(
         'meetings/tenant-123/ext-123/transcript.json',
         expect.any(Buffer),
-        expect.objectContaining({ contentType: 'application/json' })
+        'application/json'
       );
 
       // Verify meeting was analyzed
@@ -202,7 +206,7 @@ describe('MeetingProcessorConsumer', () => {
         event.participants
       );
 
-      // Verify shard was created with analysis
+      // Verify shard was created with analysis (3 args: path, body, options)
       expect(mockShardManager.post).toHaveBeenCalledWith(
         '/api/v1/shards',
         expect.objectContaining({
@@ -221,15 +225,14 @@ describe('MeetingProcessorConsumer', () => {
         expect.any(Object)
       );
 
-      // Verify events were published
+      // Verify events were published (3 args: eventType, tenantId, payload)
       expect(mockEventPublisher.publish).toHaveBeenCalledWith(
         'shard.created',
         'tenant-123',
         expect.objectContaining({
           shardId: 'shard-123',
           shardTypeId: 'meeting',
-        }),
-        expect.any(Object)
+        })
       );
 
       expect(mockEventPublisher.publish).toHaveBeenCalledWith(
@@ -239,9 +242,8 @@ describe('MeetingProcessorConsumer', () => {
           meetingId: 'meeting-123',
           shardId: 'shard-123',
           hasTranscript: true,
-          hasAnalysis: true,
-        }),
-        expect.any(Object)
+          actionItemsCount: 1,
+        })
       );
     });
 
@@ -298,11 +300,11 @@ describe('MeetingProcessorConsumer', () => {
         }
       );
 
-      // Verify recording was uploaded
+      // Verify recording was uploaded (uploadFile(path, buffer, contentType))
       expect(mockBlobStorageService.uploadFile).toHaveBeenCalledWith(
         expect.stringMatching(/meetings\/tenant-123\/ext-123\/recording\.mp4/),
         mockRecordingBuffer,
-        expect.objectContaining({ contentType: 'video/mp4' })
+        'video/mp4'
       );
 
       // Verify transcription was attempted
@@ -470,7 +472,7 @@ describe('MeetingProcessorConsumer', () => {
 
       await expect((consumer as any).handleMeetingCompletedEvent(event)).rejects.toThrow();
 
-      // Verify failed event was published
+      // Verify failed event was published (3 args)
       expect(mockEventPublisher.publish).toHaveBeenCalledWith(
         'meeting.processing.failed',
         'tenant-123',
@@ -478,8 +480,7 @@ describe('MeetingProcessorConsumer', () => {
           meetingId: 'meeting-123',
           externalId: 'ext-123',
           error: 'Shard creation failed',
-        }),
-        expect.any(Object)
+        })
       );
     });
   });

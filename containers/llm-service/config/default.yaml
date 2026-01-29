@@ -1,0 +1,46 @@
+# llm-service Module Configuration
+# Plan W5 Layer 5 – LLM Reasoning (COMPREHENSIVE_LAYER_REQUIREMENTS_SUMMARY)
+
+module:
+  name: llm-service
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3062}
+  host: ${HOST:-0.0.0.0}
+
+# Cosmos DB – LLMOutput storage (partitionKey tenantId)
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    llm_outputs: llm_outputs
+
+# JWT (shared with auth)
+jwt:
+  secret: ${JWT_SECRET}
+
+# External services (config-driven, no hardcoded URLs)
+services:
+  auth:
+    url: ${AUTH_URL:-http://localhost:3021}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  risk_analytics:
+    url: ${RISK_ANALYTICS_URL:-http://localhost:3048}
+  ml_service:
+    url: ${ML_SERVICE_URL:-http://localhost:3033}
+
+# RabbitMQ – llm.reasoning.* events
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: llm_service
+  bindings: []
+
+# LLM provider (Plan Layer 5 – configurable per tenant later)
+llm:
+  provider: ${LLM_PROVIDER:-mock}
+  model: ${LLM_MODEL:-gpt-4}
+  timeout_ms: ${LLM_TIMEOUT_MS:-10000}

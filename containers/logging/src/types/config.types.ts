@@ -39,6 +39,7 @@ export interface LoggingConfig {
     connection_string: string;
     container: string;
     path_prefix: string;
+    feedback_path_prefix?: string;
     audit_path_prefix: string;
     ml_inference_logs_prefix?: string;
   };

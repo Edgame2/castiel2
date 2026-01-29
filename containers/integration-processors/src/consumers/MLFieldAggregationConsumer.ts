@@ -4,13 +4,15 @@
  * @module integration-processors/consumers
  */
 
-import { EventConsumer, ServiceClient, EventPublisher } from '@coder/shared';
+import { EventConsumer } from '@coder/shared';
 import { loadConfig } from '../config';
 import { log } from '../utils/logger';
 import { BaseConsumer, ConsumerDependencies } from './index';
 
 interface ShardCreatedEvent {
-  shardId: string;
+  shardId?: string;
+  id?: string;
+  tenantId?: string;
   shardTypeId: string;
   shardTypeName?: string;
   opportunityId?: string;
@@ -74,14 +76,15 @@ export class MLFieldAggregationConsumer implements BaseConsumer {
    * Handle shard.created event
    */
   private async handleShardCreated(event: any): Promise<void> {
-    const shardId = event.data?.shardId ?? event.data?.id;
-    const tenantId = event.tenantId ?? event.data?.tenantId;
-    const shardTypeId = event.data?.shardTypeId;
-    const shardTypeName = event.data?.shardTypeName;
+    const data = event.data as ShardCreatedEvent | undefined;
+    const shardId = data?.shardId ?? data?.id;
+    const tenantId = event.tenantId ?? data?.tenantId;
+    const shardTypeId = data?.shardTypeId;
+    const shardTypeName = data?.shardTypeName;
 
     if (!shardId || !tenantId) {
       log.warn('shard.created missing shardId or tenantId', {
-        hasData: !!event.data,
+        hasData: !!data,
         tenantId: event.tenantId,
         service: 'integration-processors',
       });
@@ -93,7 +96,7 @@ export class MLFieldAggregationConsumer implements BaseConsumer {
       return; // Not an opportunity, skip
     }
 
-    const opportunityId = event.data?.opportunityId ?? shardId;
+    const opportunityId = data?.opportunityId ?? shardId;
 
     log.debug('Processing opportunity shard for ML field aggregation', {
       shardId,

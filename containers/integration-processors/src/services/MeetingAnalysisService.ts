@@ -124,7 +124,7 @@ export class MeetingAnalysisService {
    */
   private buildAnalysisPrompt(
     transcript: string,
-    segments: Array<{ speaker: string; startTime: number; endTime: number; text: string }>,
+    _segments: Array<{ speaker: string; startTime: number; endTime: number; text: string }>,
     participants: Array<{ name: string; email?: string }>
   ): string {
     const participantsList = participants.map((p) => p.name).join(', ');
@@ -191,7 +191,7 @@ Please provide JSON with the following structure:
   private basicAnalysis(
     transcript: string,
     segments: Array<{ speaker: string; startTime: number; endTime: number; text: string }>,
-    participants: Array<{ name: string; email?: string }>
+    _participants: Array<{ name: string; email?: string }>
   ): MeetingAnalysisResult {
     // Calculate basic engagement metrics
     const totalDuration = segments.length > 0 ? Math.max(...segments.map((s) => s.endTime)) : 0;

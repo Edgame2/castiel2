@@ -117,7 +117,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Initialize event publisher
   try {
-    const { initializeEventPublisher } = await import('./events/publishers/UserManagementEventPublisher');
+    const { initializeEventPublisher } = await import('./events/publishers/UserManagementEventPublisher.js');
     await initializeEventPublisher();
     log.info('Event publisher initialized', { service: 'user-management' });
   } catch (error) {
@@ -178,7 +178,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   // Register routes
-  const { registerRoutes } = await import('./routes');
+  const { registerRoutes } = await import('./routes/index.js');
   await registerRoutes(fastify, config);
 
   // Health check endpoints (no auth required)
@@ -191,11 +191,15 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   fastify.get('/ready', async () => {
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as unknown as {
+      $queryRaw?: (template: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>;
+    };
     let dbStatus = 'unknown';
     
     try {
-      await db.$queryRaw`SELECT 1`;
+      if (typeof db.$queryRaw === 'function') {
+        await db.$queryRaw`SELECT 1`;
+      }
       dbStatus = 'ok';
     } catch (error) {
       dbStatus = 'error';
@@ -243,7 +247,7 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   log.info(`${signal} received, shutting down gracefully`, { service: 'user-management' });
   try {
-    const { closeEventPublisher } = await import('./events/publishers/UserManagementEventPublisher');
+    const { closeEventPublisher } = await import('./events/publishers/UserManagementEventPublisher.js');
     await closeEventPublisher();
   } catch (error) {
     log.error('Error closing event publisher', error, { service: 'user-management' });

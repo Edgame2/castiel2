@@ -26,8 +26,8 @@ function extractToken(request: FastifyRequest): string | null {
     return authHeader.substring(7);
   }
 
-  // Also check cookies
-  const cookieToken = (request.cookies as any)?.accessToken;
+  // Also check cookies (when @fastify/cookie is registered)
+  const cookieToken = (request as { cookies?: { accessToken?: string } }).cookies?.accessToken;
   if (cookieToken) {
     return cookieToken;
   }
@@ -66,8 +66,8 @@ export async function authenticateRequest(
       return;
     }
     
-    // Get user from database with session information
-    const db = getDatabaseClient();
+    // Get user from database with session information (Prisma client - see server for DB wiring)
+    const db = getDatabaseClient() as unknown as { user: { findUnique: (args: unknown) => Promise<{ id: string; email: string; name: string | null; isActive: boolean; isEmailVerified: boolean } | null> }; session: { findUnique: (args: unknown) => Promise<{ id: string; userId: string; organizationId: string; revokedAt: Date | null; expiresAt: Date } | null> } };
     const user = await db.user.findUnique({
       where: { id: decoded.userId },
       select: { 
@@ -168,7 +168,7 @@ export async function authenticateRequest(
  */
 export async function optionalAuth(
   request: FastifyRequest,
-  reply: FastifyReply
+  _reply: FastifyReply
 ): Promise<void> {
   try {
     const token = extractToken(request);
@@ -177,7 +177,7 @@ export async function optionalAuth(
       try {
         const config = getConfig();
         const decoded = jwt.verify(token, config.jwt.secret) as { userId: string; email: string };
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as unknown as { user: { findUnique: (args: unknown) => Promise<{ id: string; email: string; name: string | null } | null> } };
         const user = await db.user.findUnique({
           where: { id: decoded.userId },
           select: { id: true, email: true, name: true },

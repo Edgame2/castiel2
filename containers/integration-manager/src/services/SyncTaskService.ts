@@ -4,13 +4,11 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { getContainer } from '@coder/shared/database';
-import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
+import { getContainer, BadRequestError, NotFoundError } from '@coder/shared';
 import {
   SyncTask,
   CreateSyncTaskInput,
   SyncJobType,
-  SyncTrigger,
   SyncStatus,
 } from '../types/integration.types';
 
@@ -62,7 +60,7 @@ export class SyncTaskService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(task, {
         partitionKey: input.tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create sync task');
@@ -90,7 +88,7 @@ export class SyncTaskService {
       const { resource } = await container.item(taskId, tenantId).read<SyncTask>();
 
       if (!resource) {
-        throw new NotFoundError(`Sync task ${taskId} not found`);
+        throw new NotFoundError('Sync task', taskId);
       }
 
       return resource;
@@ -99,7 +97,7 @@ export class SyncTaskService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Sync task ${taskId} not found`);
+        throw new NotFoundError('Sync task', taskId);
       }
       throw error;
     }

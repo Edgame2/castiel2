@@ -257,7 +257,7 @@ export class EntityLinkingService {
    * - Topic similarity
    * Confidence: 60-80%
    */
-  private async analyzeContent(shard: any, tenantId: string): Promise<EntityLinks> {
+  private async analyzeContent(shard: any, _tenantId: string): Promise<EntityLinks> {
     const links: EntityLinks = {
       opportunities: [],
       accounts: [],

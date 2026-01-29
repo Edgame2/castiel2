@@ -4,8 +4,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { getContainer } from '@coder/shared/database';
-import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
+import { getContainer, BadRequestError, NotFoundError } from '@coder/shared';
 import {
   ContentTemplate,
   CreateContentTemplateInput,
@@ -53,7 +52,7 @@ export class ContentTemplateService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(template, {
         partitionKey: input.tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create content template');
@@ -81,7 +80,7 @@ export class ContentTemplateService {
       const { resource } = await container.item(templateId, tenantId).read<ContentTemplate>();
 
       if (!resource) {
-        throw new NotFoundError(`Content template ${templateId} not found`);
+        throw new NotFoundError('Content template', templateId);
       }
 
       return resource;
@@ -90,7 +89,7 @@ export class ContentTemplateService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Content template ${templateId} not found`);
+        throw new NotFoundError('Content template', templateId);
       }
       throw error;
     }
@@ -135,7 +134,7 @@ export class ContentTemplateService {
       return resource as ContentTemplate;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Content template ${templateId} not found`);
+        throw new NotFoundError('Content template', templateId);
       }
       throw error;
     }

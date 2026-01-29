@@ -180,6 +180,52 @@ All 17 new containers have been fully implemented with:
   - workflow-orchestrator
 - ✅ API contract tests covered via integration tests (status codes, request/response validation)
 
+## Super Admin UI (Admin)
+
+**Reference:** `documentation/specifications/feedbacks and recommendations/SUPER_ADMIN_CONFIGURATION_REQUIREMENTS.md` (§1–§10).
+
+### Navigation and breadcrumbs
+- **§1 Feedback System:** Overview \| Feedback Types \| Global Settings. Breadcrumb: "Feedback System".
+- **§2 Action Catalog:** Overview \| Entries \| Categories \| Relationships. Breadcrumb: "Action Catalog".
+- **§3 Sales Methodology:** Overview \| Current tenant config \| MEDDIC mapper. Breadcrumb: "Sales Methodology".
+- **§4 ML Models:** Overview \| Models & health \| Endpoints \| Features \| Monitoring. Breadcrumb: "ML Models".
+- **§5 Feature Engineering:** Overview \| Features \| Versioning \| Quality. Breadcrumb: "Feature Engineering".
+- **§6 Decision Rules:** Overview \| Rules \| Templates \| Conflicts. Breadcrumb: "Decision Rules".
+- **§7 Tenant Management:** Overview \| Tenants \| Templates; tenant detail has sub-nav. Breadcrumb: "Tenant Management".
+- **§8 System Configuration:** Overview \| Performance \| Data Lake \| Logging \| API Security. Breadcrumb: "System Configuration".
+- **§9 Analytics & Reporting:** Overview \| Dashboards \| Reports \| Data Export. Breadcrumb: "Analytics & Reporting".
+- **§10 Security & Access Control:** Overview \| Roles \| Users \| API Keys \| Audit Log; role detail has sub-nav. Breadcrumb: "Security & Access Control".
+
+All section breadcrumbs and "Back to" links use the full section names (no shortened labels).
+
+### Document titles
+- Admin layout (`app/admin/layout.tsx`) sets `metadata.title` with template `%s | Admin | Castiel` and default `Admin | Castiel`.
+- Server Component admin pages export `metadata.title` for distinct browser tab titles: Super Admin, Tenant Management, Decision Rules, ML Models, Sales Methodology, Action Catalog, Rule Templates, Rule Conflicts, Categories, Relationships, MEDDIC mapper.
+- Client Component admin pages set `document.title` in a `useEffect` (with restore on unmount): Feedback System (overview), Feedback Types, Global Settings, Tenants (list), Roles, Rules, Models & health, Entries, Current tenant config, Features (feature-engineering), Dashboards, Reports, Data Export (analytics).
+
+### Pages wired to APIs
+- **Feedback:** types (GET/POST/PUT/DELETE `/api/v1/admin/feedback-types`), global-settings (GET/PUT `/api/v1/admin/feedback-config`), overview (types, config, aggregation).
+- **Tenants:** list (GET `/api/v1/admin/tenants`), detail (GET/PUT `/api/v1/admin/tenants/:id/feedback-config`), templates (GET/POST/PUT/DELETE/apply `/api/v1/admin/tenant-templates`).
+- **Decision Rules:** rules (GET `/api/v1/decisions/rules`, POST `.../rules/:id/test`).
+- **ML Models:** models (GET `/api/v1/ml/models/health`), features (link to Feature Engineering).
+- **Feature Engineering:** features (GET `/api/v1/ml/features/versions`, `/api/v1/ml/features/schema`).
+- **Sales Methodology:** config (GET/PUT `/api/v1/sales-methodology`), MEDDIC mapper (§3.1.4) via same API (meddic field: metrics, economicBuyer, decisionCriteria, decisionProcess, identifyPain, champion, competition).
+- **Action Catalog:** entries (GET/POST/PUT/DELETE `/api/v1/action-catalog/entries`), categories (GET/POST/PUT/DELETE `/api/v1/action-catalog/categories`, optional `?reassignTo=` on DELETE), relationships (GET/POST/DELETE `/api/v1/action-catalog/relationships`).
+- **Security:** roles (user-management org/roles), users (org/members), api-keys (org/api-keys), audit (logging logs/export).
+- **Settings:** GET/PUT `/api/v1/admin/settings`, rate-limits, capacity, feature-flags.
+- **Monitoring:** GET `/api/v1/admin/monitoring/health`, queues, processors.
+- **Shard types, integrations catalog, risk-catalog, tenant-ml-config:** wired to respective APIs.
+
+### Placeholder pages (UI only; backend APIs not yet implemented)
+- (Action Catalog §2.1–§2.3 are wired: entries, categories, relationships.)
+- (Sales Methodology §3.1.4 MEDDIC mapper is wired via GET/PUT sales-methodology meddic.)
+- ML Models: Endpoints (§4.2), Monitoring (§4.4).
+- Feature Engineering: Versioning (§5.2), Quality (§5.3).
+- Decision Rules: Templates (§6.2) — UI shows static pre-configured template cards and link to Rules; backend template CRUD not yet implemented. Conflicts (§6.3) — UI shows static conflict types and resolution options with link to Rules; backend conflict detection not yet implemented.
+- Analytics: Dashboards (§9.1), Reports (§9.2), Data Export (§9.3) — UI placeholders; Grafana/runbooks exist for ops.
+
+---
+
 ## Next Steps
 
 1. **Test Coverage Expansion**: Expand unit tests to reach ≥80% coverage per ModuleImplementationGuide.md Section 12

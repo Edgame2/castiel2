@@ -28,6 +28,8 @@ cosmos_db:
   containers:
     recommendations: recommendation_recommendations
     feedback: recommendation_feedback
+    feedback_aggregation: recommendation_feedback_aggregation
+    recommendation_config: recommendation_config
     metrics: recommendation_metrics
     # Plan §3.1.4, §927–929
     remediation_workflows: recommendation_remediation_workflows

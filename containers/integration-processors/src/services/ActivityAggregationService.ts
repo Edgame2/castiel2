@@ -165,10 +165,14 @@ export class ActivityAggregationService {
     const data = sourceShard.structuredData;
 
     if (sourceShard.shardType === 'Email') {
+      const from = data.from;
+      const email = typeof from === 'string' ? from : from?.email;
+      const name = data.fromName || (typeof from === 'object' ? from?.name : from);
+      const contactId = data.fromContactId ?? (typeof from === 'object' ? from?.contactId : undefined);
       return {
-        email: data.from,
-        name: data.fromName || data.from,
-        contactId: data.fromContactId,
+        email,
+        name: name ?? email,
+        contactId,
         isInternal: data.fromIsInternal || false,
       };
     }
@@ -183,10 +187,14 @@ export class ActivityAggregationService {
     }
 
     if (sourceShard.shardType === 'Message') {
+      const from = data.from;
+      const email = data.fromEmail ?? (typeof from === 'object' ? from?.email : undefined);
+      const name = (typeof from === 'object' ? from?.name : data.from) || 'Unknown';
+      const contactId = data.fromContactId ?? (typeof from === 'object' ? from?.contactId : undefined);
       return {
-        email: data.fromEmail,
-        name: data.from || 'Unknown',
-        contactId: data.fromContactId,
+        email,
+        name,
+        contactId,
         isInternal: data.fromIsInternal || false,
       };
     }
@@ -246,7 +254,7 @@ export class ActivityAggregationService {
     }
 
     if (sourceShard.shardType === 'Meeting') {
-      return data.title;
+      return data.title ?? data.subject;
     }
 
     if (sourceShard.shardType === 'Message') {

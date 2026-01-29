@@ -4,11 +4,10 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { authenticateRequest, tenantEnforcementMiddleware, getContainer } from '@coder/shared';
+import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { IntegrationService } from '../services/IntegrationService';
 import { SyncTaskService } from '../services/SyncTaskService';
 import { SyncStatus, IntegrationStatus, ConnectionStatus } from '../types/integration.types';
-import { log } from '../utils/logger';
 
 export async function integrationHealthRoutes(
   app: FastifyInstance,

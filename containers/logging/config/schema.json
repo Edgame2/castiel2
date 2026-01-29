@@ -76,6 +76,7 @@
         "connection_string": { "type": "string" },
         "container": { "type": "string" },
         "path_prefix": { "type": "string" },
+        "feedback_path_prefix": { "type": "string" },
         "audit_path_prefix": { "type": "string" },
         "ml_inference_logs_prefix": { "type": "string" }
       }

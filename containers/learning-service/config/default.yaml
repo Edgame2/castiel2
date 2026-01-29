@@ -1,0 +1,41 @@
+# learning-service Module Configuration
+# Plan W6 Layer 7 – Feedback Loop (FeedbackLearningService)
+
+module:
+  name: learning-service
+  version: 1.0.0
+
+server:
+  port: ${PORT:-3063}
+  host: ${HOST:-0.0.0.0}
+
+# Cosmos DB – UserFeedback, Outcome (partitionKey tenantId)
+cosmos_db:
+  endpoint: ${COSMOS_DB_ENDPOINT}
+  key: ${COSMOS_DB_KEY}
+  database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
+  containers:
+    user_feedback: user_feedback
+    outcome: outcome
+
+# JWT (shared with auth)
+jwt:
+  secret: ${JWT_SECRET}
+
+# External services (config-driven, no hardcoded URLs)
+services:
+  auth:
+    url: ${AUTH_URL:-http://localhost:3021}
+  logging:
+    url: ${LOGGING_URL:-http://localhost:3014}
+  recommendations:
+    url: ${RECOMMENDATIONS_URL:-http://localhost:3049}
+  ml_service:
+    url: ${ML_SERVICE_URL:-http://localhost:3033}
+
+# RabbitMQ – feedback.recorded, outcome.recorded, feedback.trend.alert
+rabbitmq:
+  url: ${RABBITMQ_URL}
+  exchange: coder_events
+  queue: learning_service
+  bindings: []

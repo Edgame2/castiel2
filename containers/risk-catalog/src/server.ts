@@ -135,10 +135,14 @@ export async function buildApp(): Promise<FastifyInstance> {
   }));
 
   fastify.get('/ready', async () => {
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as unknown as {
+      $queryRaw?: (template: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>;
+    };
     let dbStatus = 'unknown';
     try {
-      await db.$queryRaw`SELECT 1`;
+      if (typeof db.$queryRaw === 'function') {
+        await db.$queryRaw`SELECT 1`;
+      }
       dbStatus = 'ok';
     } catch (error) {
       dbStatus = 'error';

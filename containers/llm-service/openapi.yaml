@@ -1,0 +1,179 @@
+openapi: 3.0.3
+info:
+  title: LLM Service API
+  description: |
+    LLM reasoning: natural language explanations, recommendations, scenarios, summary, playbook (Plan W5 Layer 5).
+    APIs (explain, recommendations, scenarios, summary, playbook) added in next step.
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: API Version 1
+tags:
+  - name: LLM
+    description: LLM reasoning operations
+  - name: Health
+    description: Health check endpoints
+paths:
+  /llm/explain:
+    post:
+      tags: [LLM]
+      summary: Generate natural language explanation (W5 Layer 5)
+      description: Body opportunityId (required), predictionId?, explanationId?, context?
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+                predictionId: { type: string }
+                explanationId: { type: string }
+                context: { type: object }
+      responses:
+        '200':
+          description: output.text
+        '500':
+          description: LLM reasoning failed
+  /llm/recommendations:
+    post:
+      tags: [LLM]
+      summary: Generate recommendations (W5 Layer 5)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+                predictionId: { type: string }
+                explanationId: { type: string }
+                context: { type: object }
+      responses:
+        '200':
+          description: output.recommendations
+        '500':
+          description: LLM reasoning failed
+  /llm/scenarios:
+    post:
+      tags: [LLM]
+      summary: Analyze scenarios (W5 Layer 5)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+                predictionId: { type: string }
+                explanationId: { type: string }
+                context: { type: object }
+      responses:
+        '200':
+          description: output.scenarios
+        '500':
+          description: LLM reasoning failed
+  /llm/summary:
+    post:
+      tags: [LLM]
+      summary: Generate summary (W5 Layer 5)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+                predictionId: { type: string }
+                explanationId: { type: string }
+                context: { type: object }
+      responses:
+        '200':
+          description: output.text
+        '500':
+          description: LLM reasoning failed
+  /llm/playbook:
+    post:
+      tags: [LLM]
+      summary: Generate playbook (W5 Layer 5)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+                predictionId: { type: string }
+                explanationId: { type: string }
+                context: { type: object }
+      responses:
+        '200':
+          description: output.text
+        '500':
+          description: LLM reasoning failed
+  /llm/reactivation/strategy:
+    post:
+      tags: [LLM]
+      summary: Generate reactivation strategy (W9 Layer 5, FR-5.4)
+      description: Body opportunityId (required), dormantFeatures?, reactivationPrediction? from ml-service. Returns reactivationStrategy (priority, immediateActions, outreachPlan, resources, successCriteria, alternativeStrategies).
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+                dormantFeatures: { type: object }
+                reactivationPrediction: { type: object }
+      responses:
+        '200':
+          description: output.reactivationStrategy
+        '500':
+          description: LLM reasoning failed
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: healthy }
+                  timestamp: { type: string, format: date-time }
+                  service: { type: string, example: llm-service }
+  /ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness (database)
+      responses:
+        '200':
+          description: Service is ready or not_ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ready, not_ready] }
+                  checks:
+                    type: object
+                    properties:
+                      database: { type: object, properties: { status: { type: string } } }
+                  timestamp: { type: string, format: date-time }
+                  service: { type: string, example: llm-service }

@@ -16,7 +16,9 @@ import { loadConfig } from '../config';
 import {
   publishMlModelDriftDetected,
   publishMlModelPerformanceDegraded,
+  publishMlDriftDetected,
 } from '../events/publishers/MLServiceEventPublisher';
+import { EvaluationService } from './EvaluationService';
 import { mlDriftChecksTotal, mlDriftDetectionsTotal, mlPerformanceDegradedTotal } from '../metrics';
 
 const PSI_MIN_SAMPLES = 30;
@@ -234,6 +236,12 @@ export class ModelMonitoringService {
               const psi = computePsi(base, cur);
               if (psi > psiThreshold) {
                 await publishMlModelDriftDetected(tenantId, { modelId, metric: 'psi', delta: psi });
+                await publishMlDriftDetected(tenantId, { modelId, metric: 'psi', value: psi, threshold: psiThreshold });
+                const evaluationService = new EvaluationService();
+                await evaluationService.recordDrift(tenantId, modelId, 'psi', psi, {
+                  threshold: psiThreshold,
+                  segment: undefined,
+                });
                 mlDriftDetectionsTotal.inc({ model: modelId });
               }
             }

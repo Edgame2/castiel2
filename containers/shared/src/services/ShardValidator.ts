@@ -59,7 +59,7 @@ export class ShardValidator {
   /**
    * Validate structuredData against configuration
    */
-  validate(structuredData: any, shardTypeName?: string): ValidationResult {
+  validate(structuredData: any, _shardTypeName?: string): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationError[] = [];
 
@@ -143,21 +143,23 @@ export class ShardValidator {
         }
 
         if (fieldSchema.type === 'string') {
-          if (fieldSchema.minLength !== undefined && value.length < fieldSchema.minLength) {
+          const strSchema = fieldSchema as { minLength?: number; maxLength?: number; enum?: unknown[] };
+          const strVal = typeof value === 'string' ? value : String(value);
+          if (strSchema.minLength !== undefined && strVal.length < strSchema.minLength) {
             warnings.push({
               field,
-              message: `Field '${field}' is shorter than minimum length (${fieldSchema.minLength})`,
+              message: `Field '${field}' is shorter than minimum length (${strSchema.minLength})`,
               severity: 'warning',
             });
           }
-          if (fieldSchema.maxLength !== undefined && value.length > fieldSchema.maxLength) {
+          if (strSchema.maxLength !== undefined && strVal.length > strSchema.maxLength) {
             warnings.push({
               field,
-              message: `Field '${field}' is longer than maximum length (${fieldSchema.maxLength})`,
+              message: `Field '${field}' is longer than maximum length (${strSchema.maxLength})`,
               severity: 'warning',
             });
           }
-          if (fieldSchema.enum && !fieldSchema.enum.includes(value)) {
+          if (strSchema.enum && !strSchema.enum.includes(value)) {
             warnings.push({
               field,
               message: `Field '${field}' must be one of: ${fieldSchema.enum.join(', ')}`,
@@ -245,7 +247,7 @@ export class ShardValidator {
     if (expectedType === 'number' && actualType === 'number') return true;
     if (expectedType === 'boolean' && actualType === 'boolean') return true;
     if (expectedType === 'array' && actualType === 'array') return true;
-    if (expectedType === 'object' && actualType === 'object' && actualType !== 'array') return true;
+    if (expectedType === 'object' && actualType === 'object') return (actualType as string) !== 'array';
     if (expectedType === 'null' && actualType === 'null') return true;
 
     // Date strings are compatible with date-time format

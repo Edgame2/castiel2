@@ -13,14 +13,14 @@ import {
   RiskCatalog,
   CreateRiskInput,
   UpdateRiskInput,
-  CatalogType,
   RiskPonderation,
+  TenantCatalogView,
+  RiskTemplateView,
 } from '../types/risk-catalog.types';
 import { publishRiskCatalogEvent } from '../events/publishers/RiskCatalogEventPublisher';
 
 const RISK_CATALOG_SHARD_TYPE_NAME = 'risk_catalog';
 const SYSTEM_TENANT_ID = 'system';
-const SYSTEM_USER_ID = 'system';
 
 interface Shard {
   id: string;
@@ -195,6 +195,49 @@ export class RiskCatalogService {
       log.error('Failed to get shard type', error, { service: 'risk-catalog' });
       return null;
     }
+  }
+
+  /**
+   * W7 Gap 1 – Get tenant catalog view for Layer 2 (ml-service extractRiskCatalogFeatures).
+   * Returns structured view: categories, definitions, templates, industry/methodology risks.
+   */
+  async getTenantCatalog(
+    tenantId: string,
+    industry?: string,
+    _stage?: string
+  ): Promise<TenantCatalogView> {
+    const catalog = await this.getCatalog(tenantId, industry);
+    const tenantRiskCategories = [...new Set(catalog.map(c => c.category))];
+    const categoryDefinitions: Record<string, { name: string; description?: string; defaultPonderation?: number }> = {};
+    for (const c of catalog) {
+      if (!categoryDefinitions[c.category]) {
+        categoryDefinitions[c.category] = {
+          name: c.category,
+          description: c.description,
+          defaultPonderation: c.defaultPonderation,
+        };
+      }
+    }
+    const riskTemplates: RiskTemplateView[] = catalog.map(c => ({
+      id: c.id,
+      riskId: c.riskId,
+      name: c.name,
+      category: c.category,
+      industryId: c.industryId,
+      applicableStages: [],
+    }));
+    const industrySpecificRisks =
+      industry != null
+        ? catalog.filter(c => c.catalogType === 'industry' && c.industryId === industry).map(c => c.riskId)
+        : [];
+    const methodologyRisks: string[] = [];
+    return {
+      tenantRiskCategories,
+      categoryDefinitions,
+      riskTemplates,
+      industrySpecificRisks,
+      methodologyRisks,
+    };
   }
 
   /**

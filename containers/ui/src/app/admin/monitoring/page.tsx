@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 interface SystemHealth {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -39,6 +39,11 @@ export default function MonitoringDashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchMonitoringData = useCallback(async () => {
+    if (!apiBaseUrl) {
+      setError('NEXT_PUBLIC_API_BASE_URL is not set');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -64,7 +69,7 @@ export default function MonitoringDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiBaseUrl]);
 
   useEffect(() => {
     fetchMonitoringData();
@@ -88,19 +93,25 @@ export default function MonitoringDashboardPage() {
         Monitor system health, queues, processors, and performance (Super Admin only)
       </p>
 
-      {loading && (
+      {!apiBaseUrl && (
+        <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20 mb-4">
+          <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
+        </div>
+      )}
+
+      {apiBaseUrl && loading && (
         <div className="rounded-lg border p-6 bg-white dark:bg-gray-900">
           <p className="text-sm text-gray-500">Loading monitoring data…</p>
         </div>
       )}
 
-      {error && (
+      {apiBaseUrl && error && (
         <div className="rounded-lg border p-6 bg-white dark:bg-gray-900">
           <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
         </div>
       )}
 
-      {!loading && !error && (
+      {apiBaseUrl && !loading && !error && (
         <div className="space-y-6">
           {/* System Health */}
           {health && (

@@ -4,15 +4,13 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { getContainer } from '@coder/shared/database';
+import { getContainer } from '@coder/shared';
 import { log } from '../utils/logger';
 import {
   SyncConflict,
-  ConflictResolutionStrategy,
   ConflictResolution,
   FieldConflict,
   MergeRule,
-  BidirectionalSyncConfig,
   DetectConflictInput,
   ResolveConflictInput,
 } from '../types/bidirectional-sync.types';
@@ -28,7 +26,7 @@ export class BidirectionalSyncService {
     const startTime = Date.now();
 
     try {
-      const { localShard, remoteRecord, mapping, config, syncTaskId, integrationId, schemaId } = input;
+      const { localShard, remoteRecord, mapping, syncTaskId, integrationId, schemaId } = input;
 
       // Extract modification times
       const localModifiedAt = new Date(localShard.updatedAt || localShard.createdAt);
@@ -84,7 +82,7 @@ export class BidirectionalSyncService {
         const container = getContainer(this.containerName);
         await container.items.create(conflict, {
           partitionKey: conflict.tenantId,
-        });
+        } as Parameters<typeof container.items.create>[1]);
       } catch (error: any) {
         log.warn('Failed to persist conflict to database', {
           error: error.message,
@@ -132,7 +130,7 @@ export class BidirectionalSyncService {
       if (!conflict) {
         // Try to load from database
         const container = getContainer(this.containerName);
-        const { resource } = await container.item(conflictId, conflict?.tenantId || '').read<SyncConflict>();
+        const { resource } = await container.item(conflictId, '').read<SyncConflict>();
         if (!resource) {
           throw new Error(`Conflict ${conflictId} not found`);
         }
@@ -234,7 +232,7 @@ export class BidirectionalSyncService {
    */
   private async mergeFields(
     local: Record<string, any>,
-    remote: Record<string, any>,
+    _remote: Record<string, any>,
     conflicts: FieldConflict[],
     rules: MergeRule[]
   ): Promise<Record<string, any>> {
@@ -336,8 +334,6 @@ export class BidirectionalSyncService {
     const fieldMappings = mapping.fieldMappings || mapping.config?.fieldMappings || [];
     for (const fieldMapping of fieldMappings) {
       const targetField = fieldMapping.targetField || fieldMapping.config?.targetField;
-      const sourceField = fieldMapping.sourceField || fieldMapping.config?.sourceField;
-
       if (!targetField) continue;
 
       const localValue = local[targetField];
@@ -377,7 +373,7 @@ export class BidirectionalSyncService {
   /**
    * Extract remote modified timestamp
    */
-  private extractRemoteModifiedAt(record: any, mapping: any): Date {
+  private extractRemoteModifiedAt(record: any, _mapping: any): Date {
     // Try common field names
     const modifiedField =
       record.LastModifiedDate ||

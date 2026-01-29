@@ -4,7 +4,7 @@
  * @module integration-processors/consumers
  */
 
-import { EventConsumer, ServiceClient, EventPublisher, EntityLinkingService } from '@coder/shared';
+import { EventConsumer } from '@coder/shared';
 import { loadConfig } from '../config';
 import { log } from '../utils/logger';
 import { BaseConsumer, ConsumerDependencies } from './index';
@@ -57,8 +57,6 @@ export class MeetingProcessorConsumer implements BaseConsumer {
   private documentDownloadService: DocumentDownloadService;
   private transcriptionService: TranscriptionService;
   private meetingAnalysisService: MeetingAnalysisService;
-  private entityLinkingService: EntityLinkingService | null = null;
-
   constructor(private deps: ConsumerDependencies) {
     this.config = loadConfig();
     this.documentDownloadService = new DocumentDownloadService();
@@ -75,11 +73,6 @@ export class MeetingProcessorConsumer implements BaseConsumer {
         connectionString: this.config.azure.blob_storage.connection_string,
         containerName,
       });
-    }
-
-    // Initialize entity linking service if AI service is available
-    if (deps.aiService) {
-      this.entityLinkingService = new EntityLinkingService(deps.shardManager, deps.aiService);
     }
   }
 
@@ -157,9 +150,7 @@ export class MeetingProcessorConsumer implements BaseConsumer {
           });
 
           const recordingPath = `meetings/${tenantId}/${externalId}/recording.${this.getFileExtension(recordingData.contentType)}`;
-          const uploadResult = await this.blobStorageService.uploadFile(recordingPath, recordingData.buffer, {
-            contentType: recordingData.contentType,
-          });
+          const uploadResult = await this.blobStorageService.uploadFile(recordingPath, recordingData.buffer, recordingData.contentType);
 
           recordingBlobUrl = uploadResult.url;
           recordingSize = uploadResult.size;
@@ -230,9 +221,7 @@ export class MeetingProcessorConsumer implements BaseConsumer {
           const uploadResult = await this.blobStorageService.uploadFile(
             transcriptPath,
             Buffer.from(transcriptJson),
-            {
-              contentType: 'application/json',
-            }
+            'application/json'
           );
           transcriptBlobUrl = uploadResult.url;
         } catch (error: any) {

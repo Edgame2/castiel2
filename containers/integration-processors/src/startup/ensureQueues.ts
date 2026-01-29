@@ -193,13 +193,17 @@ export async function ensureQueues(rabbitmqUrl: string, exchange: string = 'code
     service: 'integration-processors',
   });
 
-  let connection: amqp.Connection | null = null;
+  let connection: amqp.ChannelModel | null = null;
   let channel: amqp.Channel | null = null;
 
   try {
-    // Connect to RabbitMQ
+    // Connect to RabbitMQ (promise API returns ChannelModel)
     connection = await amqp.connect(rabbitmqUrl);
     channel = await connection.createChannel();
+
+    if (!channel) {
+      throw new Error('Failed to create channel');
+    }
 
     // Ensure main exchange exists
     await channel.assertExchange(exchange, 'topic', {
@@ -231,7 +235,7 @@ export async function ensureQueues(rabbitmqUrl: string, exchange: string = 'code
     });
     throw error;
   } finally {
-    // Close connection
+    // Close channel then connection
     if (channel) {
       await channel.close();
     }

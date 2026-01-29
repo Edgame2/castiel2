@@ -32,7 +32,7 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
         requirePermission('users.user.invite', 'organization'),
       ],
     },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -124,7 +124,7 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // List invitations
@@ -136,7 +136,7 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
         requirePermission('users.user.invite', 'organization'),
       ],
     },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -176,8 +176,9 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           error: 'Failed to list invitations',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+    }) as any
   );
 
   // Resend invitation
@@ -189,7 +190,7 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
         requirePermission('users.user.invite', 'organization'),
       ],
     },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -255,8 +256,9 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           error: 'Failed to resend invitation',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+    }) as any
   );
 
   // Cancel invitation
@@ -268,7 +270,7 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
         requirePermission('users.user.invite', 'organization'),
       ],
     },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -286,8 +288,8 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
 
         const { invitationId } = request.params;
 
-        // Get invitation info before cancellation for audit log
-        const db = getDatabaseClient();
+        // Get invitation info before cancellation for audit log (Prisma client - see server for DB wiring)
+        const db = getDatabaseClient() as unknown as { invitation: { findUnique: (args: unknown) => Promise<{ id: string; organizationId: string; email: string } | null> } };
         const invitation = await db.invitation.findUnique({
           where: { id: invitationId },
           select: {
@@ -342,14 +344,15 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           error: 'Failed to cancel invitation',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+    }) as any
   );
 
   // Accept invitation (public endpoint - no auth required)
   fastify.post(
     '/api/v1/invitations/:token/accept',
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           token: string;
@@ -372,7 +375,10 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           return;
         }
 
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as unknown as {
+          organizationMembership: { findFirst: (args: unknown) => Promise<unknown>; create: (args: unknown) => Promise<unknown> };
+          invitation: { update: (args: unknown) => Promise<unknown> };
+        };
 
         // If userId provided, user is already registered
         if (userId) {
@@ -460,8 +466,9 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           error: 'Failed to accept invitation',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+    }) as any
   );
 
   // Bulk invite
@@ -473,7 +480,7 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
         requirePermission('users.user.invite', 'organization'),
       ],
     },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -569,8 +576,9 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           error: 'Failed to create bulk invitations',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+    }) as any
   );
 }
 

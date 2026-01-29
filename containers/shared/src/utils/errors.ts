@@ -26,6 +26,16 @@ export class AppError extends Error {
 }
 
 /**
+ * Bad request error (400 Bad Request)
+ */
+export class BadRequestError extends AppError {
+  constructor(message: string, details?: unknown) {
+    super('BAD_REQUEST', message, 400, details);
+    this.name = 'BadRequestError';
+  }
+}
+
+/**
  * Validation error (400 Bad Request)
  */
 export class ValidationError extends AppError {

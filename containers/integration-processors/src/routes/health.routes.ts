@@ -6,7 +6,6 @@
 import { FastifyInstance } from 'fastify';
 import { ServiceClient } from '@coder/shared';
 import { loadConfig } from '../config';
-import { log } from '../utils/logger';
 
 const config = loadConfig();
 
@@ -58,12 +57,12 @@ async function checkBlobStorage(): Promise<{ healthy: boolean; latency?: number 
 
 export async function healthRoutes(app: FastifyInstance): Promise<void> {
   // Basic health check
-  app.get('/health', async (request, reply) => {
+  app.get('/health', async (_request, _reply) => {
     return { status: 'healthy', timestamp: new Date().toISOString() };
   });
 
   // Readiness check (dependencies)
-  app.get('/ready', async (request, reply) => {
+  app.get('/ready', async (_request, reply) => {
     const checks = {
       rabbitmq: await checkRabbitMQ(),
       shardManager: await checkShardManager(),

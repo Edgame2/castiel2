@@ -49,7 +49,7 @@ function mapPayloadToAuthUser(payload: any): AuthUser {
  * Validates JWT tokens and injects user context
  */
 export function authenticateRequest() {
-  return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+  return async (request: FastifyRequest, _reply: FastifyReply): Promise<void> => {
     try {
       // Extract token from Authorization header
       const authHeader = request.headers.authorization;

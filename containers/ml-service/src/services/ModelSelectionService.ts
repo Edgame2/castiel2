@@ -1,10 +1,12 @@
 /**
  * ModelSelectionService (BI_SALES_RISK Plan §5.4, §874).
  * selectRiskScoringModel: global vs industry by >3000 examples and >5% improvement (full: Cosmos/Data Lake); stub: industry if endpoint configured.
+ * W10: optional tenant ML config preferIndustryModels gates industry preference.
  * selectWinProbabilityModel: stub returns win-probability-model.
  */
 
 import { loadConfig } from '../config';
+import type { TenantMLConfigView } from '../types/feature-store.types';
 
 export interface ModelSelection {
   modelId: string;
@@ -18,17 +20,19 @@ function hasEndpoint(ep: Record<string, string> | undefined, key: string): boole
 
 /**
  * Select risk-scoring model: global vs industry (Plan §5.4).
- * Stub: if industryId and risk_scoring_industry endpoint configured, use industry; else global.
- * Full: >3000 examples and >5% improvement from Cosmos/Data Lake (Phase 2).
+ * Stub: if industryId and risk_scoring_industry endpoint configured and tenant config preferIndustryModels !== false, use industry; else global.
+ * W10: tenantConfig.modelPreferences.preferIndustryModels === false skips industry preference.
  */
 export function selectRiskScoringModel(
   _tenantId: string,
   industryId?: string,
-  _features?: Record<string, unknown>
+  _features?: Record<string, unknown>,
+  tenantConfig?: TenantMLConfigView | null
 ): ModelSelection {
   const config = loadConfig();
   const ep = config.azure_ml?.endpoints ?? {};
-  if (industryId && hasEndpoint(ep, 'risk_scoring_industry')) {
+  const preferIndustry = tenantConfig?.modelPreferences?.preferIndustryModels !== false;
+  if (preferIndustry && industryId && hasEndpoint(ep, 'risk_scoring_industry')) {
     return { modelId: 'risk_scoring_industry', confidence: 0.8 };
   }
   if (hasEndpoint(ep, 'risk_scoring_global')) {

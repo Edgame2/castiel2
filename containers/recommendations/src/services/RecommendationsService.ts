@@ -5,7 +5,7 @@
  */
 
 import { ServiceClient, generateServiceToken } from '@coder/shared';
-import { getContainer } from '@coder/shared/database';
+import { getContainer } from '@coder/shared';
 import { FastifyInstance } from 'fastify';
 import { loadConfig } from '../config';
 import { log } from '../utils/logger';
@@ -16,10 +16,11 @@ import {
   RecommendationFeedback,
   LearnedWeights,
   ModelSelection,
-  FeedbackAction,
 } from '../types/recommendations.types';
 import { publishRecommendationEvent } from '../events/publishers/RecommendationEventPublisher';
 import { v4 as uuidv4 } from 'uuid';
+import { FeedbackService } from './FeedbackService';
+import type { RecommendationFeedbackRecord } from '../types/feedback.types';
 
 // Default weights for fallback
 const DEFAULT_WEIGHTS: LearnedWeights = {
@@ -36,7 +37,6 @@ export class RecommendationsService {
   private mlServiceClient: ServiceClient;
   private embeddingsClient: ServiceClient;
   private shardManagerClient: ServiceClient;
-  private analyticsServiceClient: ServiceClient;
   private recommendationCache = new Map<string, { batch: RecommendationBatch; expiresAt: number }>();
   private readonly CACHE_TTL = 30 * 60 * 1000; // 30 minutes
   private app: FastifyInstance | null = null;
@@ -74,12 +74,6 @@ export class RecommendationsService {
       circuitBreaker: { enabled: true },
     });
 
-    this.analyticsServiceClient = new ServiceClient({
-      baseURL: this.config.services.analytics_service?.url || '',
-      timeout: 30000,
-      retries: 3,
-      circuitBreaker: { enabled: true },
-    });
   }
 
   /**
@@ -450,7 +444,7 @@ export class RecommendationsService {
         return [];
       }
 
-      const token = this.getServiceToken(request.tenantId);
+      this.getServiceToken(request.tenantId);
       
       // Get user's past successful recommendations
       const container = getContainer('recommendation_recommendations');
@@ -466,8 +460,9 @@ export class RecommendationsService {
         ],
       };
 
+      const queryOpt = { partitionKey: request.tenantId } as Parameters<typeof feedbackContainer.items.query>[1];
       const { resources: userFeedback } = await feedbackContainer.items
-        .query(userFeedbackQuery, { partitionKey: request.tenantId })
+        .query(userFeedbackQuery, queryOpt)
         .fetchAll();
 
       if (!userFeedback || userFeedback.length === 0) {
@@ -489,7 +484,7 @@ export class RecommendationsService {
       };
 
       const { resources: similarUsers } = await feedbackContainer.items
-        .query(similarUsersQuery, { partitionKey: request.tenantId })
+        .query(similarUsersQuery, queryOpt)
         .fetchAll();
 
       if (!similarUsers || similarUsers.length === 0) {
@@ -511,7 +506,7 @@ export class RecommendationsService {
         };
 
         const { resources: similarUserFeedback } = await feedbackContainer.items
-          .query(similarUserFeedbackQuery, { partitionKey: request.tenantId })
+          .query(similarUserFeedbackQuery, queryOpt)
           .fetchAll();
 
         for (const feedback of (similarUserFeedback || []).slice(0, 3)) {
@@ -884,15 +879,16 @@ export class RecommendationsService {
       const container = getContainer('recommendation_recommendations');
       
       for (const rec of batch.recommendations) {
+        const createOptions = { partitionKey: tenantId } as Parameters<typeof container.items.create>[1];
         await container.items.create(
           {
+            ...rec,
             id: rec.id,
             tenantId,
-            ...rec,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
-          { partitionKey: tenantId }
+          createOptions
         );
       }
     } catch (error: any) {
@@ -905,72 +901,124 @@ export class RecommendationsService {
   }
 
   /**
-   * Record user feedback on recommendation
+   * Record user feedback on recommendation (FR-1.4 full metadata, recommendation.feedback.received with full payload).
    */
-  async recordFeedback(feedback: RecommendationFeedback): Promise<void> {
-    try {
-      log.info('Recording recommendation feedback', {
-        recommendationId: feedback.recommendationId,
-        action: feedback.action,
-        userId: feedback.userId,
-        tenantId: feedback.tenantId,
-        service: 'recommendations',
+  async recordFeedback(feedback: RecommendationFeedback): Promise<RecommendationFeedbackRecord> {
+    const feedbackService = new FeedbackService();
+    const feedbackTypeId =
+      feedback.feedbackTypeId ??
+      (feedback.action === 'accept'
+        ? 'feedback_type_act_on_it'
+        : feedback.action === 'ignore'
+        ? 'feedback_type_ignore'
+        : 'feedback_type_irrelevant');
+
+    log.info('Recording recommendation feedback', {
+      recommendationId: feedback.recommendationId,
+      action: feedback.action,
+      feedbackTypeId,
+      userId: feedback.userId,
+      tenantId: feedback.tenantId,
+      service: 'recommendations',
+    });
+
+    const recContainer = getContainer('recommendation_recommendations');
+    const { resource: recommendation } = await recContainer
+      .item(feedback.recommendationId, feedback.tenantId)
+      .read();
+
+    const now = new Date().toISOString();
+    const recordInput: Omit<RecommendationFeedbackRecord, 'id' | 'createdAt' | 'updatedAt' | 'recordedAt'> = {
+      tenantId: feedback.tenantId,
+      partitionKey: feedback.tenantId,
+      recommendationId: feedback.recommendationId,
+      userId: feedback.userId,
+      feedbackTypeId,
+      action: feedback.action,
+      comment: feedback.comment,
+      secondaryTypes: feedback.metadata?.secondaryTypes,
+      recommendation: feedback.metadata?.recommendation
+        ? {
+            type: feedback.metadata.recommendation.type ?? '',
+            category: '',
+            source: feedback.metadata.recommendation.source ?? '',
+            confidence: feedback.metadata.recommendation.confidence ?? 0,
+            text: feedback.metadata.recommendation.text ?? '',
+          }
+        : recommendation
+        ? {
+            type: (recommendation as Recommendation).type ?? '',
+            category: '',
+            source: (recommendation as Recommendation).source ?? '',
+            confidence: (recommendation as Recommendation).confidence ?? 0,
+            text: (recommendation as Recommendation).title ?? '',
+          }
+        : undefined,
+      opportunity: feedback.metadata?.opportunity,
+      user: feedback.metadata?.user ? { id: feedback.userId, ...feedback.metadata.user } : undefined,
+      feedback: {
+        type: feedbackTypeId,
+        category: 'action',
+        sentiment: feedback.action === 'accept' ? 'positive' : feedback.action === 'irrelevant' ? 'negative' : 'neutral',
+        comment: feedback.comment,
+        secondaryTypes: feedback.metadata?.secondaryTypes,
+      },
+      timing: feedback.metadata?.timing
+        ? {
+            recommendationGeneratedAt: feedback.metadata.timing.recommendationGeneratedAt ?? now,
+            recommendationShownAt: feedback.metadata.timing.recommendationShownAt ?? now,
+            feedbackGivenAt: now,
+            timeToFeedbackMs: feedback.metadata.timing.timeToFeedbackMs ?? 0,
+            timeVisibleMs: feedback.metadata.timing.timeVisibleMs ?? 0,
+          }
+        : undefined,
+      display: feedback.metadata?.display,
+      version: 1,
+    } as Omit<RecommendationFeedbackRecord, 'id' | 'createdAt' | 'updatedAt' | 'recordedAt'>;
+
+    const record = await feedbackService.recordFeedbackRecord(recordInput);
+
+    if (recommendation) {
+      const newStatus: Recommendation['status'] =
+        feedback.action === 'accept'
+          ? 'accepted'
+          : feedback.action === 'ignore'
+          ? 'ignored'
+          : 'irrelevant';
+
+      await recContainer.item(feedback.recommendationId, feedback.tenantId).replace({
+        ...recommendation,
+        status: newStatus,
+        updatedAt: new Date(),
       });
-
-      // Store feedback in database
-      const container = getContainer('recommendation_feedback');
-      await container.items.create(
-        {
-          id: uuidv4(),
-          tenantId: feedback.tenantId,
-          ...feedback,
-          timestamp: new Date(),
-          createdAt: new Date(),
-        },
-        { partitionKey: feedback.tenantId }
-      );
-
-      // Update recommendation status
-      const recContainer = getContainer('recommendation_recommendations');
-      const { resource: recommendation } = await recContainer
-        .item(feedback.recommendationId, feedback.tenantId)
-        .read();
-
-      if (recommendation) {
-        const newStatus: Recommendation['status'] =
-          feedback.action === 'accept'
-            ? 'accepted'
-            : feedback.action === 'ignore'
-            ? 'ignored'
-            : 'irrelevant';
-
-        await recContainer.item(feedback.recommendationId, feedback.tenantId).replace({
-          ...recommendation,
-          status: newStatus,
-          updatedAt: new Date(),
-        });
-      }
-
-      // Publish feedback event (critical for CAIS)
-      await publishRecommendationEvent('recommendation.feedback.received', feedback.tenantId, {
-        recommendationId: feedback.recommendationId,
-        action: feedback.action,
-        userId: feedback.userId,
-        timestamp: new Date().toISOString(),
-      });
-
-      log.info('Recommendation feedback recorded', {
-        recommendationId: feedback.recommendationId,
-        action: feedback.action,
-        service: 'recommendations',
-      });
-    } catch (error: any) {
-      log.error('Failed to record feedback', error, {
-        recommendationId: feedback.recommendationId,
-        tenantId: feedback.tenantId,
-        service: 'recommendations',
-      });
-      throw error;
     }
+
+    await publishRecommendationEvent('recommendation.feedback.received', feedback.tenantId, {
+      recommendationId: feedback.recommendationId,
+      action: feedback.action,
+      feedbackTypeId,
+      userId: feedback.userId,
+      tenantId: feedback.tenantId,
+      timestamp: record.recordedAt,
+      feedbackId: record.id,
+      comment: feedback.comment,
+      metadata: record.recommendation
+        ? {
+            recommendation: record.recommendation,
+            opportunity: record.opportunity,
+            feedback: record.feedback,
+            timing: record.timing,
+            display: record.display,
+          }
+        : undefined,
+    });
+
+    log.info('Recommendation feedback recorded', {
+      recommendationId: feedback.recommendationId,
+      action: feedback.action,
+      service: 'recommendations',
+    });
+
+    return record;
   }
 }

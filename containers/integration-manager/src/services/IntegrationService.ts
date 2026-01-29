@@ -4,29 +4,20 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { getContainer } from '@coder/shared/database';
-import { ServiceClient, EventPublisher } from '@coder/shared';
-import { BadRequestError, NotFoundError, ForbiddenError } from '@coder/shared/utils/errors';
+import { getContainer, EventPublisher, BadRequestError, NotFoundError } from '@coder/shared';
 import {
   Integration,
   CreateIntegrationInput,
   UpdateIntegrationInput,
   IntegrationStatus,
   ConflictResolutionMode,
-  SyncDirection,
 } from '../types/integration.types';
 
 export class IntegrationService {
   private containerName = 'integration_integrations';
-  private secretManagementClient: ServiceClient;
   private eventPublisher: EventPublisher | null = null;
 
-  constructor(secretManagementUrl: string, eventPublisher?: EventPublisher) {
-    this.secretManagementClient = new ServiceClient({
-      baseUrl: secretManagementUrl,
-      timeout: 10000,
-      retries: 2,
-    });
+  constructor(_secretManagementUrl: string, eventPublisher?: EventPublisher) {
     this.eventPublisher = eventPublisher || null;
   }
 
@@ -83,7 +74,7 @@ export class IntegrationService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(integration, {
         partitionKey: input.tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create integration');
@@ -111,7 +102,7 @@ export class IntegrationService {
       const { resource } = await container.item(integrationId, tenantId).read<Integration>();
 
       if (!resource) {
-        throw new NotFoundError(`Integration ${integrationId} not found`);
+        throw new NotFoundError('Integration', integrationId);
       }
 
       return resource;
@@ -120,7 +111,7 @@ export class IntegrationService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Integration ${integrationId} not found`);
+        throw new NotFoundError('Integration', integrationId);
       }
       throw error;
     }
@@ -169,7 +160,7 @@ export class IntegrationService {
       return resource as Integration;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Integration ${integrationId} not found`);
+        throw new NotFoundError('Integration', integrationId);
       }
       throw error;
     }
@@ -179,7 +170,7 @@ export class IntegrationService {
    * Delete integration
    */
   async delete(integrationId: string, tenantId: string): Promise<void> {
-    const existing = await this.getById(integrationId, tenantId);
+    await this.getById(integrationId, tenantId);
     
     // Publish integration.deleted event for cache invalidation (before deletion)
     if (this.eventPublisher) {
@@ -262,7 +253,7 @@ export class IntegrationService {
     message?: string;
     connectionStatus?: string;
   }> {
-    const integration = await this.getById(integrationId, tenantId);
+    await this.getById(integrationId, tenantId);
 
     // TODO: Implement actual connection test
     // This would involve:

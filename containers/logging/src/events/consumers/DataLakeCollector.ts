@@ -18,6 +18,7 @@ import { rabbitmqMessagesConsumedTotal } from '../../metrics';
 
 const RISK_EVALUATED = 'risk.evaluated';
 const ML_PREDICTION_COMPLETED = 'ml.prediction.completed';
+const RECOMMENDATION_FEEDBACK_RECEIVED = 'recommendation.feedback.received';
 
 /** Parquet row for risk_evaluations per §2.1 */
 function eventToRow(event: Record<string, unknown>, routingKey: string): Record<string, unknown> {
@@ -99,6 +100,8 @@ export class DataLakeCollector {
                 modelId: String(d.modelId ?? 'unknown'),
                 prediction: typeof d.prediction === 'number' ? d.prediction : undefined,
               });
+            } else if (key === RECOMMENDATION_FEEDBACK_RECEIVED) {
+              await this.writeFeedback(event, dl);
             }
             ch.ack(msg);
           } catch (e) {
@@ -150,6 +153,87 @@ export class DataLakeCollector {
       const block = c.getBlockBlobClient(blobPath);
       await block.uploadData(buf, { blobHTTPHeaders: { blobContentType: 'application/octet-stream' } });
       log.debug('DataLakeCollector wrote Parquet', { blobPath });
+    } finally {
+      try { unlinkSync(tmp); } catch (_) { /* ignore */ }
+    }
+  }
+
+  /**
+   * Write one row to /feedback/year=.../month=.../day=.../ (Plan W1, RECOMMENDATION_FEEDBACK_COMPLETE_REQUIREMENTS).
+   * Schema aligned with risk_evaluations: tenantId, opportunityId, camelCase, nested objects as JSON strings.
+   */
+  private async writeFeedback(
+    event: Record<string, unknown>,
+    dl: { connection_string: string; container: string; feedback_path_prefix?: string }
+  ): Promise<void> {
+    const d = (event.data as Record<string, unknown>) || event;
+    const ts = (event.timestamp || d.timestamp || new Date()) as string | Date;
+    const tsStr = typeof ts === 'string' ? ts : new Date(ts as Date).toISOString();
+    const row: Record<string, unknown> = {
+      tenantId: String(event.tenantId ?? d.tenantId ?? ''),
+      opportunityId: String(d.opportunityId ?? (event as Record<string, unknown>).opportunityId ?? ''),
+      recommendationId: String(d.recommendationId ?? ''),
+      feedbackId: String(d.feedbackId ?? ''),
+      userId: String(d.userId ?? ''),
+      action: String(d.action ?? ''),
+      feedbackTypeId: d.feedbackTypeId != null ? String(d.feedbackTypeId) : undefined,
+      comment: d.comment != null ? String(d.comment) : undefined,
+      timestamp: tsStr,
+    };
+    if (d.metadata != null && typeof d.metadata === 'object') {
+      row.metadataRecommendation = typeof (d.metadata as Record<string, unknown>).recommendation === 'object'
+        ? JSON.stringify((d.metadata as Record<string, unknown>).recommendation)
+        : undefined;
+      row.metadataOpportunity = typeof (d.metadata as Record<string, unknown>).opportunity === 'object'
+        ? JSON.stringify((d.metadata as Record<string, unknown>).opportunity)
+        : undefined;
+      row.metadataFeedback = typeof (d.metadata as Record<string, unknown>).feedback === 'object'
+        ? JSON.stringify((d.metadata as Record<string, unknown>).feedback)
+        : undefined;
+      row.metadataTiming = typeof (d.metadata as Record<string, unknown>).timing === 'object'
+        ? JSON.stringify((d.metadata as Record<string, unknown>).timing)
+        : undefined;
+      row.metadataDisplay = typeof (d.metadata as Record<string, unknown>).display === 'object'
+        ? JSON.stringify((d.metadata as Record<string, unknown>).display)
+        : undefined;
+    }
+
+    const date = new Date(tsStr);
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const prefix = (dl.feedback_path_prefix || '/feedback').replace(/^\/+/, '');
+    const blobPath = `${prefix}/year=${y}/month=${m}/day=${day}/${randomUUID()}.parquet`;
+
+    const schema = new parquet.ParquetSchema({
+      tenantId: { type: 'UTF8' },
+      opportunityId: { type: 'UTF8' },
+      recommendationId: { type: 'UTF8' },
+      feedbackId: { type: 'UTF8', optional: true },
+      userId: { type: 'UTF8' },
+      action: { type: 'UTF8' },
+      feedbackTypeId: { type: 'UTF8', optional: true },
+      comment: { type: 'UTF8', optional: true },
+      timestamp: { type: 'UTF8' },
+      metadataRecommendation: { type: 'UTF8', optional: true },
+      metadataOpportunity: { type: 'UTF8', optional: true },
+      metadataFeedback: { type: 'UTF8', optional: true },
+      metadataTiming: { type: 'UTF8', optional: true },
+      metadataDisplay: { type: 'UTF8', optional: true },
+    });
+
+    const tmp = join(tmpdir(), `parquet-feedback-${randomUUID()}.parquet`);
+    try {
+      const w = await parquet.ParquetWriter.openFile(schema, tmp);
+      await w.appendRow(row);
+      await w.close();
+      const buf = readFileSync(tmp);
+      const blob = BlobServiceClient.fromConnectionString(dl.connection_string);
+      const c = blob.getContainerClient(dl.container || 'risk');
+      await c.createIfNotExists();
+      const block = c.getBlockBlobClient(blobPath);
+      await block.uploadData(buf, { blobHTTPHeaders: { blobContentType: 'application/octet-stream' } });
+      log.debug('DataLakeCollector wrote feedback Parquet', { blobPath });
     } finally {
       try { unlinkSync(tmp); } catch (_) { /* ignore */ }
     }

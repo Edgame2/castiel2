@@ -12,6 +12,10 @@ servers:
 tags:
   - name: Risk Evaluation
     description: Risk evaluation operations
+  - name: Explainability
+    description: Explanation and feature importance (W5 Layer 4)
+  - name: Decision Engine
+    description: Decision rules and action execution (W5 Layer 6)
   - name: Competitive Intelligence
     description: Competitor tracking and competitive intel (Plan §10 Phase 1)
   - name: Risk Scoring
@@ -20,6 +24,12 @@ tags:
     description: Revenue at risk calculations
   - name: Health
     description: Health check endpoints
+  - name: Sales Methodology
+    description: Plan W8 tenant sales methodology (stages, requirements, MEDDIC)
+  - name: Reactivation
+    description: W9 Layer 6 reactivation evaluation and events
+  - name: Tenant ML Config
+    description: W10 tenant ML configuration (risk tolerance, decision/model preferences)
 paths:
   /risk/opportunities/{opportunityId}/latest-evaluation:
     get:
@@ -190,6 +200,402 @@ paths:
                         direction: { type: string, enum: [increases, decreases] }
         '503':
           description: ml-service URL not configured
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /explain/prediction:
+    post:
+      tags:
+        - Explainability
+      summary: Generate or retrieve explanation (W5 Layer 4)
+      description: Generate explanation from evaluationId or return cached/stored by predictionId. Body predictionId?, opportunityId?, modelId?, evaluationId? (at least evaluationId or predictionId).
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                predictionId: { type: string }
+                opportunityId: { type: string }
+                modelId: { type: string }
+                evaluationId: { type: string }
+      responses:
+        '200':
+          description: Explanation (id, tenantId, predictionId, opportunityId, modelId, baseValue, prediction, positiveFactors, negativeFactors, confidence, detailLevel, generatedAt, createdAt)
+        '404':
+          description: Evaluation or explanation not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /explain/feature-importance/{modelId}:
+    get:
+      tags:
+        - Explainability
+      summary: Global feature importance (W5 Layer 4)
+      description: Get global feature importance for a model. Tries tenant then global partition.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: GlobalFeatureImportance (id, tenantId, modelId, featureImportance[], sampleSize, calculatedAt)
+        '404':
+          description: Global feature importance not found for this model
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /explain/factors/{predictionId}:
+    get:
+      tags:
+        - Explainability
+      summary: Get factors for prediction (W5 Layer 4)
+      description: Get positive and negative factors for a prediction.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: predictionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: positiveFactors, negativeFactors
+        '404':
+          description: Explanation or factors not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /explain/batch:
+    post:
+      tags:
+        - Explainability
+      summary: Batch explain (W5 Layer 4)
+      description: Batch generate or retrieve explanations. Body predictionIds?, evaluationIds?.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                predictionIds: { type: array, items: { type: string } }
+                evaluationIds: { type: array, items: { type: string } }
+      responses:
+        '200':
+          description: explanations (array of Explanation)
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /decisions/evaluate:
+    post:
+      tags:
+        - Decision Engine
+      summary: Evaluate decision (W5 Layer 6)
+      description: Evaluate rules and create a decision for an opportunity. Body opportunityId (required), riskScore?, evaluationId?, context?.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+                riskScore: { type: number }
+                evaluationId: { type: string }
+                context: { type: object }
+      responses:
+        '200':
+          description: Decision (id, tenantId, opportunityId, decisionType, priority, rationale, source, ruleResults, actions, status, createdAt)
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /decisions/apply-catalog-rules:
+    post:
+      tags:
+        - Decision Engine
+      summary: Apply risk catalog–driven rules (W7 Gap 1 FR-6.5)
+      description: Maps detected risks to catalog, gets rules for catalog risks, evaluates and returns decision. Body opportunityId (required), detectedRisks?, riskScore?, industry?. Returns 204 when no catalog rules applied.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+                evaluationId: { type: string }
+                riskScore: { type: number }
+                industry: { type: string }
+                detectedRisks:
+                  type: array
+                  items:
+                    type: object
+                    required: [riskId, riskName, category]
+                    properties:
+                      riskId: { type: string }
+                      riskName: { type: string }
+                      category: { type: string }
+                      confidence: { type: number }
+      responses:
+        '200':
+          description: Decision (risk_catalog type)
+        '204':
+          description: No catalog rules applied
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /decisions/execute:
+    post:
+      tags:
+        - Decision Engine
+      summary: Execute decision actions (W5 Layer 6)
+      description: Execute actions for a decision. Body decisionId, opportunityId (required), actionIds? (idempotencyKeys to run; omit to run all).
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decisionId, opportunityId]
+              properties:
+                decisionId: { type: string }
+                opportunityId: { type: string }
+                actionIds: { type: array, items: { type: string } }
+      responses:
+        '200':
+          description: success, results (idempotencyKey, success, error?)
+        '404':
+          description: Decision not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /decisions/rules:
+    get:
+      tags:
+        - Decision Engine
+      summary: List rules (W5 Layer 6)
+      description: List enabled rules for tenant.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: rules (array of Rule)
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Decision Engine
+      summary: Create rule (W5 Layer 6)
+      description: Body name, enabled, priority, conditions, conditionLogic, actions, createdBy.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, enabled, priority, conditions, conditionLogic, actions, createdBy]
+      responses:
+        '200':
+          description: Rule created
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /decisions/rules/{ruleId}:
+    put:
+      tags:
+        - Decision Engine
+      summary: Update rule (W5 Layer 6)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Rule updated
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /decisions/rules/{ruleId}/test:
+    post:
+      tags:
+        - Decision Engine
+      summary: Test rule (W5 Layer 6)
+      description: Body riskScore?, opportunityId (required).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                riskScore: { type: number }
+                opportunityId: { type: string }
+      responses:
+        '200':
+          description: matched (boolean), actions (array)
+        '404':
+          description: Rule not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /sales-methodology:
+    get:
+      tags:
+        - Sales Methodology
+      summary: Get tenant sales methodology (W8)
+      description: Returns sales methodology for tenant (stages, requirements, exit criteria, MEDDIC). 404 if not configured.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: SalesMethodology document (tenantId, methodologyType, stages, requiredFields, risks)
+        '404':
+          description: Sales methodology not configured for tenant
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags:
+        - Sales Methodology
+      summary: Create or update tenant sales methodology (W8)
+      description: Upsert sales methodology. Body methodologyType, stages (required), requiredFields?, risks?. Tenant from X-Tenant-ID.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [methodologyType, stages]
+              properties:
+                methodologyType: { type: string, enum: [MEDDIC, MEDDPICC, Challenger, Sandler, SPIN, Custom] }
+                stages: { type: array, items: { type: object } }
+                requiredFields: { type: array, items: { type: object } }
+                risks: { type: array, items: { type: object } }
+      responses:
+        '200':
+          description: SalesMethodology document
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /decisions/methodology:
+    post:
+      tags:
+        - Decision Engine
+      summary: Make methodology-based decisions (W8 Layer 6, FR-6.6)
+      description: Fetches methodology features from ml-service, builds actions for stage requirements, duration anomaly, methodology fields, MEDDIC. Returns decision or 204 when no findings.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityId]
+              properties:
+                opportunityId: { type: string }
+      responses:
+        '200':
+          description: Decision (decisionType methodology, source methodology)
+        '204':
+          description: No methodology decisions (no features or no findings)
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /tenant-ml-config:
+    get:
+      tags:
+        - Tenant ML Config
+      summary: Get tenant ML configuration (W10 Gap 4)
+      description: Returns tenant ML config (riskTolerance, decisionPreferences, modelPreferences, customFeatures). 404 if not configured.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: TenantMLConfiguration document
+        '404':
+          description: Tenant ML config not configured
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags:
+        - Tenant ML Config
+      summary: Create or update tenant ML configuration (W10 Gap 4)
+      description: Upsert tenant ML config. Body riskTolerance, decisionPreferences, modelPreferences (required), customFeatures?. Tenant from X-Tenant-ID.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [riskTolerance, decisionPreferences, modelPreferences]
+              properties:
+                riskTolerance:
+                  type: object
+                  required: [overallTolerance, autoEscalationThreshold]
+                  properties:
+                    overallTolerance: { type: string, enum: [conservative, balanced, aggressive] }
+                    categoryTolerances: { type: object }
+                    autoEscalationThreshold: { type: number }
+                decisionPreferences:
+                  type: object
+                  properties:
+                    autoMarkHot: { type: boolean }
+                    autoCreateTasks: { type: boolean }
+                    requireApprovalForActions: { type: boolean }
+                modelPreferences:
+                  type: object
+                  properties:
+                    preferIndustryModels: { type: boolean }
+                    abTestingEnabled: { type: boolean }
+                    minConfidenceThreshold: { type: number }
+                customFeatures: { type: array, items: { type: object } }
+      responses:
+        '200':
+          description: TenantMLConfiguration document
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /reactivation/evaluate:
+    post:
+      tags:
+        - Reactivation
+      summary: Evaluate opportunities for reactivation (W9 Layer 6, FR-6.7)
+      description: Calls ml-service for dormant features and prediction per opportunity; optionally llm-service for strategy. Publishes reactivation.opportunity.identified and reactivation.strategy.generated.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [opportunityIds]
+              properties:
+                opportunityIds: { type: array, items: { type: string } }
+                minProbability: { type: number }
+                maxOpportunities: { type: number }
+                includeStrategy: { type: boolean }
+      responses:
+        '200':
+          description: Array of { opportunityId, dormantFeatures, reactivationPrediction, reactivationStrategy? }
         '500':
           $ref: '#/components/responses/InternalError'
   /opportunities/{opportunityId}/win-probability/trend:

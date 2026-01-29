@@ -4,7 +4,7 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
+import { authenticateRequest, tenantEnforcementMiddleware, NotFoundError } from '@coder/shared';
 import { ConfigurationService } from '../services/ConfigurationService';
 import { MigrationService } from '../services/MigrationService';
 import { MigrationStepService } from '../services/MigrationStepService';
@@ -17,6 +17,11 @@ import {
   ConfigurationScope,
   ConfigurationValueType,
 } from '../types/configuration.types';
+import {
+  DEFAULT_PERFORMANCE_CONFIG,
+  normalizePerformanceConfig,
+  PerformanceTargetsConfig,
+} from '../types/system-config.types';
 import {
   CreateMigrationInput,
   UpdateMigrationInput,
@@ -31,6 +36,118 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   const migrationService = new MigrationService();
   const stepService = new MigrationStepService(migrationService);
   const executorService = new MigrationExecutorService(migrationService, stepService);
+
+  // ===== CONFIGURATION SETTING ROUTES =====
+
+  // ===== SYSTEM CONFIGURATION (Super Admin §8.1) =====
+
+  const SYSTEM_PERFORMANCE_KEY = 'system.performance';
+
+  /**
+   * Get system performance configuration
+   * GET /api/v1/system/performance
+   */
+  app.get(
+    '/api/v1/system/performance',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get system performance targets and alerts (Super Admin §8.1)',
+        tags: ['System'],
+        response: {
+          200: {
+            type: 'object',
+            description: 'Performance configuration',
+            properties: {
+              latencyTargets: { type: 'object' },
+              throughputTargets: { type: 'object' },
+              alerts: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      try {
+        const setting = await configurationService.getByKey(
+          tenantId,
+          SYSTEM_PERFORMANCE_KEY,
+          ConfigurationScope.GLOBAL
+        );
+        const config = normalizePerformanceConfig(setting.value);
+        reply.send(config);
+      } catch (err: any) {
+        if (err.name === 'NotFoundError' || err.code === 404) {
+          reply.send(DEFAULT_PERFORMANCE_CONFIG);
+          return;
+        }
+        throw err;
+      }
+    }
+  );
+
+  /**
+   * Update system performance configuration
+   * PUT /api/v1/system/performance
+   */
+  app.put<{ Body: Partial<PerformanceTargetsConfig> }>(
+    '/api/v1/system/performance',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Update system performance targets and alerts (Super Admin §8.1)',
+        tags: ['System'],
+        body: {
+          type: 'object',
+          properties: {
+            latencyTargets: { type: 'object' },
+            throughputTargets: { type: 'object' },
+            alerts: { type: 'object' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            description: 'Updated performance configuration',
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const userId = request.user!.id;
+      const merged = normalizePerformanceConfig(request.body);
+      try {
+        const existing = await configurationService.getByKey(
+          tenantId,
+          SYSTEM_PERFORMANCE_KEY,
+          ConfigurationScope.GLOBAL
+        );
+        const updated = await configurationService.update(
+          existing.id,
+          tenantId,
+          userId,
+          { value: merged }
+        );
+        reply.send(normalizePerformanceConfig(updated.value));
+      } catch (err) {
+        if (err instanceof NotFoundError) {
+          const created = await configurationService.create({
+            tenantId,
+            userId,
+            key: SYSTEM_PERFORMANCE_KEY,
+            value: merged,
+            scope: ConfigurationScope.GLOBAL,
+            category: 'system',
+          });
+          reply.send(normalizePerformanceConfig(created.value));
+          return;
+        }
+        throw err;
+      }
+    }
+  );
 
   // ===== CONFIGURATION SETTING ROUTES =====
 

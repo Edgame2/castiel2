@@ -7,7 +7,30 @@
 
 import { getDatabaseClient } from '@coder/shared';
 import { slugify, isValidSlug } from '../utils/stringUtils';
-import { log } from '../utils/logger';
+
+/** Prisma-like DB client shape used by this service (shared returns Cosmos Database) */
+type OrganizationDb = {
+  organization: {
+    findUnique: (args: unknown) => Promise<unknown>;
+    create: (args: unknown) => Promise<unknown>;
+    update: (args: unknown) => Promise<unknown>;
+  };
+  user: {
+    findUnique: (args: unknown) => Promise<unknown>;
+    findMany: (args: unknown) => Promise<unknown[]>;
+  };
+  role: { findFirst: (args: unknown) => Promise<unknown> };
+  organizationMembership: {
+    findFirst: (args: unknown) => Promise<unknown>;
+    findMany: (args: unknown) => Promise<unknown[]>;
+    create: (args: unknown) => Promise<unknown>;
+    count: (args: unknown) => Promise<number>;
+  };
+};
+
+function getDb(): OrganizationDb {
+  return getDatabaseClient() as unknown as OrganizationDb;
+}
 
 /**
  * Create a new organization
@@ -25,7 +48,7 @@ export async function createOrganization(
   slug?: string,
   description?: string
 ) {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Validate name
   if (!name || name.trim().length === 0) {
@@ -45,26 +68,26 @@ export async function createOrganization(
   }
   
   // Check slug uniqueness
-  const existing = await db.organization.findUnique({
+  const existing = (await db.organization.findUnique({
     where: { slug: finalSlug },
-  });
+  })) as { id: string } | null;
   
   if (existing) {
     throw new Error(`Organization slug "${finalSlug}" already exists. Please choose a different name.`);
   }
   
   // Verify user exists
-  const user = await db.user.findUnique({
+  const user = (await db.user.findUnique({
     where: { id: userId },
     select: { id: true },
-  });
+  })) as { id: string } | null;
   
   if (!user) {
     throw new Error('User not found');
   }
   
   // Create organization
-  const organization = await db.organization.create({
+  const organization = (await db.organization.create({
     data: {
       name: name.trim(),
       slug: finalSlug,
@@ -73,24 +96,22 @@ export async function createOrganization(
       isActive: true,
       memberLimit: 500, // Default limit
     },
-  });
+  })) as { id: string; name: string; slug: string };
   
   // TODO: Create Account for organization (requires accountService)
   // This will be handled via API call to account service or event-driven approach
   
   // Seed system roles for this organization
-  // TODO: Import seedService or call via API
-  // For now, we'll create basic roles manually
-  const { seedOrganizationRoles } = await import('./seedService');
+  const { seedOrganizationRoles } = await import('./seedService.js');
   await seedOrganizationRoles(organization.id);
   
   // Get Super Admin role (should exist after seeding)
-  const superAdminRole = await db.role.findFirst({
+  const superAdminRole = (await db.role.findFirst({
     where: {
       organizationId: organization.id,
       isSuperAdmin: true,
     },
-  });
+  })) as { id: string } | null;
   
   if (!superAdminRole) {
     throw new Error('Failed to create Super Admin role for organization');
@@ -130,36 +151,36 @@ export async function updateOrganization(
     settings?: Record<string, any>;
   }
 ) {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Get organization
-  const organization = await db.organization.findUnique({
+  const organization = (await db.organization.findUnique({
     where: { id: organizationId },
-  });
+  })) as { id: string; ownerUserId: string; slug: string } | null;
   
   if (!organization) {
     throw new Error('Organization not found');
   }
   
   // Check if user is owner or has permission
-  const membership = await db.organizationMembership.findFirst({
+  const membership = (await db.organizationMembership.findFirst({
     where: {
       userId,
       organizationId,
       status: 'active',
     },
     include: { role: true },
-  });
+  })) as { role?: { isSuperAdmin?: boolean } } | null;
   
   const isOwner = organization.ownerUserId === userId;
-  const isSuperAdmin = membership?.role.isSuperAdmin || false;
+  const isSuperAdmin = membership?.role?.isSuperAdmin || false;
   
   if (!isOwner && !isSuperAdmin) {
     throw new Error('Permission denied. Only organization owner or Super Admin can update organization.');
   }
   
   // Prepare update data
-  const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
   
   if (updates.name !== undefined) {
     if (!updates.name || updates.name.trim().length === 0) {
@@ -178,9 +199,9 @@ export async function updateOrganization(
       }
       
       // Check slug uniqueness
-      const existing = await db.organization.findUnique({
+      const existing = (await db.organization.findUnique({
         where: { slug: updates.slug },
-      });
+      })) as { id: string } | null;
       
       if (existing) {
         throw new Error(`Slug "${updates.slug}" is already taken`);
@@ -237,9 +258,9 @@ export async function getOrganization(
   organizationId: string,
   userId?: string
 ) {
-  const db = getDatabaseClient();
+  const db = getDb();
   
-  const organization = await db.organization.findUnique({
+  const organization = (await db.organization.findUnique({
     where: { id: organizationId },
     include: {
       creator: {
@@ -250,7 +271,7 @@ export async function getOrganization(
         },
       },
     },
-  });
+  })) as Record<string, unknown> | null;
   
   if (!organization) {
     return null;
@@ -258,7 +279,7 @@ export async function getOrganization(
   
   // If userId provided, check membership
   if (userId) {
-    const membership = await db.organizationMembership.findFirst({
+    const membership = (await db.organizationMembership.findFirst({
       where: {
         userId,
         organizationId,
@@ -273,7 +294,7 @@ export async function getOrganization(
           },
         },
       },
-    });
+    })) as Record<string, unknown> | null;
     
     return {
       ...organization,
@@ -295,9 +316,9 @@ export async function listUserOrganizations(
   userId: string,
   includeInactive: boolean = false
 ) {
-  const db = getDatabaseClient();
+  const db = getDb();
   
-  const memberships = await db.organizationMembership.findMany({
+  const memberships = (await db.organizationMembership.findMany({
     where: {
       userId,
       status: 'active',
@@ -325,10 +346,15 @@ export async function listUserOrganizations(
     orderBy: {
       joinedAt: 'desc',
     },
-  });
+  })) as Array<{
+    organization: Record<string, unknown> & { isActive?: boolean; deletedAt?: Date | null };
+    role: Record<string, unknown>;
+    status: string;
+    joinedAt: Date;
+  }>;
   
   // Filter by active status if needed
-  let organizations = memberships.map(m => ({
+  let organizations = memberships.map((m: { organization: Record<string, unknown>; role: Record<string, unknown>; status: string; joinedAt: Date }) => ({
     ...m.organization,
     userRole: m.role,
     membershipStatus: m.status,
@@ -336,7 +362,7 @@ export async function listUserOrganizations(
   }));
   
   if (!includeInactive) {
-    organizations = organizations.filter(org => org.isActive && !org.deletedAt);
+    organizations = organizations.filter((org: Record<string, unknown>) => (org.isActive as boolean) && !(org.deletedAt as Date | null | undefined));
   }
   
   return organizations;
@@ -354,29 +380,29 @@ export async function deactivateOrganization(
   organizationId: string,
   userId: string
 ) {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Get organization
-  const organization = await db.organization.findUnique({
+  const organization = (await db.organization.findUnique({
     where: { id: organizationId },
-  });
+  })) as { id: string; ownerUserId: string } | null;
   
   if (!organization) {
     throw new Error('Organization not found');
   }
   
   // Check if user is owner or Super Admin
-  const membership = await db.organizationMembership.findFirst({
+  const membership = (await db.organizationMembership.findFirst({
     where: {
       userId,
       organizationId,
       status: 'active',
     },
     include: { role: true },
-  });
+  })) as { role?: { isSuperAdmin?: boolean } } | null;
   
   const isOwner = organization.ownerUserId === userId;
-  const isSuperAdmin = membership?.role.isSuperAdmin || false;
+  const isSuperAdmin = membership?.role?.isSuperAdmin || false;
   
   if (!isOwner && !isSuperAdmin) {
     throw new Error('Permission denied. Only organization owner or Super Admin can deactivate organization.');
@@ -393,13 +419,54 @@ export async function deactivateOrganization(
 }
 
 /**
+ * List organization members (for Super Admin / org admins).
+ * Caller must be a member of the organization (checked via getOrganization).
+ *
+ * @param organizationId - Organization ID
+ * @param requestingUserId - User ID of the requester (must be member)
+ * @returns Promise resolving to array of member summaries
+ */
+export async function getOrganizationMembers(
+  organizationId: string,
+  requestingUserId: string
+): Promise<Array<{ userId: string; email: string | null; name: string | null; roleName: string; status: string; joinedAt: Date }>> {
+  const org = await getOrganization(organizationId, requestingUserId);
+  if (!org || !('userMembership' in org) || !org.userMembership) {
+    throw new Error('You are not a member of this organization');
+  }
+  const db = getDb();
+  const memberships = (await db.organizationMembership.findMany({
+    where: {
+      organizationId,
+      status: 'active',
+    },
+    include: { role: { select: { id: true, name: true } } },
+    orderBy: { joinedAt: 'asc' },
+  })) as Array<{ userId: string; role?: { name?: string }; status: string; joinedAt: Date }>;
+  const userIds = [...new Set(memberships.map((m: { userId: string }) => m.userId))];
+  const users = (await db.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, email: true, name: true },
+  })) as Array<{ id: string; email: string | null; name: string | null }>;
+  const userMap = new Map(users.map((u: { id: string; email: string | null; name: string | null }) => [u.id, u]));
+  return memberships.map((m: { userId: string; role?: { name?: string }; status: string; joinedAt: Date }) => ({
+    userId: m.userId,
+    email: userMap.get(m.userId)?.email ?? null,
+    name: userMap.get(m.userId)?.name ?? null,
+    roleName: m.role?.name ?? '',
+    status: m.status,
+    joinedAt: m.joinedAt,
+  }));
+}
+
+/**
  * Get organization member count
  * 
  * @param organizationId - Organization ID
  * @returns Promise resolving to number of active members
  */
 export async function getOrganizationMemberCount(organizationId: string): Promise<number> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   return await db.organizationMembership.count({
     where: {
@@ -416,12 +483,12 @@ export async function getOrganizationMemberCount(organizationId: string): Promis
  * @returns Promise resolving to true if at or over limit, false otherwise
  */
 export async function isOrganizationAtMemberLimit(organizationId: string): Promise<boolean> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
-  const organization = await db.organization.findUnique({
+  const organization = (await db.organization.findUnique({
     where: { id: organizationId },
     select: { memberLimit: true },
-  });
+  })) as { memberLimit: number } | null;
   
   if (!organization) {
     return true; // Treat non-existent as at limit

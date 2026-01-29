@@ -4,11 +4,10 @@
  */
 
 import { parseExpression } from 'cron-parser';
-import { EventConsumer, EventPublisher } from '@coder/shared';
+import { EventConsumer, EventPublisher, getContainer } from '@coder/shared';
 import { loadConfig } from '../../config';
 import { log } from '../../utils/logger';
 import { IntegrationService } from '../../services/IntegrationService';
-import { getContainer } from '@coder/shared/database';
 import { Integration } from '../../types/integration.types';
 
 let consumer: EventConsumer | null = null;
@@ -157,7 +156,7 @@ async function checkAndScheduleDueIntegrations(now: Date, publisher: EventPublis
       };
       
       const { resources } = await container.items
-        .query<Integration>(querySpec, { enableCrossPartitionQuery: true })
+        .query<Integration>(querySpec, { enableCrossPartitionQuery: true } as Parameters<typeof container.items.query>[1])
         .fetchAll();
       
       if (!resources || resources.length === 0) {
@@ -331,7 +330,7 @@ async function checkAndRefreshExpiringTokens(
       };
       
       const { resources } = await container.items
-        .query<any>(querySpec, { enableCrossPartitionQuery: true })
+        .query<any>(querySpec, { enableCrossPartitionQuery: true } as Parameters<typeof container.items.query>[1])
         .fetchAll();
 
       if (!resources || resources.length === 0) {

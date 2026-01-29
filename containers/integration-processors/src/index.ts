@@ -173,16 +173,17 @@ async function main(): Promise<void> {
   }
 
   // 6. Initialize database
+  const containers: Record<string, string> = {
+    suggested_links: config.cosmos_db.containers.suggested_links,
+  };
+  if (config.cosmos_db.containers.entity_linking_settings) containers.entity_linking_settings = config.cosmos_db.containers.entity_linking_settings;
+  if (config.cosmos_db.containers.linking_rules) containers.linking_rules = config.cosmos_db.containers.linking_rules;
+  if (config.cosmos_db.containers.processing_settings) containers.processing_settings = config.cosmos_db.containers.processing_settings;
   initializeDatabase({
     endpoint: config.cosmos_db.endpoint,
     key: config.cosmos_db.key,
     database: config.cosmos_db.database_id,
-    containers: {
-      suggested_links: config.cosmos_db.containers.suggested_links,
-      entity_linking_settings: config.cosmos_db.containers.entity_linking_settings,
-      linking_rules: config.cosmos_db.containers.linking_rules,
-      processing_settings: config.cosmos_db.containers.processing_settings,
-    },
+    containers,
   });
 
   try {

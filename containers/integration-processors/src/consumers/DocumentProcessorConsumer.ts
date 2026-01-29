@@ -4,7 +4,7 @@
  * @module integration-processors/consumers
  */
 
-import { EventConsumer, ServiceClient, EventPublisher, EntityLinkingService } from '@coder/shared';
+import { EventConsumer } from '@coder/shared';
 import { loadConfig } from '../config';
 import { log } from '../utils/logger';
 import { BaseConsumer, ConsumerDependencies } from './index';
@@ -44,7 +44,7 @@ export class DocumentProcessorConsumer implements BaseConsumer {
   private config: ReturnType<typeof loadConfig>;
   private blobStorageService: BlobStorageService | null = null;
   private documentDownloadService: DocumentDownloadService;
-  private entityLinkingService: EntityLinkingService | null = null;
+  private textExtractionService: TextExtractionService;
 
   constructor(private deps: ConsumerDependencies) {
     this.config = loadConfig();
@@ -58,11 +58,6 @@ export class DocumentProcessorConsumer implements BaseConsumer {
         connectionString: this.config.azure.blob_storage.connection_string,
         containerName,
       });
-    }
-
-    // Initialize entity linking service if AI service is available
-    if (deps.aiService) {
-      this.entityLinkingService = new EntityLinkingService(deps.shardManager, deps.aiService);
     }
   }
 
@@ -98,7 +93,7 @@ export class DocumentProcessorConsumer implements BaseConsumer {
       await this.consumer.start();
 
       log.info('Document processor consumer started', {
-        queue: this.config.rabbitmq.queue || 'integration_documents',
+        queue: this.config.rabbitmq.queues?.integration_documents ?? 'integration_documents',
         service: 'integration-processors',
       });
     } catch (error: any) {
@@ -167,7 +162,6 @@ export class DocumentProcessorConsumer implements BaseConsumer {
       });
 
       // Step 3: Extract text from document
-      let extractedText: string | undefined;
       let extractedTextLength: number | undefined;
       let wordCount: number | undefined;
       let pageCount: number | undefined;
@@ -178,7 +172,6 @@ export class DocumentProcessorConsumer implements BaseConsumer {
         const documentType = this.detectDocumentType(contentType);
         const extractionResult = await this.textExtractionService.extractText(buffer, contentType, documentType);
 
-        extractedText = extractionResult.text;
         extractedTextLength = extractionResult.text.length;
         wordCount = extractionResult.wordCount;
         pageCount = extractionResult.pageCount;

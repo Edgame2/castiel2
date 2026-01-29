@@ -5,12 +5,12 @@
 
 import { CosmosDBClient, CosmosDBConfig } from './CosmosDBClient';
 import { ConnectionPool, ConnectionPoolConfig } from './ConnectionPool';
-import { getContainer, ensureContainer } from './containerManager';
+import { ensureContainer } from './containerManager';
 import { Database, Container } from '@azure/cosmos';
 
 // Singleton instances
 let dbClient: CosmosDBClient | null = null;
-let connectionPool: ConnectionPool | null = null;
+let connectionPoolInstance: ConnectionPool | null = null;
 let containerMappings: Record<string, string> = {}; // Store container mappings
 let dbConfig: InitializeDatabaseConfig | null = null; // Store database config
 
@@ -99,7 +99,7 @@ export async function connectDatabase(config?: CosmosDBConfig): Promise<void> {
   }
 
   // Initialize connection pool
-  connectionPool = ConnectionPool.getInstance({
+  connectionPoolInstance = ConnectionPool.getInstance({
     maxConnections: parseInt(process.env.COSMOS_DB_MAX_CONNECTIONS || '50', 10),
     perServiceLimit: parseInt(process.env.COSMOS_DB_PER_SERVICE_LIMIT || '10', 10),
   });
@@ -113,9 +113,16 @@ export async function disconnectDatabase(): Promise<void> {
     await dbClient.disconnect();
     dbClient = null;
   }
-  connectionPool = null;
+  connectionPoolInstance = null;
   containerMappings = {};
   dbConfig = null;
+}
+
+/**
+ * Get connection pool instance (if connected)
+ */
+export function getConnectionPool(): ConnectionPool | null {
+  return connectionPoolInstance;
 }
 
 /**
@@ -159,6 +166,6 @@ export async function healthCheck(): Promise<boolean> {
   return dbClient.healthCheck();
 }
 
-// Re-export types
-export type { CosmosDBConfig, ConnectionPoolConfig, InitializeDatabaseConfig };
+// Re-export types (omit InitializeDatabaseConfig from type re-export to avoid duplicate with interface above)
+export type { CosmosDBConfig, ConnectionPoolConfig };
 export { CosmosDBClient, ConnectionPool, ensureContainer };

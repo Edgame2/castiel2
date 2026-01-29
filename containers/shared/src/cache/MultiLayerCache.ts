@@ -5,7 +5,6 @@
  */
 
 import { RedisClient } from './RedisClient';
-import { Redis } from 'ioredis';
 
 /**
  * Cache entry with TTL

@@ -244,3 +244,36 @@ export interface CreatePredictionInput {
   metadata?: Record<string, any>;
 }
 
+/**
+ * Drift metrics (Plan W6 Layer 8 – Learning Loop).
+ * Persisted per model/tenant for evaluation/drift API.
+ */
+export interface DriftMetrics {
+  id: string;
+  tenantId: string;
+  modelId: string;
+  metric: string; // e.g. 'psi', 'feature_drift'
+  value: number;
+  baselineVersion?: number;
+  currentVersion?: number;
+  segment?: string;
+  recordedAt: string;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Improvement opportunity (Plan W6 Layer 8 – ContinuousLearningService).
+ * Suggestions for model improvement (retrain, add features, threshold, etc.).
+ */
+export interface ImprovementOpportunity {
+  id: string;
+  tenantId: string;
+  modelId: string;
+  type: string; // e.g. 'retrain', 'add_feature', 'threshold', 'drift_recovery'
+  priority: 'low' | 'medium' | 'high';
+  reason: string;
+  suggestedAction?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  acknowledgedAt?: string;
+}

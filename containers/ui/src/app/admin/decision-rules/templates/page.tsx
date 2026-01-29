@@ -1,0 +1,165 @@
+/**
+ * Super Admin: Decision Rules — Templates (§6.2)
+ * GET /api/v1/decisions/templates via gateway (risk-analytics). Pre-configured rule templates.
+ */
+
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+
+const FALLBACK_TEMPLATES: { name: string; description: string }[] = [
+  { name: 'Mark high-value, low-risk as hot', description: 'Flag opportunities with high value and low risk score for priority follow-up.' },
+  { name: 'Escalate stalled opportunities', description: 'Trigger escalation when an opportunity has been in the same stage beyond a threshold.' },
+  { name: 'Notify on competitor detected', description: 'Send a notification when competitor intelligence is detected for an opportunity.' },
+  { name: 'Create task when stage changes', description: 'Create a follow-up task whenever the opportunity stage is updated.' },
+  { name: 'Alert on risk spike', description: 'Alert when risk score increases above a configured threshold.' },
+];
+
+interface TemplateItem {
+  name: string;
+  description: string;
+}
+
+export default function DecisionRulesTemplatesPage() {
+  const [items, setItems] = useState<TemplateItem[]>(FALLBACK_TEMPLATES);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchTemplates = useCallback(async () => {
+    if (!apiBaseUrl) {
+      setError('NEXT_PUBLIC_API_BASE_URL is not set');
+      setItems(FALLBACK_TEMPLATES);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/v1/decisions/templates`, { credentials: 'include' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
+      }
+      const json = await res.json();
+      setItems(Array.isArray(json?.items) && json.items.length > 0 ? json.items : FALLBACK_TEMPLATES);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setItems(FALLBACK_TEMPLATES);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
+
+  useEffect(() => {
+    document.title = 'Rule Templates | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
+
+  return (
+    <div className="p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Link href="/dashboard" className="text-sm font-medium hover:underline">
+          ← Dashboard
+        </Link>
+        <span className="text-sm text-gray-500">/</span>
+        <Link href="/admin" className="text-sm font-medium hover:underline">
+          Admin
+        </Link>
+        <span className="text-sm text-gray-500">/</span>
+        <Link href="/admin/decision-rules" className="text-sm font-medium hover:underline">
+          Decision Rules
+        </Link>
+        <span className="text-sm text-gray-500">/</span>
+        <span className="text-sm font-medium">Templates</span>
+      </div>
+      <h1 className="text-2xl font-bold mb-2">Templates</h1>
+      <p className="text-muted-foreground mb-4">
+        Pre-configured rule templates (§6.2). Create a rule from a template using the Rules page.
+      </p>
+      <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
+        <Link
+          href="/admin/decision-rules"
+          className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+        >
+          Overview
+        </Link>
+        <Link
+          href="/admin/decision-rules/rules"
+          className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+        >
+          Rules
+        </Link>
+        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 border-b-2 border-blue-600 pb-2 -mb-0.5">
+          Templates
+        </span>
+        <Link
+          href="/admin/decision-rules/conflicts"
+          className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+        >
+          Conflicts
+        </Link>
+      </nav>
+
+      {!apiBaseUrl && (
+        <div className="rounded-lg border p-4 bg-amber-50 dark:bg-amber-900/20 mb-4">
+          <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL. Showing default templates.</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-lg border p-4 bg-white dark:bg-gray-900 mb-4">
+          <p className="text-sm text-red-600 dark:text-red-400">Error: {error}. Showing default templates.</p>
+          <button
+            type="button"
+            onClick={fetchTemplates}
+            className="mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      <div className="mb-4 flex flex-wrap gap-4 items-center">
+        <Link
+          href="/admin/decision-rules/rules"
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+        >
+          Create rule (Rules page)
+        </Link>
+      </div>
+
+      {loading ? (
+        <div className="rounded-lg border p-6 bg-white dark:bg-gray-900">
+          <p className="text-sm text-gray-500">Loading…</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {items.map((t) => (
+            <div
+              key={t.name}
+              className="rounded-lg border bg-white dark:bg-gray-900 p-4 flex flex-col"
+            >
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t.name}</h3>
+              <p className="text-sm text-gray-500 mt-1">{t.description}</p>
+              <Link
+                href="/admin/decision-rules/rules"
+                className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Create rule from this template →
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

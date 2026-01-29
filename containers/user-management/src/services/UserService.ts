@@ -12,6 +12,58 @@
 
 import { getDatabaseClient } from '@coder/shared';
 
+/** Prisma-like DB client shape used by this service (shared returns Cosmos Database) */
+type UserDb = {
+  user: {
+    findUnique: (args: unknown) => Promise<unknown>;
+    update: (args: unknown) => Promise<unknown>;
+    delete: (args: unknown) => Promise<unknown>;
+  };
+  session: {
+    findMany: (args: unknown) => Promise<unknown[]>;
+    findUnique: (args: unknown) => Promise<unknown>;
+    update: (args: unknown) => Promise<unknown>;
+    updateMany: (args: unknown) => Promise<unknown>;
+  };
+  organizationMembership: {
+    findMany: (args: unknown) => Promise<unknown[]>;
+  };
+};
+
+function getDb(): UserDb {
+  return getDatabaseClient() as unknown as UserDb;
+}
+
+/** Result shape from user findUnique with profile select */
+type UserProfileRow = UserProfile;
+/** Result shape from user findUnique with id only */
+type UserIdRow = { id: string };
+/** Result shape from user findUnique for deactivate/reactivate */
+type UserActiveRow = { id: string; isActive: boolean };
+/** Result shape from user findUnique for delete */
+type UserDeletedRow = { id: string; deletedAt: Date | null };
+/** Result shape from session findMany/findUnique */
+type SessionRow = {
+  id: string;
+  organizationId: string | null;
+  deviceName: string | null;
+  deviceType: string | null;
+  deviceFingerprint: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  country: string | null;
+  city: string | null;
+  isRememberMe: boolean;
+  expiresAt: Date;
+  lastActivityAt: Date | null;
+  createdAt: Date;
+  revokedAt: Date | null;
+};
+/** Result shape from session findUnique with userId */
+type SessionUserIdRow = { userId: string };
+/** Result shape from organizationMembership findMany with role */
+type MembershipWithRole = { role: { isSuperAdmin: boolean } };
+
 // TODO: These should be accessed via API calls to auth-service
 // For now, we'll need to import from a shared location or make API calls
 // import { revokeSession, revokeAllUserSessions } from '../services/sessionService';
@@ -65,8 +117,8 @@ export interface UserSession {
  * @throws Error if user not found
  */
 export async function getUserProfile(userId: string): Promise<UserProfile> {
-  const db = getDatabaseClient();
-  const user = await db.user.findUnique({
+  const db = getDb();
+  const user = (await db.user.findUnique({
     where: { id: userId },
     select: {
       id: true,
@@ -88,7 +140,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile> {
       updatedAt: true,
       authProviders: true,
     },
-  });
+  })) as UserProfileRow | null;
   
   if (!user) {
     throw new Error('User not found');
@@ -141,18 +193,18 @@ export async function updateUserProfile(
   }
 ): Promise<UserProfile> {
   // Get current user
-  const db = getDatabaseClient();
-  const user = await db.user.findUnique({
+  const db = getDb();
+  const user = (await db.user.findUnique({
     where: { id: userId },
     select: { id: true },
-  });
+  })) as UserIdRow | null;
   
   if (!user) {
     throw new Error('User not found');
   }
   
   // Prepare update data
-  const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
   
   if (updates.name !== undefined) {
     if (updates.name && updates.name.length > 200) {
@@ -232,7 +284,7 @@ export async function updateUserProfile(
   }
   
   // Update user
-  const updated = await db.user.update({
+  const updated = (await db.user.update({
     where: { id: userId },
     data: updateData,
     select: {
@@ -255,7 +307,7 @@ export async function updateUserProfile(
       updatedAt: true,
       authProviders: true,
     },
-  });
+  })) as UserProfileRow;
   
   const authProviders = (updated.authProviders as string[]) || [];
   
@@ -288,9 +340,12 @@ export async function updateUserProfile(
  * @param currentSessionId - Current session ID to mark
  * @returns Promise resolving to array of user sessions
  */
-export async function listUserSessions(userId: string, currentSessionId?: string): Promise<any[]> {
-  const db = getDatabaseClient();
-  const sessions = await db.session.findMany({
+/** Session list item (session row + isCurrent) */
+export type SessionListItem = SessionRow & { isCurrent: boolean };
+
+export async function listUserSessions(userId: string, currentSessionId?: string): Promise<SessionListItem[]> {
+  const db = getDb();
+  const sessions = (await db.session.findMany({
     where: {
       userId,
       revokedAt: null, // Only return active sessions
@@ -314,9 +369,9 @@ export async function listUserSessions(userId: string, currentSessionId?: string
     orderBy: {
       createdAt: 'desc',
     },
-  });
+  })) as SessionRow[];
   
-  return sessions.map(s => ({
+  return sessions.map((s: SessionRow) => ({
     id: s.id,
     organizationId: s.organizationId,
     deviceName: s.deviceName,
@@ -347,12 +402,12 @@ export async function revokeUserSession(
   userId: string,
   sessionId: string
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDb();
   // Verify session belongs to user
-  const session = await db.session.findUnique({
+  const session = (await db.session.findUnique({
     where: { id: sessionId },
     select: { userId: true },
-  });
+  })) as SessionUserIdRow | null;
   
   if (!session) {
     throw new Error('Session not found');
@@ -380,7 +435,7 @@ export async function revokeAllOtherSessions(
   userId: string,
   currentSessionId: string
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDb();
   // Revoke all active sessions except current
   await db.session.updateMany({
     where: {
@@ -405,20 +460,20 @@ export async function deactivateUser(
   userId: string,
   deactivatedBy: string
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDb();
   // Check if deactivator is Super Admin in at least one organization
   // For now, allow self-deactivation or Super Admin deactivation
   if (userId !== deactivatedBy) {
     // Check if deactivator is Super Admin in any organization
-    const memberships = await db.organizationMembership.findMany({
+    const memberships = (await db.organizationMembership.findMany({
       where: {
         userId: deactivatedBy,
         status: 'active',
       },
       include: { role: true },
-    });
+    })) as MembershipWithRole[];
     
-    const isSuperAdmin = memberships.some(m => m.role.isSuperAdmin);
+    const isSuperAdmin = memberships.some((m: MembershipWithRole) => m.role.isSuperAdmin);
     
     if (!isSuperAdmin) {
       throw new Error('Permission denied. Only Super Admin can deactivate other users.');
@@ -426,9 +481,9 @@ export async function deactivateUser(
   }
   
   // Get user
-  const user = await db.user.findUnique({
+  const user = (await db.user.findUnique({
     where: { id: userId },
-  });
+  })) as UserActiveRow | null;
   
   if (!user) {
     throw new Error('User not found');
@@ -469,26 +524,26 @@ export async function reactivateUser(
   userId: string,
   reactivatedBy: string
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDb();
   // Check if reactivator is Super Admin
-  const memberships = await db.organizationMembership.findMany({
+  const memberships = (await db.organizationMembership.findMany({
     where: {
       userId: reactivatedBy,
       status: 'active',
     },
     include: { role: true },
-  });
+  })) as MembershipWithRole[];
   
-  const isSuperAdmin = memberships.some(m => m.role.isSuperAdmin);
+  const isSuperAdmin = memberships.some((m: MembershipWithRole) => m.role.isSuperAdmin);
   
   if (!isSuperAdmin) {
     throw new Error('Permission denied. Only Super Admin can reactivate users.');
   }
   
   // Get user
-  const user = await db.user.findUnique({
+  const user = (await db.user.findUnique({
     where: { id: userId },
-  });
+  })) as UserActiveRow | null;
   
   if (!user) {
     throw new Error('User not found');
@@ -520,27 +575,27 @@ export async function deleteUser(
   userId: string,
   deletedBy: string
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDb();
   // Check if deleter is Super Admin
-  const memberships = await db.organizationMembership.findMany({
+  const memberships = (await db.organizationMembership.findMany({
     where: {
       userId: deletedBy,
       status: 'active',
     },
     include: { role: true },
-  });
+  })) as MembershipWithRole[];
   
-  const isSuperAdmin = memberships.some(m => m.role.isSuperAdmin);
+  const isSuperAdmin = memberships.some((m: MembershipWithRole) => m.role.isSuperAdmin);
   
   if (!isSuperAdmin) {
     throw new Error('Permission denied. Only Super Admin can delete users.');
   }
   
   // Get user
-  const user = await db.user.findUnique({
+  const user = (await db.user.findUnique({
     where: { id: userId },
     select: { id: true, deletedAt: true },
-  });
+  })) as UserDeletedRow | null;
   
   if (!user) {
     throw new Error('User not found');

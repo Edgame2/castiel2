@@ -6,7 +6,27 @@
  */
 
 import { getDatabaseClient } from '@coder/shared';
-import { log } from '../utils/logger';
+
+/** Prisma-like DB client shape used by this service (shared returns Cosmos Database) */
+type RoleDb = {
+  role: {
+    findMany: (args: unknown) => Promise<unknown[]>;
+    findUnique: (args: unknown) => Promise<unknown>;
+    create: (args: unknown) => Promise<unknown>;
+    update: (args: unknown) => Promise<unknown>;
+  };
+  organizationMembership: { findFirst: (args: unknown) => Promise<unknown> };
+  organization: { findUnique: (args: unknown) => Promise<unknown> };
+  permission: { findMany: (args: unknown) => Promise<unknown[]> };
+  rolePermission: {
+    createMany: (args: unknown) => Promise<unknown>;
+    deleteMany: (args: unknown) => Promise<unknown>;
+  };
+};
+
+function getDb(): RoleDb {
+  return getDatabaseClient() as unknown as RoleDb;
+}
 
 /**
  * Maximum permissions per role
@@ -49,9 +69,9 @@ export async function listRoles(
   organizationId: string,
   includeSystemRoles: boolean = true
 ): Promise<RoleDetails[]> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
-  const where: any = {
+  const where: Record<string, unknown> = {
     organizationId,
     archivedAt: null,
   };
@@ -60,7 +80,7 @@ export async function listRoles(
     where.isSystemRole = false;
   }
   
-  const roles = await db.role.findMany({
+  const roles = (await db.role.findMany({
     where,
     include: {
       permissions: {
@@ -88,9 +108,23 @@ export async function listRoles(
     orderBy: {
       name: 'asc',
     },
-  });
+  })) as Array<{
+    id: string;
+    organizationId: string | null;
+    name: string;
+    description: string | null;
+    isSystemRole: boolean;
+    isCustomRole: boolean;
+    isSuperAdmin: boolean;
+    createdByUserId: string | null;
+    archivedAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+    permissions: Array<{ permission: { id: string; code: string; displayName: string; description: string | null } }>;
+    memberships: Array<{ id: string }>;
+  }>;
   
-  return roles.map(role => ({
+  return roles.map((role) => ({
     id: role.id,
     organizationId: role.organizationId,
     name: role.name,
@@ -102,7 +136,7 @@ export async function listRoles(
     archivedAt: role.archivedAt,
     createdAt: role.createdAt,
     updatedAt: role.updatedAt,
-    permissions: role.permissions.map(rp => ({
+    permissions: role.permissions.map((rp) => ({
       id: rp.permission.id,
       code: rp.permission.code,
       displayName: rp.permission.displayName,
@@ -119,9 +153,9 @@ export async function getRole(
   organizationId: string,
   roleId: string
 ): Promise<RoleDetails | null> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
-  const role = await db.role.findUnique({
+  const role = (await db.role.findUnique({
     where: { id: roleId },
     include: {
       permissions: {
@@ -146,7 +180,21 @@ export async function getRole(
         },
       },
     },
-  });
+  })) as {
+    id: string;
+    organizationId: string | null;
+    name: string;
+    description: string | null;
+    isSystemRole: boolean;
+    isCustomRole: boolean;
+    isSuperAdmin: boolean;
+    createdByUserId: string | null;
+    archivedAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+    permissions: Array<{ permission: { id: string; code: string; displayName: string; description: string | null } }>;
+    memberships: Array<{ id: string }>;
+  } | null;
   
   if (!role) {
     return null;
@@ -169,7 +217,7 @@ export async function getRole(
     archivedAt: role.archivedAt,
     createdAt: role.createdAt,
     updatedAt: role.updatedAt,
-    permissions: role.permissions.map(rp => ({
+    permissions: role.permissions.map((rp) => ({
       id: rp.permission.id,
       code: rp.permission.code,
       displayName: rp.permission.displayName,
@@ -189,7 +237,7 @@ export async function createCustomRole(
   permissionIds: string[],
   createdBy: string
 ): Promise<RoleDetails> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Validate name
   if (!name || name.trim().length === 0) {
@@ -211,36 +259,36 @@ export async function createCustomRole(
   }
   
   // Check if user has permission to create roles
-  const membership = await db.organizationMembership.findFirst({
+  const membership = (await db.organizationMembership.findFirst({
     where: {
       userId: createdBy,
       organizationId,
       status: 'active',
     },
     include: { role: true },
-  });
+  })) as { role?: { isSuperAdmin?: boolean } } | null;
   
-  const organization = await db.organization.findUnique({
+  const organization = (await db.organization.findUnique({
     where: { id: organizationId },
     select: { ownerUserId: true },
-  });
+  })) as { ownerUserId?: string } | null;
   
   const isOwner = organization?.ownerUserId === createdBy;
-  const isSuperAdmin = membership?.role.isSuperAdmin || false;
+  const isSuperAdmin = membership?.role?.isSuperAdmin || false;
   
   if (!isOwner && !isSuperAdmin) {
     throw new Error('Permission denied. Only organization owner or Super Admin can create roles.');
   }
   
   // Check if role name already exists in organization
-  const existing = await db.role.findUnique({
+  const existing = (await db.role.findUnique({
     where: {
       organizationId_name: {
         organizationId,
         name: name.trim(),
       },
     },
-  });
+  })) as { id: string } | null;
   
   if (existing) {
     throw new Error(`Role with name "${name}" already exists in this organization`);
@@ -248,12 +296,12 @@ export async function createCustomRole(
   
   // Validate all permissions exist and belong to system permissions
   if (permissionIds.length > 0) {
-    const permissions = await db.permission.findMany({
+    const permissions = (await db.permission.findMany({
       where: {
         id: { in: permissionIds },
         isSystemPermission: true,
       },
-    });
+    })) as unknown[];
     
     if (permissions.length !== permissionIds.length) {
       throw new Error('One or more permissions are invalid or not system permissions');
@@ -261,7 +309,7 @@ export async function createCustomRole(
   }
   
   // Create role
-  const role = await db.role.create({
+  const role = (await db.role.create({
     data: {
       organizationId,
       name: name.trim(),
@@ -271,7 +319,7 @@ export async function createCustomRole(
       isSuperAdmin: false,
       createdByUserId: createdBy,
     },
-  });
+  })) as { id: string };
   
   // Add permissions
   if (permissionIds.length > 0) {
@@ -308,12 +356,12 @@ export async function updateCustomRole(
   },
   updatedBy: string
 ): Promise<RoleDetails> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Get role
-  const role = await db.role.findUnique({
+  const role = (await db.role.findUnique({
     where: { id: roleId },
-  });
+  })) as { id: string; organizationId: string | null; name: string; isSystemRole: boolean } | null;
   
   if (!role) {
     throw new Error('Role not found');
@@ -330,29 +378,29 @@ export async function updateCustomRole(
   }
   
   // Check permission
-  const membership = await db.organizationMembership.findFirst({
+  const membership = (await db.organizationMembership.findFirst({
     where: {
       userId: updatedBy,
       organizationId,
       status: 'active',
     },
     include: { role: true },
-  });
+  })) as { role?: { isSuperAdmin?: boolean } } | null;
   
-  const organization = await db.organization.findUnique({
+  const organization = (await db.organization.findUnique({
     where: { id: organizationId },
     select: { ownerUserId: true },
-  });
+  })) as { ownerUserId?: string } | null;
   
   const isOwner = organization?.ownerUserId === updatedBy;
-  const isSuperAdmin = membership?.role.isSuperAdmin || false;
+  const isSuperAdmin = membership?.role?.isSuperAdmin || false;
   
   if (!isOwner && !isSuperAdmin) {
     throw new Error('Permission denied. Only organization owner or Super Admin can update roles.');
   }
   
   // Prepare update data
-  const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
   
   if (updates.name !== undefined) {
     if (!updates.name || updates.name.trim().length === 0) {
@@ -370,14 +418,14 @@ export async function updateCustomRole(
     
     // Check if name already exists (excluding current role)
     if (updates.name.trim() !== role.name) {
-      const existing = await db.role.findUnique({
+      const existing = (await db.role.findUnique({
         where: {
           organizationId_name: {
             organizationId,
             name: updates.name.trim(),
           },
         },
-      });
+      })) as { id: string } | null;
       
       if (existing) {
         throw new Error(`Role with name "${updates.name}" already exists in this organization`);
@@ -405,12 +453,12 @@ export async function updateCustomRole(
     
     // Validate permissions
     if (updates.permissionIds.length > 0) {
-      const permissions = await db.permission.findMany({
+      const permissions = (await db.permission.findMany({
         where: {
           id: { in: updates.permissionIds },
           isSystemPermission: true,
         },
-      });
+      })) as unknown[];
       
       if (permissions.length !== updates.permissionIds.length) {
         throw new Error('One or more permissions are invalid or not system permissions');
@@ -453,10 +501,10 @@ export async function deleteCustomRole(
   roleId: string,
   deletedBy: string
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Get role
-  const role = await db.role.findUnique({
+  const role = (await db.role.findUnique({
     where: { id: roleId },
     include: {
       memberships: {
@@ -469,7 +517,12 @@ export async function deleteCustomRole(
         },
       },
     },
-  });
+  })) as {
+    id: string;
+    organizationId: string | null;
+    isSystemRole: boolean;
+    memberships: Array<{ id: string }>;
+  } | null;
   
   if (!role) {
     throw new Error('Role not found');
@@ -491,22 +544,22 @@ export async function deleteCustomRole(
   }
   
   // Check permission
-  const membership = await db.organizationMembership.findFirst({
+  const membership = (await db.organizationMembership.findFirst({
     where: {
       userId: deletedBy,
       organizationId,
       status: 'active',
     },
     include: { role: true },
-  });
+  })) as { role?: { isSuperAdmin?: boolean } } | null;
   
-  const organization = await db.organization.findUnique({
+  const organization = (await db.organization.findUnique({
     where: { id: organizationId },
     select: { ownerUserId: true },
-  });
+  })) as { ownerUserId?: string } | null;
   
   const isOwner = organization?.ownerUserId === deletedBy;
-  const isSuperAdmin = membership?.role.isSuperAdmin || false;
+  const isSuperAdmin = membership?.role?.isSuperAdmin || false;
   
   if (!isOwner && !isSuperAdmin) {
     throw new Error('Permission denied. Only organization owner or Super Admin can delete roles.');
@@ -519,6 +572,30 @@ export async function deleteCustomRole(
       archivedAt: new Date(),
     },
   });
+}
+
+/**
+ * List all system permissions (for role create/edit UI).
+ * Caller must have access to the organization (enforced by route).
+ *
+ * @param _organizationId - Organization ID (for auth context; permissions are global)
+ * @returns Promise resolving to array of permission summaries
+ */
+export async function listPermissions(
+  _organizationId: string
+): Promise<Array<{ id: string; code: string; displayName: string; description: string | null }>> {
+  const db = getDb();
+  const permissions = (await db.permission.findMany({
+    where: { isSystemPermission: true },
+    select: { id: true, code: true, displayName: true, description: true },
+    orderBy: { code: 'asc' },
+  })) as Array<{ id: string; code: string; displayName: string; description: string | null }>;
+  return permissions.map((p: { id: string; code: string; displayName: string; description: string | null }) => ({
+    id: p.id,
+    code: p.code,
+    displayName: p.displayName,
+    description: p.description,
+  }));
 }
 
 /**

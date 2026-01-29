@@ -36,7 +36,7 @@ export class DocumentDownloadService {
         maxContentLength: maxSize,
         maxBodyLength: maxSize,
         headers: options.headers || {},
-        validateStatus: (status) => status >= 200 && status < 300,
+        validateStatus: (status: number) => status >= 200 && status < 300,
       });
 
       const buffer = Buffer.from(response.data);

@@ -19,6 +19,7 @@
   "dependencies": {
     "@castiel/shared": "file:../shared",
     "@coder/shared": "file:../shared",
+    "axios": "^1.7.9",
     "fastify": "^5.1.0",
     "@fastify/swagger": "^9.1.0",
     "@fastify/swagger-ui": "^5.0.0",
@@ -34,7 +35,7 @@
     "zod-to-json-schema": "^3.23.5",
     "node-cron": "^3.0.3",
     "@azure/storage-blob": "^12.22.0",
-    "@azure/cognitiveservices-computervision": "^9.2.0",
+    "@azure/cognitiveservices-computervision": "^8.2.0",
     "microsoft-cognitiveservices-speech-sdk": "^1.40.0",
     "pdf-parse": "^1.1.1",
     "mammoth": "^1.7.0",

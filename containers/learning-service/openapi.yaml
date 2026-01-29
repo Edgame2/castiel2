@@ -1,0 +1,119 @@
+openapi: 3.0.3
+info:
+  title: Learning Service API
+  description: Feedback loop – record feedback, outcomes, summary, trends (Plan W6 Layer 7).
+  version: 1.0.0
+servers:
+  - url: /api/v1
+    description: API Version 1
+tags:
+  - name: Feedback
+    description: User feedback and outcomes
+  - name: Health
+    description: Health check endpoints
+paths:
+  /health:
+    get:
+      summary: Health check
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+  /ready:
+    get:
+      summary: Readiness (DB)
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is ready or not_ready
+  /feedback:
+    post:
+      summary: Record user feedback
+      tags: [Feedback]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [modelId, feedbackType]
+              properties:
+                modelId: { type: string }
+                predictionId: { type: string }
+                opportunityId: { type: string }
+                feedbackType: { type: string }
+                value: {}
+                comment: { type: string }
+                metadata: { type: object }
+      responses:
+        '201':
+          description: Feedback recorded
+        '400':
+          description: Validation error
+  /outcomes:
+    post:
+      summary: Record outcome
+      tags: [Feedback]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [modelId, outcomeType, success]
+              properties:
+                modelId: { type: string }
+                predictionId: { type: string }
+                opportunityId: { type: string }
+                outcomeType: { type: string }
+                success: { type: boolean }
+                value: {}
+                metadata: { type: object }
+      responses:
+        '201':
+          description: Outcome recorded
+        '400':
+          description: Validation error
+  /feedback/summary/{modelId}:
+    get:
+      summary: Feedback summary by model
+      tags: [Feedback]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Summary (totalFeedback, byType, satisfactionScore, linkedToPrediction)
+  /feedback/trends/{modelId}:
+    get:
+      summary: Feedback trends by model
+      tags: [Feedback]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: alertThreshold
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Trends (series, optional alert, message)

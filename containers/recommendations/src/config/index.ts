@@ -21,6 +21,8 @@ export interface RecommendationsConfig {
     containers: {
       recommendations: string;
       feedback: string;
+      feedback_aggregation?: string;
+      recommendation_config?: string;
       metrics: string;
       remediation_workflows?: string;
       mitigation_actions?: string;

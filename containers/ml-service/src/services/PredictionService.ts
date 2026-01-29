@@ -5,6 +5,8 @@
  */
 
 import { ServiceClient, generateServiceToken } from '@coder/shared';
+import { getRedisClient } from '@coder/shared/cache';
+import { randomUUID } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { getContainer } from '@coder/shared/database';
 import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
@@ -18,7 +20,14 @@ import {
   ModelStatus,
 } from '../types/ml.types';
 import { loadConfig } from '../config';
-import { publishMlPredictionCompleted } from '../events/publishers/MLServiceEventPublisher';
+import {
+  publishMlPredictionCompleted,
+  publishMlPredictionRequested,
+  publishMlPredictionFailed,
+} from '../events/publishers/MLServiceEventPublisher';
+
+/** Model types that support prediction cache (W4 Layer 3). */
+type CachedPredictionModelType = 'win_probability' | 'risk_scoring' | 'anomaly';
 
 export class PredictionService {
   private containerName = 'ml_predictions';
@@ -28,6 +37,7 @@ export class PredictionService {
   private adaptiveLearningClient: ServiceClient;
   private app: FastifyInstance | null = null;
   private config: ReturnType<typeof loadConfig>;
+  private predictionCacheTtlSeconds: number = 0;
 
   constructor(
     modelService: MLModelService,
@@ -40,14 +50,66 @@ export class PredictionService {
     this.azureMlClient = azureMlClient;
     this.app = app || null;
     this.config = loadConfig();
-    
-    // Initialize adaptive-learning service client
+    if (this.config.cache?.redis?.enabled && this.config.cache.redis.url) {
+      this.predictionCacheTtlSeconds = this.config.cache.redis.ttl_seconds ?? 3600;
+    }
     this.adaptiveLearningClient = new ServiceClient({
       baseURL: this.config.services.adaptive_learning?.url || '',
       timeout: 30000,
       retries: 3,
       circuitBreaker: { enabled: true },
     });
+  }
+
+  /** Cache key for prediction (W4 Layer 3: prediction cache; invalidation on opportunity.updated). */
+  private predictionCacheKey(tenantId: string, opportunityId: string, modelType: CachedPredictionModelType): string {
+    return `prediction:${tenantId}:${opportunityId}:${modelType}`;
+  }
+
+  /** Get cached prediction if Redis configured. */
+  private async getCachedPrediction<T>(tenantId: string, opportunityId: string, modelType: CachedPredictionModelType): Promise<T | null> {
+    if (this.predictionCacheTtlSeconds <= 0) return null;
+    try {
+      const client = getRedisClient({ url: this.config.cache!.redis!.url });
+      const redis = await client.getClient();
+      const raw = await redis.get(this.predictionCacheKey(tenantId, opportunityId, modelType));
+      if (!raw) return null;
+      return JSON.parse(raw) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Set cached prediction if Redis configured. */
+  private async setCachedPrediction(tenantId: string, opportunityId: string, modelType: CachedPredictionModelType, payload: Record<string, unknown>): Promise<void> {
+    if (this.predictionCacheTtlSeconds <= 0) return;
+    try {
+      const client = getRedisClient({ url: this.config.cache!.redis!.url });
+      const redis = await client.getClient();
+      await redis.setex(
+        this.predictionCacheKey(tenantId, opportunityId, modelType),
+        this.predictionCacheTtlSeconds,
+        JSON.stringify(payload)
+      );
+    } catch {
+      // non-fatal
+    }
+  }
+
+  /**
+   * Invalidate prediction cache for an opportunity (W4 Layer 3; call on opportunity.updated).
+   */
+  async invalidatePredictionCache(tenantId: string, opportunityId: string): Promise<void> {
+    if (this.predictionCacheTtlSeconds <= 0) return;
+    try {
+      const client = getRedisClient({ url: this.config.cache!.redis!.url });
+      const redis = await client.getClient();
+      const pattern = `prediction:${tenantId}:${opportunityId}:*`;
+      const keys = await redis.keys(pattern);
+      if (keys.length > 0) await redis.del(...keys);
+    } catch {
+      // non-fatal
+    }
   }
 
   /**
@@ -210,26 +272,32 @@ export class PredictionService {
   /**
    * Win-probability prediction (BI_SALES_RISK Plan §5.4, §5.7).
    * buildVector('win-probability') → AzureMLClient('win-probability-model'); on failure use heuristic (vector.probability or 0.5).
+   * W10: when tenant ML config has minConfidenceThreshold, response includes confidenceMet.
    * When feature_flags.persist_win_probability, upserts to ml_win_probability_predictions for trend API (Gap 9).
    */
-  async predictWinProbability(tenantId: string, opportunityId: string): Promise<{ probability: number }> {
+  async predictWinProbability(tenantId: string, opportunityId: string): Promise<{ probability: number; confidenceMet?: boolean }> {
+    const cached = await this.getCachedPrediction<{ probability: number }>(tenantId, opportunityId, 'win_probability');
+    if (cached != null) return this.enrichWinProbabilityWithTenantConfig(tenantId, cached);
+    const requestId = randomUUID();
+    publishMlPredictionRequested(tenantId, { requestId, opportunityId, modelId: 'win-probability' });
     const t0 = Date.now();
     let modelId = 'heuristic';
     let vec = await this.featureService.buildVectorForOpportunity(tenantId, opportunityId, 'win-probability');
     if (vec == null) {
       const out = { probability: 0.5 };
-      publishMlPredictionCompleted(tenantId, { modelId, opportunityId, inferenceMs: Date.now() - t0 });
+      publishMlPredictionCompleted(tenantId, { modelId, opportunityId, inferenceMs: Date.now() - t0, requestId });
       this.tryPersistWinProbability(tenantId, opportunityId, out.probability, modelId);
-      return out;
+      return this.enrichWinProbabilityWithTenantConfig(tenantId, out);
     }
     if (this.azureMlClient.hasEndpoint('win-probability-model')) {
       try {
         const p = await this.azureMlClient.predict('win-probability-model', vec);
         modelId = 'win-probability-model';
         const out = { probability: Math.min(1, Math.max(0, p)) };
-        publishMlPredictionCompleted(tenantId, { modelId, opportunityId, inferenceMs: Date.now() - t0 });
+        publishMlPredictionCompleted(tenantId, { modelId, opportunityId, inferenceMs: Date.now() - t0, requestId });
         this.tryPersistWinProbability(tenantId, opportunityId, out.probability, modelId);
-        return out;
+        await this.setCachedPrediction(tenantId, opportunityId, 'win_probability', out);
+        return this.enrichWinProbabilityWithTenantConfig(tenantId, out);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         console.warn('Azure ML win-probability-model failed, using heuristic', { opportunityId, error: msg, service: 'ml-service' });
@@ -237,9 +305,21 @@ export class PredictionService {
     }
     const p = (vec.probability != null && !isNaN(vec.probability)) ? vec.probability : 0.5;
     const out = { probability: Math.min(1, Math.max(0, p)) };
-    publishMlPredictionCompleted(tenantId, { modelId, opportunityId, inferenceMs: Date.now() - t0 });
+    publishMlPredictionCompleted(tenantId, { modelId, opportunityId, inferenceMs: Date.now() - t0, requestId });
     this.tryPersistWinProbability(tenantId, opportunityId, out.probability, modelId);
-    return out;
+    await this.setCachedPrediction(tenantId, opportunityId, 'win_probability', out);
+    return this.enrichWinProbabilityWithTenantConfig(tenantId, out);
+  }
+
+  /** W10: add confidenceMet from tenant ML config minConfidenceThreshold when present. */
+  private async enrichWinProbabilityWithTenantConfig(
+    tenantId: string,
+    out: { probability: number }
+  ): Promise<{ probability: number; confidenceMet?: boolean }> {
+    const config = await this.featureService.getTenantMLConfig(tenantId);
+    const threshold = config?.modelPreferences?.minConfidenceThreshold;
+    if (typeof threshold !== 'number') return out;
+    return { ...out, confidenceMet: out.probability >= threshold };
   }
 
   /**
@@ -340,22 +420,33 @@ export class PredictionService {
    * Returns { isAnomaly, anomalyScore }. No heuristic in ml-service; fallback is statistical in risk-analytics.
    */
   async predictAnomaly(tenantId: string, opportunityId: string): Promise<{ isAnomaly: number; anomalyScore: number }> {
+    const cached = await this.getCachedPrediction<{ isAnomaly: number; anomalyScore: number }>(tenantId, opportunityId, 'anomaly');
+    if (cached != null) return cached;
+    const requestId = randomUUID();
+    publishMlPredictionRequested(tenantId, { requestId, opportunityId, modelId: 'anomaly' });
     const t0 = Date.now();
-    const vec = await this.featureService.buildVectorForOpportunity(tenantId, opportunityId, 'anomaly');
-    if (vec == null) {
-      throw new NotFoundError('Opportunity not found');
+    try {
+      const vec = await this.featureService.buildVectorForOpportunity(tenantId, opportunityId, 'anomaly');
+      if (vec == null) {
+        throw new NotFoundError('Opportunity not found');
+      }
+      if (!this.azureMlClient.hasEndpoint('anomaly')) {
+        throw new Error('Anomaly endpoint not configured');
+      }
+      const numFeat: Record<string, number> = {};
+      for (const [k, v] of Object.entries(vec)) {
+        const n = typeof v === 'number' ? v : Number(v);
+        if (!isNaN(n)) numFeat[k] = n;
+      }
+      const out = await this.azureMlClient.predictAnomaly('anomaly', numFeat);
+      publishMlPredictionCompleted(tenantId, { modelId: 'anomaly', opportunityId, inferenceMs: Date.now() - t0, requestId });
+      await this.setCachedPrediction(tenantId, opportunityId, 'anomaly', { isAnomaly: out.isAnomaly, anomalyScore: out.anomalyScore });
+      return { isAnomaly: out.isAnomaly, anomalyScore: out.anomalyScore };
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      publishMlPredictionFailed(tenantId, { requestId, opportunityId, modelId: 'anomaly', error: msg, durationMs: Date.now() - t0 });
+      throw e;
     }
-    if (!this.azureMlClient.hasEndpoint('anomaly')) {
-      throw new Error('Anomaly endpoint not configured');
-    }
-    const numFeat: Record<string, number> = {};
-    for (const [k, v] of Object.entries(vec)) {
-      const n = typeof v === 'number' ? v : Number(v);
-      if (!isNaN(n)) numFeat[k] = n;
-    }
-    const out = await this.azureMlClient.predictAnomaly('anomaly', numFeat);
-    publishMlPredictionCompleted(tenantId, { modelId: 'anomaly', opportunityId, inferenceMs: Date.now() - t0 });
-    return { isAnomaly: out.isAnomaly, anomalyScore: out.anomalyScore };
   }
 
   /**
@@ -367,6 +458,12 @@ export class PredictionService {
     tenantId: string,
     body: { opportunityId: string; modelId?: string; features?: Record<string, unknown> }
   ): Promise<{ riskScore: number; confidence?: number; modelId?: string }> {
+    if (!body.features || Object.keys(body.features).length === 0) {
+      const cached = await this.getCachedPrediction<{ riskScore: number; confidence?: number; modelId?: string }>(tenantId, body.opportunityId, 'risk_scoring');
+      if (cached != null) return cached;
+    }
+    const requestId = randomUUID();
+    publishMlPredictionRequested(tenantId, { requestId, opportunityId: body.opportunityId, modelId: 'risk-scoring' });
     const t0 = Date.now();
     let features = body.features && Object.keys(body.features).length > 0 ? body.features : undefined;
     if (features == null) {
@@ -393,8 +490,10 @@ export class PredictionService {
       if (Object.keys(numFeat).length > 0) {
         try {
           const riskScore = await this.azureMlClient.predict('risk-scoring-model', numFeat);
-          publishMlPredictionCompleted(tenantId, { modelId: 'risk-scoring-model', opportunityId: body.opportunityId, inferenceMs: Date.now() - t0 });
-          return { riskScore, confidence: 0.8, modelId: 'risk-scoring-model' };
+          const out = { riskScore, confidence: 0.8, modelId: 'risk-scoring-model' };
+          publishMlPredictionCompleted(tenantId, { modelId: 'risk-scoring-model', opportunityId: body.opportunityId, inferenceMs: Date.now() - t0, requestId });
+          await this.setCachedPrediction(tenantId, body.opportunityId, 'risk_scoring', out);
+          return out;
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e);
           console.warn('Azure ML risk-scoring-model failed, falling through', { opportunityId: body.opportunityId, error: msg, service: 'ml-service' });
@@ -414,8 +513,10 @@ export class PredictionService {
           const v = (pred.output as any)?.riskScore ?? (pred.output as any)?.value;
           const riskScore =
             typeof v === 'number' ? Math.min(1, Math.max(0, v <= 1 ? v : v / 100)) : 0.5;
-          publishMlPredictionCompleted(tenantId, { modelId: body.modelId!, opportunityId: body.opportunityId, inferenceMs: Date.now() - t0 });
-          return { riskScore, confidence: pred.confidence, modelId: body.modelId };
+          const out = { riskScore, confidence: pred.confidence, modelId: body.modelId };
+          publishMlPredictionCompleted(tenantId, { modelId: body.modelId!, opportunityId: body.opportunityId, inferenceMs: Date.now() - t0, requestId });
+          await this.setCachedPrediction(tenantId, body.opportunityId, 'risk_scoring', out);
+          return out;
         }
       } catch {
         /* fallthrough to heuristic */
@@ -426,8 +527,10 @@ export class PredictionService {
     const p = (feat.probability as number) ?? 0.5;
     const days = (feat.daysSinceUpdated as number) ?? 0;
     let s = 0.3 + (1 - p) * 0.4 + Math.min(0.3, (days / 90) * 0.3);
-    publishMlPredictionCompleted(tenantId, { modelId: body.modelId || 'heuristic', opportunityId: body.opportunityId, inferenceMs: Date.now() - t0 });
-    return { riskScore: Math.min(1, Math.max(0, s)), confidence: 0.5, modelId: body.modelId };
+    const out = { riskScore: Math.min(1, Math.max(0, s)), confidence: 0.5, modelId: body.modelId };
+    publishMlPredictionCompleted(tenantId, { modelId: body.modelId || 'heuristic', opportunityId: body.opportunityId, inferenceMs: Date.now() - t0, requestId });
+    await this.setCachedPrediction(tenantId, body.opportunityId, 'risk_scoring', out);
+    return out;
   }
 
   /**

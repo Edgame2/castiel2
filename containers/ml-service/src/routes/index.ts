@@ -3,14 +3,21 @@
  * ML Service routes
  */
 
+import { randomUUID } from 'crypto';
 import { FastifyInstance } from 'fastify';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { MLModelService } from '../services/MLModelService';
 import { FeatureService, FeaturePurpose } from '../services/FeatureService';
+import { FeatureStoreService } from '../services/FeatureStoreService';
+import { FeatureVersionManager } from '../services/FeatureVersionManager';
+import { FeatureQualityMonitor } from '../services/FeatureQualityMonitor';
 import { TrainingService } from '../services/TrainingService';
 import { PredictionService } from '../services/PredictionService';
 import { MultiModalService } from '../services/MultiModalService';
 import { ModelMonitoringService } from '../services/ModelMonitoringService';
+import { EvaluationService } from '../services/EvaluationService';
+import { ContinuousLearningService } from '../services/ContinuousLearningService';
+import { ReactivationPredictionService } from '../services/ReactivationPredictionService';
 import { selectRiskScoringModel, selectWinProbabilityModel } from '../services/ModelSelectionService';
 import { AzureMLClient } from '../clients/AzureMLClient';
 import {
@@ -29,16 +36,24 @@ import {
   ProcessingStatus,
 } from '../types/multimodal.types';
 import { trace } from '@opentelemetry/api';
+import { getContainer } from '@coder/shared/database';
 import { mlPredictionsTotal, mlPredictionDurationSeconds } from '../metrics';
+import { publishMlModelDeployed, publishMlPredictionFailed } from '../events/publishers/MLServiceEventPublisher';
 
 export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
   const modelService = new MLModelService();
   const featureService = new FeatureService(app);
+  const featureStoreService = new FeatureStoreService(featureService);
+  const featureVersionManager = new FeatureVersionManager();
+  const featureQualityMonitor = new FeatureQualityMonitor();
   const trainingService = new TrainingService(modelService);
   const azureMlClient = new AzureMLClient(config.azure_ml || {});
   const predictionService = new PredictionService(modelService, featureService, azureMlClient, app);
   const multiModalService = new MultiModalService();
   const modelMonitoringService = new ModelMonitoringService();
+  const evaluationService = new EvaluationService();
+  const continuousLearningService = new ContinuousLearningService();
+  const reactivationPredictionService = new ReactivationPredictionService(featureStoreService);
 
   // ===== MODEL ROUTES =====
 
@@ -86,6 +101,399 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
 
       const model = await modelService.create(input);
       reply.code(201).send(model);
+    }
+  );
+
+  /**
+   * Model/endpoint health (W4 Layer 3). GET /api/v1/ml/models/health
+   * Returns Azure ML endpoint status and latency per modelId.
+   */
+  app.get<Record<string, never>>(
+    '/api/v1/ml/models/health',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Azure ML endpoint health (status, latency). W4 Layer 3.',
+        tags: ['Models', 'Health'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              endpoints: {
+                type: 'object',
+                additionalProperties: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string', enum: ['ok', 'unreachable'] },
+                    latencyMs: { type: 'number' },
+                  },
+                },
+              },
+              overall: { type: 'string', enum: ['ok', 'degraded', 'not_configured'] },
+              timestamp: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (_request, reply) => {
+      const ep = config.azure_ml?.endpoints ?? {};
+      const entries = Object.entries(ep).filter(([, u]) => typeof u === 'string' && u.length > 0) as [string, string][];
+      const endpoints: Record<string, { status: 'ok' | 'unreachable'; latencyMs?: number }> = {};
+      for (const [modelId, url] of entries) {
+        const t0 = Date.now();
+        try {
+          await globalThis.fetch(url, { method: 'GET', signal: AbortSignal.timeout(2000) });
+          endpoints[modelId] = { status: 'ok', latencyMs: Date.now() - t0 };
+        } catch {
+          endpoints[modelId] = { status: 'unreachable', latencyMs: Date.now() - t0 };
+        }
+      }
+      const allOk = entries.length === 0 || Object.values(endpoints).every((e) => e.status === 'ok');
+      return reply.send({
+        endpoints,
+        overall: entries.length === 0 ? 'not_configured' : allOk ? 'ok' : 'degraded',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  );
+
+  /**
+   * List ML endpoints (Super Admin §4.2). GET /api/v1/ml/endpoints
+   * Returns configured Azure ML endpoints with health status and latency. URLs from config only.
+   */
+  app.get<Record<string, never>>(
+    '/api/v1/ml/endpoints',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'List ML endpoints with health status. Super Admin §4.2.',
+        tags: ['Models', 'Endpoints'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              items: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    url: { type: 'string' },
+                    status: { type: 'string', enum: ['online', 'offline', 'degraded'] },
+                    latencyMs: { type: 'number' },
+                    models: { type: 'array', items: { type: 'string' } },
+                    lastHealthCheck: { type: 'string' },
+                  },
+                },
+              },
+              timestamp: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (_request, reply) => {
+      const ep = config.azure_ml?.endpoints ?? {};
+      const entries = Object.entries(ep).filter(([, u]) => typeof u === 'string' && u.length > 0) as [string, string][];
+      const now = new Date().toISOString();
+      const items: Array<{
+        id: string;
+        name: string;
+        url: string;
+        status: 'online' | 'offline' | 'degraded';
+        latencyMs: number;
+        models: string[];
+        lastHealthCheck: string;
+      }> = [];
+      for (const [modelId, url] of entries) {
+        const t0 = Date.now();
+        let status: 'online' | 'offline' | 'degraded' = 'offline';
+        try {
+          await globalThis.fetch(url, { method: 'GET', signal: AbortSignal.timeout(2000) });
+          const latencyMs = Date.now() - t0;
+          status = latencyMs > 1500 ? 'degraded' : 'online';
+          items.push({
+            id: modelId,
+            name: modelId,
+            url,
+            status,
+            latencyMs,
+            models: [modelId],
+            lastHealthCheck: now,
+          });
+        } catch {
+          items.push({
+            id: modelId,
+            name: modelId,
+            url,
+            status: 'offline',
+            latencyMs: Date.now() - t0,
+            models: [modelId],
+            lastHealthCheck: now,
+          });
+        }
+      }
+      return reply.send({ items, timestamp: now });
+    }
+  );
+
+  /**
+   * List ML alert rules (Super Admin §4.4.2). GET /api/v1/ml/monitoring/alerts
+   * Returns tenant-scoped alert rules from Cosmos (partitionKey: tenantId).
+   */
+  app.get<Record<string, never>>(
+    '/api/v1/ml/monitoring/alerts',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'List ML monitoring alert rules. Super Admin §4.4.2.',
+        tags: ['Models', 'Monitoring'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              items: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    enabled: { type: 'boolean' },
+                    metric: { type: 'string' },
+                    operator: { type: 'string' },
+                    threshold: { type: 'number' },
+                    duration: { type: 'number' },
+                    modelIds: { type: 'array', items: { type: 'string' } },
+                    severity: { type: 'string' },
+                    throttleMinutes: { type: 'number' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const containerName = config.cosmos_db?.containers?.alert_rules ?? 'ml_alert_rules';
+      const container = getContainer(containerName);
+      const { resources } = await container.items
+        .query(
+          { query: 'SELECT * FROM c WHERE c.tenantId = @tenantId', parameters: [{ name: '@tenantId', value: tenantId }] },
+          { partitionKey: tenantId }
+        )
+        .fetchAll();
+      const items = (resources ?? []).map((r: Record<string, unknown>) => ({
+        id: r.id,
+        name: r.name,
+        enabled: r.enabled,
+        metric: r.metric,
+        operator: r.operator,
+        threshold: r.threshold,
+        duration: r.duration,
+        modelIds: r.modelIds,
+        severity: r.severity,
+        throttleMinutes: r.throttleMinutes,
+      }));
+      return reply.send({ items });
+    }
+  );
+
+  /**
+   * Create ML alert rule (Super Admin §4.4.2). POST /api/v1/ml/monitoring/alerts
+   * Body: name, enabled?, metric, operator, threshold, duration?, modelIds?, severity?, throttleMinutes?, actions?
+   */
+  app.post<{
+    Body: {
+      name: string;
+      enabled?: boolean;
+      metric: string;
+      operator: string;
+      threshold: number;
+      duration?: number;
+      modelIds?: string[];
+      severity?: string;
+      throttleMinutes?: number;
+      actions?: Array<{ type: string; config?: Record<string, unknown> }>;
+    };
+  }>(
+    '/api/v1/ml/monitoring/alerts',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Create ML monitoring alert rule. Super Admin §4.4.2.',
+        tags: ['Models', 'Monitoring'],
+        body: {
+          type: 'object',
+          required: ['name', 'metric', 'operator', 'threshold'],
+          properties: {
+            name: { type: 'string' },
+            enabled: { type: 'boolean' },
+            metric: { type: 'string' },
+            operator: { type: 'string' },
+            threshold: { type: 'number' },
+            duration: { type: 'number' },
+            modelIds: { type: 'array', items: { type: 'string' } },
+            severity: { type: 'string' },
+            throttleMinutes: { type: 'number' },
+            actions: { type: 'array', items: { type: 'object', properties: { type: { type: 'string' }, config: { type: 'object' } } } },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              name: { type: 'string' },
+              enabled: { type: 'boolean' },
+              metric: { type: 'string' },
+              operator: { type: 'string' },
+              threshold: { type: 'number' },
+              duration: { type: 'number' },
+              modelIds: { type: 'array', items: { type: 'string' } },
+              severity: { type: 'string' },
+              throttleMinutes: { type: 'number' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const body = request.body;
+      const id = `alert_${tenantId}_${randomUUID()}`;
+      const doc = {
+        id,
+        tenantId,
+        name: body.name,
+        enabled: body.enabled !== false,
+        metric: body.metric,
+        operator: body.operator,
+        threshold: body.threshold,
+        duration: body.duration ?? 0,
+        modelIds: body.modelIds ?? [],
+        severity: body.severity ?? 'medium',
+        throttleMinutes: body.throttleMinutes ?? 60,
+        actions: body.actions ?? [],
+      };
+      const containerName = config.cosmos_db?.containers?.alert_rules ?? 'ml_alert_rules';
+      const container = getContainer(containerName);
+      const { resource } = await container.items.create(doc, { partitionKey: tenantId });
+      const created = resource as Record<string, unknown>;
+      return reply.code(201).send({
+        id: created.id,
+        name: created.name,
+        enabled: created.enabled,
+        metric: created.metric,
+        operator: created.operator,
+        threshold: created.threshold,
+        duration: created.duration,
+        modelIds: created.modelIds,
+        severity: created.severity,
+        throttleMinutes: created.throttleMinutes,
+      });
+    }
+  );
+
+  /**
+   * Update ML alert rule. PUT /api/v1/ml/monitoring/alerts/:id
+   */
+  app.put<{
+    Params: { id: string };
+    Body: Partial<{
+      name: string;
+      enabled: boolean;
+      metric: string;
+      operator: string;
+      threshold: number;
+      duration: number;
+      modelIds: string[];
+      severity: string;
+      throttleMinutes: number;
+      actions: Array<{ type: string; config?: Record<string, unknown> }>;
+    }>;
+  }>(
+    '/api/v1/ml/monitoring/alerts/:id',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Update ML monitoring alert rule. Super Admin §4.4.2.',
+        tags: ['Models', 'Monitoring'],
+        params: { type: 'object', required: ['id'], properties: { id: { type: 'string' } } },
+        body: { type: 'object', properties: { name: { type: 'string' }, enabled: { type: 'boolean' }, metric: { type: 'string' }, operator: { type: 'string' }, threshold: { type: 'number' }, duration: { type: 'number' }, modelIds: { type: 'array', items: { type: 'string' } }, severity: { type: 'string' }, throttleMinutes: { type: 'number' }, actions: { type: 'array' } } },
+        response: { 200: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' }, enabled: { type: 'boolean' }, metric: { type: 'string' }, operator: { type: 'string' }, threshold: { type: 'number' }, duration: { type: 'number' }, modelIds: { type: 'array' }, severity: { type: 'string' }, throttleMinutes: { type: 'number' } } } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const { id } = request.params;
+      const containerName = config.cosmos_db?.containers?.alert_rules ?? 'ml_alert_rules';
+      const container = getContainer(containerName);
+      let existing: Record<string, unknown>;
+      try {
+        const { resource } = await container.item(id, tenantId).read();
+        if (!resource) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Alert rule not found' } });
+        existing = resource as Record<string, unknown>;
+      } catch (err: unknown) {
+        const code = (err as { code?: number })?.code;
+        if (code === 404) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Alert rule not found' } });
+        throw err;
+      }
+      const body = request.body || {};
+      const merged = {
+        ...existing,
+        ...body,
+        id: existing.id,
+        tenantId: existing.tenantId,
+      };
+      const { resource } = await container.item(id, tenantId).replace(merged);
+      const updated = resource as Record<string, unknown>;
+      return reply.send({
+        id: updated.id,
+        name: updated.name,
+        enabled: updated.enabled,
+        metric: updated.metric,
+        operator: updated.operator,
+        threshold: updated.threshold,
+        duration: updated.duration,
+        modelIds: updated.modelIds,
+        severity: updated.severity,
+        throttleMinutes: updated.throttleMinutes,
+      });
+    }
+  );
+
+  /**
+   * Delete ML alert rule. DELETE /api/v1/ml/monitoring/alerts/:id
+   */
+  app.delete<{ Params: { id: string } }>(
+    '/api/v1/ml/monitoring/alerts/:id',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Delete ML monitoring alert rule. Super Admin §4.4.2.',
+        tags: ['Models', 'Monitoring'],
+        params: { type: 'object', required: ['id'], properties: { id: { type: 'string' } } },
+        response: { 204: { type: 'null' }, 404: { type: 'object', properties: { error: { type: 'object' } } } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const { id } = request.params;
+      const containerName = config.cosmos_db?.containers?.alert_rules ?? 'ml_alert_rules';
+      const container = getContainer(containerName);
+      try {
+        await container.item(id, tenantId).delete();
+        return reply.code(204).send();
+      } catch (err: unknown) {
+        const code = (err as { code?: number })?.code;
+        if (code === 404) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Alert rule not found' } });
+        throw err;
+      }
     }
   );
 
@@ -235,6 +643,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
       const model = await modelService.deploy(request.params.id, tenantId);
+      await publishMlModelDeployed(tenantId, { modelId: model.id, version: model.version });
       reply.send(model);
     }
   );
@@ -323,6 +732,499 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   );
 
   // ===== FEATURE ROUTES =====
+
+  /** Layer 2: Extract features for one opportunity (cache, persist, version). GET /api/v1/ml/features/opportunity/:opportunityId */
+  app.get<{
+    Params: { opportunityId: string };
+    Querystring: { purpose?: string; featureVersion?: string; persist?: string; useCache?: string };
+  }>(
+    '/api/v1/ml/features/opportunity/:opportunityId',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Layer 2: Extract features for opportunity (cache, persist, version).',
+        tags: ['Features'],
+        params: { type: 'object', properties: { opportunityId: { type: 'string' } } },
+        querystring: {
+          type: 'object',
+          properties: {
+            purpose: { type: 'string', enum: ['risk-scoring', 'win-probability', 'lstm', 'anomaly', 'forecasting'] },
+            featureVersion: { type: 'string' },
+            persist: { type: 'string', enum: ['true', 'false'] },
+            useCache: { type: 'string', enum: ['true', 'false'] },
+          },
+        },
+        response: { 200: { type: 'object', properties: { features: { type: 'object' }, fromCache: { type: 'boolean' }, snapshotId: { type: 'string' } } }, 404: {} },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const purpose = (request.query.purpose as FeaturePurpose) || 'risk-scoring';
+      const opts = {
+        featureVersion: request.query.featureVersion,
+        persist: request.query.persist === 'true',
+        useCache: request.query.useCache !== 'false',
+      };
+      try {
+        const out = await featureStoreService.extract(tenantId, request.params.opportunityId, purpose, opts);
+        return reply.send({ features: out.features, fromCache: out.fromCache, snapshotId: out.snapshotId });
+      } catch (e: unknown) {
+        if ((e as { name?: string }).name === 'NotFoundError') return reply.status(404).send({ error: 'Opportunity not found' });
+        throw e;
+      }
+    }
+  );
+
+  /** Layer 2: Batch extract. POST /api/v1/ml/features/batch */
+  app.post<{
+    Body: { opportunityIds: string[]; purpose?: string; featureVersion?: string; persist?: boolean };
+  }>(
+    '/api/v1/ml/features/batch',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Layer 2: Extract features for multiple opportunities.',
+        tags: ['Features'],
+        body: {
+          type: 'object',
+          required: ['opportunityIds'],
+          properties: {
+            opportunityIds: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 100 },
+            purpose: { type: 'string', enum: ['risk-scoring', 'win-probability', 'lstm', 'anomaly', 'forecasting'] },
+            featureVersion: { type: 'string' },
+            persist: { type: 'boolean' },
+          },
+        },
+        response: { 200: { type: 'object', description: 'Map of opportunityId to { features, snapshotId? }' } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const { opportunityIds, purpose = 'risk-scoring', featureVersion, persist } = request.body;
+      const purposeTyped = purpose as FeaturePurpose;
+      const map = await featureStoreService.extractBatch(tenantId, opportunityIds, purposeTyped, { featureVersion, persist });
+      const body: Record<string, { features: Record<string, number>; snapshotId?: string }> = {};
+      map.forEach((v, k) => { body[k] = { features: v.features, snapshotId: v.snapshotId }; });
+      return reply.send(body);
+    }
+  );
+
+  /** Layer 2: Feature schema. GET /api/v1/ml/features/schema */
+  app.get<{ Querystring: { purpose?: string } }>(
+    '/api/v1/ml/features/schema',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Layer 2: Feature schema (names and types).',
+        tags: ['Features'],
+        querystring: { type: 'object', properties: { purpose: { type: 'string', enum: ['risk-scoring', 'win-probability', 'lstm', 'anomaly', 'forecasting'] } } },
+        response: { 200: { type: 'object', properties: { purpose: { type: 'string' }, version: { type: 'string' }, features: { type: 'array' }, updatedAt: { type: 'string' } } } },
+      },
+    },
+    async (request, reply) => {
+      const purpose = request.query.purpose as FeaturePurpose | undefined;
+      const features = featureStoreService.getSchema(purpose);
+      return reply.send({ purpose: purpose ?? undefined, version: 'v1', features, updatedAt: new Date().toISOString() });
+    }
+  );
+
+  /** W7 Gap 1 – Layer 2: Risk catalog features (extractRiskCatalogFeatures). GET /api/v1/ml/features/risk-catalog */
+  app.get<{ Querystring: { industry?: string; stage?: string } }>(
+    '/api/v1/ml/features/risk-catalog',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'W7 Layer 2: Extract risk catalog features (categories, templates, industry/methodology risks).',
+        tags: ['Features'],
+        querystring: {
+          type: 'object',
+          properties: { industry: { type: 'string' }, stage: { type: 'string' } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              tenantRiskCategories: { type: 'array', items: { type: 'string' } },
+              categoryDefinitions: { type: 'object' },
+              riskTemplates: { type: 'array' },
+              industrySpecificRisks: { type: 'array', items: { type: 'string' } },
+              methodologyRisks: { type: 'array', items: { type: 'string' } },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const features = await featureStoreService.extractRiskCatalogFeatures(
+        tenantId,
+        request.query.industry,
+        request.query.stage
+      );
+      return reply.send(features);
+    }
+  );
+
+  /** W8 Layer 2: Methodology features (extractMethodologyFeatures). GET /api/v1/ml/features/methodology */
+  app.get<{ Querystring: { opportunityId: string } }>(
+    '/api/v1/ml/features/methodology',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'W8 Layer 2: Extract methodology-aware features (stage compliance, duration, MEDDIC) for an opportunity.',
+        tags: ['Features'],
+        querystring: {
+          type: 'object',
+          required: ['opportunityId'],
+          properties: { opportunityId: { type: 'string' } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              stageRequirementsMet: { type: 'number' },
+              stageRequirementsMissing: { type: 'array', items: { type: 'string' } },
+              stageExitCriteriaReady: { type: 'boolean' },
+              daysInCurrentStage: { type: 'number' },
+              expectedDaysInStage: { type: 'number' },
+              stageDurationAnomaly: { type: 'boolean' },
+              methodologyFieldsComplete: { type: 'number' },
+              methodologyFieldsMissing: { type: 'array', items: { type: 'string' } },
+              expectedActivitiesCompleted: { type: 'number' },
+              unexpectedActivitiesCount: { type: 'number' },
+              meddic: { type: 'object', nullable: true },
+            },
+          },
+          404: { type: 'object', properties: { error: { type: 'object' } } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const { opportunityId } = request.query;
+      const opportunity = await featureService.getOpportunityStructuredData(tenantId, opportunityId);
+      if (!opportunity) {
+        return reply.status(404).send({
+          error: { code: 'OPPORTUNITY_NOT_FOUND', message: 'Opportunity not found' },
+        });
+      }
+      const features = await featureStoreService.extractMethodologyFeatures(tenantId, opportunity);
+      return reply.send(features);
+    }
+  );
+
+  /** W9 Layer 2: Dormant opportunity features (extractDormantOpportunityFeatures). GET /api/v1/ml/features/reactivation */
+  app.get<{ Querystring: { opportunityId: string } }>(
+    '/api/v1/ml/features/reactivation',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'W9 Layer 2: Extract dormant opportunity features (inactivity, activity trends, engagement, dormancy category).',
+        tags: ['Features'],
+        querystring: {
+          type: 'object',
+          required: ['opportunityId'],
+          properties: { opportunityId: { type: 'string' } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              daysSinceLastActivity: { type: 'number' },
+              daysSinceLastStageChange: { type: 'number' },
+              activityCountLast7Days: { type: 'number' },
+              activityCountLast30Days: { type: 'number' },
+              activityCountLast90Days: { type: 'number' },
+              dormancyCategory: { type: 'string', enum: ['recently_dormant', 'long_dormant', 'likely_lost'] },
+              dormancyReason: { type: 'string', nullable: true },
+            },
+          },
+          404: { type: 'object', properties: { error: { type: 'object' } } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const { opportunityId } = request.query;
+      const features = await featureStoreService.extractDormantOpportunityFeatures(tenantId, opportunityId);
+      if (!features) {
+        return reply.status(404).send({
+          error: { code: 'OPPORTUNITY_NOT_FOUND', message: 'Opportunity not found' },
+        });
+      }
+      return reply.send(features);
+    }
+  );
+
+  /** W9 Layer 3: Reactivation prediction. GET /api/v1/ml/reactivation/predict */
+  app.get<{ Querystring: { opportunityId: string } }>(
+    '/api/v1/ml/reactivation/predict',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'W9 Layer 3: Predict reactivation probability and strategy (heuristic from dormant features).',
+        tags: ['Predictions'],
+        querystring: {
+          type: 'object',
+          required: ['opportunityId'],
+          properties: { opportunityId: { type: 'string' } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              reactivationProbability: { type: 'number' },
+              confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
+              optimalReactivationWindow: { type: 'object' },
+              recommendedApproach: { type: 'object' },
+              keySuccessFactors: { type: 'array' },
+              reactivationRisks: { type: 'array' },
+            },
+          },
+          404: { type: 'object', properties: { error: { type: 'object' } } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const { opportunityId } = request.query;
+      const prediction = await reactivationPredictionService.predictReactivation(tenantId, opportunityId);
+      if (!prediction) {
+        return reply.status(404).send({
+          error: { code: 'OPPORTUNITY_NOT_FOUND', message: 'Opportunity not found' },
+        });
+      }
+      return reply.send(prediction);
+    }
+  );
+
+  /** Layer 2: Feature statistics. GET /api/v1/ml/features/statistics */
+  app.get<{ Querystring: { purpose: string; version?: string; maxSamples?: number } }>(
+    '/api/v1/ml/features/statistics',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Layer 2: Per-feature statistics (mean, std, min, max, missingRate).',
+        tags: ['Features'],
+        querystring: {
+          type: 'object',
+          required: ['purpose'],
+          properties: { purpose: { type: 'string', enum: ['risk-scoring', 'win-probability', 'lstm', 'anomaly', 'forecasting'] }, version: { type: 'string' }, maxSamples: { type: 'number' } },
+        },
+        response: { 200: { type: 'object', properties: { statistics: { type: 'array' } } } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const purpose = request.query.purpose as FeaturePurpose;
+      const statistics = await featureQualityMonitor.computeStatistics(tenantId, purpose, request.query.version ?? 'v1', { maxSamples: request.query.maxSamples });
+      return reply.send({ statistics });
+    }
+  );
+
+  /** Layer 2: Export snapshots for training. POST /api/v1/ml/features/export */
+  app.post<{
+    Body: { purpose: string; startDate: string; endDate: string; featureVersion?: string; limit?: number };
+  }>(
+    '/api/v1/ml/features/export',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Layer 2: Export feature snapshots for training.',
+        tags: ['Features'],
+        body: {
+          type: 'object',
+          required: ['purpose', 'startDate', 'endDate'],
+          properties: {
+            purpose: { type: 'string', enum: ['risk-scoring', 'win-probability', 'lstm', 'anomaly', 'forecasting'] },
+            startDate: { type: 'string', format: 'date-time' },
+            endDate: { type: 'string', format: 'date-time' },
+            featureVersion: { type: 'string' },
+            limit: { type: 'number' },
+          },
+        },
+        response: { 200: { type: 'object', properties: { items: { type: 'array' }, continuationToken: { type: 'string' } } } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const { purpose, startDate, endDate, featureVersion, limit } = request.body;
+      const result = await featureStoreService.exportSnapshots(tenantId, { purpose: purpose as FeaturePurpose, startDate, endDate, featureVersion, limit });
+      return reply.send(result);
+    }
+  );
+
+  /** Layer 2: Get snapshot by id. GET /api/v1/ml/features/snapshots/:snapshotId */
+  app.get<{ Params: { snapshotId: string } }>(
+    '/api/v1/ml/features/snapshots/:snapshotId',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Layer 2: Get feature snapshot by id.',
+        tags: ['Features'],
+        params: { type: 'object', properties: { snapshotId: { type: 'string', format: 'uuid' } } },
+        response: { 200: { type: 'object' }, 404: {} },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      try {
+        const snapshot = await featureStoreService.getSnapshotById(request.params.snapshotId, tenantId);
+        return reply.send(snapshot);
+      } catch (e: unknown) {
+        if ((e as { name?: string }).name === 'NotFoundError') return reply.status(404).send({ error: 'Snapshot not found' });
+        throw e;
+      }
+    }
+  );
+
+  /** Layer 2: Resolve feature version. GET /api/v1/ml/features/versions/resolve */
+  app.get<{ Querystring: { purpose: string } }>(
+    '/api/v1/ml/features/versions/resolve',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Layer 2: Resolve version for inference (latest active or pinned).',
+        tags: ['Features'],
+        querystring: { type: 'object', required: ['purpose'], properties: { purpose: { type: 'string', enum: ['risk-scoring', 'win-probability', 'lstm', 'anomaly', 'forecasting'] } } },
+        response: { 200: { type: 'object', properties: { version: { type: 'string' } } } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const version = await featureVersionManager.resolveVersion(tenantId, request.query.purpose as FeaturePurpose);
+      return reply.send({ version });
+    }
+  );
+
+  /** Layer 2: Upsert feature version metadata (create or update). POST /api/v1/ml/features/versions */
+  app.post<{
+    Body: { purpose: string; version: string; featureNames?: string[]; statistics?: Array<{ name: string; mean?: number; std?: number; min?: number; max?: number; missingRate?: number; sampleCount?: number }> };
+  }>(
+    '/api/v1/ml/features/versions',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Layer 2: Create or update feature version metadata (enables pin/deprecate).',
+        tags: ['Features'],
+        body: {
+          type: 'object',
+          required: ['purpose', 'version'],
+          properties: {
+            purpose: { type: 'string', enum: ['risk-scoring', 'win-probability', 'lstm', 'anomaly', 'forecasting'] },
+            version: { type: 'string' },
+            featureNames: { type: 'array', items: { type: 'string' } },
+            statistics: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, mean: { type: 'number' }, std: { type: 'number' }, min: { type: 'number' }, max: { type: 'number' }, missingRate: { type: 'number' }, sampleCount: { type: 'number' } } } },
+          },
+        },
+        response: { 200: { type: 'object' }, 201: { type: 'object' } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const { purpose, version, featureNames, statistics } = request.body;
+      const names = featureNames ?? featureStoreService.getSchema(purpose as FeaturePurpose).map((f) => f.name);
+      const meta = await featureVersionManager.upsertMetadata(tenantId, purpose as FeaturePurpose, version, { featureNames: names, statistics });
+      return reply.send(meta);
+    }
+  );
+
+  /** Layer 2: List feature version metadata. GET /api/v1/ml/features/versions */
+  app.get<{ Querystring: { purpose?: string } }>(
+    '/api/v1/ml/features/versions',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Layer 2: List feature version metadata.',
+        tags: ['Features'],
+        querystring: { type: 'object', properties: { purpose: { type: 'string', enum: ['risk-scoring', 'win-probability', 'lstm', 'anomaly', 'forecasting'] } } },
+        response: { 200: { type: 'object', properties: { items: { type: 'array' } } } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const items = await featureVersionManager.listMetadata(tenantId, request.query.purpose as FeaturePurpose | undefined);
+      return reply.send({ items });
+    }
+  );
+
+  /** Layer 2: Pin version. POST /api/v1/ml/features/versions/pin */
+  app.post<{ Body: { purpose: string; version: string } }>(
+    '/api/v1/ml/features/versions/pin',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Layer 2: Pin feature version for training.',
+        tags: ['Features'],
+        body: { type: 'object', required: ['purpose', 'version'], properties: { purpose: { type: 'string' }, version: { type: 'string' } } },
+        response: { 200: { type: 'object' } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const meta = await featureVersionManager.pinVersion(tenantId, request.body.purpose as FeaturePurpose, request.body.version);
+      return reply.send(meta);
+    }
+  );
+
+  /** Layer 2: Deprecate version. POST /api/v1/ml/features/versions/deprecate */
+  app.post<{ Body: { purpose: string; version: string } }>(
+    '/api/v1/ml/features/versions/deprecate',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Layer 2: Deprecate feature version.',
+        tags: ['Features'],
+        body: { type: 'object', required: ['purpose', 'version'], properties: { purpose: { type: 'string' }, version: { type: 'string' } } },
+        response: { 200: { type: 'object' } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const meta = await featureVersionManager.deprecateVersion(tenantId, request.body.purpose as FeaturePurpose, request.body.version);
+      return reply.send(meta);
+    }
+  );
+
+  /** Layer 2: Quality check. GET /api/v1/ml/features/quality */
+  app.get<{ Querystring: { purpose: string; version?: string } }>(
+    '/api/v1/ml/features/quality',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Layer 2: Check feature quality (missing rate, drift).',
+        tags: ['Features'],
+        querystring: { type: 'object', required: ['purpose'], properties: { purpose: { type: 'string' }, version: { type: 'string' } } },
+        response: { 200: { type: 'object', properties: { alerts: { type: 'array' } } } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const alerts = await featureQualityMonitor.checkQuality(tenantId, request.query.purpose as FeaturePurpose, request.query.version ?? 'v1', {});
+      return reply.send({ alerts });
+    }
+  );
+
+  /** Invalidate feature cache (e.g. on opportunity.updated). POST /api/v1/ml/features/cache/invalidate */
+  app.post<{ Body: { opportunityId: string; reason?: string } }>(
+    '/api/v1/ml/features/cache/invalidate',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Layer 2: Invalidate feature cache for an opportunity.',
+        tags: ['Features'],
+        body: { type: 'object', required: ['opportunityId'], properties: { opportunityId: { type: 'string' }, reason: { type: 'string' } } },
+        response: { 204: { type: 'null' } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      await featureStoreService.invalidateCache(tenantId, request.body.opportunityId, request.body.reason);
+      return reply.code(204).send();
+    }
+  );
+
+  // ===== FEATURE DEFINITION ROUTES (ml_features container) =====
 
   /**
    * Create feature
@@ -787,6 +1689,88 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     }
   );
 
+  /**
+   * W6 Layer 8 – Get drift metrics for a model.
+   * GET /api/v1/ml/evaluation/drift/:modelId
+   */
+  app.get<{
+    Params: { modelId: string };
+    Querystring: { from?: string; to?: string; limit?: number };
+  }>(
+    '/api/v1/ml/evaluation/drift/:modelId',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get drift metrics for a model (Plan W6 Layer 8)',
+        tags: ['Training', 'Evaluation'],
+        params: {
+          type: 'object',
+          required: ['modelId'],
+          properties: { modelId: { type: 'string' } },
+        },
+        querystring: {
+          type: 'object',
+          properties: {
+            from: { type: 'string', format: 'date-time' },
+            to: { type: 'string', format: 'date-time' },
+            limit: { type: 'integer' },
+          },
+        },
+        response: { 200: { type: 'array', items: { type: 'object' } } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const { modelId } = request.params;
+      const metrics = await evaluationService.getDrift(tenantId, modelId, {
+        from: request.query.from,
+        to: request.query.to,
+        limit: request.query.limit,
+      });
+      reply.send(metrics);
+    }
+  );
+
+  /**
+   * W6 Layer 8 – Get improvement suggestions for a model.
+   * GET /api/v1/ml/learning/suggestions/:modelId
+   */
+  app.get<{
+    Params: { modelId: string };
+    Querystring: { acknowledged?: boolean; limit?: number };
+  }>(
+    '/api/v1/ml/learning/suggestions/:modelId',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get improvement suggestions for a model (Plan W6 Layer 8)',
+        tags: ['Training', 'Learning'],
+        params: {
+          type: 'object',
+          required: ['modelId'],
+          properties: { modelId: { type: 'string' } },
+        },
+        querystring: {
+          type: 'object',
+          properties: {
+            acknowledged: { type: 'boolean' },
+            limit: { type: 'integer' },
+          },
+        },
+        response: { 200: { type: 'array', items: { type: 'object' } } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const { modelId } = request.params;
+      const suggestions = await continuousLearningService.getSuggestions(tenantId, modelId, {
+        acknowledged: request.query.acknowledged,
+        limit: request.query.limit,
+      });
+      reply.send(suggestions);
+    }
+  );
+
   // ===== PREDICTION ROUTES =====
 
   /**
@@ -917,6 +1901,28 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         continuationToken: request.query.continuationToken,
       });
       reply.send(result);
+    }
+  );
+
+  /**
+   * Invalidate prediction cache for an opportunity (W4 Layer 3; call on opportunity.updated).
+   * POST /api/v1/ml/predictions/cache/invalidate
+   */
+  app.post<{ Body: { opportunityId: string } }>(
+    '/api/v1/ml/predictions/cache/invalidate',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Invalidate prediction cache for an opportunity (win_probability, risk_scoring, anomaly). Call when opportunity is updated.',
+        tags: ['Predictions'],
+        body: { type: 'object', required: ['opportunityId'], properties: { opportunityId: { type: 'string' } } },
+        response: { 204: { type: 'null' } },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      await predictionService.invalidatePredictionCache(tenantId, request.body.opportunityId);
+      return reply.code(204).send();
     }
   );
 
@@ -1170,6 +2176,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
+      const t0 = Date.now();
       const end = mlPredictionDurationSeconds.startTimer({ model: 'risk_trajectory_lstm' });
       try {
         const out = await predictionService.predictLstmTrajectory(request.body.sequence);
@@ -1177,6 +2184,12 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         reply.send(out);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
+        await publishMlPredictionFailed(tenantId, {
+          opportunityId: request.body.opportunityId,
+          modelId: 'risk_trajectory_lstm',
+          error: msg,
+          durationMs: Date.now() - t0,
+        });
         if (msg.includes('not configured') || msg.includes('endpoint')) {
           return reply.code(503).send({ error: { code: 'LSTM_ENDPOINT_NOT_CONFIGURED', message: msg } });
         }
@@ -1208,9 +2221,10 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as { user?: { tenantId: string } }).user?.tenantId ?? '';
       const industryId = request.query.industryId;
-      const out = selectRiskScoringModel(tenantId, industryId);
+      const tenantConfig = await featureService.getTenantMLConfig(tenantId);
+      const out = selectRiskScoringModel(tenantId, industryId, undefined, tenantConfig);
       return reply.send(out);
     }
   );

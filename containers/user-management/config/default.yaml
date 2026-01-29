@@ -22,6 +22,7 @@ cosmos_db:
     permissions: user_permissions
     invitations: user_invitations
     memberships: user_memberships
+    api_keys: user_api_keys
   
 # Legacy database.url for backward compatibility during migration
 database:

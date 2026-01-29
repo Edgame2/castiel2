@@ -8,7 +8,25 @@
 import { randomBytes } from 'crypto';
 import { getDatabaseClient } from '@coder/shared';
 import { isOrganizationAtMemberLimit } from './OrganizationService';
-import { log } from '../utils/logger';
+
+/** Prisma-like DB client shape used by this service (shared returns Cosmos Database) */
+type InvitationDb = {
+  organization: { findUnique: (args: unknown) => Promise<unknown> };
+  organizationMembership: { findFirst: (args: unknown) => Promise<unknown> };
+  role: { findUnique: (args: unknown) => Promise<unknown> };
+  invitation: {
+    findUnique: (args: unknown) => Promise<unknown>;
+    findFirst: (args: unknown) => Promise<unknown>;
+    findMany: (args: unknown) => Promise<unknown[]>;
+    create: (args: unknown) => Promise<unknown>;
+    update: (args: unknown) => Promise<unknown>;
+    updateMany: (args: unknown) => Promise<unknown>;
+  };
+};
+
+function getDb(): InvitationDb {
+  return getDatabaseClient() as unknown as InvitationDb;
+}
 
 /**
  * Invitation filters
@@ -83,7 +101,7 @@ export async function createInvitation(
   invitationType: 'email' | 'link' = 'email',
   metadata?: Record<string, any>
 ): Promise<InvitationDetails> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Validate email format (for email-type invitations)
   if (invitationType === 'email') {
@@ -128,10 +146,10 @@ export async function createInvitation(
   }
   
   // Validate role belongs to organization
-  const role = await db.role.findUnique({
+  const role = (await db.role.findUnique({
     where: { id: roleId },
     select: { id: true, organizationId: true, name: true },
-  });
+  })) as { id: string; organizationId: string; name: string } | null;
   
   if (!role) {
     throw new Error('Role not found');
@@ -142,22 +160,22 @@ export async function createInvitation(
   }
   
   // Check if inviter has permission (must be owner or Super Admin)
-  const inviterMembership = await db.organizationMembership.findFirst({
+  const inviterMembership = (await db.organizationMembership.findFirst({
     where: {
       userId: invitedBy,
       organizationId,
       status: 'active',
     },
     include: { role: true },
-  });
+  })) as { role?: { isSuperAdmin?: boolean } } | null;
   
-  const organizationData = await db.organization.findUnique({
+  const organizationData = (await db.organization.findUnique({
     where: { id: organizationId },
     select: { ownerUserId: true },
-  });
+  })) as { ownerUserId?: string } | null;
   
   const isOwner = organizationData?.ownerUserId === invitedBy;
-  const isSuperAdmin = inviterMembership?.role.isSuperAdmin || false;
+  const isSuperAdmin = inviterMembership?.role?.isSuperAdmin || false;
   
   if (!isOwner && !isSuperAdmin) {
     throw new Error('Permission denied. Only organization owner or Super Admin can send invitations.');
@@ -190,7 +208,7 @@ export async function createInvitation(
   }
   
   // Create invitation
-  const invitation = await db.invitation.create({
+  const invitation = (await db.invitation.create({
     data: {
       organizationId,
       email: invitationType === 'email' ? email.toLowerCase() : '', // Empty for link-based
@@ -225,7 +243,7 @@ export async function createInvitation(
         },
       },
     },
-  });
+  })) as InvitationDetails;
   
   // TODO: Send invitation email via notification service (event-driven)
   // The notification service will consume invitation.created events
@@ -260,9 +278,9 @@ export async function listInvitations(
   organizationId: string,
   filters: InvitationFilters = {}
 ): Promise<InvitationDetails[]> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
-  const where: any = {
+  const where: Record<string, unknown> = {
     organizationId,
   };
   
@@ -274,7 +292,7 @@ export async function listInvitations(
     where.email = filters.email.toLowerCase();
   }
   
-  const invitations = await db.invitation.findMany({
+  const invitations = (await db.invitation.findMany({
     where,
     include: {
       organization: {
@@ -301,9 +319,9 @@ export async function listInvitations(
     orderBy: {
       createdAt: 'desc',
     },
-  });
+  })) as InvitationDetails[];
   
-  return invitations.map(inv => ({
+  return invitations.map((inv: InvitationDetails) => ({
     id: inv.id,
     organizationId: inv.organizationId,
     email: inv.email,
@@ -333,10 +351,10 @@ export async function resendInvitation(
   invitationId: string,
   invitedBy: string
 ): Promise<InvitationDetails> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Get invitation
-  const invitation = await db.invitation.findUnique({
+  const invitation = (await db.invitation.findUnique({
     where: { id: invitationId },
     include: {
       organization: {
@@ -360,7 +378,7 @@ export async function resendInvitation(
         },
       },
     },
-  });
+  })) as InvitationDetails | null;
   
   if (!invitation) {
     throw new Error('Invitation not found');
@@ -380,29 +398,29 @@ export async function resendInvitation(
   }
   
   // Check permission
-  const inviterMembership = await db.organizationMembership.findFirst({
+  const inviterMembership = (await db.organizationMembership.findFirst({
     where: {
       userId: invitedBy,
       organizationId: invitation.organizationId,
       status: 'active',
     },
     include: { role: true },
-  });
+  })) as { role?: { isSuperAdmin?: boolean } } | null;
   
-  const organizationData = await db.organization.findUnique({
+  const organizationData = (await db.organization.findUnique({
     where: { id: invitation.organizationId },
     select: { ownerUserId: true },
-  });
+  })) as { ownerUserId?: string } | null;
   
   const isOwner = organizationData?.ownerUserId === invitedBy;
-  const isSuperAdmin = inviterMembership?.role.isSuperAdmin || false;
+  const isSuperAdmin = inviterMembership?.role?.isSuperAdmin || false;
   
   if (!isOwner && !isSuperAdmin && invitation.invitedByUserId !== invitedBy) {
     throw new Error('Permission denied. Only the original inviter, organization owner, or Super Admin can resend invitations.');
   }
   
   // Update invitation
-  const updated = await db.invitation.update({
+  const updated = (await db.invitation.update({
     where: { id: invitationId },
     data: {
       resendCount: invitation.resendCount + 1,
@@ -430,7 +448,7 @@ export async function resendInvitation(
         },
       },
     },
-  });
+  })) as InvitationDetails;
   
   // TODO: Resend email via notification service (event-driven)
   // The notification service will consume invitation.resent events
@@ -465,12 +483,12 @@ export async function cancelInvitation(
   invitationId: string,
   cancelledBy: string
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Get invitation
-  const invitation = await db.invitation.findUnique({
+  const invitation = (await db.invitation.findUnique({
     where: { id: invitationId },
-  });
+  })) as { status: string; organizationId: string; invitedByUserId: string } | null;
   
   if (!invitation) {
     throw new Error('Invitation not found');
@@ -481,22 +499,22 @@ export async function cancelInvitation(
   }
   
   // Check permission
-  const inviterMembership = await db.organizationMembership.findFirst({
+  const inviterMembership = (await db.organizationMembership.findFirst({
     where: {
       userId: cancelledBy,
       organizationId: invitation.organizationId,
       status: 'active',
     },
     include: { role: true },
-  });
+  })) as { role?: { isSuperAdmin?: boolean } } | null;
   
-  const organizationData = await db.organization.findUnique({
+  const organizationData = (await db.organization.findUnique({
     where: { id: invitation.organizationId },
     select: { ownerUserId: true },
-  });
+  })) as { ownerUserId?: string } | null;
   
   const isOwner = organizationData?.ownerUserId === cancelledBy;
-  const isSuperAdmin = inviterMembership?.role.isSuperAdmin || false;
+  const isSuperAdmin = inviterMembership?.role?.isSuperAdmin || false;
   
   if (!isOwner && !isSuperAdmin && invitation.invitedByUserId !== cancelledBy) {
     throw new Error('Permission denied. Only the original inviter, organization owner, or Super Admin can cancel invitations.');
@@ -516,9 +534,9 @@ export async function cancelInvitation(
  * Get invitation by token (for public acceptance)
  */
 export async function getInvitationByToken(token: string): Promise<InvitationDetails | null> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
-  const invitation = await db.invitation.findFirst({
+  const invitation = (await db.invitation.findFirst({
     where: {
       token,
       status: 'pending',
@@ -545,7 +563,7 @@ export async function getInvitationByToken(token: string): Promise<InvitationDet
         },
       },
     },
-  });
+  })) as InvitationDetails | null;
   
   if (!invitation) {
     return null;

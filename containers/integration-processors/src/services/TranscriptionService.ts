@@ -86,7 +86,7 @@ export class TranscriptionService {
    * Transcribe audio recording using Azure Speech Services
    * Note: This is a simplified implementation. Full implementation would use Azure Speech SDK
    */
-  async transcribeAudio(audioUrl: string, options?: { enableSpeakerDiarization?: boolean }): Promise<TranscriptResult> {
+  async transcribeAudio(_audioUrl: string, _options?: { enableSpeakerDiarization?: boolean }): Promise<TranscriptResult> {
     if (!this.config.endpoint || !this.config.key) {
       throw new Error('Azure Speech Services not configured (endpoint and key required)');
     }

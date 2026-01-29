@@ -12,7 +12,7 @@ import { setupTeamRoutes } from './teams';
 import { setupRoleRoutes } from './roles';
 import { setupInvitationRoutes } from './invitations';
 
-export async function registerRoutes(fastify: FastifyInstance, config: UserManagementConfig): Promise<void> {
+export async function registerRoutes(fastify: FastifyInstance, _config: UserManagementConfig): Promise<void> {
   log.info('Registering user management routes', { service: 'user-management' });
 
   // Setup user management routes

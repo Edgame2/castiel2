@@ -17,6 +17,7 @@ export interface MLServiceConfig {
     adaptive_learning?: { url: string };
     shard_manager?: { url: string };
     risk_analytics?: { url: string };
+    risk_catalog?: { url: string };
   };
   rabbitmq: { url: string; exchange: string; queue: string };
   feature_pipeline?: { stage_labels?: string[]; industry_labels?: string[] };

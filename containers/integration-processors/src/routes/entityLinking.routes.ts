@@ -14,6 +14,7 @@ import { loadConfig } from '../config';
  * Entity linking settings interface
  */
 interface EntityLinkingSettings {
+  id?: string; // Cosmos document id when loaded from DB
   tenantId: string;
   autoLinkThreshold: number; // 0.0-1.0 (default 0.8)
   suggestedLinkThreshold: number; // 0.0-1.0 (default 0.6)
@@ -67,10 +68,8 @@ const DEFAULT_SETTINGS: Omit<EntityLinkingSettings, 'tenantId' | 'createdAt' | '
 export async function entityLinkingRoutes(app: FastifyInstance): Promise<void> {
   const config = loadConfig();
   const shardManagerUrl =
-    config.services.shard_manager?.url ||
-    process.env.SHARD_MANAGER_URL ||
-    'http://localhost:3023';
-  const shardManager = new ServiceClient({ url: shardManagerUrl }, 'integration-processors');
+    config.services?.shard_manager?.url ?? process.env.SHARD_MANAGER_URL ?? '';
+  const shardManager = new ServiceClient({ baseURL: shardManagerUrl });
 
   // Get entity linking settings
   app.get(
@@ -91,6 +90,12 @@ export async function entityLinkingRoutes(app: FastifyInstance): Promise<void> {
             type: 'object',
             properties: {
               settings: { type: 'object' },
+            },
+          },
+          500: {
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
             },
           },
         },
@@ -226,7 +231,7 @@ export async function entityLinkingRoutes(app: FastifyInstance): Promise<void> {
             updatedAt: new Date(),
           };
 
-          await container.items.create(settings, { partitionKey: tenantId });
+          await container.items.create(settings, { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]);
         }
 
         return reply.send({ settings });
@@ -613,6 +618,12 @@ export async function entityLinkingRoutes(app: FastifyInstance): Promise<void> {
               rules: { type: 'array' },
             },
           },
+          500: {
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+            },
+          },
         },
       },
     },
@@ -701,7 +712,6 @@ export async function entityLinkingRoutes(app: FastifyInstance): Promise<void> {
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
-      const userId = request.user!.id;
       const body = request.body;
 
       try {
@@ -719,7 +729,7 @@ export async function entityLinkingRoutes(app: FastifyInstance): Promise<void> {
           updatedAt: new Date(),
         };
 
-        await container.items.create(rule, { partitionKey: tenantId });
+        await container.items.create(rule, { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]);
 
         return reply.code(201).send({ rule });
       } catch (error: any) {
@@ -733,7 +743,7 @@ export async function entityLinkingRoutes(app: FastifyInstance): Promise<void> {
 /**
  * Map shard type to relationship type for entity linking
  */
-function getRelationshipType(sourceShardType: string, targetShardType: string): string {
+function getRelationshipType(sourceShardType: string, _targetShardType: string): string {
   const sourceTypeLower = sourceShardType.toLowerCase();
   const relationshipMap: Record<string, string> = {
     document: 'attached_to',

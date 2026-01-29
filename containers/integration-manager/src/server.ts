@@ -50,7 +50,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     endpoint: config.cosmos_db.endpoint,
     key: config.cosmos_db.key,
     database: config.cosmos_db.database_id,
-    containers: config.cosmos_db.containers,
+    containers: config.cosmos_db.containers as Record<string, string> | undefined,
   });
 
   await setupJWT(fastify, { secret: process.env.JWT_SECRET || '' });
@@ -68,7 +68,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Initialize event consumer for sync scheduling
   try {
-    const { initializeEventConsumer } = await import('./events/consumers/IntegrationManagerEventConsumer');
+    const { initializeEventConsumer } = await import('./events/consumers/IntegrationManagerEventConsumer.js');
     await initializeEventConsumer();
   } catch (error) {
     console.warn('Failed to initialize event consumer:', error);
@@ -93,7 +93,7 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   console.log(`${signal} received, shutting down gracefully`);
   try {
-    const { closeEventConsumer } = await import('./events/consumers/IntegrationManagerEventConsumer');
+    const { closeEventConsumer } = await import('./events/consumers/IntegrationManagerEventConsumer.js');
     await closeEventConsumer();
   } catch (error) {
     console.error('Error closing event consumer:', error);

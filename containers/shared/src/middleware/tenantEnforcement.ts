@@ -32,7 +32,7 @@ export function extractTenantId(request: FastifyRequest): string | null {
 export function tenantEnforcementMiddleware() {
   return async (
     request: FastifyRequest,
-    reply: FastifyReply
+    _reply: FastifyReply
   ): Promise<void> => {
     const tenantId = extractTenantId(request);
 

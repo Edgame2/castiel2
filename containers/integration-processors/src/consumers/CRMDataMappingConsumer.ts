@@ -4,7 +4,8 @@
  * @module integration-processors/consumers
  */
 
-import { EventConsumer, ServiceClient, EventPublisher, FieldMapperService, ShardValidator, ValidationConfig, getCache } from '@coder/shared';
+import { EventConsumer, FieldMapperService, ShardValidator, OpportunityEventDebouncer, getCache } from '@coder/shared';
+import type { ValidationConfig, ShardValidationError } from '@coder/shared';
 import { loadConfig } from '../config';
 import { log } from '../utils/logger';
 import { BaseConsumer, ConsumerDependencies } from './index';
@@ -17,9 +18,6 @@ import {
   rabbitmqMessageProcessingDurationSeconds,
   shardOperationsTotal,
   shardOperationDurationSeconds,
-  batchProcessingTotal,
-  batchProcessingDurationSeconds,
-  batchProcessingRecordsTotal,
   idempotencyChecksTotal,
   configCacheOperationsTotal,
 } from '../metrics';
@@ -56,7 +54,7 @@ export class CRMDataMappingConsumer implements BaseConsumer {
   private configCacheInvalidationConsumer: EventConsumer | null = null;
   private config: ReturnType<typeof loadConfig>;
   private fieldMapper: FieldMapperService;
-  private shardValidators: Map<string, ShardValidator> = new Map(); // Cache validators per shard type
+  private shardValidators: Map<string, ShardValidator> = new Map();
   private idempotencyCache: Map<string, boolean> = new Map(); // In-memory fallback cache
   private configCache: Map<string, { config: any; expiresAt: number }> = new Map(); // In-memory fallback cache
   private useRedisForIdempotency: boolean = false;
@@ -292,16 +290,16 @@ export class CRMDataMappingConsumer implements BaseConsumer {
     }
     
     // Also flush in-memory buffer (legacy fallback)
-    for (const [key, buffer] of this.opportunityEventBuffer.entries()) {
+    for (const [, buffer] of this.opportunityEventBuffer.entries()) {
       clearTimeout(buffer.timer);
       await this.flushOpportunityEvent(buffer.event, buffer.opportunityId, buffer.shardId);
     }
     this.opportunityEventBuffer.clear();
     
     // Flush batch opportunity events
-    for (const [key, buffer] of this.batchOpportunityBuffer.entries()) {
+    for (const [bufferKey, buffer] of this.batchOpportunityBuffer.entries()) {
       clearTimeout(buffer.timer);
-      await this.flushBatchOpportunityEvent(key);
+      await this.flushBatchOpportunityEvent(bufferKey);
     }
     this.batchOpportunityBuffer.clear();
   }
@@ -317,7 +315,6 @@ export class CRMDataMappingConsumer implements BaseConsumer {
       // Track message consumption
       rabbitmqMessagesConsumedTotal.inc({ queue_name: this.config.mapping?.queue_name || 'integration_data_raw', status: 'processing' });
       // 1. Idempotency check
-      const idempotencyCheckStart = process.hrtime.bigint();
       const isAlreadyProcessed = await this.isProcessed(event.idempotencyKey);
       idempotencyChecksTotal.inc({
         cache_type: this.useRedisForIdempotency ? 'redis' : 'memory',
@@ -334,12 +331,10 @@ export class CRMDataMappingConsumer implements BaseConsumer {
       }
 
       // 2. Get integration config (with caching)
-      const configCacheStart = process.hrtime.bigint();
       const integrationConfig = await this.getIntegrationConfig(
         event.integrationId,
         event.tenantId
       );
-      const configCacheDuration = Number(process.hrtime.bigint() - configCacheStart) / 1e9;
       configCacheOperationsTotal.inc({
         operation: 'get',
         cache_type: this.useRedisForConfigCache ? 'redis' : 'memory',
@@ -384,8 +379,8 @@ export class CRMDataMappingConsumer implements BaseConsumer {
         
         if (strictness === 'strict') {
           const errorMessages = [
-            ...validation.errors.map(e => `${e.field}: ${e.message}`),
-            ...validation.warnings.map(w => `${w.field}: ${w.message}`),
+            ...validation.errors.map((e: ShardValidationError) => `${e.field}: ${e.message}`),
+            ...validation.warnings.map((w: ShardValidationError) => `${w.field}: ${w.message}`),
           ].join('; ');
           throw new Error(`Shard validation failed: ${errorMessages}`);
         } else {
@@ -495,7 +490,6 @@ export class CRMDataMappingConsumer implements BaseConsumer {
       });
 
       // Record failure metrics
-      const duration = Number(process.hrtime.bigint() - processingStartTime) / 1e9;
       const errorType = error.statusCode ? `http_${error.statusCode}` : error.name || 'unknown';
       integrationDataMappingFailedTotal.inc({
         integration_id: event.integrationId,
@@ -516,7 +510,6 @@ export class CRMDataMappingConsumer implements BaseConsumer {
    */
   private async handleBatchEvent(event: IntegrationDataRawBatchEvent): Promise<void> {
     const startTime = Date.now();
-    const batchStartTime = process.hrtime.bigint();
     log.info('Processing batch event', {
       integrationId: event.integrationId,
       batchSize: event.batchSize,
@@ -830,7 +823,7 @@ export class CRMDataMappingConsumer implements BaseConsumer {
    */
   private calculateSimpleMLFields(
     structuredData: Record<string, any>,
-    rawData: Record<string, any>
+    _rawData: Record<string, any>
   ): void {
     // daysInStage: From current stage + lastStageChangeDate
     if (structuredData.stage && structuredData.lastStageChangeDate) {
@@ -864,6 +857,23 @@ export class CRMDataMappingConsumer implements BaseConsumer {
     if (!structuredData.stakeholderCount) {
       structuredData.stakeholderCount = 0;
     }
+  }
+
+  /**
+   * Validate mapped structuredData with ShardValidator (cached per shard type)
+   */
+  private async validateShardData(
+    structuredData: Record<string, unknown>,
+    shardTypeId: string,
+    shardTypeName: string
+  ): Promise<{ valid: boolean; errors: ShardValidationError[]; warnings: ShardValidationError[] }> {
+    let validator = this.shardValidators.get(shardTypeId);
+    if (!validator) {
+      const config: ValidationConfig = { strictness: 'lenient' };
+      validator = new ShardValidator(config);
+      this.shardValidators.set(shardTypeId, validator);
+    }
+    return Promise.resolve(validator.validate(structuredData, shardTypeName));
   }
 
   /**
@@ -1058,15 +1068,10 @@ export class CRMDataMappingConsumer implements BaseConsumer {
   private async publishOpportunityEvent(
     event: IntegrationDataRawEvent,
     shardId: string,
-    structuredData: Record<string, any>
+    _structuredData: Record<string, any>
   ): Promise<void> {
     const opportunityId = shardId; // Use shard ID as opportunity ID
     const batchThreshold = this.config.mapping?.opportunity_batch_threshold || 100;
-
-    // Check if significant fields changed (for updates)
-    const significantFields = ['stage', 'amount', 'closeDate', 'probability', 'status'];
-    const mlFields = ['documentCount', 'emailCount', 'meetingCount', 'stakeholderCount'];
-    const allSignificantFields = [...significantFields, ...mlFields];
 
     // For new opportunities, always publish
     // For updates, only publish if significant changes
@@ -1297,10 +1302,10 @@ export class CRMDataMappingConsumer implements BaseConsumer {
     error: string
   ): Promise<void> {
     try {
-      const tenantId = 'tenantId' in event ? event.tenantId : event.tenantId;
-      const integrationId = 'integrationId' in event ? event.integrationId : event.integrationId;
-      const syncTaskId = 'syncTaskId' in event ? event.syncTaskId : event.syncTaskId;
-      const correlationId = 'correlationId' in event ? event.correlationId : event.correlationId;
+      const tenantId = event.tenantId;
+      const integrationId = event.integrationId;
+      const syncTaskId = event.syncTaskId;
+      const correlationId = event.correlationId;
 
       await this.deps.eventPublisher.publish('integration.data.mapping.failed', tenantId, {
         integrationId,

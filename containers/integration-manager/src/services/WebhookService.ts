@@ -4,22 +4,13 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { getContainer } from '@coder/shared/database';
-import { ServiceClient } from '@coder/shared/services';
-import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
+import { getContainer, BadRequestError, NotFoundError } from '@coder/shared';
 import { Webhook, CreateWebhookInput, UpdateWebhookInput } from '../types/integration.types';
 
 export class WebhookService {
   private containerName = 'integration_webhooks';
-  private secretManagementClient: ServiceClient;
 
-  constructor(secretManagementUrl: string) {
-    this.secretManagementClient = new ServiceClient({
-      baseUrl: secretManagementUrl,
-      timeout: 10000,
-      retries: 2,
-    });
-  }
+  constructor(_secretManagementUrl: string) {}
 
   /**
    * Create a new webhook
@@ -59,7 +50,7 @@ export class WebhookService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(webhook, {
         partitionKey: input.tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create webhook');
@@ -87,7 +78,7 @@ export class WebhookService {
       const { resource } = await container.item(webhookId, tenantId).read<Webhook>();
 
       if (!resource) {
-        throw new NotFoundError(`Webhook ${webhookId} not found`);
+        throw new NotFoundError('Webhook', webhookId);
       }
 
       return resource;
@@ -96,7 +87,7 @@ export class WebhookService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Webhook ${webhookId} not found`);
+        throw new NotFoundError('Webhook', webhookId);
       }
       throw error;
     }
@@ -129,7 +120,7 @@ export class WebhookService {
       return resource as Webhook;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Webhook ${webhookId} not found`);
+        throw new NotFoundError('Webhook', webhookId);
       }
       throw error;
     }
@@ -139,7 +130,7 @@ export class WebhookService {
    * Delete webhook
    */
   async delete(webhookId: string, tenantId: string): Promise<void> {
-    const existing = await this.getById(webhookId, tenantId);
+    await this.getById(webhookId, tenantId);
 
     // TODO: Unregister webhook from external provider
 

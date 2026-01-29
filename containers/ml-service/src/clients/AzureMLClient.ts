@@ -1,10 +1,16 @@
 /**
- * Azure ML Managed Endpoint client (BI_SALES_RISK Plan §5.4).
+ * Azure ML Managed Endpoint client (BI_SALES_RISK Plan §5.4, W4 Layer 3).
  * POSTs feature vectors to scoring URLs from config.azure_ml.endpoints.
+ * Circuit breaker and retry with exponential backoff per endpoint (COMPREHENSIVE_LAYER_REQUIREMENTS_SUMMARY).
  * On failure, caller falls back to heuristics (Plan §5.7).
  */
 
 import { ServiceClient } from '@coder/shared';
+
+/** Default inference timeout 2s (W4 Layer 3; plan: timeout 2s default). */
+const DEFAULT_INFERENCE_TIMEOUT_MS = 2000;
+/** Revenue forecast may take longer. */
+const FORECAST_TIMEOUT_MS = 20000;
 
 export interface AzureMLConfig {
   endpoints?: Record<string, string>;
@@ -14,14 +20,34 @@ export interface AzureMLConfig {
 /**
  * REST client for Azure ML Managed Endpoints.
  * predict(modelId, features) returns a numeric score or throws.
+ * Caches ServiceClient per endpoint URL so circuit breaker state is shared across calls.
  */
 export class AzureMLClient {
   private endpoints: Record<string, string>;
   private apiKey: string;
+  private clientCache: Map<string, ServiceClient> = new Map();
 
   constructor(cfg: AzureMLConfig) {
     this.endpoints = cfg?.endpoints ?? {};
     this.apiKey = cfg?.api_key ?? '';
+  }
+
+  /**
+   * Get or create ServiceClient for endpoint URL (circuit breaker + retry shared per endpoint).
+   * Timeout is passed per-request in call options.
+   */
+  private getClient(url: string): ServiceClient {
+    let client = this.clientCache.get(url);
+    if (!client) {
+      client = new ServiceClient({
+        baseURL: url,
+        timeout: FORECAST_TIMEOUT_MS,
+        retries: 3,
+        circuitBreaker: { enabled: true, threshold: 5, timeout: 30000 },
+      });
+      this.clientCache.set(url, client);
+    }
+    return client;
   }
 
   /** Returns true if the given model has a configured scoring URL. */
@@ -50,20 +76,13 @@ export class AzureMLClient {
       },
     };
 
-    const client = new ServiceClient({
-      baseURL: url,
-      timeout: 15000,
-      retries: 1,
-    });
-
+    const client = this.getClient(url);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.apiKey) {
       headers['Authorization'] = `Bearer ${this.apiKey}`;
       headers['Api-Key'] = this.apiKey;
     }
-    // Prefer Bearer; some Azure ML setups expect Api-Key. Sending both is safe.
-
-    const res = await client.post<unknown>('', body, { headers });
+    const res = await client.post<unknown>('', body, { headers, timeout: DEFAULT_INFERENCE_TIMEOUT_MS });
     const v = this.extractNumber(res);
     if (typeof v === 'number' && !isNaN(v)) {
       return Math.min(1, Math.max(0, v));
@@ -86,19 +105,13 @@ export class AzureMLClient {
     }
     const body = { history, periods: Math.max(1, Math.min(periods, 365)) };
 
-    const client = new ServiceClient({
-      baseURL: url,
-      timeout: 20000,
-      retries: 1,
-    });
-
+    const client = this.getClient(url);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.apiKey) {
       headers['Authorization'] = `Bearer ${this.apiKey}`;
       headers['Api-Key'] = this.apiKey;
     }
-
-    const res = await client.post<{ p10?: number[]; p50?: number[]; p90?: number[] }>('', body, { headers });
+    const res = await client.post<{ p10?: number[]; p50?: number[]; p90?: number[] }>('', body, { headers, timeout: FORECAST_TIMEOUT_MS });
     const p50Arr = Array.isArray(res?.p50) ? res.p50 : [];
     const p10Arr = Array.isArray(res?.p10) ? res.p10 : p50Arr;
     const p90Arr = Array.isArray(res?.p90) ? res.p90 : p50Arr;
@@ -122,19 +135,13 @@ export class AzureMLClient {
     }
     const body = { sequence };
 
-    const client = new ServiceClient({
-      baseURL: url,
-      timeout: 15000,
-      retries: 1,
-    });
-
+    const client = this.getClient(url);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.apiKey) {
       headers['Authorization'] = `Bearer ${this.apiKey}`;
       headers['Api-Key'] = this.apiKey;
     }
-
-    const res = await client.post<Record<string, unknown>>('', body, { headers });
+    const res = await client.post<Record<string, unknown>>('', body, { headers, timeout: DEFAULT_INFERENCE_TIMEOUT_MS });
     const o = res && typeof res === 'object' ? res : {};
     const risk_30 = typeof o.risk_30 === 'number' ? o.risk_30 : 0.5;
     const risk_60 = typeof o.risk_60 === 'number' ? o.risk_60 : 0.5;
@@ -159,19 +166,13 @@ export class AzureMLClient {
     }
     const body = { input: [features] };
 
-    const client = new ServiceClient({
-      baseURL: url,
-      timeout: 15000,
-      retries: 1,
-    });
-
+    const client = this.getClient(url);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.apiKey) {
       headers['Authorization'] = `Bearer ${this.apiKey}`;
       headers['Api-Key'] = this.apiKey;
     }
-
-    const res = await client.post<unknown>('', body, { headers });
+    const res = await client.post<unknown>('', body, { headers, timeout: DEFAULT_INFERENCE_TIMEOUT_MS });
     const obj = res && typeof res === 'object' ? res as Record<string, unknown> : {};
     const isA = obj.isAnomaly ?? (obj.result as Record<string, unknown>|undefined)?.isAnomaly ?? (obj.outputs as Record<string, unknown>|undefined)?.isAnomaly;
     const aS = obj.anomalyScore ?? (obj.result as Record<string, unknown>|undefined)?.anomalyScore ?? (obj.outputs as Record<string, unknown>|undefined)?.anomalyScore;

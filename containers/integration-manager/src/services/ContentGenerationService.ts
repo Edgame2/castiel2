@@ -4,9 +4,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { getContainer } from '@coder/shared/database';
-import { ServiceClient } from '@coder/shared/services';
-import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
+import { getContainer, ServiceClient, BadRequestError, NotFoundError } from '@coder/shared';
 import {
   ContentGenerationJob,
   CreateContentJobInput,
@@ -18,20 +16,13 @@ import { loadConfig } from '../config';
 export class ContentGenerationService {
   private containerName = 'content_generation_jobs';
   private aiServiceClient: ServiceClient;
-  private shardManagerClient: ServiceClient;
   private config: ReturnType<typeof loadConfig>;
 
-  constructor(aiServiceUrl?: string, shardManagerUrl?: string) {
+  constructor(aiServiceUrl?: string, _shardManagerUrl?: string) {
     this.config = loadConfig();
     this.aiServiceClient = new ServiceClient({
       baseURL: aiServiceUrl || this.config.services.ai_service?.url || '',
       timeout: 60000, // Longer timeout for AI generation
-      retries: 2,
-      circuitBreaker: { enabled: true },
-    });
-    this.shardManagerClient = new ServiceClient({
-      baseURL: shardManagerUrl || this.config.services.shard_manager?.url || '',
-      timeout: 10000,
       retries: 2,
       circuitBreaker: { enabled: true },
     });
@@ -67,7 +58,7 @@ export class ContentGenerationService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(job, {
         partitionKey: input.tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create content generation job');
@@ -212,7 +203,7 @@ export class ContentGenerationService {
       const { resource } = await container.item(jobId, tenantId).read<ContentGenerationJob>();
 
       if (!resource) {
-        throw new NotFoundError(`Content generation job ${jobId} not found`);
+        throw new NotFoundError('Content generation job', jobId);
       }
 
       return resource;
@@ -221,7 +212,7 @@ export class ContentGenerationService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Content generation job ${jobId} not found`);
+        throw new NotFoundError('Content generation job', jobId);
       }
       throw error;
     }

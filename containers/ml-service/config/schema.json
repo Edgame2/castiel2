@@ -47,11 +47,15 @@
           "properties": {
             "models": { "type": "string" },
             "features": { "type": "string" },
+            "feature_snapshots": { "type": "string", "description": "Layer 2: persisted feature vectors (FeatureSnapshot)" },
+            "feature_metadata": { "type": "string", "description": "Layer 2: version lineage and quality stats (FeatureMetadata)" },
             "training_jobs": { "type": "string" },
             "evaluations": { "type": "string" },
             "predictions": { "type": "string" },
             "jobs": { "type": "string" },
-            "win_probability": { "type": "string", "description": "Plan §3.1.3, Gap 9: ml_win_probability_predictions for trend API" }
+            "win_probability": { "type": "string", "description": "Plan §3.1.3, Gap 9: ml_win_probability_predictions for trend API" },
+            "drift_metrics": { "type": "string", "description": "W6 Layer 8: DriftMetrics (ml_drift_metrics)" },
+            "improvement_opportunity": { "type": "string", "description": "W6 Layer 8: ImprovementOpportunity (ml_improvement_opportunity)" }
           }
         }
       }
@@ -63,7 +67,8 @@
         "embeddings": { "type": "object", "properties": { "url": { "type": "string", "format": "uri" } } },
         "logging": { "type": "object", "properties": { "url": { "type": "string", "format": "uri" } } },
         "shard_manager": { "type": "object", "properties": { "url": { "type": "string", "format": "uri" } } },
-        "risk_analytics": { "type": "object", "properties": { "url": { "type": "string", "format": "uri" } } }
+        "risk_analytics": { "type": "object", "properties": { "url": { "type": "string", "format": "uri" } } },
+        "risk_catalog": { "type": "object", "properties": { "url": { "type": "string", "format": "uri" } }, "description": "W7 Gap 1: risk-catalog for extractRiskCatalogFeatures" }
       }
     },
     "feature_pipeline": {

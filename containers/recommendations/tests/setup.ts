@@ -80,24 +80,42 @@ vi.mock('yaml', () => ({
   }),
 }));
 
-// Mock @coder/shared database
-vi.mock('@coder/shared/database', () => ({
-  getContainer: vi.fn(() => ({
-    items: {
-      create: vi.fn(),
-      query: vi.fn(() => ({
-        fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+// Mock @coder/shared (single mock: actual + getContainer, DB helpers, auth, ServiceClient)
+vi.mock('@coder/shared', async (importOriginal) => {
+  const actual = (await importOriginal()) as object;
+  return {
+    ...actual,
+    getContainer: vi.fn(() => ({
+      items: {
+        create: vi.fn(),
+        query: vi.fn(() => ({
+          fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        })),
+      },
+      item: vi.fn(() => ({
+        read: vi.fn().mockResolvedValue({ resource: null }),
+        replace: vi.fn(),
+        delete: vi.fn(),
       })),
-    },
-    item: vi.fn(() => ({
-      read: vi.fn().mockResolvedValue({ resource: null }),
-      replace: vi.fn(),
-      delete: vi.fn(),
     })),
-  })),
-  initializeDatabase: vi.fn(),
-  connectDatabase: vi.fn(),
-}));
+    initializeDatabase: vi.fn(),
+    connectDatabase: vi.fn(),
+    ServiceClient: vi.fn().mockImplementation(function ServiceClient(_config: unknown) {
+      return {
+        get: vi.fn().mockResolvedValue({ data: {} }),
+        post: vi.fn().mockResolvedValue({ data: {} }),
+        put: vi.fn().mockResolvedValue({ data: {} }),
+        delete: vi.fn().mockResolvedValue({ data: {} }),
+      };
+    }),
+    authenticateRequest: vi.fn(() => (req: { user?: { id: string; tenantId: string } }, _reply: unknown, next: () => void) => {
+      req.user = { id: 'test-user', tenantId: 'tenant-123' };
+      next();
+    }),
+    tenantEnforcementMiddleware: vi.fn(() => (_req: unknown, _reply: unknown, next: () => void) => next()),
+    setupJWT: vi.fn(),
+  };
+});
 
 // Mock @coder/shared events
 vi.mock('@coder/shared/events', () => ({
@@ -110,19 +128,6 @@ vi.mock('@coder/shared/events', () => ({
     start: vi.fn(),
     close: vi.fn(),
   })),
-}));
-
-// Mock @coder/shared ServiceClient
-vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(() => ({
-    get: vi.fn().mockResolvedValue({ data: {} }),
-    post: vi.fn().mockResolvedValue({ data: {} }),
-    put: vi.fn().mockResolvedValue({ data: {} }),
-    delete: vi.fn().mockResolvedValue({ data: {} }),
-  })),
-  authenticateRequest: vi.fn(() => vi.fn()),
-  tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
-  setupJWT: vi.fn(),
 }));
 
 // Global test setup

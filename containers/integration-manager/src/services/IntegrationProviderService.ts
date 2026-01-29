@@ -4,9 +4,8 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { getContainer } from '@coder/shared/database';
-import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
-import { IntegrationProvider } from '../types/integration.types';
+import { getContainer, BadRequestError, NotFoundError } from '@coder/shared';
+import { IntegrationProvider, AuthMethod } from '../types/integration.types';
 
 export class IntegrationProviderService {
   private containerName = 'integration_providers';
@@ -62,7 +61,7 @@ export class IntegrationProviderService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(provider, {
         partitionKey: input.category,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create integration provider');
@@ -90,7 +89,7 @@ export class IntegrationProviderService {
       const { resource } = await container.item(providerId, category).read<IntegrationProvider>();
 
       if (!resource) {
-        throw new NotFoundError(`Integration provider ${providerId} not found`);
+        throw new NotFoundError('Integration provider', providerId);
       }
 
       return resource;
@@ -99,7 +98,7 @@ export class IntegrationProviderService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Integration provider ${providerId} not found`);
+        throw new NotFoundError('Integration provider', providerId);
       }
       throw error;
     }
@@ -193,7 +192,7 @@ export class IntegrationProviderService {
     const updated: IntegrationProvider = {
       ...existing,
       ...input,
-      authMethods: input.authMethods || existing.authMethods,
+      authMethods: (input.authMethods || existing.authMethods) as AuthMethod[],
       updatedAt: new Date(),
     };
 
@@ -208,7 +207,7 @@ export class IntegrationProviderService {
       return resource as IntegrationProvider;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Integration provider ${providerId} not found`);
+        throw new NotFoundError('Integration provider', providerId);
       }
       throw error;
     }

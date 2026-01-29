@@ -49,22 +49,25 @@ vi.mock('../../../src/utils/logger', () => ({
 }));
 
 vi.mock('../../../src/services/BlobStorageService', () => ({
-  BlobStorageService: vi.fn().mockImplementation(() => ({
-    uploadFile: vi.fn(),
-    ensureContainer: vi.fn(),
-  })),
+  BlobStorageService: vi.fn().mockImplementation(function (this: any) {
+    this.uploadFile = vi.fn();
+    this.ensureContainer = vi.fn();
+    return this;
+  }),
 }));
 
 vi.mock('../../../src/services/DocumentDownloadService', () => ({
-  DocumentDownloadService: vi.fn().mockImplementation(() => ({
-    downloadDocument: vi.fn(),
-  })),
+  DocumentDownloadService: vi.fn().mockImplementation(function (this: any) {
+    this.downloadDocument = vi.fn();
+    return this;
+  }),
 }));
 
 vi.mock('../../../src/services/TextExtractionService', () => ({
-  TextExtractionService: vi.fn().mockImplementation(() => ({
-    extractText: vi.fn(),
-  })),
+  TextExtractionService: vi.fn().mockImplementation(function (this: any) {
+    this.extractText = vi.fn();
+    return this;
+  }),
 }));
 
 describe('DocumentProcessorConsumer', () => {
@@ -212,8 +215,7 @@ describe('DocumentProcessorConsumer', () => {
         expect.objectContaining({
           shardId: 'shard-123',
           shardTypeId: 'document',
-        }),
-        expect.any(Object)
+        })
       );
 
       expect(mockEventPublisher.publish).toHaveBeenCalledWith(
@@ -224,8 +226,7 @@ describe('DocumentProcessorConsumer', () => {
           shardId: 'shard-123',
           textExtracted: true,
           processingStatus: 'processing',
-        }),
-        expect.any(Object)
+        })
       );
     });
 
@@ -275,8 +276,7 @@ describe('DocumentProcessorConsumer', () => {
           textExtracted: false,
           processingStatus: 'pending',
           textExtractionError: 'Text extraction failed',
-        }),
-        expect.any(Object)
+        })
       );
     });
 
@@ -306,8 +306,7 @@ describe('DocumentProcessorConsumer', () => {
           documentId: 'doc-123',
           externalId: 'ext-123',
           error: 'Download failed',
-        }),
-        expect.any(Object)
+        })
       );
     });
 
@@ -341,8 +340,7 @@ describe('DocumentProcessorConsumer', () => {
         'tenant-123',
         expect.objectContaining({
           error: 'Blob upload failed',
-        }),
-        expect.any(Object)
+        })
       );
     });
 
@@ -386,8 +384,7 @@ describe('DocumentProcessorConsumer', () => {
         'tenant-123',
         expect.objectContaining({
           error: 'Shard creation failed',
-        }),
-        expect.any(Object)
+        })
       );
     });
 

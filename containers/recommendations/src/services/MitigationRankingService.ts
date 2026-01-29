@@ -5,7 +5,7 @@
  * Future: ml-service mitigation-ranking-model (Azure ML) for opportunity-specific ranking.
  */
 
-import { getContainer } from '@coder/shared/database';
+import { getContainer } from '@coder/shared';
 import { RankedMitigationAction, RankedMitigationResponse } from '../types/recommendations.types';
 import { v4 as uuidv4 } from 'uuid';
 import { log } from '../utils/logger';
@@ -60,11 +60,15 @@ export async function rankMitigationActions(
 ): Promise<RankedMitigationResponse> {
   try {
     const container = getContainer(CONTAINER);
+    const queryOptions = { partitionKey: tenantId };
     const { resources } = await container.items
-      .query<MitigationActionDoc>({ query: 'SELECT * FROM c ORDER BY c.rank ASC, c.id ASC', parameters: [] }, { partitionKey: tenantId })
+      .query<MitigationActionDoc>(
+        { query: 'SELECT * FROM c ORDER BY c.rank ASC, c.id ASC', parameters: [] },
+        queryOptions as Parameters<typeof container.items.query>[1]
+      )
       .fetchAll();
     if (resources && resources.length > 0) {
-      const actions = resources.map((d, i) => toRankedAction(d, d.rank ?? i + 1));
+      const actions = resources.map((d: MitigationActionDoc, i: number) => toRankedAction(d, d.rank ?? i + 1));
       return { opportunityId, tenantId, actions };
     }
   } catch (e) {

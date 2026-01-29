@@ -50,13 +50,14 @@ export async function checkPermission(
     return false;
   }
 
-  // Determine resource ID for scope checking
-  const resourceId = check.resourceId || params?.id || params?.projectId || params?.teamId || params?.userId;
+  // Determine resource ID for scope checking (used for organization context)
+  void (check.resourceId || params?.id || params?.projectId || params?.teamId || params?.userId);
 
   try {
-    const db = getDatabaseClient();
-    
-    // Check if user is Super Admin (bypass all permissions)
+    const db = getDatabaseClient() as unknown as {
+      organizationMembership: { findFirst: (args: unknown) => Promise<{ roleId: string; role: { isSuperAdmin: boolean } } | null> };
+      rolePermission: { findMany: (args: unknown) => Promise<Array<{ permission: { code: string } }>> };
+    };
     const membership = await db.organizationMembership.findFirst({
       where: {
         userId,
@@ -85,7 +86,7 @@ export async function checkPermission(
       },
     });
 
-    const permissionCodes = rolePermissions.map(rp => rp.permission.code);
+    const permissionCodes = rolePermissions.map((rp: { permission: { code: string } }) => rp.permission.code);
 
     // Check for wildcard permission
     if (permissionCodes.includes('*')) {

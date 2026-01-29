@@ -27,7 +27,7 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.put(
     '/api/v1/users/me',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Body: {
           name?: string;
@@ -59,8 +59,8 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
         }
 
         // Get before state for audit logging
-        const db = getDatabaseClient();
-        const beforeState = await db.user.findUnique({
+        const db = getDatabaseClient() as unknown as { user: { findUnique: (args: unknown) => Promise<unknown> } };
+        void (await db.user.findUnique({
           where: { id: requestUser.id },
           select: {
             name: true,
@@ -73,7 +73,7 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
             timezone: true,
             language: true,
           },
-        });
+        }));
 
         const profile = await userService.updateUserProfile(requestUser.id, updates);
 
@@ -113,15 +113,16 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to update user profile',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // List user sessions
   fastify.get(
     '/api/v1/users/me/sessions',
     { preHandler: authenticateRequest },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    (async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -139,15 +140,16 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to list user sessions',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Revoke a specific session
   fastify.delete(
     '/api/v1/users/me/sessions/:sessionId',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           sessionId: string;
@@ -200,15 +202,16 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to revoke session',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Revoke all other sessions (keep current)
   fastify.post(
     '/api/v1/users/me/sessions/revoke-all-others',
     { preHandler: authenticateRequest },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    (async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -224,7 +227,7 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
         }
 
         // Get count before revocation
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as unknown as { session: { findMany: (args: unknown) => Promise<unknown[]> } };
         const sessions = await db.session.findMany({
           where: {
             userId: requestUser.id,
@@ -261,8 +264,9 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to revoke sessions',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // List user organizations is available at GET /api/v1/organizations
@@ -272,7 +276,7 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post(
     '/api/v1/users/me/deactivate',
     { preHandler: authenticateRequest },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    (async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -315,15 +319,16 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to deactivate account',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Deactivate another user (Super Admin only)
   fastify.post(
     '/api/v1/users/:userId/deactivate',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           userId: string;
@@ -387,15 +392,16 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to deactivate user',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Reactivate user (Super Admin only)
   fastify.post(
     '/api/v1/users/:userId/reactivate',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           userId: string;
@@ -452,15 +458,16 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to reactivate user',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Delete user (Super Admin only, after 90 days)
   fastify.delete(
     '/api/v1/users/:userId',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           userId: string;
@@ -522,8 +529,9 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to delete user',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Health check

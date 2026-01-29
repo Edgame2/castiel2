@@ -18,6 +18,9 @@ export interface IntegrationProcessorsConfig {
     database_id: string;
     containers: {
       suggested_links: string;
+      entity_linking_settings?: string;
+      linking_rules?: string;
+      processing_settings?: string;
     };
   };
   jwt: { secret: string };
@@ -26,6 +29,7 @@ export interface IntegrationProcessorsConfig {
     url: string;
     exchange: string;
     queues: { [key: string]: string };
+    dlq?: { alert_threshold?: number };
   };
   consumer?: {
     type?: 'light' | 'heavy' | 'all';

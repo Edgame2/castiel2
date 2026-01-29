@@ -4,7 +4,7 @@
  * Publishes remediation.workflow.created, remediation.step.completed, remediation.workflow.completed.
  */
 
-import { getContainer } from '@coder/shared/database';
+import { getContainer } from '@coder/shared';
 import { v4 as uuidv4 } from 'uuid';
 import {
   RemediationWorkflow,

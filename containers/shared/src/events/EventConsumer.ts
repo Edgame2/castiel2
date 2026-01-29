@@ -5,7 +5,7 @@
  */
 
 import * as amqp from 'amqplib';
-import { DomainEvent } from '../types/events';
+import { DomainEvent } from '../types/events.types';
 import { validateEvent } from './EventSchema';
 
 /**
@@ -30,7 +30,7 @@ export type EventHandler<T = any> = (event: DomainEvent<T>) => Promise<void>;
  * Consumes events from RabbitMQ queue
  */
 export class EventConsumer {
-  private connection: amqp.Connection | null = null;
+  private connection: amqp.ChannelModel | null = null;
   private channel: amqp.Channel | null = null;
   private config: RabbitMQConsumerConfig;
   private exchange: string;
@@ -59,35 +59,37 @@ export class EventConsumer {
     }
 
     try {
-      this.connection = await amqp.connect(this.config.url);
-      this.channel = await this.connection.createChannel();
+      const conn = await amqp.connect(this.config.url);
+      this.connection = conn;
+      this.channel = await conn.createChannel();
 
+      const ch = this.channel;
       // Set prefetch (quality of service)
-      await this.channel.prefetch(this.config.prefetch!);
+      await ch.prefetch(this.config.prefetch!);
 
       // Assert exchange exists
-      await this.channel.assertExchange(this.exchange, this.config.exchangeType!, {
+      await ch.assertExchange(this.exchange, this.config.exchangeType!, {
         durable: true,
       });
 
       // Assert queue exists
-      await this.channel.assertQueue(this.queue, {
+      await ch.assertQueue(this.queue, {
         durable: true,
       });
 
       // Bind queue to exchange with routing keys
       for (const routingKey of this.config.routingKeys!) {
-        await this.channel.bindQueue(this.queue, this.exchange, routingKey);
+        await ch.bindQueue(this.queue, this.exchange, routingKey);
       }
 
       // Handle connection errors
-      this.connection.on('error', (error) => {
+      conn.on('error', (error) => {
         console.error('[EventConsumer] Connection error:', error);
         this.connection = null;
         this.channel = null;
       });
 
-      this.connection.on('close', () => {
+      conn.on('close', () => {
         console.log('[EventConsumer] Connection closed');
         this.connection = null;
         this.channel = null;

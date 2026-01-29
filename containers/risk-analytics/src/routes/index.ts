@@ -18,6 +18,7 @@ import { DataQualityService } from '../services/DataQualityService';
 import { TrustLevelService } from '../services/TrustLevelService';
 import { RiskAIValidationService } from '../services/RiskAIValidationService';
 import { RiskExplainabilityService } from '../services/RiskExplainabilityService';
+import { ExplainabilityService } from '../services/ExplainabilityService';
 import { getSnapshots } from '../services/RiskSnapshotService';
 import { listCompetitors, getCompetitorsForOpportunity, trackCompetitor, getDashboard, analyzeWinLossByCompetitor, recordWinLossReasons, getWinLossReasons } from '../services/CompetitiveIntelligenceService';
 import { getPrioritizedOpportunities } from '../services/PrioritizedOpportunitiesService';
@@ -30,16 +31,37 @@ import { LeadingIndicatorsService } from '../services/LeadingIndicatorsService';
 import { RiskClusteringService } from '../services/RiskClusteringService';
 import { AccountHealthService } from '../services/AccountHealthService';
 import { RiskPropagationService } from '../services/RiskPropagationService';
-import { publishJobTrigger, publishRiskPredictionGenerated } from '../events/publishers/RiskAnalyticsEventPublisher';
+import {
+  publishJobTrigger,
+  publishRiskPredictionGenerated,
+  publishMlExplanationRequested,
+  publishMlExplanationCompleted,
+  publishMlExplanationFailed,
+  publishDecisionEvaluationRequested,
+  publishDecisionEvaluationCompleted,
+  publishActionExecutionRequested,
+  publishActionExecutionCompleted,
+  publishActionExecutionFailed,
+} from '../events/publishers/RiskAnalyticsEventPublisher';
+import { randomUUID } from 'crypto';
 import { getContainer } from '@coder/shared/database';
 import { CreateRiskInput, UpdateRiskInput, SetPonderationInput } from '../types/risk-catalog.types';
+import type { ExplainPredictionRequest, ExplainBatchRequest } from '../types/explanation.types';
+import type { EvaluateDecisionRequest, ExecuteDecisionRequest, ApplyCatalogRulesRequest, MakeMethodologyDecisionRequest, Rule as RuleType } from '../types/decision.types';
+import type { UpsertSalesMethodologyBody } from '../types/sales-methodology.types';
+import type { UpsertTenantMLConfigBody } from '../types/tenant-ml-config.types';
+import { DecisionEngineService } from '../services/DecisionEngineService';
+import { ActionExecutor } from '../services/ActionExecutor';
+import { SalesMethodologyService } from '../services/SalesMethodologyService';
+import { TenantMLConfigService } from '../services/TenantMLConfigService';
+import { ReactivationService } from '../services/ReactivationService';
 
 /**
  * Register all routes
  */
 export async function registerRoutes(fastify: FastifyInstance, config: ReturnType<typeof loadConfig>): Promise<void> {
   try {
-    const riskEvaluationService = new RiskEvaluationService(fastify);
+    const riskEvaluationService = new RiskEvaluationService(fastify, tenantMLConfigService);
     const riskCatalogService = new RiskCatalogService(fastify);
     const revenueAtRiskService = new RevenueAtRiskService(fastify, riskEvaluationService);
     const quotaService = new QuotaService(fastify, revenueAtRiskService);
@@ -51,6 +73,33 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     const trustLevelService = new TrustLevelService(fastify, dataQualityService);
     const riskAIValidationService = new RiskAIValidationService(fastify);
     const riskExplainabilityService = new RiskExplainabilityService(fastify);
+    const explainabilityService = new ExplainabilityService();
+    const salesMethodologyService = new SalesMethodologyService();
+    const tenantMLConfigService = new TenantMLConfigService();
+    const mlServiceClientForMethodology = config.services?.ml_service?.url
+      ? new ServiceClient({
+          baseURL: config.services.ml_service.url,
+          timeout: 15000,
+          retries: 2,
+        })
+      : null;
+    const getMethodologyFeatures = mlServiceClientForMethodology
+      ? async (tenantId: string, opportunityId: string) => {
+          const token = generateServiceToken(fastify, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
+          try {
+            const res = await mlServiceClientForMethodology.get<import('../types/decision.types').MethodologyFeaturesInput>(
+              `/api/v1/ml/features/methodology?opportunityId=${encodeURIComponent(opportunityId)}`,
+              { headers: { 'X-Tenant-ID': tenantId, Authorization: `Bearer ${token}` } }
+            );
+            return res ?? null;
+          } catch {
+            return null;
+          }
+        }
+      : null;
+    const decisionEngineService = new DecisionEngineService(riskCatalogService, salesMethodologyService, getMethodologyFeatures);
+    const actionExecutor = new ActionExecutor();
+    const reactivationService = new ReactivationService(fastify);
     const stakeholderGraphService = new StakeholderGraphService(fastify);
     const riskClusteringService = new RiskClusteringService(fastify);
     const accountHealthService = new AccountHealthService(fastify);
@@ -184,10 +233,12 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
         },
       },
       async (request, reply) => {
+        const { opportunityId } = request.params;
+        const tenantId = request.user!.tenantId;
+        const requestId = randomUUID();
+        const t0 = Date.now();
+        await publishMlExplanationRequested(tenantId, { requestId, opportunityId });
         try {
-          const { opportunityId } = request.params;
-          const tenantId = request.user!.tenantId;
-
           const container = getContainer('risk_evaluations');
           const { resources } = await container.items
             .query({
@@ -197,6 +248,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
             .fetchAll();
 
           if (!resources || resources.length === 0) {
+            await publishMlExplanationFailed(tenantId, { requestId, opportunityId, error: 'No risk evaluation found for this opportunity', durationMs: Date.now() - t0 });
             return reply.status(404).send({
               error: { code: 'EVALUATION_NOT_FOUND', message: 'No risk evaluation found for this opportunity' },
             });
@@ -210,6 +262,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
             direction: 'increases' as const,
           }));
 
+          await publishMlExplanationCompleted(tenantId, { requestId, opportunityId, evaluationId: ev.evaluationId, durationMs: Date.now() - t0 });
           return reply.send({
             evaluationId: ev.evaluationId,
             opportunityId: ev.opportunityId ?? opportunityId,
@@ -219,6 +272,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
         } catch (error: unknown) {
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
+          await publishMlExplanationFailed(tenantId, { requestId, opportunityId, error: msg, durationMs: Date.now() - t0 });
           log.error('Risk-explainability failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           return reply.status(statusCode).send({
             error: { code: 'RISK_EXPLAINABILITY_FAILED', message: msg || 'Failed to get risk explainability' },
@@ -2573,12 +2627,16 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
         },
       },
       async (request, reply) => {
+        const { evaluationId } = request.params;
+        const tenantId = request.user!.tenantId;
+        const requestId = randomUUID();
+        const t0 = Date.now();
+        await publishMlExplanationRequested(tenantId, { requestId, evaluationId });
         try {
-          const { evaluationId } = request.params;
-          const tenantId = request.user!.tenantId;
           const container = getContainer('risk_evaluations');
           const { resource: evaluation } = await container.item(evaluationId, tenantId).read();
           if (!evaluation) {
+            await publishMlExplanationFailed(tenantId, { requestId, evaluationId, error: 'Risk evaluation not found', durationMs: Date.now() - t0 });
             return reply.status(404).send({
               error: {
                 code: 'EVALUATION_NOT_FOUND',
@@ -2587,13 +2645,908 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
             });
           }
           const explainability = await riskExplainabilityService.generateExplainability(evaluation, tenantId);
+          const opportunityId = (evaluation as { opportunityId?: string }).opportunityId;
+          await publishMlExplanationCompleted(tenantId, { requestId, opportunityId, evaluationId, durationMs: Date.now() - t0 });
           return reply.send(explainability);
         } catch (error: unknown) {
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
+          await publishMlExplanationFailed(tenantId, { requestId, evaluationId, error: msg, durationMs: Date.now() - t0 });
           log.error('Failed to generate explainability', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           return reply.status(statusCode).send({
             error: { code: 'EXPLAINABILITY_GENERATION_FAILED', message: msg || 'Failed to generate explainability' },
+          });
+        }
+      }
+    );
+
+    // Plan W5 Layer 4: explain/prediction, feature-importance, factors, batch (ALL_LAYERS_DETAILED_REQUIREMENTS)
+    fastify.post<{ Body: ExplainPredictionRequest }>(
+      '/api/v1/explain/prediction',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Generate or retrieve explanation for a prediction (evaluationId or predictionId).',
+          tags: ['Explainability'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            properties: {
+              predictionId: { type: 'string' },
+              opportunityId: { type: 'string' },
+              modelId: { type: 'string' },
+              evaluationId: { type: 'string' },
+            },
+          },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                tenantId: { type: 'string' },
+                predictionId: { type: 'string' },
+                opportunityId: { type: 'string' },
+                modelId: { type: 'string' },
+                baseValue: { type: 'number' },
+                prediction: { type: 'number' },
+                positiveFactors: { type: 'array', items: { type: 'object' } },
+                negativeFactors: { type: 'array', items: { type: 'object' } },
+                confidence: { type: 'string' },
+                detailLevel: { type: 'string' },
+                generatedAt: { type: 'string' },
+                createdAt: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = request.user!.tenantId;
+        const body = request.body as ExplainPredictionRequest;
+        const requestId = randomUUID();
+        const t0 = Date.now();
+        await publishMlExplanationRequested(tenantId, { requestId, opportunityId: body.opportunityId, evaluationId: body.evaluationId });
+        try {
+          const explanation = await explainabilityService.explainPrediction(body, tenantId);
+          await publishMlExplanationCompleted(tenantId, { requestId, opportunityId: explanation.opportunityId, evaluationId: explanation.predictionId, durationMs: Date.now() - t0 });
+          return reply.send(explanation);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          await publishMlExplanationFailed(tenantId, { requestId, opportunityId: body.opportunityId, evaluationId: body.evaluationId, error: msg, durationMs: Date.now() - t0 });
+          log.error('Explain prediction failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return reply.status(statusCode).send({
+            error: { code: 'EXPLAIN_PREDICTION_FAILED', message: msg || 'Failed to explain prediction' },
+          });
+        }
+      }
+    );
+
+    fastify.get<{ Params: { modelId: string } }>(
+      '/api/v1/explain/feature-importance/:modelId',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Get global feature importance for a model.',
+          tags: ['Explainability'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { modelId: { type: 'string' } }, required: ['modelId'] },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                tenantId: { type: 'string' },
+                modelId: { type: 'string' },
+                featureImportance: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: { feature: { type: 'string' }, importance: { type: 'number' }, category: { type: 'string' }, description: { type: 'string' }, rank: { type: 'number' } },
+                  },
+                },
+                sampleSize: { type: 'number' },
+                calculatedAt: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        const { modelId } = request.params;
+        const tenantId = request.user!.tenantId;
+        try {
+          const global = await explainabilityService.getGlobalFeatureImportance(modelId, tenantId);
+          if (!global) {
+            return reply.status(404).send({
+              error: { code: 'GLOBAL_FEATURE_IMPORTANCE_NOT_FOUND', message: 'Global feature importance not found for this model' },
+            });
+          }
+          return reply.send(global);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Get feature importance failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return reply.status(statusCode).send({
+            error: { code: 'FEATURE_IMPORTANCE_FAILED', message: msg || 'Failed to get feature importance' },
+          });
+        }
+      }
+    );
+
+    fastify.get<{ Params: { predictionId: string } }>(
+      '/api/v1/explain/factors/:predictionId',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Get factors (positive and negative) for a prediction.',
+          tags: ['Explainability'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { predictionId: { type: 'string' } }, required: ['predictionId'] },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                positiveFactors: { type: 'array', items: { type: 'object' } },
+                negativeFactors: { type: 'array', items: { type: 'object' } },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        const { predictionId } = request.params;
+        const tenantId = request.user!.tenantId;
+        try {
+          const factors = await explainabilityService.getFactorsByPredictionId(predictionId, tenantId);
+          if (!factors) {
+            return reply.status(404).send({
+              error: { code: 'EXPLANATION_NOT_FOUND', message: 'Explanation or factors not found for this prediction' },
+            });
+          }
+          return reply.send(factors);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Get factors failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return reply.status(statusCode).send({
+            error: { code: 'FACTORS_FAILED', message: msg || 'Failed to get factors' },
+          });
+        }
+      }
+    );
+
+    fastify.post<{ Body: ExplainBatchRequest }>(
+      '/api/v1/explain/batch',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Batch generate or retrieve explanations (evaluationIds or predictionIds).',
+          tags: ['Explainability'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            properties: {
+              predictionIds: { type: 'array', items: { type: 'string' } },
+              evaluationIds: { type: 'array', items: { type: 'string' } },
+            },
+          },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                explanations: { type: 'array', items: { type: 'object' } },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = request.user!.tenantId;
+        const body = (request.body as ExplainBatchRequest) ?? {};
+        try {
+          const explanations = await explainabilityService.explainBatch(body, tenantId);
+          return reply.send({ explanations });
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Explain batch failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return reply.status(statusCode).send({
+            error: { code: 'EXPLAIN_BATCH_FAILED', message: msg || 'Failed to run batch explain' },
+          });
+        }
+      }
+    );
+
+    // Plan W5 Layer 6: Decision Engine (COMPREHENSIVE_LAYER_REQUIREMENTS_SUMMARY)
+    fastify.post<{ Body: EvaluateDecisionRequest }>(
+      '/api/v1/decisions/evaluate',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Evaluate rules and create a decision for an opportunity (Plan W5 Layer 6).',
+          tags: ['Decision Engine'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['opportunityId'],
+            properties: {
+              opportunityId: { type: 'string' },
+              riskScore: { type: 'number' },
+              evaluationId: { type: 'string' },
+              context: { type: 'object' },
+            },
+          },
+          response: { 200: { type: 'object' } },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = request.user!.tenantId;
+        const body = request.body as EvaluateDecisionRequest;
+        const requestId = randomUUID();
+        const t0 = Date.now();
+        await publishDecisionEvaluationRequested(tenantId, { requestId, opportunityId: body.opportunityId, correlationId: request.id as string });
+        try {
+          const decision = await decisionEngineService.makeDecision(body, tenantId);
+          await publishDecisionEvaluationCompleted(tenantId, { requestId, decisionId: decision.id, opportunityId: decision.opportunityId, durationMs: Date.now() - t0, correlationId: request.id as string });
+          return reply.send(decision);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Decision evaluate failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
+          return reply.status(statusCode).send({
+            error: { code: 'DECISION_EVALUATE_FAILED', message: msg || 'Failed to evaluate decision' },
+          });
+        }
+      }
+    );
+
+    fastify.post<{ Body: ApplyCatalogRulesRequest }>(
+      '/api/v1/decisions/apply-catalog-rules',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Apply risk catalog–driven rules (W7 Gap 1 FR-6.5). Maps detected risks to catalog, gets rules for catalog risks, evaluates and returns decision.',
+          tags: ['Decision Engine'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['opportunityId'],
+            properties: {
+              opportunityId: { type: 'string' },
+              evaluationId: { type: 'string' },
+              riskScore: { type: 'number' },
+              industry: { type: 'string' },
+              detectedRisks: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    riskId: { type: 'string' },
+                    riskName: { type: 'string' },
+                    category: { type: 'string' },
+                    confidence: { type: 'number' },
+                  },
+                  required: ['riskId', 'riskName', 'category'],
+                },
+              },
+            },
+          },
+          response: { 200: { type: 'object' }, 204: { description: 'No catalog rules applied' } },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = request.user!.tenantId;
+        const body = request.body as ApplyCatalogRulesRequest;
+        const decision = await decisionEngineService.applyRiskCatalogRules(body, tenantId);
+        if (!decision) {
+          return reply.status(204).send();
+        }
+        return reply.send(decision);
+      }
+    );
+
+    fastify.post<{ Body: MakeMethodologyDecisionRequest }>(
+      '/api/v1/decisions/methodology',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'W8 Layer 6: Make methodology-based decisions (stage requirements, duration anomaly, MEDDIC). Fetches methodology features from ml-service.',
+          tags: ['Decision Engine'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['opportunityId'],
+            properties: { opportunityId: { type: 'string' } },
+          },
+          response: { 200: { type: 'object' }, 204: { description: 'No methodology decisions (no features or no findings)' } },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = (request as { user?: { tenantId: string } }).user?.tenantId;
+        if (!tenantId) {
+          return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
+        }
+        const body = request.body as MakeMethodologyDecisionRequest;
+        try {
+          const decision = await decisionEngineService.makeMethodologyDecisions(tenantId, body.opportunityId);
+          if (!decision) {
+            return reply.status(204).send();
+          }
+          return reply.send(decision);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('makeMethodologyDecisions failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          return reply.status(statusCode).send({
+            error: { code: 'METHODOLOGY_DECISION_FAILED', message: msg || 'Failed to make methodology decision' },
+          });
+        }
+      }
+    );
+
+    fastify.post<{ Body: ExecuteDecisionRequest }>(
+      '/api/v1/decisions/execute',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Execute actions for a decision (Plan W5 Layer 6).',
+          tags: ['Decision Engine'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['decisionId', 'opportunityId'],
+            properties: {
+              decisionId: { type: 'string' },
+              opportunityId: { type: 'string' },
+              actionIds: { type: 'array', items: { type: 'string' } },
+            },
+          },
+          response: { 200: { type: 'object' } },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = request.user!.tenantId;
+        const body = request.body as ExecuteDecisionRequest;
+        const requestId = randomUUID();
+        try {
+          const decision = await decisionEngineService.getDecision(body.decisionId, tenantId);
+          if (!decision) {
+            return reply.status(404).send({
+              error: { code: 'DECISION_NOT_FOUND', message: 'Decision not found' },
+            });
+          }
+          const actionsToRun = body.actionIds?.length
+            ? decision.actions.filter((a) => body.actionIds!.includes(a.idempotencyKey))
+            : decision.actions;
+          for (const a of actionsToRun) {
+            await publishActionExecutionRequested(tenantId, { requestId, actionId: a.idempotencyKey, opportunityId: body.opportunityId, actionType: a.type, correlationId: request.id as string });
+          }
+          const { success, results } = await actionExecutor.executeMany(actionsToRun, body.opportunityId, tenantId);
+          for (let i = 0; i < actionsToRun.length; i++) {
+            const a = actionsToRun[i];
+            const r = results[i];
+            if (r?.success) {
+              await publishActionExecutionCompleted(tenantId, { requestId, actionId: a.idempotencyKey, opportunityId: body.opportunityId, durationMs: 0, correlationId: request.id as string });
+            } else {
+              await publishActionExecutionFailed(tenantId, { requestId, actionId: a.idempotencyKey, opportunityId: body.opportunityId, error: r?.error ?? 'Unknown', correlationId: request.id as string });
+            }
+          }
+          return reply.send({ success, results });
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Decision execute failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
+          return reply.status(statusCode).send({
+            error: { code: 'DECISION_EXECUTE_FAILED', message: msg || 'Failed to execute decision' },
+          });
+        }
+      }
+    );
+
+    /** Super Admin §6.2: List rule templates (read-only). GET /api/v1/decisions/templates */
+    const RULE_TEMPLATES = [
+      { name: 'Mark high-value, low-risk as hot', description: 'Flag opportunities with high value and low risk score for priority follow-up.' },
+      { name: 'Escalate stalled opportunities', description: 'Trigger escalation when an opportunity has been in the same stage beyond a threshold.' },
+      { name: 'Notify on competitor detected', description: 'Send a notification when competitor intelligence is detected for an opportunity.' },
+      { name: 'Create task when stage changes', description: 'Create a follow-up task whenever the opportunity stage is updated.' },
+      { name: 'Alert on risk spike', description: 'Alert when risk score increases above a configured threshold.' },
+    ];
+    fastify.get(
+      '/api/v1/decisions/templates',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'List rule templates (Super Admin §6.2).',
+          tags: ['Decision Engine'],
+          security: [{ bearerAuth: [] }],
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                items: {
+                  type: 'array',
+                  items: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' } } },
+                },
+              },
+            },
+          },
+        },
+      },
+      async (_request, reply) => {
+        return reply.send({ items: RULE_TEMPLATES });
+      }
+    );
+
+    /** Super Admin §6.3: Detect rule conflicts. GET /api/v1/decisions/conflicts */
+    fastify.get(
+      '/api/v1/decisions/conflicts',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Detect rule conflicts (priority, overlapping conditions). Super Admin §6.3.',
+          tags: ['Decision Engine'],
+          security: [{ bearerAuth: [] }],
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                items: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      type: { type: 'string' },
+                      ruleIds: { type: 'array', items: { type: 'string' } },
+                      ruleNames: { type: 'array', items: { type: 'string' } },
+                      message: { type: 'string' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = request.user!.tenantId;
+        try {
+          const rules = await decisionEngineService.getAllRules(tenantId);
+          const items: Array<{ type: string; ruleIds: string[]; ruleNames: string[]; message: string }> = [];
+          const enabled = rules.filter((r) => r.enabled);
+          const byPriority = new Map<number, RuleType[]>();
+          for (const r of enabled) {
+            const p = r.priority ?? 0;
+            if (!byPriority.has(p)) byPriority.set(p, []);
+            byPriority.get(p)!.push(r);
+          }
+          for (const [, group] of byPriority) {
+            if (group.length > 1) {
+              items.push({
+                type: 'priority_conflict',
+                ruleIds: group.map((r) => r.id),
+                ruleNames: group.map((r) => r.name),
+                message: `Multiple rules have the same priority (${group[0].priority}). Execution order may be ambiguous.`,
+              });
+            }
+          }
+          for (let i = 0; i < enabled.length; i++) {
+            const a = enabled[i];
+            const fieldsA = new Set((a.conditions ?? []).map((c) => c.field).filter(Boolean));
+            if (fieldsA.size === 0) continue;
+            for (let j = i + 1; j < enabled.length; j++) {
+              const b = enabled[j];
+              const fieldsB = new Set((b.conditions ?? []).map((c) => c.field).filter(Boolean));
+              const overlap = [...fieldsA].filter((f) => fieldsB.has(f));
+              if (overlap.length > 0) {
+                items.push({
+                  type: 'overlapping_conditions',
+                  ruleIds: [a.id, b.id],
+                  ruleNames: [a.name, b.name],
+                  message: `Rules share condition field(s): ${overlap.join(', ')}. May trigger together.`,
+                });
+              }
+            }
+          }
+          return reply.send({ items });
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Get conflicts failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
+          return reply.status(statusCode).send({
+            error: { code: 'CONFLICTS_GET_FAILED', message: msg || 'Failed to get conflicts' },
+          });
+        }
+      }
+    );
+
+    fastify.get(
+      '/api/v1/decisions/rules',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'List enabled rules for tenant (Plan W5 Layer 6).',
+          tags: ['Decision Engine'],
+          security: [{ bearerAuth: [] }],
+          response: { 200: { type: 'object', properties: { rules: { type: 'array', items: { type: 'object' } } } } },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = request.user!.tenantId;
+        try {
+          const rules = await decisionEngineService.getRules(tenantId);
+          return reply.send({ rules });
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Get rules failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
+          return reply.status(statusCode).send({
+            error: { code: 'RULES_GET_FAILED', message: msg || 'Failed to get rules' },
+          });
+        }
+      }
+    );
+
+    fastify.post<{ Body: RuleType }>(
+      '/api/v1/decisions/rules',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Create a rule (Plan W5 Layer 6). Body: name, enabled, priority, conditions, conditionLogic, actions, createdBy.',
+          tags: ['Decision Engine'],
+          security: [{ bearerAuth: [] }],
+          body: { type: 'object', required: ['name', 'enabled', 'priority', 'conditions', 'conditionLogic', 'actions', 'createdBy'], properties: {} },
+          response: { 200: { type: 'object' } },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = request.user!.tenantId;
+        const body = request.body as RuleType & { createdBy: string };
+        try {
+          const id = `rule_${tenantId}_${randomUUID()}`;
+          const rule: RuleType = {
+            ...body,
+            id,
+            tenantId,
+            version: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            createdBy: body.createdBy ?? 'api',
+          };
+          const saved = await decisionEngineService.upsertRule(rule as RuleType);
+          return reply.send(saved);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Create rule failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
+          return reply.status(statusCode).send({
+            error: { code: 'RULE_CREATE_FAILED', message: msg || 'Failed to create rule' },
+          });
+        }
+      }
+    );
+
+    fastify.put<{ Params: { ruleId: string }; Body: RuleType }>(
+      '/api/v1/decisions/rules/:ruleId',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Update a rule (Plan W5 Layer 6).',
+          tags: ['Decision Engine'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { ruleId: { type: 'string' } }, required: ['ruleId'] },
+          body: { type: 'object' },
+          response: { 200: { type: 'object' } },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = request.user!.tenantId;
+        const { ruleId } = request.params;
+        const body = request.body as Partial<RuleType>;
+        try {
+          const rule: RuleType = {
+            ...body,
+            id: ruleId,
+            tenantId,
+            version: (body.version ?? 1) + 1,
+            createdAt: (body as RuleType).createdAt ?? new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            createdBy: (body as RuleType).createdBy ?? 'api',
+          } as RuleType;
+          const saved = await decisionEngineService.upsertRule(rule);
+          return reply.send(saved);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Update rule failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
+          return reply.status(statusCode).send({
+            error: { code: 'RULE_UPDATE_FAILED', message: msg || 'Failed to update rule' },
+          });
+        }
+      }
+    );
+
+    fastify.post<{ Params: { ruleId: string }; Body: { riskScore?: number; opportunityId: string } }>(
+      '/api/v1/decisions/rules/:ruleId/test',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Test a rule against sample data (Plan W5 Layer 6). Body: riskScore?, opportunityId.',
+          tags: ['Decision Engine'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { ruleId: { type: 'string' } }, required: ['ruleId'] },
+          body: { type: 'object', required: ['opportunityId'], properties: { riskScore: { type: 'number' }, opportunityId: { type: 'string' } } },
+          response: { 200: { type: 'object', properties: { matched: { type: 'boolean' }, actions: { type: 'array' } } } },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = request.user!.tenantId;
+        const { ruleId } = request.params;
+        const body = request.body as { riskScore?: number; opportunityId: string };
+        try {
+          const rules = await decisionEngineService.getRules(tenantId);
+          const rule = rules.find((r) => r.id === ruleId);
+          if (!rule) {
+            return reply.status(404).send({
+              error: { code: 'RULE_NOT_FOUND', message: 'Rule not found' },
+            });
+          }
+          const result = await decisionEngineService.testRule(rule, { riskScore: body.riskScore, opportunityId: body.opportunityId });
+          return reply.send(result);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Test rule failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
+          return reply.status(statusCode).send({
+            error: { code: 'RULE_TEST_FAILED', message: msg || 'Failed to test rule' },
+          });
+        }
+      }
+    );
+
+    // Plan W8: Sales Methodology (REQUIREMENTS_GAP_ANALYSIS Gap 2)
+    fastify.get(
+      '/api/v1/sales-methodology',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Get tenant sales methodology (stages, requirements, exit criteria, MEDDIC). Returns 404 if not configured.',
+          tags: ['Sales Methodology'],
+          security: [{ bearerAuth: [] }],
+          response: {
+            200: { type: 'object', description: 'SalesMethodology document' },
+            404: { type: 'object', properties: { error: { type: 'object' } } },
+          },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = (request as { user?: { tenantId: string } }).user?.tenantId;
+        if (!tenantId) {
+          return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
+        }
+        try {
+          const doc = await salesMethodologyService.getByTenantId(tenantId);
+          if (!doc) {
+            return reply.status(404).send({
+              error: { code: 'SALES_METHODOLOGY_NOT_FOUND', message: 'Sales methodology not configured for tenant' },
+            });
+          }
+          return reply.send(doc);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Get sales methodology failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          return reply.status(statusCode).send({
+            error: { code: 'SALES_METHODOLOGY_GET_FAILED', message: msg || 'Failed to get sales methodology' },
+          });
+        }
+      }
+    );
+
+    fastify.put<{ Body: UpsertSalesMethodologyBody }>(
+      '/api/v1/sales-methodology',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Create or update tenant sales methodology. Body: methodologyType, stages, requiredFields, risks. tenantId from X-Tenant-ID.',
+          tags: ['Sales Methodology'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['methodologyType', 'stages'],
+            properties: {
+              methodologyType: { type: 'string', enum: ['MEDDIC', 'MEDDPICC', 'Challenger', 'Sandler', 'SPIN', 'Custom'] },
+              stages: { type: 'array', items: { type: 'object' } },
+              requiredFields: { type: 'array', items: { type: 'object' } },
+              risks: { type: 'array', items: { type: 'object' } },
+            },
+          },
+          response: { 200: { type: 'object', description: 'SalesMethodology document' } },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = (request as { user?: { tenantId: string } }).user?.tenantId;
+        if (!tenantId) {
+          return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
+        }
+        const body = request.body as UpsertSalesMethodologyBody;
+        try {
+          const doc = await salesMethodologyService.upsert(tenantId, body);
+          return reply.send(doc);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Upsert sales methodology failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          return reply.status(statusCode).send({
+            error: { code: 'SALES_METHODOLOGY_UPSERT_FAILED', message: msg || 'Failed to upsert sales methodology' },
+          });
+        }
+      }
+    );
+
+    // Plan W10: Tenant ML Configuration (REQUIREMENTS_GAP_ANALYSIS Gap 4)
+    fastify.get(
+      '/api/v1/tenant-ml-config',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Get tenant ML configuration (risk tolerance, decision preferences, model preferences, custom features). 404 if not configured.',
+          tags: ['Tenant ML Config'],
+          security: [{ bearerAuth: [] }],
+          response: {
+            200: { type: 'object', description: 'TenantMLConfiguration document' },
+            404: { type: 'object', properties: { error: { type: 'object' } } },
+          },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = (request as { user?: { tenantId: string } }).user?.tenantId;
+        if (!tenantId) {
+          return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
+        }
+        try {
+          const doc = await tenantMLConfigService.getByTenantId(tenantId);
+          if (!doc) {
+            return reply.status(404).send({
+              error: { code: 'TENANT_ML_CONFIG_NOT_FOUND', message: 'Tenant ML configuration not configured' },
+            });
+          }
+          return reply.send(doc);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Get tenant ML config failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          return reply.status(statusCode).send({
+            error: { code: 'TENANT_ML_CONFIG_GET_FAILED', message: msg || 'Failed to get tenant ML config' },
+          });
+        }
+      }
+    );
+
+    fastify.put<{ Body: UpsertTenantMLConfigBody }>(
+      '/api/v1/tenant-ml-config',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Create or update tenant ML configuration. Body: riskTolerance, decisionPreferences, modelPreferences, customFeatures?. Tenant from X-Tenant-ID.',
+          tags: ['Tenant ML Config'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['riskTolerance', 'decisionPreferences', 'modelPreferences'],
+            properties: {
+              riskTolerance: {
+                type: 'object',
+                required: ['overallTolerance', 'autoEscalationThreshold'],
+                properties: {
+                  overallTolerance: { type: 'string', enum: ['conservative', 'balanced', 'aggressive'] },
+                  categoryTolerances: { type: 'object' },
+                  autoEscalationThreshold: { type: 'number' },
+                },
+              },
+              decisionPreferences: {
+                type: 'object',
+                properties: {
+                  autoMarkHot: { type: 'boolean' },
+                  autoCreateTasks: { type: 'boolean' },
+                  requireApprovalForActions: { type: 'boolean' },
+                },
+              },
+              modelPreferences: {
+                type: 'object',
+                properties: {
+                  preferIndustryModels: { type: 'boolean' },
+                  abTestingEnabled: { type: 'boolean' },
+                  minConfidenceThreshold: { type: 'number' },
+                },
+              },
+              customFeatures: { type: 'array', items: { type: 'object' } },
+            },
+          },
+          response: { 200: { type: 'object', description: 'TenantMLConfiguration document' } },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = (request as { user?: { tenantId: string } }).user?.tenantId;
+        if (!tenantId) {
+          return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
+        }
+        const body = request.body as UpsertTenantMLConfigBody;
+        try {
+          const doc = await tenantMLConfigService.upsert(tenantId, body);
+          return reply.send(doc);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Upsert tenant ML config failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          return reply.status(statusCode).send({
+            error: { code: 'TENANT_ML_CONFIG_UPSERT_FAILED', message: msg || 'Failed to upsert tenant ML config' },
+          });
+        }
+      }
+    );
+
+    // W9 Layer 6: Reactivation evaluate (FR-6.7)
+    fastify.post<{
+      Body: {
+        opportunityIds: string[];
+        minProbability?: number;
+        maxOpportunities?: number;
+        includeStrategy?: boolean;
+      };
+    }>(
+      '/api/v1/reactivation/evaluate',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'W9 Layer 6: Evaluate opportunities for reactivation. Calls ml-service for dormant features and prediction, optionally llm-service for strategy. Publishes reactivation.opportunity.identified and reactivation.strategy.generated.',
+          tags: ['Reactivation'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['opportunityIds'],
+            properties: {
+              opportunityIds: { type: 'array', items: { type: 'string' } },
+              minProbability: { type: 'number' },
+              maxOpportunities: { type: 'number' },
+              includeStrategy: { type: 'boolean' },
+            },
+          },
+          response: {
+            200: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  opportunityId: { type: 'string' },
+                  dormantFeatures: { type: 'object' },
+                  reactivationPrediction: { type: 'object' },
+                  reactivationStrategy: { type: 'object', nullable: true },
+                },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = (request as { user?: { tenantId: string } }).user?.tenantId;
+        if (!tenantId) {
+          return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
+        }
+        const body = request.body;
+        try {
+          const items = await reactivationService.evaluateReactivationOpportunities(tenantId, body.opportunityIds, {
+            minProbability: body.minProbability,
+            maxOpportunities: body.maxOpportunities,
+            includeStrategy: body.includeStrategy,
+          });
+          return reply.send(items);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Reactivation evaluate failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          return reply.status(statusCode).send({
+            error: { code: 'REACTIVATION_EVALUATE_FAILED', message: msg || 'Failed to evaluate reactivation opportunities' },
           });
         }
       }

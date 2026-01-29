@@ -28,6 +28,37 @@ export async function registerRoutes(
     { path: '/api/dashboard', service: 'dashboard', serviceUrl: config.services.dashboard.url, stripPrefix: true },
   ];
 
+  if (config.services.ml_service?.url) {
+    routeMappings.push({ path: '/api/v1/ml', service: 'ml_service', serviceUrl: config.services.ml_service.url, stripPrefix: false });
+  }
+  if (config.services.risk_catalog?.url) {
+    routeMappings.push({ path: '/api/v1/action-catalog', service: 'risk_catalog', serviceUrl: config.services.risk_catalog.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/risk-catalog', service: 'risk_catalog', serviceUrl: config.services.risk_catalog.url, stripPrefix: false });
+  }
+  if (config.services.recommendations?.url) {
+    routeMappings.push({ path: '/api/v1/feedback', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/admin/tenants', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/admin/feedback-config', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/admin/feedback-types', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
+  }
+  if (config.services.integration_manager?.url) {
+    routeMappings.push({ path: '/api/v1/admin/settings', service: 'integration_manager', serviceUrl: config.services.integration_manager.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/admin/integrations', service: 'integration_manager', serviceUrl: config.services.integration_manager.url, stripPrefix: false });
+  }
+  if (config.services.shard_manager?.url) {
+    routeMappings.push({ path: '/api/v1/admin/shard-types', service: 'shard_manager', serviceUrl: config.services.shard_manager.url, stripPrefix: false });
+  }
+  if (config.services.integration_processors?.url) {
+    routeMappings.push({ path: '/api/v1/admin/monitoring', service: 'integration_processors', serviceUrl: config.services.integration_processors.url, stripPrefix: false });
+  }
+  if (config.services.risk_analytics?.url) {
+    routeMappings.push({ path: '/api/v1', service: 'risk_analytics', serviceUrl: config.services.risk_analytics.url, stripPrefix: false });
+  }
+  if (config.services.configuration_service?.url) {
+    routeMappings.push({ path: '/api/v1/system', service: 'configuration_service', serviceUrl: config.services.configuration_service.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/configuration', service: 'configuration_service', serviceUrl: config.services.configuration_service.url, stripPrefix: false });
+  }
+
   // Register all routes
   for (const mapping of routeMappings) {
     proxyService.registerRoute(mapping);

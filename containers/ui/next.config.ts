@@ -84,9 +84,10 @@ const nextConfig: NextConfig = {
     ]
   },
 
-  // Proxy API requests to API Gateway
+  // Proxy API requests to API Gateway (only when NEXT_PUBLIC_API_BASE_URL is set)
   async rewrites() {
-    const apiGatewayUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+    const apiGatewayUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+    if (!apiGatewayUrl) return [];
     return [
       {
         source: '/api/v1/:path*',
@@ -100,7 +101,7 @@ const nextConfig: NextConfig = {
         source: '/api/auth/:path*',
         destination: `${apiGatewayUrl}/api/auth/:path*`,
       },
-    ]
+    ];
   },
 };
 

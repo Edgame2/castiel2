@@ -7,6 +7,20 @@
 
 import { getDatabaseClient } from '@coder/shared';
 
+/** Prisma-like DB client shape used by this service (shared returns Cosmos Database) */
+type OrganizationSettingsDb = {
+  organization: {
+    findUnique: (args: unknown) => Promise<unknown>;
+    update: (args: unknown) => Promise<unknown>;
+  };
+  organizationMembership: { findFirst: (args: unknown) => Promise<unknown> };
+  role: { findUnique: (args: unknown) => Promise<unknown> };
+};
+
+function getDb(): OrganizationSettingsDb {
+  return getDatabaseClient() as unknown as OrganizationSettingsDb;
+}
+
 /**
  * Organization settings structure
  */
@@ -68,28 +82,28 @@ export async function getOrganizationSettings(
   organizationId: string,
   userId: string
 ): Promise<OrganizationSettings> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
-  const organization = await db.organization.findUnique({
+  const organization = (await db.organization.findUnique({
     where: { id: organizationId },
     select: {
       id: true,
       settings: true,
     },
-  });
+  })) as { id: string; settings: unknown } | null;
   
   if (!organization) {
     throw new Error('Organization not found');
   }
   
   // Check membership
-  const membership = await db.organizationMembership.findFirst({
+  const membership = (await db.organizationMembership.findFirst({
     where: {
       userId,
       organizationId,
       status: 'active',
     },
-  });
+  })) as { id: string } | null;
   
   if (!membership) {
     throw new Error('You are not a member of this organization');
@@ -106,33 +120,33 @@ export async function updateOrganizationSettings(
   userId: string,
   settings: Partial<OrganizationSettings>
 ): Promise<OrganizationSettings> {
-  const db = getDatabaseClient();
+  const db = getDb();
   
-  const organization = await db.organization.findUnique({
+  const organization = (await db.organization.findUnique({
     where: { id: organizationId },
     select: {
       id: true,
       settings: true,
       ownerUserId: true,
     },
-  });
+  })) as { id: string; settings: unknown; ownerUserId: string } | null;
   
   if (!organization) {
     throw new Error('Organization not found');
   }
   
   // Check if user is owner or Super Admin
-  const membership = await db.organizationMembership.findFirst({
+  const membership = (await db.organizationMembership.findFirst({
     where: {
       userId,
       organizationId,
       status: 'active',
     },
     include: { role: true },
-  });
+  })) as { role?: { isSuperAdmin?: boolean } } | null;
   
   const isOwner = organization.ownerUserId === userId;
-  const isSuperAdmin = membership?.role.isSuperAdmin || false;
+  const isSuperAdmin = membership?.role?.isSuperAdmin || false;
   
   if (!isOwner && !isSuperAdmin) {
     throw new Error('Permission denied. Only organization owner or Super Admin can update settings.');
@@ -170,10 +184,10 @@ export async function updateOrganizationSettings(
     };
     
     if (updatedSettings.defaults.defaultRoleId) {
-      const role = await db.role.findUnique({
+      const role = (await db.role.findUnique({
         where: { id: updatedSettings.defaults.defaultRoleId },
         select: { id: true, organizationId: true },
-      });
+      })) as { id: string; organizationId: string } | null;
       
       if (!role || role.organizationId !== organizationId) {
         throw new Error('Default role not found or does not belong to this organization');
@@ -230,7 +244,7 @@ export async function updateOrganizationSettings(
   await db.organization.update({
     where: { id: organizationId },
     data: {
-      settings: updatedSettings,
+      settings: updatedSettings as Record<string, unknown>,
     },
   });
   

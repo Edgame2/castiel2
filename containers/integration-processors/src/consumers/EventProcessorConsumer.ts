@@ -4,7 +4,7 @@
  * @module integration-processors/consumers
  */
 
-import { EventConsumer, ServiceClient, EventPublisher, EntityLinkingService } from '@coder/shared';
+import { EventConsumer } from '@coder/shared';
 import { loadConfig } from '../config';
 import { log } from '../utils/logger';
 import { BaseConsumer, ConsumerDependencies } from './index';
@@ -55,15 +55,8 @@ interface EventCreatedEvent {
 export class EventProcessorConsumer implements BaseConsumer {
   private consumer: EventConsumer | null = null;
   private config: ReturnType<typeof loadConfig>;
-  private entityLinkingService: EntityLinkingService | null = null;
-
   constructor(private deps: ConsumerDependencies) {
     this.config = loadConfig();
-
-    // Initialize entity linking service if AI service is available
-    if (deps.aiService) {
-      this.entityLinkingService = new EntityLinkingService(deps.shardManager, deps.aiService);
-    }
   }
 
   async start(): Promise<void> {
@@ -214,20 +207,20 @@ export class EventProcessorConsumer implements BaseConsumer {
         eventType,
       });
 
-      const duration = Number(process.hrtime.bigint() - startTime) / 1e9;
+      const processingDurationSec = Number(process.hrtime.bigint() - startTime) / 1e9;
       log.info('Calendar event processed successfully', {
         eventId,
         shardId,
-        duration,
+        duration: processingDurationSec,
         service: 'integration-processors',
       });
     } catch (error: any) {
-      const duration = Number(process.hrtime.bigint() - startTime) / 1e9;
+      const processingDurationSec = Number(process.hrtime.bigint() - startTime) / 1e9;
       log.error('Failed to process calendar event', error, {
         eventId,
         externalId,
         tenantId,
-        duration,
+        duration: processingDurationSec,
         service: 'integration-processors',
       });
 

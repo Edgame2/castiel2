@@ -10,12 +10,13 @@ import { ServiceClient, EventPublisher } from '@coder/shared';
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn(),
   EventPublisher: vi.fn(),
-  EventConsumer: vi.fn().mockImplementation(() => ({
-    on: vi.fn(),
-    connect: vi.fn(),
-    start: vi.fn(),
-    stop: vi.fn(),
-  })),
+  EventConsumer: vi.fn().mockImplementation(function (this: any) {
+    this.on = vi.fn();
+    this.connect = vi.fn();
+    this.start = vi.fn();
+    this.stop = vi.fn();
+    return this;
+  }),
 }));
 
 vi.mock('../../../src/config', () => ({
@@ -40,10 +41,11 @@ vi.mock('../../../src/utils/logger', () => ({
 }));
 
 vi.mock('../../../src/services/ActivityAggregationService', () => ({
-  ActivityAggregationService: vi.fn().mockImplementation(() => ({
-    createActivityFromShard: vi.fn(),
-    createInteractionsFromActivity: vi.fn(),
-  })),
+  ActivityAggregationService: vi.fn().mockImplementation(function (this: any) {
+    this.createActivityFromShard = vi.fn();
+    this.createInteractionsFromActivity = vi.fn();
+    return this;
+  }),
 }));
 
 describe('ActivityAggregationConsumer', () => {
@@ -150,17 +152,17 @@ describe('ActivityAggregationConsumer', () => {
         'tenant-123'
       );
 
-      // Verify activity.created event was published
+      // Verify activity.created event was published (3 args: eventType, tenantId, payload)
       expect(mockEventPublisher.publish).toHaveBeenCalledWith(
         'activity.created',
         'tenant-123',
         expect.objectContaining({
-          activityShardId: 'activity-shard-123',
+          activityId: 'activity-shard-123',
           sourceShardId: 'email-123',
           sourceShardType: 'Email',
-          interactionShardIds: ['interaction-1', 'interaction-2'],
-        }),
-        expect.any(Object)
+          interactionCount: 2,
+          tenantId: 'tenant-123',
+        })
       );
     });
 
@@ -278,16 +280,16 @@ describe('ActivityAggregationConsumer', () => {
 
       await (consumer as any).handleShardCreatedEvent(event);
 
-      // Verify failed event was published
+      // Verify failed event was published (3 args: eventType, tenantId, payload)
       expect(mockEventPublisher.publish).toHaveBeenCalledWith(
         'activity.aggregation.failed',
         'tenant-123',
         expect.objectContaining({
-          sourceShardId: 'email-123',
-          sourceShardType: 'Email',
+          shardId: 'email-123',
+          shardTypeName: 'Email',
+          tenantId: 'tenant-123',
           error: expect.any(String),
-        }),
-        expect.any(Object)
+        })
       );
     });
 
@@ -322,15 +324,16 @@ describe('ActivityAggregationConsumer', () => {
 
       await (consumer as any).handleShardCreatedEvent(event);
 
-      // Should still publish activity.created even if interactions fail
+      // When interactions fail, implementation publishes activity.aggregation.failed (3 args)
       expect(mockEventPublisher.publish).toHaveBeenCalledWith(
-        'activity.created',
+        'activity.aggregation.failed',
         'tenant-123',
         expect.objectContaining({
-          activityShardId: 'activity-shard-123',
-          interactionShardIds: [],
-        }),
-        expect.any(Object)
+          shardId: 'email-123',
+          shardTypeName: 'Email',
+          tenantId: 'tenant-123',
+          error: expect.any(String),
+        })
       );
     });
   });

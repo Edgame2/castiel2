@@ -23,6 +23,7 @@ import {
 } from '../types/risk-analytics.types';
 import { RiskCatalog, DetectedRisk } from '../types/risk-catalog.types';
 import { RiskCatalogService } from './RiskCatalogService';
+import { TenantMLConfigService } from './TenantMLConfigService';
 import { trace } from '@opentelemetry/api';
 import { publishRiskAnalyticsEvent, publishHitlApprovalRequested } from '../events/publishers/RiskAnalyticsEventPublisher';
 import { riskEvaluationsTotal } from '../metrics';
@@ -48,9 +49,11 @@ export class RiskEvaluationService {
   private evaluationCache = new Map<string, { evaluation: RiskEvaluationResult; expiresAt: number }>();
   private readonly CACHE_TTL = 15 * 60 * 1000; // 15 minutes
   private app: FastifyInstance | null = null;
+  private tenantMLConfigService: TenantMLConfigService;
 
-  constructor(app?: FastifyInstance) {
+  constructor(app?: FastifyInstance, tenantMLConfigService?: TenantMLConfigService) {
     this.app = app || null;
+    this.tenantMLConfigService = tenantMLConfigService ?? new TenantMLConfigService();
     this.config = loadConfig();
     
     // Initialize service clients
@@ -371,12 +374,25 @@ export class RiskEvaluationService {
       }).end();
 
       // HITL (Plan §972): if hitl_approvals on and riskScore ≥ hitl_risk_min and amount ≥ hitl_deal_min, publish hitl.approval.requested.
+      // W10: Tenant ML config overrides: riskTolerance.autoEscalationThreshold for hitl_risk_min; decisionPreferences.requireApprovalForActions gates publishing.
+      let tenantMLConfig: Awaited<ReturnType<TenantMLConfigService['getByTenantId']>> = null;
+      try {
+        tenantMLConfig = await this.tenantMLConfigService.getByTenantId(request.tenantId);
+      } catch {
+        // use config defaults on error
+      }
       const hitlOn = this.config.feature_flags?.hitl_approvals === true;
-      const hitlRiskMin = typeof this.config.thresholds?.hitl_risk_min === 'number' ? this.config.thresholds.hitl_risk_min : 0.8;
+      const hitlRiskMin =
+        typeof tenantMLConfig?.riskTolerance?.autoEscalationThreshold === 'number'
+          ? tenantMLConfig.riskTolerance.autoEscalationThreshold
+          : typeof this.config.thresholds?.hitl_risk_min === 'number'
+            ? this.config.thresholds.hitl_risk_min
+            : 0.8;
       const hitlDealMin = typeof this.config.thresholds?.hitl_deal_min === 'number' ? this.config.thresholds.hitl_deal_min : 1_000_000;
+      const requireApproval = tenantMLConfig?.decisionPreferences?.requireApprovalForActions ?? true;
       const amount = Number(opportunityShard?.structuredData?.Amount ?? opportunityShard?.structuredData?.amount ?? 0);
       const ownerId = opportunityShard?.structuredData?.OwnerId ?? opportunityShard?.structuredData?.ownerId;
-      if (hitlOn && riskScore >= hitlRiskMin && amount >= hitlDealMin) {
+      if (hitlOn && requireApproval && riskScore >= hitlRiskMin && amount >= hitlDealMin) {
         await publishHitlApprovalRequested(request.tenantId, {
           opportunityId: request.opportunityId,
           riskScore,

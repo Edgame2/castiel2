@@ -4,7 +4,7 @@
  * @module integration-processors/consumers
  */
 
-import { EventConsumer, ServiceClient, EventPublisher, EntityLinkingService, OpportunityEventDebouncer } from '@coder/shared';
+import { EventConsumer, EntityLinkingService, OpportunityEventDebouncer } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { loadConfig } from '../config';
 import { log } from '../utils/logger';
@@ -33,6 +33,7 @@ export class EntityLinkingConsumer implements BaseConsumer {
   private consumer: EventConsumer | null = null;
   private config: ReturnType<typeof loadConfig>;
   private entityLinkingService: EntityLinkingService;
+  private opportunityDebouncer: OpportunityEventDebouncer;
   private opportunityEventBuffer: Map<string, { opportunityIds: Set<string>; timer: NodeJS.Timeout }> = new Map();
 
   constructor(private deps: ConsumerDependencies) {
@@ -251,7 +252,7 @@ export class EntityLinkingConsumer implements BaseConsumer {
     targetShardId: string,
     tenantId: string,
     sourceShardTypeId: string,
-    targetShardTypeId: string
+    _targetShardTypeId: string
   ): Promise<void> {
     try {
       const relationshipType = RELATIONSHIP_TYPE_MAP[sourceShardTypeId.toLowerCase()] || 'RELATED_TO';
@@ -331,7 +332,7 @@ export class EntityLinkingConsumer implements BaseConsumer {
           ttl: 2592000,
         };
 
-        await container.items.create(suggestedLink, { partitionKey: tenantId });
+        await container.items.create(suggestedLink, { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]);
       }
 
       log.debug('Stored suggested links', {
@@ -357,7 +358,7 @@ export class EntityLinkingConsumer implements BaseConsumer {
     if (this.opportunityDebouncer) {
       // Schedule each opportunity individually (debouncer groups by opportunity)
       for (const opportunityId of opportunityIds) {
-        const { shouldPublish, bufferKey } = await this.opportunityDebouncer.scheduleOpportunityEvent(
+        const { shouldPublish } = await this.opportunityDebouncer.scheduleOpportunityEvent(
           opportunityId,
           opportunityId, // Use opportunityId as shardId for entity linking
           {

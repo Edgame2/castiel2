@@ -70,3 +70,35 @@ export interface UpdateRiskInput {
 export interface SetPonderationInput {
   ponderations: RiskPonderation[];
 }
+
+/**
+ * W7 Gap 1 – Layer 2 integration. Minimal definition per category for extractRiskCatalogFeatures.
+ */
+export interface RiskDefinition {
+  name: string;
+  description?: string;
+  defaultPonderation?: number;
+}
+
+/**
+ * W7 – Risk template view (industry/stage filtering; RiskCatalog entries used as templates).
+ */
+export interface RiskTemplateView {
+  id: string;
+  riskId: string;
+  name: string;
+  category: RiskCategory;
+  industryId?: string;
+  applicableStages: string[]; // Empty if not in schema; extend later
+}
+
+/**
+ * W7 – Tenant catalog view for Layer 2 (ml-service extractRiskCatalogFeatures).
+ */
+export interface TenantCatalogView {
+  tenantRiskCategories: string[];
+  categoryDefinitions: Record<string, RiskDefinition>;
+  riskTemplates: RiskTemplateView[];
+  industrySpecificRisks: string[];
+  methodologyRisks: string[];
+}

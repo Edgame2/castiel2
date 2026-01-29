@@ -49,16 +49,18 @@ vi.mock('../../../src/utils/logger', () => ({
 }));
 
 vi.mock('../../../src/services/BlobStorageService', () => ({
-  BlobStorageService: vi.fn().mockImplementation(() => ({
-    uploadFile: vi.fn(),
-    ensureContainer: vi.fn(),
-  })),
+  BlobStorageService: vi.fn().mockImplementation(function (this: any) {
+    this.uploadFile = vi.fn();
+    this.ensureContainer = vi.fn();
+    return this;
+  }),
 }));
 
 vi.mock('../../../src/services/DocumentDownloadService', () => ({
-  DocumentDownloadService: vi.fn().mockImplementation(() => ({
-    downloadDocument: vi.fn(),
-  })),
+  DocumentDownloadService: vi.fn().mockImplementation(function (this: any) {
+    this.downloadDocument = vi.fn();
+    return this;
+  }),
 }));
 
 describe('EmailProcessorConsumer', () => {
@@ -150,8 +152,7 @@ describe('EmailProcessorConsumer', () => {
         expect.objectContaining({
           shardId: 'shard-123',
           shardTypeId: 'email',
-        }),
-        expect.any(Object)
+        })
       );
 
       expect(mockEventPublisher.publish).toHaveBeenCalledWith(
@@ -162,8 +163,7 @@ describe('EmailProcessorConsumer', () => {
           shardId: 'shard-123',
           subject: 'Test Email',
           attachmentCount: 0,
-        }),
-        expect.any(Object)
+        })
       );
     });
 
@@ -387,8 +387,7 @@ describe('EmailProcessorConsumer', () => {
           emailId: 'email-123',
           externalId: 'ext-123',
           error: 'Shard creation failed',
-        }),
-        expect.any(Object)
+        })
       );
     });
   });

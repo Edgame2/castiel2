@@ -32,7 +32,7 @@ export async function monitoringRoutes(
         },
       },
     },
-    async (request, reply) => {
+    async (_request, reply) => {
       try {
         // TODO: Add super admin role check
         const health = await monitoringService.getSystemHealth();
@@ -80,7 +80,7 @@ export async function monitoringRoutes(
         },
       },
     },
-    async (request, reply) => {
+    async (_request, reply) => {
       try {
         // TODO: Add super admin role check
         const queues = await monitoringService.getQueueMetrics();
@@ -115,7 +115,7 @@ export async function monitoringRoutes(
         },
       },
     },
-    async (request, reply) => {
+    async (_request, reply) => {
       try {
         // TODO: Add super admin role check
         const dlqMetrics = await monitoringService.getDLQMetrics();
@@ -165,7 +165,7 @@ export async function monitoringRoutes(
         },
       },
     },
-    async (request, reply) => {
+    async (_request, reply) => {
       try {
         // TODO: Add super admin role check
         const processors = monitoringService.getProcessorStatus();
@@ -371,7 +371,7 @@ export async function monitoringRoutes(
         },
       },
     },
-    async (request, reply) => {
+    async (_request, reply) => {
       try {
         // TODO: Add super admin role check
         const metrics = monitoringService.getPerformanceMetrics();

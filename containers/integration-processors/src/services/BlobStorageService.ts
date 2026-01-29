@@ -52,9 +52,7 @@ export class BlobStorageService {
     }
 
     try {
-      await this.containerClient.createIfNotExists({
-        access: 'private',
-      });
+      await this.containerClient.createIfNotExists();
     } catch (error: any) {
       throw new Error(`Failed to ensure container exists: ${error.message}`);
     }

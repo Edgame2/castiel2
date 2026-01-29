@@ -10,7 +10,25 @@ import { ServiceClient, EventPublisher } from '@coder/shared';
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn(),
   EventPublisher: vi.fn(),
-  FieldMapperService: vi.fn(),
+  FieldMapperService: vi.fn().mockImplementation(function (this: any) {
+    this.mapFields = vi.fn().mockImplementation((rawData: any) => ({
+      name: rawData?.Name ?? rawData?.name ?? 'Mapped',
+      amount: rawData?.Amount ?? rawData?.amount ?? 0,
+    }));
+    this.loadCustomTransforms = vi.fn();
+    return this;
+  }),
+  ShardValidator: vi.fn().mockImplementation(function (this: any) {
+    this.validate = vi.fn().mockResolvedValue({ valid: true, errors: [], warnings: [] });
+    return this;
+  }),
+  getCache: vi.fn(() => ({ get: vi.fn(), set: vi.fn(), del: vi.fn() })),
+  OpportunityEventDebouncer: vi.fn().mockImplementation(function (this: any) {
+    this.scheduleOpportunityEvent = vi.fn().mockResolvedValue({ shouldPublish: true });
+    this.stop = vi.fn();
+    this.getAllPendingEvents = vi.fn().mockResolvedValue([]);
+    return this;
+  }),
 }));
 
 vi.mock('../../../src/config', () => ({
@@ -26,6 +44,9 @@ vi.mock('../../../src/config', () => ({
       queue_name: 'integration_data_raw',
       prefetch: 20,
       config_cache_ttl: 600,
+      config_cache_use_redis: false,
+      idempotency: { use_redis: false, enabled: true },
+      validation_strictness: 'lenient',
     },
   })),
 }));
@@ -85,7 +106,7 @@ describe('CRMDataMappingConsumer', () => {
         correlationId: 'corr-123',
       };
 
-      // Mock integration config
+      // Mock integration config (include shardTypeName for validation)
       mockIntegrationManager.get.mockResolvedValue({
         id: 'int-123',
         syncConfig: {
@@ -93,6 +114,7 @@ describe('CRMDataMappingConsumer', () => {
             {
               externalEntityName: 'Opportunity',
               shardTypeId: 'opportunity',
+              shardTypeName: 'Opportunity',
               fieldMappings: [
                 {
                   externalFieldName: 'Name',
@@ -110,8 +132,8 @@ describe('CRMDataMappingConsumer', () => {
         },
       });
 
-      // Mock shard not existing
-      mockShardManager.get.mockResolvedValue([]);
+      // Mock shard not existing (get returns empty so we create via post)
+      mockShardManager.get.mockResolvedValue({ items: [] });
 
       // Mock shard creation
       mockShardManager.post.mockResolvedValue({
@@ -134,10 +156,14 @@ describe('CRMDataMappingConsumer', () => {
             amount: 10000,
           }),
         }),
-        expect.any(Object)
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Tenant-ID': 'tenant-123',
+          }),
+        })
       );
 
-      // Verify mapping success event was published
+      // Verify mapping success event was published (publish is called for opportunity.updated then data.mapped; check data.mapped)
       expect(mockEventPublisher.publish).toHaveBeenCalledWith(
         'integration.data.mapped',
         'tenant-123',
@@ -145,8 +171,7 @@ describe('CRMDataMappingConsumer', () => {
           integrationId: 'int-123',
           shardId: 'shard-123',
           success: true,
-        }),
-        expect.any(Object)
+        })
       );
     });
 
@@ -161,6 +186,18 @@ describe('CRMDataMappingConsumer', () => {
         idempotencyKey: 'int-123-ext-123-task-123',
         correlationId: 'corr-123',
       };
+
+      // Mock integration config and shard manager so first call succeeds
+      mockIntegrationManager.get.mockResolvedValue({
+        id: 'int-123',
+        syncConfig: {
+          entityMappings: [
+            { externalEntityName: 'Opportunity', shardTypeId: 'opportunity', shardTypeName: 'Opportunity', fieldMappings: [] },
+          ],
+        },
+      });
+      mockShardManager.get.mockResolvedValue({ items: [] });
+      mockShardManager.post.mockResolvedValue({ id: 'shard-123' });
 
       // First call - process
       await consumer['handleRawDataEvent'](event);
@@ -177,30 +214,29 @@ describe('CRMDataMappingConsumer', () => {
 
     it('should handle mapping failures and publish failed event', async () => {
       const event = {
-        integrationId: 'int-123',
+        integrationId: 'int-fail',
         tenantId: 'tenant-123',
         entityType: 'Opportunity',
         rawData: { Name: 'Test' },
         externalId: 'ext-123',
         syncTaskId: 'task-123',
-        idempotencyKey: 'int-123-ext-123-task-123',
+        idempotencyKey: 'int-fail-ext-123-task-123',
         correlationId: 'corr-123',
       };
 
-      // Mock integration config fetch failure
+      // Mock integration config fetch failure (unique integrationId so config cache is not hit)
       mockIntegrationManager.get.mockRejectedValue(new Error('Integration not found'));
 
       await expect(consumer['handleRawDataEvent'](event)).rejects.toThrow();
 
-      // Verify mapping failed event was published
+      // Verify mapping failed event was published (3 args: eventType, tenantId, payload)
       expect(mockEventPublisher.publish).toHaveBeenCalledWith(
         'integration.data.mapping.failed',
         'tenant-123',
         expect.objectContaining({
-          integrationId: 'int-123',
+          integrationId: 'int-fail',
           error: expect.any(String),
-        }),
-        expect.any(Object)
+        })
       );
     });
   });

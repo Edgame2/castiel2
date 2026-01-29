@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 interface SyncConfig {
   syncEnabled?: boolean;
@@ -322,7 +322,7 @@ interface SyncScheduleTabProps {
 function SyncScheduleTab({ schedule, onChange }: SyncScheduleTabProps) {
   const frequency = schedule?.frequency || 'manual';
 
-  const handleFrequencyChange = (newFrequency: SyncConfig['schedule']['frequency']) => {
+  const handleFrequencyChange = (newFrequency: NonNullable<SyncConfig['schedule']>['frequency']) => {
     onChange({
       ...schedule,
       frequency: newFrequency,
@@ -366,7 +366,7 @@ function SyncScheduleTab({ schedule, onChange }: SyncScheduleTabProps) {
           <input
             type="text"
             value={schedule?.cronExpression || ''}
-            onChange={(e) => onChange({ ...schedule, cronExpression: e.target.value })}
+            onChange={(e) => onChange({ frequency: schedule?.frequency ?? 'custom', cronExpression: e.target.value, timezone: schedule?.timezone })}
             className="w-full px-3 py-2 border rounded"
             placeholder="0 0 * * *"
           />
@@ -378,7 +378,7 @@ function SyncScheduleTab({ schedule, onChange }: SyncScheduleTabProps) {
         <input
           type="text"
           value={schedule?.timezone || ''}
-          onChange={(e) => onChange({ ...schedule, timezone: e.target.value })}
+          onChange={(e) => onChange({ frequency: schedule?.frequency ?? 'manual', timezone: e.target.value, cronExpression: schedule?.cronExpression })}
           className="w-full px-3 py-2 border rounded"
           placeholder="UTC"
         />
@@ -452,7 +452,7 @@ function SyncFiltersTab({ filters = [], onChange }: SyncFiltersTabProps) {
     onChange(filters.filter((_, i) => i !== index));
   };
 
-  const updateFilter = (index: number, updates: Partial<SyncConfig['filters'][0]>) => {
+  const updateFilter = (index: number, updates: Partial<NonNullable<SyncConfig['filters']>[0]>) => {
     const newFilters = [...filters];
     newFilters[index] = { ...newFilters[index], ...updates };
     onChange(newFilters);

@@ -74,7 +74,6 @@ export interface PerformanceMetrics {
 export class MonitoringService {
   private config: ReturnType<typeof loadConfig>;
   private shardManager: ServiceClient;
-  private integrationManager: ServiceClient;
   private instanceId: string;
   private consumerType: string;
   private startTime: Date;
@@ -84,12 +83,11 @@ export class MonitoringService {
 
   constructor(
     shardManager: ServiceClient,
-    integrationManager: ServiceClient,
+    _integrationManager: ServiceClient,
     consumerType: string
   ) {
     this.config = loadConfig();
     this.shardManager = shardManager;
-    this.integrationManager = integrationManager;
     this.instanceId = `${process.pid}-${Date.now()}`;
     this.consumerType = consumerType;
     this.startTime = new Date();
@@ -158,7 +156,6 @@ export class MonitoringService {
     }
 
     // Check processors (this instance)
-    const uptime = Date.now() - this.startTime.getTime();
     components.processors = {
       status: 'running',
       activeInstances: 1, // Single instance for now
@@ -260,7 +257,6 @@ export class MonitoringService {
    */
   getProcessorStatus(): ProcessorStatus[] {
     const memoryUsage = process.memoryUsage();
-    const cpuUsage = process.cpuUsage();
     const uptime = (Date.now() - this.startTime.getTime()) / 1000; // seconds
 
     const totalMessages = Array.from(this.messageCounts.values()).reduce((a, b) => a + b, 0);
@@ -283,7 +279,7 @@ export class MonitoringService {
   /**
    * Get integration health across tenants
    */
-  async getIntegrationHealth(options?: {
+  async getIntegrationHealth(_options?: {
     status?: string;
     limit?: number;
   }): Promise<IntegrationHealth[]> {
@@ -301,7 +297,7 @@ export class MonitoringService {
   /**
    * Get error analytics
    */
-  getErrorAnalytics(options?: {
+  getErrorAnalytics(_options?: {
     timeRange?: string;
     groupBy?: string;
   }): {

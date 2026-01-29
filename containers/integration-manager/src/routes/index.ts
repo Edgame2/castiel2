@@ -19,6 +19,7 @@ import { integrationHealthRoutes } from './integrationHealth.routes';
 import {
   CreateIntegrationInput,
   UpdateIntegrationInput,
+  Integration,
   CreateWebhookInput,
   UpdateWebhookInput,
   CreateSyncTaskInput,
@@ -26,12 +27,17 @@ import {
   SyncStatus,
   SyncJobType,
   SyncTrigger,
+  AuthMethod,
+  SyncDirection,
+  ConnectionStatus,
+  ConflictResolutionMode,
+  EntityMapping,
+  FieldMapping,
 } from '../types/integration.types';
 import {
   CreateIntegrationCatalogInput,
   UpdateIntegrationCatalogInput,
   CreateVisibilityRuleInput,
-  UpdateVisibilityRuleInput,
 } from '../types/integration-catalog.types';
 import {
   CreateContentJobInput,
@@ -47,8 +53,9 @@ import {
 import {
   DetectConflictInput,
   ResolveConflictInput,
-  ConflictResolutionStrategy,
 } from '../types/bidirectional-sync.types';
+import { BidirectionalSyncService } from '../services/BidirectionalSyncService';
+import { log } from '../utils/logger';
 import {
   UpdateSystemSettingsInput,
   RateLimitSettings,
@@ -225,11 +232,11 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const tenantId = request.user!.tenantId;
       const userId = request.user!.id;
 
-      const input: CreateIntegrationInput = {
-        ...request.body,
+      const input = {
+        ...(request.body as unknown as Record<string, unknown>),
         tenantId,
         userId,
-      };
+      } as unknown as CreateIntegrationInput;
 
       const integration = await integrationService.create(input);
       reply.code(201).send(integration);
@@ -372,13 +379,12 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        const tenantId = request.user!.tenantId;
-        // Get catalog entries that are visible to this tenant
+        request.user!.tenantId; // tenant context for catalog visibility
         const catalogResult = await integrationCatalogService.listIntegrations({
           filter: { visibility: 'public' },
         });
         return reply.send({
-          integrationTypes: catalogResult.integrations,
+          integrationTypes: catalogResult.entries,
         });
       } catch (error: any) {
         return reply.status(error.statusCode || 500).send({
@@ -445,7 +451,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         }
 
         // Check if OAuth is supported
-        if (!catalogEntry.authMethods.includes('oauth')) {
+        if (!catalogEntry.authMethods.includes(AuthMethod.OAUTH)) {
           return reply.status(400).send({
             error: {
               code: 'OAUTH_NOT_SUPPORTED',
@@ -463,12 +469,12 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         // Note: This requires an integration instance, so we might need to create one first
         // For simplicity, we'll create a minimal integration instance
         const tempIntegration = await integrationService.create({
-          integrationId: catalogEntry.integrationId,
+          integrationId: catalogEntry.id,
           name: `${catalogEntry.displayName} (Connecting)`,
           tenantId,
           userId,
           credentialSecretName: '', // Will be set after OAuth
-          authMethod: 'oauth',
+          authMethod: AuthMethod.OAUTH,
         });
 
         const result = await integrationConnectionService.startOAuthFlow(
@@ -533,8 +539,8 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     async (request, reply) => {
       try {
         const tenantId = request.user!.tenantId;
-        const userId = request.user!.id;
-        const { integrationType, authorizationCode, redirectUri, state } = request.body;
+        request.user!.id;
+        const { integrationType: _integrationType, authorizationCode, redirectUri: _redirectUri, state } = request.body as { integrationType: string; authorizationCode: string; redirectUri: string; state: string };
 
         // Handle OAuth callback (this will create the connection)
         // The state should have been created in a previous /oauth-url call
@@ -621,7 +627,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       try {
         const tenantId = request.user!.tenantId;
         const userId = request.user!.id;
-        const { integrationType, apiKey, apiSecret, instanceUrl, displayName } = request.body;
+        const { integrationType, apiKey, instanceUrl, displayName } = request.body as { integrationType: string; apiKey: string; apiSecret?: string; instanceUrl?: string; displayName?: string };
 
         // Get integration catalog entry
         const catalogEntry = await integrationCatalogService.getIntegration(integrationType);
@@ -636,17 +642,17 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
 
         // Create integration instance
         const integration = await integrationService.create({
-          integrationId: catalogEntry.integrationId,
+          integrationId: catalogEntry.id,
           name: displayName || catalogEntry.displayName,
           tenantId,
           userId,
           credentialSecretName: '', // Will be set by connection service
-          authMethod: 'apikey',
+          authMethod: AuthMethod.API_KEY,
           instanceUrl,
         });
 
         // Create connection with API key
-        const connection = await integrationConnectionService.connectWithApiKey(
+        await integrationConnectionService.connectWithApiKey(
           integration.id,
           tenantId,
           userId,
@@ -656,8 +662,8 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
 
         // Update integration with connection status
         await integrationService.update(integration.id, tenantId, {
-          status: 'connected',
-          connectionStatus: 'active',
+          status: IntegrationStatus.CONNECTED,
+          connectionStatus: ConnectionStatus.ACTIVE,
         });
 
         return reply.status(201).send({
@@ -845,8 +851,9 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         const integration = await integrationService.getById(id, tenantId);
         
         // Build updated sync config
-        const existingSyncConfig = integration.syncConfig || {};
-        const updatedSyncConfig: any = {
+        type SyncConfigPartial = { entityMappings?: EntityMapping[]; [key: string]: unknown };
+        const existingSyncConfig = (integration.syncConfig || {}) as SyncConfigPartial;
+        const updatedSyncConfig: Record<string, unknown> = {
           ...existingSyncConfig,
         };
 
@@ -855,7 +862,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           updatedSyncConfig.syncEnabled = body.syncEnabled;
         }
         if (body.direction) {
-          updatedSyncConfig.syncDirection = body.direction === 'one-way' ? 'inbound' : 'bidirectional';
+          updatedSyncConfig.syncDirection = body.direction === 'one-way' ? SyncDirection.INBOUND : SyncDirection.BIDIRECTIONAL;
         }
         if (body.schedule) {
           if (body.schedule.frequency === 'manual') {
@@ -882,16 +889,15 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           }
         }
         if (body.enabledEntities !== undefined) {
-          // Update entity mappings enabled status
           if (existingSyncConfig.entityMappings) {
-            updatedSyncConfig.entityMappings = existingSyncConfig.entityMappings.map((mapping: any) => ({
+            updatedSyncConfig.entityMappings = existingSyncConfig.entityMappings.map((mapping: EntityMapping) => ({
               ...mapping,
               enabled: body.enabledEntities!.includes(mapping.externalEntity),
             }));
           }
         }
         if (body.filters) {
-          updatedSyncConfig.pullFilters = body.filters.map((filter) => ({
+          updatedSyncConfig.pullFilters = body.filters.map((filter: { field: string; operator: string; value: unknown }) => ({
             field: filter.field,
             operator: filter.operator === 'greaterThan' ? 'gt' : filter.operator === 'lessThan' ? 'lt' : filter.operator,
             value: filter.value,
@@ -912,7 +918,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
 
         // Update integration with new sync config
         const updatedIntegration = await integrationService.update(id, tenantId, {
-          syncConfig: updatedSyncConfig,
+          syncConfig: updatedSyncConfig as Integration['syncConfig'],
         });
 
         return reply.send({
@@ -1112,37 +1118,37 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       try {
         const { id, entityType } = request.params;
         const tenantId = request.user!.tenantId;
-        const { fieldMappings } = request.body;
+        const { fieldMappings } = (request.body as { fieldMappings?: FieldMapping[] }) || {};
 
         const integration = await integrationService.getById(id, tenantId);
         
         // Get or create sync config
-        const syncConfig = integration.syncConfig || {
+        const syncConfig: NonNullable<Integration['syncConfig']> = integration.syncConfig ?? {
           syncEnabled: false,
-          syncDirection: 'inbound',
+          syncDirection: SyncDirection.INBOUND,
           entityMappings: [],
-          conflictResolution: 'last_write_wins',
+          conflictResolution: ConflictResolutionMode.LAST_WRITE_WINS,
         };
 
         // Find or create entity mapping
         let entityMapping = syncConfig.entityMappings.find(
-          (mapping: any) => mapping.externalEntity === entityType || mapping.externalEntityName === entityType
+          (mapping) => mapping.externalEntity === entityType || (mapping as { externalEntityName?: string }).externalEntityName === entityType
         );
 
         if (!entityMapping) {
-          // Create new entity mapping
-          entityMapping = {
+          const newMapping: EntityMapping = {
             id: require('uuid').v4(),
             externalEntity: entityType,
-            shardTypeId: '', // Will need to be set based on entity type
+            shardTypeId: '',
             fieldMappings: [],
             enabled: true,
           };
-          syncConfig.entityMappings.push(entityMapping);
+          entityMapping = newMapping;
+          syncConfig.entityMappings.push(newMapping);
         }
 
         // Update field mappings
-        entityMapping.fieldMappings = fieldMappings;
+        entityMapping.fieldMappings = fieldMappings as FieldMapping[];
 
         // Update integration
         const updatedIntegration = await integrationService.update(id, tenantId, {
@@ -1201,8 +1207,8 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
 
         const integration = await integrationService.getById(id, tenantId);
         
-        // Get provider to determine field schema
-        const provider = await integrationProviderService.getById(integration.integrationId, 'crm'); // Default category
+        // Get provider to determine field schema (for future schema-based field listing)
+        void integrationProviderService.getById(integration.integrationId, 'crm');
         
         // For now, return common CRM fields based on entity type
         // In a real implementation, this would query the adapter or provider schema
@@ -1364,11 +1370,11 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         },
       },
     },
-    async (request, reply) => {
+    async (_request, reply) => {
       try {
         // Get transform functions from FieldMapperService
-        const { FieldMapperService } = await import('@coder/shared/services');
-        const fieldMapper = new FieldMapperService();
+        const { FieldMapperService } = await import('@coder/shared');
+        void new FieldMapperService();
 
         // Built-in transforms
         const transforms = [
@@ -1510,12 +1516,13 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         }
 
         // Use FieldMapperService to test mappings
-        const { FieldMapperService } = await import('@coder/shared/services');
+        const { FieldMapperService } = await import('@coder/shared');
         const fieldMapper = new FieldMapperService();
 
         // Load custom transforms if any
-        if (integration.syncConfig?.customTransforms) {
-          fieldMapper.loadCustomTransforms(id, integration.syncConfig.customTransforms);
+        const syncConfigWithTransforms = integration.syncConfig as { customTransforms?: Array<{ name: string; code?: string; function?: unknown }> } | undefined;
+        if (syncConfigWithTransforms?.customTransforms) {
+          fieldMapper.loadCustomTransforms(id, syncConfigWithTransforms.customTransforms as unknown as Parameters<typeof fieldMapper.loadCustomTransforms>[1]);
         }
 
         // Apply mappings
@@ -1671,34 +1678,35 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       try {
         const { id, entityType } = request.params;
         const tenantId = request.user!.tenantId;
-        const { fieldMappings } = request.body;
+        const { fieldMappings } = (request.body as { fieldMappings?: FieldMapping[] }) || {};
 
         // Use the same logic as PUT endpoint
         const integration = await integrationService.getById(id, tenantId);
         
-        const syncConfig = integration.syncConfig || {
+        const syncConfig: NonNullable<Integration['syncConfig']> = integration.syncConfig ?? {
           syncEnabled: false,
-          syncDirection: 'inbound',
+          syncDirection: SyncDirection.INBOUND,
           entityMappings: [],
-          conflictResolution: 'last_write_wins',
+          conflictResolution: ConflictResolutionMode.LAST_WRITE_WINS,
         };
 
         let entityMapping = syncConfig.entityMappings.find(
-          (mapping: any) => mapping.externalEntity === entityType || mapping.externalEntityName === entityType
+          (mapping) => mapping.externalEntity === entityType || (mapping as { externalEntityName?: string }).externalEntityName === entityType
         );
 
         if (!entityMapping) {
-          entityMapping = {
+          const newMapping: EntityMapping = {
             id: require('uuid').v4(),
             externalEntity: entityType,
             shardTypeId: '',
             fieldMappings: [],
             enabled: true,
           };
-          syncConfig.entityMappings.push(entityMapping);
+          entityMapping = newMapping;
+          syncConfig.entityMappings.push(newMapping);
         }
 
-        entityMapping.fieldMappings = fieldMappings;
+        entityMapping.fieldMappings = fieldMappings as FieldMapping[];
 
         const updatedIntegration = await integrationService.update(id, tenantId, {
           syncConfig,
@@ -1872,11 +1880,11 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const tenantId = request.user!.tenantId;
       const userId = request.user!.id;
 
-      const input: CreateWebhookInput = {
-        ...request.body,
+      const input = {
+        ...(request.body as unknown as Record<string, unknown>),
         tenantId,
         userId,
-      };
+      } as unknown as CreateWebhookInput;
 
       const webhook = await webhookService.create(input);
       reply.code(201).send(webhook);
@@ -2264,18 +2272,18 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        const { integrationId, direction, entityType, filters } = request.body;
+        const { integrationId, direction, entityType, filters: _filters } = request.body as { integrationId: string; direction: string; entityType?: string; filters?: Record<string, unknown> };
         const tenantId = request.user!.tenantId;
         const userId = request.user!.id;
 
         // Create sync task using existing service
         const input: CreateSyncTaskInput = {
           integrationId,
-          jobType: direction === 'pull' ? 'incremental' : direction === 'push' ? 'manual' : 'full',
-          trigger: 'manual',
+          jobType: direction === 'pull' ? SyncJobType.INCREMENTAL : direction === 'push' ? SyncJobType.MANUAL : SyncJobType.FULL,
+          trigger: SyncTrigger.MANUAL,
           tenantId,
           userId,
-          entityMappings: entityType ? [{ entityType, filters }] : undefined,
+          entityMappings: entityType ? [{ id: '', externalEntity: entityType, shardTypeId: '', fieldMappings: [], enabled: true }] : undefined,
         };
 
         const task = await syncTaskService.create(input);
@@ -2326,12 +2334,12 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const userId = request.user!.id;
 
       const requestBody = {
-        ...request.body,
+        ...(request.body as Record<string, unknown>),
         tenantId,
         userId,
       };
 
-      const job = await contentGenerationService.generate(requestBody);
+      const job = await contentGenerationService.generate(requestBody as GenerateContentRequest);
       reply.send(job);
     }
   );
@@ -2365,12 +2373,12 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const userId = request.user!.id;
 
       const input = {
-        ...request.body,
+        ...(request.body as Record<string, unknown>),
         tenantId,
         userId,
       };
 
-      const job = await contentGenerationService.create(input);
+      const job = await contentGenerationService.create(input as CreateContentJobInput);
       reply.code(201).send(job);
     }
   );
@@ -2485,12 +2493,12 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const userId = request.user!.id;
 
       const input = {
-        ...request.body,
+        ...(request.body as Record<string, unknown>),
         tenantId,
         userId,
       };
 
-      const template = await contentTemplateService.create(input);
+      const template = await contentTemplateService.create(input as CreateContentTemplateInput);
       reply.code(201).send(template);
     }
   );
@@ -2530,7 +2538,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
-      const template = await contentTemplateService.update(request.params.id, tenantId, request.body);
+      const template = await contentTemplateService.update(request.params.id, tenantId, request.body as UpdateContentTemplateInput);
       reply.send(template);
     }
   );
@@ -2627,14 +2635,15 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const tenantId = request.user!.tenantId;
       const userId = request.user!.id;
 
+      const body = request.body as Record<string, unknown>;
       const input = {
-        ...request.body,
+        ...body,
         tenantId,
         userId,
-        type: request.body.type as any,
+        type: body.type,
       };
 
-      const template = await templateService.create(input);
+      const template = await templateService.create(input as CreateTemplateInput);
       reply.code(201).send(template);
     }
   );
@@ -2676,7 +2685,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const tenantId = request.user!.tenantId;
       const userId = request.user!.id;
 
-      const template = await templateService.update(request.params.id, tenantId, userId, request.body);
+      const template = await templateService.update(request.params.id, tenantId, userId, request.body as UpdateTemplateInput);
       reply.send(template);
     }
   );
@@ -2765,10 +2774,10 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const input = {
         tenantId,
         templateId: request.params.id,
-        ...request.body,
+        ...(request.body as Record<string, unknown>),
       };
 
-      const rendered = await templateService.render(input);
+      const rendered = await templateService.render(input as RenderTemplateInput);
       reply.send({ rendered });
     }
   );
@@ -2819,10 +2828,10 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           offset: request.query.offset,
         });
         return reply.send({
-          integrationTypes: result.integrations,
+          integrationTypes: result.entries,
           total: result.total,
-          limit: result.limit,
-          offset: result.offset,
+          limit: request.query.limit,
+          offset: request.query.offset,
         });
       } catch (error: any) {
         return reply.status(error.statusCode || 500).send({
@@ -3260,7 +3269,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   // ===== INTEGRATION CONNECTION ROUTES =====
 
   // Start OAuth flow
-  app.post<{ Body: { integrationId: string; returnUrl: string } }>(
+  app.post<{ Params: { integrationId: string }; Body: { returnUrl: string } }>(
     '/api/v1/integrations/:integrationId/oauth/start',
     {
       preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
@@ -3614,7 +3623,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         security: [{ bearerAuth: [] }],
       },
     },
-    async (request, reply) => {
+    async (_request, reply) => {
       try {
         const stats = adapterManagerService.getRegistryStats();
         return reply.send(stats);
@@ -3643,7 +3652,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         security: [{ bearerAuth: [] }],
       },
     },
-    async (request, reply) => {
+    async (_request, reply) => {
       try {
         adapterManagerService.clearCache();
         return reply.status(204).send();
@@ -3857,7 +3866,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
 
   // ===== SYSTEM SETTINGS ROUTES (Admin) =====
 
-  const { SystemSettingsService } = await import('../services/SystemSettingsService');
+  const { SystemSettingsService } = await import('../services/SystemSettingsService.js');
   const systemSettingsService = new SystemSettingsService();
 
   // Get all system settings
@@ -3879,7 +3888,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         },
       },
     },
-    async (request, reply) => {
+    async (_request, reply) => {
       try {
         // TODO: Add super admin role check
         const settings = await systemSettingsService.getSettings();
@@ -3960,7 +3969,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         },
       },
     },
-    async (request, reply) => {
+    async (_request, reply) => {
       try {
         // TODO: Add super admin role check
         const rateLimits = await systemSettingsService.getRateLimits();
@@ -4048,7 +4057,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         },
       },
     },
-    async (request, reply) => {
+    async (_request, reply) => {
       try {
         // TODO: Add super admin role check
         const capacity = await systemSettingsService.getCapacity();
@@ -4147,7 +4156,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         },
       },
     },
-    async (request, reply) => {
+    async (_request, reply) => {
       try {
         // TODO: Add super admin role check
         const featureFlags = await systemSettingsService.getFeatureFlags();

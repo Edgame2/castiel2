@@ -31,6 +31,22 @@ services:
     url: ${EMBEDDINGS_URL:-http://localhost:3005}
   dashboard:
     url: ${DASHBOARD_URL:-http://localhost:3011}
+  risk_analytics:
+    url: ${RISK_ANALYTICS_URL:-http://localhost:3048}
+  risk_catalog:
+    url: ${RISK_CATALOG_URL:-http://localhost:3047}
+  recommendations:
+    url: ${RECOMMENDATIONS_URL:-http://localhost:3049}
+  integration_manager:
+    url: ${INTEGRATION_MANAGER_URL:-http://localhost:3026}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3023}
+  integration_processors:
+    url: ${INTEGRATION_PROCESSORS_URL:-http://localhost:3030}
+  ml_service:
+    url: ${ML_SERVICE_URL:-http://localhost:3033}
+  configuration_service:
+    url: ${CONFIGURATION_SERVICE_URL:-http://localhost:3034}
 
 # Rate limiting
 rate_limit:

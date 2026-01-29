@@ -4,6 +4,11 @@
   "description": "Shared utilities, types, and services for Castiel containers",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./types/shards": { "types": "./dist/types/shards/index.d.ts", "default": "./dist/types/shards/index.js" },
+    "./database": { "types": "./dist/database/index.d.ts", "default": "./dist/database/index.js" }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

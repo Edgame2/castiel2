@@ -13,7 +13,9 @@
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "type-check": "tsc --noEmit",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "migrate:003": "tsx migrations/003_register_action_catalog_shard_type.ts",
+    "migrate:004": "tsx migrations/004_risk_catalog_migration.ts"
   },
   "dependencies": {
     "@coder/shared": "file:../shared",

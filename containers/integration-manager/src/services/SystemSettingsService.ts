@@ -12,7 +12,6 @@ import {
   QueueConfiguration,
   FeatureFlags,
 } from '../types/system-settings.types';
-import { log } from '../utils/logger';
 
 export class SystemSettingsService {
   private repository: SystemSettingsRepository;

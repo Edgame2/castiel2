@@ -6,7 +6,37 @@
  */
 
 import { getDatabaseClient } from '@coder/shared';
-import { log } from '../utils/logger';
+
+/** Prisma-like DB client shape used by this service (shared returns Cosmos Database) */
+type TeamDb = {
+  team: {
+    findUnique: (args: unknown) => Promise<unknown>;
+    findMany: (args: unknown) => Promise<unknown[]>;
+    create: (args: unknown) => Promise<unknown>;
+    update: (args: unknown) => Promise<unknown>;
+    delete: (args: unknown) => Promise<unknown>;
+  };
+  organizationMembership: { findFirst: (args: unknown) => Promise<unknown> };
+  teamMember: {
+    findUnique: (args: unknown) => Promise<unknown>;
+    create: (args: unknown) => Promise<unknown>;
+    delete: (args: unknown) => Promise<unknown>;
+  };
+};
+
+function getDb(): TeamDb {
+  return getDatabaseClient() as unknown as TeamDb;
+}
+
+/** Team shape returned by getTeam / createTeam / updateTeam (used by routes) */
+export interface TeamResult {
+  id: string;
+  name: string;
+  organizationId?: string;
+  parentTeamId?: string | null;
+  createdById?: string;
+  [key: string]: unknown;
+}
 
 /**
  * Create a team
@@ -18,7 +48,7 @@ export async function createTeam(
   description?: string,
   parentTeamId?: string
 ) {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Validate name
   if (!name || name.trim().length === 0) {
@@ -31,10 +61,10 @@ export async function createTeam(
   
   // Validate parent team if provided
   if (parentTeamId) {
-    const parentTeam = await db.team.findUnique({
+    const parentTeam = (await db.team.findUnique({
       where: { id: parentTeamId },
       select: { id: true, organizationId: true },
-    });
+    })) as { id: string; organizationId: string } | null;
     
     if (!parentTeam) {
       throw new Error('Parent team not found');
@@ -46,20 +76,20 @@ export async function createTeam(
   }
   
   // Check if user is a member of the organization
-  const membership = await db.organizationMembership.findFirst({
+  const membership = (await db.organizationMembership.findFirst({
     where: {
       userId,
       organizationId,
       status: 'active',
     },
-  });
+  })) as { id: string } | null;
   
   if (!membership) {
     throw new Error('You must be a member of the organization to create teams');
   }
   
   // Create team and automatically add creator as member
-  const team = await db.team.create({
+  const team = (await db.team.create({
     data: {
       name: name.trim(),
       description: description?.trim() || null,
@@ -82,7 +112,7 @@ export async function createTeam(
         },
       },
     },
-  });
+  })) as TeamResult;
   
   return team;
 }
@@ -90,10 +120,10 @@ export async function createTeam(
 /**
  * Get team by ID
  */
-export async function getTeam(teamId: string, userId?: string) {
-  const db = getDatabaseClient();
+export async function getTeam(teamId: string, userId?: string): Promise<TeamResult | null> {
+  const db = getDb();
   
-  const team = await db.team.findUnique({
+  const team = (await db.team.findUnique({
     where: { id: teamId },
     include: {
       members: {
@@ -110,7 +140,7 @@ export async function getTeam(teamId: string, userId?: string) {
         select: { id: true, name: true },
       },
     },
-  });
+  })) as (TeamResult & { members: Array<{ userId: string }> }) | null;
   
   if (!team) {
     return null;
@@ -118,22 +148,22 @@ export async function getTeam(teamId: string, userId?: string) {
   
   // If userId provided, check membership
   if (userId) {
-    const isMember = team.members.some(m => m.userId === userId);
+    const isMember = team.members.some((m: { userId: string }) => m.userId === userId);
     if (!isMember) {
       throw new Error('You are not a member of this team');
     }
   }
   
-  return team;
+  return team as TeamResult;
 }
 
 /**
  * List teams for a user in an organization
  */
 export async function listUserTeams(userId: string, organizationId?: string) {
-  const db = getDatabaseClient();
+  const db = getDb();
   
-  const where: any = {
+  const where: Record<string, unknown> = {
     members: {
       some: {
         userId,
@@ -176,17 +206,17 @@ export async function updateTeam(
     parentTeamId?: string;
   }
 ) {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Get team
-  const team = await db.team.findUnique({
+  const team = (await db.team.findUnique({
     where: { id: teamId },
     include: {
       members: {
         where: { userId },
       },
     },
-  });
+  })) as { id: string; organizationId: string; createdById: string; members: Array<{ userId: string }> } | null;
   
   if (!team) {
     throw new Error('Team not found');
@@ -201,7 +231,7 @@ export async function updateTeam(
   }
   
   // Prepare update data
-  const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
   
   if (updates.name !== undefined) {
     if (!updates.name || updates.name.trim().length === 0) {
@@ -220,10 +250,10 @@ export async function updateTeam(
   if (updates.parentTeamId !== undefined) {
     if (updates.parentTeamId) {
       // Validate parent team exists
-      const parentTeam = await db.team.findUnique({
+      const parentTeam = (await db.team.findUnique({
         where: { id: updates.parentTeamId },
         select: { id: true, organizationId: true },
-      });
+      })) as { id: string; organizationId: string } | null;
       
       if (!parentTeam) {
         throw new Error('Parent team not found');
@@ -245,7 +275,7 @@ export async function updateTeam(
   }
   
   // Update team
-  const updated = await db.team.update({
+  const updated = (await db.team.update({
     where: { id: teamId },
     data: updateData,
     include: {
@@ -257,7 +287,7 @@ export async function updateTeam(
         },
       },
     },
-  });
+  })) as TeamResult;
   
   return updated;
 }
@@ -266,10 +296,10 @@ export async function updateTeam(
  * Delete team
  */
 export async function deleteTeam(teamId: string, userId: string) {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Get team
-  const team = await db.team.findUnique({
+  const team = (await db.team.findUnique({
     where: { id: teamId },
     include: {
       projects: {
@@ -279,7 +309,7 @@ export async function deleteTeam(teamId: string, userId: string) {
         select: { id: true },
       },
     },
-  });
+  })) as { id: string; createdById: string; projects: Array<{ id: string }>; subteams: Array<{ id: string }> } | null;
   
   if (!team) {
     throw new Error('Team not found');
@@ -315,12 +345,12 @@ export async function addTeamMember(
   memberUserId: string,
   role: string = 'Member'
 ) {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Get team
-  const team = await db.team.findUnique({
+  const team = (await db.team.findUnique({
     where: { id: teamId },
-  });
+  })) as { id: string; createdById: string } | null;
   
   if (!team) {
     throw new Error('Team not found');
@@ -332,14 +362,14 @@ export async function addTeamMember(
   }
   
   // Check if member is already in team
-  const existingMember = await db.teamMember.findUnique({
+  const existingMember = (await db.teamMember.findUnique({
     where: {
       teamId_userId: {
-        teamId,
-        userId: memberUserId,
-      },
+      teamId,
+      userId: memberUserId,
     },
-  });
+  },
+  })) as { id: string } | null;
   
   if (existingMember) {
     throw new Error('User is already a member of this team');
@@ -370,12 +400,12 @@ export async function removeTeamMember(
   userId: string,
   memberUserId: string
 ) {
-  const db = getDatabaseClient();
+  const db = getDb();
   
   // Get team
-  const team = await db.team.findUnique({
+  const team = (await db.team.findUnique({
     where: { id: teamId },
-  });
+  })) as { id: string; createdById: string } | null;
   
   if (!team) {
     throw new Error('Team not found');

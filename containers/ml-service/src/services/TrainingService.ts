@@ -1,12 +1,18 @@
 /**
  * Training Service
- * Handles training job management
+ * Handles training job management (Plan W6 Layer 8 – Learning Loop).
  */
 
 import { v4 as uuidv4 } from 'uuid';
 import { getContainer } from '@coder/shared/database';
 import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
+import { loadConfig } from '../config';
 import { MLModelService } from './MLModelService';
+import {
+  publishMlTrainingStarted,
+  publishMlTrainingCompleted,
+  publishMlTrainingFailed,
+} from '../events/publishers/MLServiceEventPublisher';
 import {
   TrainingJob,
   CreateTrainingJobInput,
@@ -16,7 +22,9 @@ import {
 } from '../types/ml.types';
 
 export class TrainingService {
-  private containerName = 'ml_training_jobs';
+  private get containerName(): string {
+    return loadConfig().cosmos_db?.containers?.training_jobs ?? 'ml_training_jobs';
+  }
   private modelService: MLModelService;
 
   constructor(modelService: MLModelService) {
@@ -139,6 +147,26 @@ export class TrainingService {
 
       if (!resource) {
         throw new Error('Failed to update training job');
+      }
+
+      // W6 Layer 8 – publish training events
+      if (input.status === TrainingJobStatus.RUNNING) {
+        await publishMlTrainingStarted(tenantId, { jobId, modelId: existing.modelId });
+      } else if (input.status === TrainingJobStatus.COMPLETED) {
+        const startedAt = existing.startedAt ? new Date(existing.startedAt).getTime() : Date.now();
+        const durationMs = Date.now() - startedAt;
+        await publishMlTrainingCompleted(tenantId, {
+          jobId,
+          modelId: existing.modelId,
+          metrics: input.metrics as Record<string, unknown> | undefined,
+          durationMs,
+        });
+      } else if (input.status === TrainingJobStatus.FAILED) {
+        await publishMlTrainingFailed(tenantId, {
+          jobId,
+          modelId: existing.modelId,
+          error: input.error ?? 'Unknown error',
+        });
       }
 
       // Update model status if job completed

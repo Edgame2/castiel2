@@ -11,6 +11,7 @@
  * - PUT /api/v1/organizations/:orgId/roles/:roleId - Update custom role
  * - DELETE /api/v1/organizations/:orgId/roles/:roleId - Delete custom role
  * - GET /api/v1/organizations/:orgId/roles/:roleId/permissions - Get role permissions
+ * - GET /api/v1/organizations/:orgId/permissions - List all permissions (for role create/edit UI)
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
@@ -31,7 +32,7 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
         requirePermission('roles.role.view', 'organization'),
       ],
     },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -62,8 +63,45 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to list roles',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
+  );
+
+  // List all permissions (for role create/edit UI)
+  fastify.get(
+    '/api/v1/organizations/:orgId/permissions',
+    {
+      preHandler: [
+        authenticateRequest,
+        requirePermission('roles.role.view', 'organization'),
+      ],
+    },
+    (async (
+      request: FastifyRequest<{
+        Params: { orgId: string };
+      }>,
+      reply: FastifyReply
+    ) => {
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser || !requestUser.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const { orgId } = request.params;
+        const permissions = await roleService.listPermissions(orgId);
+        return { data: permissions };
+      } catch (error: any) {
+        const params = request.params as { orgId?: string };
+        log.error('List permissions error', error, { route: '/api/v1/organizations/:orgId/permissions', userId: (request as any).user?.id, organizationId: params?.orgId, service: 'user-management' });
+        reply.code(500).send({
+          error: 'Failed to list permissions',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
+        return;
+      }
+  }) as any
   );
 
   // Get role details
@@ -75,7 +113,7 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
         requirePermission('roles.role.view', 'organization'),
       ],
     },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -114,8 +152,9 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to get role',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+    }) as any
   );
 
   // Create custom role
@@ -127,7 +166,7 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
         requirePermission('roles.role.create', 'organization'),
       ],
     },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -212,8 +251,9 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to create role',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Update custom role
@@ -225,7 +265,7 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
         requirePermission('roles.role.update', 'organization'),
       ],
     },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -317,8 +357,9 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to update role',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Delete custom role
@@ -330,7 +371,7 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
         requirePermission('roles.role.delete', 'organization'),
       ],
     },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -395,8 +436,9 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to delete role',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 
   // Get role permissions
@@ -408,7 +450,7 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
         requirePermission('roles.role.view', 'organization'),
       ],
     },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -442,8 +484,9 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
           error: 'Failed to get role permissions',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+        return;
       }
-    }
+  }) as any
   );
 }
 

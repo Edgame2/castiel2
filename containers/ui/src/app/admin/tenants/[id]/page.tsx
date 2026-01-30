@@ -1,15 +1,28 @@
 /**
- * Super Admin: Tenant detail (W11)
+ * Super Admin: Tenant detail (§7.1.2)
+ * Tabbed interface: Overview, Feedback Configuration, Catalog, Methodology, Limits & Quotas, Custom Config, Analytics.
  * GET/PUT /api/v1/admin/tenants/:tenantId/feedback-config via gateway (recommendations).
  */
 
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useState, useCallback, useEffect } from 'react';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+
+type TenantDetailTab = 'overview' | 'feedback' | 'catalog' | 'methodology' | 'limits' | 'custom' | 'analytics';
+
+const TENANT_DETAIL_TABS: { id: TenantDetailTab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'feedback', label: 'Feedback Configuration' },
+  { id: 'catalog', label: 'Catalog Configuration' },
+  { id: 'methodology', label: 'Methodology Configuration' },
+  { id: 'limits', label: 'Limits & Quotas' },
+  { id: 'custom', label: 'Custom Configuration' },
+  { id: 'analytics', label: 'Analytics' },
+];
 
 interface ActiveTypeRow {
   feedbackTypeId: string;
@@ -28,6 +41,7 @@ interface TenantFeedbackConfig {
   tenantId?: string;
   activeLimit?: number;
   activeTypes?: ActiveTypeRow[];
+  perTypeConfig?: Record<string, { recommendationType: string; activeTypes: string[] }>;
   requireFeedback?: boolean;
   allowComments?: boolean;
   commentRequired?: boolean;
@@ -37,13 +51,33 @@ interface TenantFeedbackConfig {
   updatedBy?: string;
 }
 
+interface GlobalLimits {
+  defaultLimit: number;
+  minLimit: number;
+  maxLimit: number;
+}
+
+interface TenantOverview {
+  id: string;
+  name?: string | null;
+  industry?: string | null;
+  status?: string | null;
+  createdAt?: string | null;
+  activeUsers?: number | null;
+  activeOpportunities?: number | null;
+}
+
 export default function TenantDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = typeof params?.id === 'string' ? params.id : '';
 
   const [config, setConfig] = useState<TenantFeedbackConfig | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [overviewTenant, setOverviewTenant] = useState<TenantOverview | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [editActiveLimit, setEditActiveLimit] = useState(5);
   const [editRequireFeedback, setEditRequireFeedback] = useState(false);
@@ -58,6 +92,14 @@ export default function TenantDetailPage() {
   const [feedbackTypesLoading, setFeedbackTypesLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [globalLimits, setGlobalLimits] = useState<GlobalLimits | null>(null);
+  const [useGlobalDefaultLimit, setUseGlobalDefaultLimit] = useState(true);
+  const [activeTab, setActiveTab] = useState<TenantDetailTab>('overview');
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'feedback') setActiveTab('feedback');
+  }, [searchParams]);
 
   const fetchConfig = useCallback(async () => {
     if (!apiBaseUrl || !id.trim()) return;
@@ -84,6 +126,28 @@ export default function TenantDetailPage() {
       setEditPatternEnabled(json.patternDetection?.enabled ?? true);
       setEditAutoSuppressEnabled(json.patternDetection?.autoSuppressEnabled ?? true);
       setEditAutoBoostEnabled(json.patternDetection?.autoBoostEnabled ?? true);
+      try {
+        const [ftRes, globalRes] = await Promise.all([
+          fetch(`${apiBaseUrl}/api/v1/admin/feedback-types`, { credentials: 'include' }),
+          fetch(`${apiBaseUrl}/api/v1/admin/feedback-config`, { credentials: 'include' }),
+        ]);
+        if (ftRes.ok) {
+          const ftJson = await ftRes.json();
+          setAllFeedbackTypes(Array.isArray(ftJson) ? ftJson : []);
+        }
+        if (globalRes.ok) {
+          const globalJson = await globalRes.json();
+          const def = globalJson.defaultLimit ?? 5;
+          const min = globalJson.minLimit ?? 3;
+          const max = globalJson.maxLimit ?? 10;
+          setGlobalLimits({ defaultLimit: def, minLimit: min, maxLimit: max });
+          setUseGlobalDefaultLimit((json.activeLimit ?? def) === def);
+        } else {
+          setGlobalLimits({ defaultLimit: 5, minLimit: 3, maxLimit: 10 });
+        }
+      } catch {
+        setGlobalLimits({ defaultLimit: 5, minLimit: 3, maxLimit: 10 });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setConfig(null);
@@ -92,12 +156,37 @@ export default function TenantDetailPage() {
     }
   }, [id]);
 
+  const fetchOverview = useCallback(async () => {
+    if (!apiBaseUrl || !id.trim()) return;
+    setOverviewLoading(true);
+    setOverviewError(null);
+    setOverviewTenant(null);
+    const encoded = encodeURIComponent(id.trim());
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/v1/admin/tenants/${encoded}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json: TenantOverview = await res.json();
+      setOverviewTenant(json);
+    } catch (e) {
+      setOverviewError(e instanceof Error ? e.message : String(e));
+      setOverviewTenant(null);
+    } finally {
+      setOverviewLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     if (id.trim()) fetchConfig();
   }, [id, fetchConfig]);
 
+  useEffect(() => {
+    if (id.trim() && apiBaseUrl) fetchOverview();
+  }, [id, apiBaseUrl, fetchOverview]);
+
   const saveConfig = useCallback(async () => {
     if (!apiBaseUrl || !id.trim()) return;
+    const limits = globalLimits ?? { defaultLimit: 5, minLimit: 3, maxLimit: 10 };
+    const effectiveLimit = useGlobalDefaultLimit ? limits.defaultLimit : Math.min(limits.maxLimit, Math.max(limits.minLimit, editActiveLimit));
     setSaving(true);
     setSaveError(null);
     const encoded = encodeURIComponent(id.trim());
@@ -109,7 +198,7 @@ export default function TenantDetailPage() {
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            activeLimit: editActiveLimit,
+            activeLimit: effectiveLimit,
             requireFeedback: editRequireFeedback,
             allowComments: editAllowComments,
             commentRequired: editCommentRequired,
@@ -130,7 +219,9 @@ export default function TenantDetailPage() {
       }
       const json: TenantFeedbackConfig = await res.json();
       setConfig(json);
-      setEditActiveLimit(json.activeLimit ?? 5);
+      const savedLimit = json.activeLimit ?? limits.defaultLimit;
+      setEditActiveLimit(savedLimit);
+      setUseGlobalDefaultLimit(savedLimit === limits.defaultLimit);
       setEditRequireFeedback(json.requireFeedback ?? false);
       setEditAllowComments(json.allowComments ?? true);
       setEditCommentRequired(json.commentRequired ?? false);
@@ -145,7 +236,7 @@ export default function TenantDetailPage() {
     } finally {
       setSaving(false);
     }
-  }, [id, editActiveLimit, editRequireFeedback, editAllowComments, editCommentRequired, editAllowMultipleSelection, editPatternEnabled, editAutoSuppressEnabled, editAutoBoostEnabled, editActiveTypes]);
+  }, [id, globalLimits, useGlobalDefaultLimit, editActiveLimit, editRequireFeedback, editAllowComments, editCommentRequired, editAllowMultipleSelection, editPatternEnabled, editAutoSuppressEnabled, editAutoBoostEnabled, editActiveTypes]);
 
   return (
     <div className="p-6">
@@ -230,21 +321,115 @@ export default function TenantDetailPage() {
             </div>
           )}
           {!loading && !error && config && (
-            <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4">
-              <h2 className="text-lg font-semibold mb-3">Feedback config</h2>
-              {editing ? (
+            <>
+              <nav className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4" role="tablist" aria-label="Tenant detail sections">
+                {TENANT_DETAIL_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-4 py-2 text-sm font-medium rounded-t border border-b-0 -mb-px ${
+                      activeTab === tab.id
+                        ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-blue-600 dark:text-blue-400'
+                        : 'bg-gray-100 dark:bg-gray-800 border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
+              {activeTab === 'overview' && (
+                <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
+                  <h2 className="text-lg font-semibold mb-3">Overview (§7.1.2)</h2>
+                  {overviewLoading && (
+                    <p className="text-sm text-gray-500">Loading…</p>
+                  )}
+                  {overviewError && !overviewLoading && (
+                    <div>
+                      <p className="text-sm text-red-600 dark:text-red-400">Error: {overviewError}</p>
+                      <button
+                        type="button"
+                        onClick={fetchOverview}
+                        className="mt-2 text-sm font-medium text-blue-600 hover:underline"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
+                  {overviewTenant && !overviewLoading && (
+                    <dl className="text-sm space-y-2">
+                      <div><dt className="font-medium text-gray-500">Tenant ID</dt><dd>{overviewTenant.id}</dd></div>
+                      <div><dt className="font-medium text-gray-500">Name</dt><dd>{overviewTenant.name ?? '—'}</dd></div>
+                      <div><dt className="font-medium text-gray-500">Industry</dt><dd>{overviewTenant.industry ?? '—'}</dd></div>
+                      <div><dt className="font-medium text-gray-500">Status</dt><dd>{overviewTenant.status ?? '—'}</dd></div>
+                      <div><dt className="font-medium text-gray-500">Created</dt><dd>{overviewTenant.createdAt ? new Date(overviewTenant.createdAt).toLocaleString() : '—'}</dd></div>
+                      <div><dt className="font-medium text-gray-500">Quick stats</dt><dd>Users: {overviewTenant.activeUsers ?? '—'} · Opportunities: {overviewTenant.activeOpportunities ?? '—'}</dd></div>
+                      <div><dt className="font-medium text-gray-500">Recent activity</dt><dd>—</dd></div>
+                    </dl>
+                  )}
+                </div>
+              )}
+              {activeTab === 'feedback' && (
+                <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel" aria-labelledby="tab-feedback">
+                  <h2 className="text-lg font-semibold mb-3">Feedback config</h2>
+                  {editing ? (
                 <div className="space-y-3 max-w-md">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Active limit</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={50}
-                      value={editActiveLimit}
-                      onChange={(e) => setEditActiveLimit(parseInt(e.target.value, 10) || 1)}
-                      className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                      disabled={saving}
-                    />
+                  <div className="border-b border-gray-200 dark:border-gray-700 pb-3">
+                    <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Feedback limit (§1.3.1)</span>
+                    <div className="flex items-center gap-2 mb-2">
+                      <input
+                        type="radio"
+                        id="limitGlobal"
+                        name="limitSource"
+                        checked={useGlobalDefaultLimit}
+                        onChange={() => {
+                          setUseGlobalDefaultLimit(true);
+                          if (globalLimits) setEditActiveLimit(globalLimits.defaultLimit);
+                        }}
+                        disabled={saving}
+                        className="rounded"
+                      />
+                      <label htmlFor="limitGlobal" className="text-sm">
+                        Use global default ({globalLimits?.defaultLimit ?? 5})
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        id="limitCustom"
+                        name="limitSource"
+                        checked={!useGlobalDefaultLimit}
+                        onChange={() => {
+                          setUseGlobalDefaultLimit(false);
+                          if (globalLimits) {
+                            const clamped = Math.min(globalLimits.maxLimit, Math.max(globalLimits.minLimit, editActiveLimit));
+                            setEditActiveLimit(clamped);
+                          }
+                        }}
+                        disabled={saving}
+                        className="rounded"
+                      />
+                      <label htmlFor="limitCustom" className="text-sm">Custom limit</label>
+                    </div>
+                    {!useGlobalDefaultLimit && globalLimits && (
+                      <div className="mt-2">
+                        <input
+                          type="number"
+                          min={globalLimits.minLimit}
+                          max={globalLimits.maxLimit}
+                          value={editActiveLimit}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (!Number.isNaN(v)) setEditActiveLimit(Math.min(globalLimits.maxLimit, Math.max(globalLimits.minLimit, v)));
+                          }}
+                          className="w-24 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                          disabled={saving}
+                        />
+                        <span className="ml-2 text-xs text-gray-500">({globalLimits.minLimit}–{globalLimits.maxLimit})</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <input
@@ -390,7 +575,9 @@ export default function TenantDetailPage() {
                       onClick={() => {
                         setEditing(false);
                         setSaveError(null);
-                        setEditActiveLimit(config.activeLimit ?? 5);
+                        const limit = config.activeLimit ?? globalLimits?.defaultLimit ?? 5;
+                        setEditActiveLimit(limit);
+                        setUseGlobalDefaultLimit(limit === (globalLimits?.defaultLimit ?? 5));
                         setEditRequireFeedback(config.requireFeedback ?? false);
                         setEditAllowComments(config.allowComments ?? true);
                         setEditCommentRequired(config.commentRequired ?? false);
@@ -409,8 +596,50 @@ export default function TenantDetailPage() {
                 </div>
               ) : (
                 <>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Preview (§1.3.2)</h3>
                   <dl className="text-sm space-y-2">
                     <div><dt className="font-medium text-gray-500">Active limit</dt><dd>{config.activeLimit ?? '—'}</dd></div>
+                    <div>
+                      <dt className="font-medium text-gray-500 mb-1">Active feedback types</dt>
+                      <dd>
+                        {config.activeTypes && config.activeTypes.length > 0 ? (
+                          <span className="flex flex-wrap gap-1.5">
+                            {config.activeTypes
+                              .sort((a, b) => a.order - b.order)
+                              .map((a) => {
+                                const ft = allFeedbackTypes.find((f) => f.id === a.feedbackTypeId);
+                                const label = ft?.displayName ?? ft?.name ?? a.feedbackTypeId;
+                                return (
+                                  <span
+                                    key={a.feedbackTypeId}
+                                    className="inline-flex items-center rounded-md bg-gray-100 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium"
+                                  >
+                                    {label}
+                                  </span>
+                                );
+                              })}
+                          </span>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-gray-500 mb-1">Per-recommendation-type overrides</dt>
+                      <dd>
+                        {config.perTypeConfig && Object.keys(config.perTypeConfig).length > 0 ? (
+                          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-0.5">
+                            {Object.entries(config.perTypeConfig).map(([recType, val]) => (
+                              <li key={recType}>
+                                <span className="font-medium">{recType}</span>: {val.activeTypes?.length ?? 0} active types
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-500">None</span>
+                        )}
+                      </dd>
+                    </div>
                     <div><dt className="font-medium text-gray-500">Require feedback</dt><dd>{config.requireFeedback ? 'Yes' : 'No'}</dd></div>
                     <div><dt className="font-medium text-gray-500">Allow comments</dt><dd>{config.allowComments ? 'Yes' : 'No'}</dd></div>
                     <div><dt className="font-medium text-gray-500">Comment required</dt><dd>{config.commentRequired ? 'Yes' : 'No'}</dd></div>
@@ -418,7 +647,6 @@ export default function TenantDetailPage() {
                     <div><dt className="font-medium text-gray-500">Pattern detection</dt><dd>{config.patternDetection?.enabled ? 'Yes' : 'No'}</dd></div>
                     <div><dt className="font-medium text-gray-500">Auto suppress</dt><dd>{config.patternDetection?.autoSuppressEnabled ? 'Yes' : 'No'}</dd></div>
                     <div><dt className="font-medium text-gray-500">Auto boost</dt><dd>{config.patternDetection?.autoBoostEnabled ? 'Yes' : 'No'}</dd></div>
-                    <div><dt className="font-medium text-gray-500">Active types</dt><dd>{config.activeTypes?.length ?? 0} configured</dd></div>
                     <div><dt className="font-medium text-gray-500">Updated</dt><dd>{config.updatedAt ? new Date(config.updatedAt).toLocaleString() : '—'}</dd></div>
                   </dl>
                   <button
@@ -446,7 +674,39 @@ export default function TenantDetailPage() {
                   </button>
                 </>
               )}
-            </div>
+                </div>
+              )}
+              {activeTab === 'catalog' && (
+                <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
+                  <h2 className="text-lg font-semibold mb-3">Catalog Configuration (§7.1.2)</h2>
+                  <p className="text-sm text-gray-500">Assign catalog entries, enable/disable entries, set overrides. Not yet implemented.</p>
+                </div>
+              )}
+              {activeTab === 'methodology' && (
+                <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
+                  <h2 className="text-lg font-semibold mb-3">Methodology Configuration (§7.1.2)</h2>
+                  <p className="text-sm text-gray-500">Detailed in Section 3.2. Not yet implemented.</p>
+                </div>
+              )}
+              {activeTab === 'limits' && (
+                <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
+                  <h2 className="text-lg font-semibold mb-3">Limits & Quotas (§7.1.2)</h2>
+                  <p className="text-sm text-gray-500">Limits (maxUsers, maxOpportunities, maxPredictionsPerDay, maxFeedbackPerDay), quotas, alerts. Not yet implemented.</p>
+                </div>
+              )}
+              {activeTab === 'custom' && (
+                <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
+                  <h2 className="text-lg font-semibold mb-3">Custom Configuration (§7.1.2)</h2>
+                  <p className="text-sm text-gray-500">Risk tolerance, decision preferences, model preferences, custom features. Not yet implemented.</p>
+                </div>
+              )}
+              {activeTab === 'analytics' && (
+                <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
+                  <h2 className="text-lg font-semibold mb-3">Analytics (§7.1.2)</h2>
+                  <p className="text-sm text-gray-500">Tenant-specific analytics, usage trends, performance metrics, feedback analysis. Not yet implemented.</p>
+                </div>
+              )}
+            </>
           )}
         </>
       )}

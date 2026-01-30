@@ -25,6 +25,13 @@ export default function RiskCatalogPage() {
   const [industry, setIndustry] = useState('');
   const [stage, setStage] = useState('');
 
+  useEffect(() => {
+    document.title = 'Risk Catalog | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
+
   const fetchCatalog = useCallback(async () => {
     if (!apiBaseUrl) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');

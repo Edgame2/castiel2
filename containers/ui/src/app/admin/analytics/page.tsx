@@ -1,13 +1,21 @@
 /**
- * Super Admin: Analytics & Reporting (W11)
- * Section 9 – dashboards, reports, export.
+ * Super Admin: Analytics & Reporting (§9)
+ * Overview – dashboards, reports, export.
  */
 
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 
 export default function AnalyticsPage() {
+  useEffect(() => {
+    document.title = 'Analytics | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
+
   return (
     <div className="p-6">
       <div className="flex items-center gap-2 mb-4">
@@ -18,6 +26,8 @@ export default function AnalyticsPage() {
         <Link href="/admin" className="text-sm font-medium hover:underline">
           Admin
         </Link>
+        <span className="text-sm text-gray-500">/</span>
+        <span className="text-sm font-medium">Analytics</span>
       </div>
       <h1 className="text-2xl font-bold mb-2">Analytics & Reporting</h1>
       <p className="text-muted-foreground mb-4">

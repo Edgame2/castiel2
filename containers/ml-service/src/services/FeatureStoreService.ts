@@ -149,7 +149,7 @@ export class FeatureStoreService {
 
     const vector = await this.featureService.buildVectorForOpportunity(tenantId, opportunityId, purpose);
     if (!vector) {
-      throw new NotFoundError(`Opportunity ${opportunityId} not found or has no data`);
+      throw new NotFoundError('Opportunity', opportunityId);
     }
 
     if (persist) {
@@ -164,7 +164,7 @@ export class FeatureStoreService {
         createdAt: new Date().toISOString(),
       };
       const container = getContainer(this.snapshotContainerName);
-      await container.items.create(snapshot, { partitionKey: tenantId });
+      await container.items.create(snapshot, { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]);
       await this.setCached(tenantId, opportunityId, purpose, version, vector);
       return { features: vector, fromCache: false, snapshotId: snapshot.id };
     }
@@ -409,7 +409,7 @@ export class FeatureStoreService {
       .query<FeatureSnapshot>({ query, parameters: [{ name: '@tenantId', value: tenantId }, { name: '@id', value: snapshotId }] })
       .fetchNext();
     if (!resources?.[0]) {
-      throw new NotFoundError(`Feature snapshot ${snapshotId} not found`);
+      throw new NotFoundError('Feature snapshot', snapshotId);
     }
     return resources[0];
   }

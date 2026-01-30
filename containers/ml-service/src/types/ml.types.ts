@@ -214,6 +214,8 @@ export interface UpdateMLModelInput {
   metrics?: ModelMetrics;
   modelPath?: string;
   limitations?: string[];
+  deployedAt?: Date;
+  trainingJobId?: string;
 }
 
 /**
@@ -259,9 +261,7 @@ export interface DriftMetrics {
   segment?: string;
   recordedAt: string;
   metadata?: Record<string, unknown>;
-}
-
-/**
+}/**
  * Improvement opportunity (Plan W6 Layer 8 – ContinuousLearningService).
  * Suggestions for model improvement (retrain, add features, threshold, etc.).
  */

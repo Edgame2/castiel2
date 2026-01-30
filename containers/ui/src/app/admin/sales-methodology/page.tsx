@@ -1,10 +1,11 @@
 /**
  * Super Admin: Sales Methodology — Overview (§3)
- * Links to Current tenant config, MEDDIC mapper; per-tenant via Tenant Management.
+ * §3.1.1 View All Methodologies card grid; links to Current tenant config, MEDDIC mapper.
  */
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { MethodologyCardGrid } from './MethodologyCardGrid';
 
 export const metadata: Metadata = {
   title: 'Sales Methodology',
@@ -47,6 +48,10 @@ export default function SalesMethodologyOverviewPage() {
       </nav>
 
       <div className="space-y-6">
+        <section className="rounded-lg border bg-white dark:bg-gray-900 p-6">
+          <h2 className="text-lg font-semibold mb-4">Methodologies (§3.1.1)</h2>
+          <MethodologyCardGrid />
+        </section>
         <section className="rounded-lg border bg-white dark:bg-gray-900 p-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">Current tenant config</h2>

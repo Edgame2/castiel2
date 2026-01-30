@@ -20,12 +20,23 @@ interface TenantRow {
   createdAt?: string;
   activeUsers?: number;
   activeOpportunities?: number;
+  predictionsPerDay?: number;
+  feedbackPerDay?: number;
+  methodology?: string;
+  feedbackLimit?: number;
+  customCatalogEntries?: number;
+  avgRecommendationAccuracy?: number;
+  avgActionRate?: number;
 }
 
 export default function TenantsListPage() {
   const [items, setItems] = useState<TenantRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<TenantStatus | ''>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'' | 'id' | 'name' | 'status' | 'createdAt'>('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const fetchTenants = useCallback(async () => {
     if (!apiBaseUrl) return;
@@ -58,6 +69,49 @@ export default function TenantsListPage() {
       document.title = 'Admin | Castiel';
     };
   }, []);
+
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = items.filter((row) => {
+    if (statusFilter && (row.status ?? '') !== statusFilter) return false;
+    if (q) {
+      const name = (row.name ?? '').toLowerCase();
+      const id = (row.id ?? '').toLowerCase();
+      if (!name.includes(q) && !id.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const sorted = (() => {
+    if (!sortBy) return filtered;
+    const arr = [...filtered];
+    const mult = sortDir === 'asc' ? 1 : -1;
+    arr.sort((a, b) => {
+      let va: string | number;
+      let vb: string | number;
+      switch (sortBy) {
+        case 'id':
+          va = (a.id ?? '').toLowerCase();
+          vb = (b.id ?? '').toLowerCase();
+          return mult * (va < vb ? -1 : va > vb ? 1 : 0);
+        case 'name':
+          va = (a.name ?? '').toLowerCase();
+          vb = (b.name ?? '').toLowerCase();
+          return mult * (va < vb ? -1 : va > vb ? 1 : 0);
+        case 'status':
+          va = a.status ?? '';
+          vb = b.status ?? '';
+          return mult * (va < vb ? -1 : va > vb ? 1 : 0);
+        case 'createdAt': {
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return mult * (ta - tb);
+        }
+        default:
+          return 0;
+      }
+    });
+    return arr;
+  })();
 
   const subNav = (
     <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
@@ -109,7 +163,59 @@ export default function TenantsListPage() {
       )}
 
       {apiBaseUrl && (
-        <div className="mb-4 flex gap-4">
+        <div className="mb-4 flex flex-wrap gap-4 items-end">
+          <div>
+            <label className="block text-sm font-medium mb-1">Status (§7.1.1)</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as TenantStatus | '')}
+              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+            >
+              <option value="">All</option>
+              <option value="active">Active</option>
+              <option value="trial">Trial</option>
+              <option value="suspended">Suspended</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Search (§7.1.1)</label>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Name or ID…"
+              className="w-48 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              aria-label="Search by name or ID"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Sort by (§7.1.1)</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              aria-label="Sort by"
+            >
+              <option value="">Default</option>
+              <option value="id">ID</option>
+              <option value="name">Name</option>
+              <option value="status">Status</option>
+              <option value="createdAt">Created</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Order</label>
+            <select
+              value={sortDir}
+              onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
+              className="w-32 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              aria-label="Sort direction"
+            >
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+          </div>
           <button
             type="button"
             onClick={fetchTenants}
@@ -143,6 +249,8 @@ export default function TenantsListPage() {
           <h2 className="text-lg font-semibold mb-3">Tenants</h2>
           {items.length === 0 ? (
             <p className="text-sm text-gray-500">No tenants returned. Tenant list is provided by the backend (stub returns empty).</p>
+          ) : sorted.length === 0 ? (
+            <p className="text-sm text-gray-500">No tenants match the current filters.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
@@ -155,11 +263,18 @@ export default function TenantsListPage() {
                     <th className="text-left py-2 px-4">Created</th>
                     <th className="text-left py-2 px-4">Users</th>
                     <th className="text-left py-2 px-4">Opportunities</th>
+                    <th className="text-left py-2 px-4">Predictions/day</th>
+                    <th className="text-left py-2 px-4">Feedback/day</th>
+                    <th className="text-left py-2 px-4">Methodology</th>
+                    <th className="text-left py-2 px-4">Feedback limit</th>
+                    <th className="text-left py-2 px-4">Custom catalog</th>
+                    <th className="text-left py-2 px-4">Accuracy</th>
+                    <th className="text-left py-2 px-4">Action rate</th>
                     <th className="text-left py-2 px-4">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((row) => (
+                  {sorted.map((row) => (
                     <tr key={row.id} className="border-b">
                       <td className="py-2 px-4">{row.id}</td>
                       <td className="py-2 px-4">{row.name ?? '—'}</td>
@@ -168,10 +283,31 @@ export default function TenantsListPage() {
                       <td className="py-2 px-4">{row.createdAt ?? '—'}</td>
                       <td className="py-2 px-4">{row.activeUsers ?? '—'}</td>
                       <td className="py-2 px-4">{row.activeOpportunities ?? '—'}</td>
+                      <td className="py-2 px-4">{row.predictionsPerDay ?? '—'}</td>
+                      <td className="py-2 px-4">{row.feedbackPerDay ?? '—'}</td>
+                      <td className="py-2 px-4">{row.methodology ?? '—'}</td>
+                      <td className="py-2 px-4">{row.feedbackLimit ?? '—'}</td>
+                      <td className="py-2 px-4">{row.customCatalogEntries ?? '—'}</td>
+                      <td className="py-2 px-4">{row.avgRecommendationAccuracy != null ? `${row.avgRecommendationAccuracy}%` : '—'}</td>
+                      <td className="py-2 px-4">{row.avgActionRate != null ? `${row.avgActionRate}%` : '—'}</td>
                       <td className="py-2 px-4">
-                        <Link href={`/admin/tenants/${row.id}`} className="text-blue-600 dark:text-blue-400 hover:underline">
-                          View
-                        </Link>
+                        <span className="flex flex-wrap gap-x-2 gap-y-1">
+                          <Link href={`/admin/tenants/${row.id}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                            View
+                          </Link>
+                          <Link href={`/admin/tenants/${row.id}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                            Edit
+                          </Link>
+                          <Link href={`/admin/tenants/${row.id}?tab=feedback`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                            Configure
+                          </Link>
+                          <button type="button" disabled className="text-gray-400 cursor-not-allowed" title="Coming soon">
+                            Suspend
+                          </button>
+                          <button type="button" disabled className="text-gray-400 cursor-not-allowed" title="Coming soon">
+                            Delete
+                          </button>
+                        </span>
                       </td>
                     </tr>
                   ))}

@@ -60,6 +60,13 @@ export default function RoleDetailPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  useEffect(() => {
+    document.title = 'Role | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
+
   const fetchRole = useCallback(async () => {
     if (!apiBaseUrl || !orgId.trim() || !id.trim()) return;
     setLoading(true);

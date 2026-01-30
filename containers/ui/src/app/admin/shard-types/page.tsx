@@ -26,6 +26,13 @@ export default function ShardTypesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    document.title = 'Shard Types | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
+
   const fetchShardTypes = useCallback(async () => {
     setLoading(true);
     setError(null);

@@ -8,6 +8,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
+const AUDIT_PAGE_TITLE = 'Audit | Admin | Castiel';
+
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 type LogCategory = 'ACTION' | 'ACCESS' | 'SECURITY' | 'SYSTEM' | 'CUSTOM';
@@ -52,6 +54,14 @@ export default function SecurityAuditPage() {
   const [resourceType, setResourceType] = useState('');
   const [exportJobId, setExportJobId] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  useEffect(() => {
+    document.title = AUDIT_PAGE_TITLE;
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
 
   const fetchLogs = useCallback(async (overrideOffset?: number) => {
     if (!apiBaseUrl) return;
@@ -63,7 +73,7 @@ export default function SecurityAuditPage() {
       params.set('limit', String(LIMIT));
       params.set('offset', String(currentOffset));
       params.set('sortBy', 'timestamp');
-      params.set('sortOrder', 'desc');
+      params.set('sortOrder', sortOrder);
       if (startDate) params.set('startDate', startDate);
       if (endDate) params.set('endDate', endDate);
       if (userId) params.set('userId', userId);
@@ -95,10 +105,15 @@ export default function SecurityAuditPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl, startDate, endDate, userId, action, category, severity, resourceType]);
+  }, [apiBaseUrl, startDate, endDate, userId, action, category, severity, resourceType, sortOrder]);
 
   const offsetRef = useRef(0);
   offsetRef.current = offset;
+
+  useEffect(() => {
+    offsetRef.current = 0;
+    setOffset(0);
+  }, [sortOrder]);
 
   useEffect(() => {
     if (apiBaseUrl) fetchLogs(offsetRef.current);
@@ -206,6 +221,13 @@ export default function SecurityAuditPage() {
               <div>
                 <label className="block font-medium mb-1">Resource type</label>
                 <input type="text" value={resourceType} onChange={(e) => setResourceType(e.target.value)} placeholder="Optional" className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700" />
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Sort order (§10.4)</label>
+                <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700" aria-label="Sort order">
+                  <option value="desc">Newest first</option>
+                  <option value="asc">Oldest first</option>
+                </select>
               </div>
             </div>
             <div className="flex gap-2 mt-3">

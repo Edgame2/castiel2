@@ -90,6 +90,13 @@ export default function SystemSettingsPage() {
   const [queueConfigError, setQueueConfigError] = useState<string | null>(null);
 
   useEffect(() => {
+    document.title = 'Settings | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
+
+  useEffect(() => {
     if (settings?.rateLimits?.global) {
       setRateLimitDraft({ ...settings.rateLimits.global });
     } else {

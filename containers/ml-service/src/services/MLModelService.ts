@@ -50,7 +50,7 @@ export class MLModelService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(model, {
         partitionKey: input.tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create ML model');
@@ -107,7 +107,7 @@ export class MLModelService {
       const { resource } = await container.item(modelId, tenantId).read<MLModel>();
 
       if (!resource) {
-        throw new NotFoundError(`ML model ${modelId} not found`);
+        throw new NotFoundError('ML model', modelId);
       }
 
       return resource;
@@ -116,7 +116,7 @@ export class MLModelService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`ML model ${modelId} not found`);
+        throw new NotFoundError('ML model', modelId);
       }
       throw error;
     }
@@ -149,7 +149,7 @@ export class MLModelService {
       return resource as MLModel;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`ML model ${modelId} not found`);
+        throw new NotFoundError('ML model', modelId);
       }
       throw error;
     }

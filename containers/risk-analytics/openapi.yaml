@@ -497,6 +497,19 @@ paths:
           description: SalesMethodology document
         '500':
           $ref: '#/components/responses/InternalError'
+  /sales-methodology/templates:
+    get:
+      tags:
+        - Sales Methodology
+      summary: List methodology templates (§3.1.1)
+      description: Returns standard methodology cards (MEDDIC, MEDDPICC, Challenger, Sandler, SPIN, Custom) for View All Methodologies card grid.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Array of MethodologyCard (id, name, type, description, stages, requiredFields, exitCriteria, tenantsUsing, activeOpportunities, avgComplianceScore)
+        '500':
+          $ref: '#/components/responses/InternalError'
   /decisions/methodology:
     post:
       tags:

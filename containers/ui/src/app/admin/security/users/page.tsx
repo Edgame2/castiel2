@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
@@ -39,6 +39,33 @@ export default function SecurityUsersPage() {
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'' | 'userId' | 'email' | 'name' | 'roleName' | 'status' | 'joinedAt'>('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const sorted = (() => {
+    if (!sortBy || members.length === 0) return members;
+    const mult = sortDir === 'asc' ? 1 : -1;
+    return [...members].sort((a, b) => {
+      let base: number;
+      if (sortBy === 'joinedAt') {
+        const ta = a.joinedAt ? new Date(a.joinedAt).getTime() : 0;
+        const tb = b.joinedAt ? new Date(b.joinedAt).getTime() : 0;
+        base = ta - tb;
+      } else {
+        const va = (a[sortBy] ?? '').toString().toLowerCase();
+        const vb = (b[sortBy] ?? '').toString().toLowerCase();
+        base = va.localeCompare(vb);
+      }
+      return mult * base;
+    });
+  })();
+
+  useEffect(() => {
+    document.title = 'Users | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
 
   const fetchSummary = useCallback(async () => {
     if (!apiBaseUrl || !orgId.trim()) return;
@@ -144,7 +171,35 @@ export default function SecurityUsersPage() {
               </div>
               {members.length > 0 && (
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6">
-                  <h2 className="text-lg font-semibold mb-3">Members ({members.length})</h2>
+                  <div className="flex flex-wrap items-center gap-4 mb-3">
+                    <h2 className="text-lg font-semibold">Members ({members.length})</h2>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by (§10.2)</label>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                        className="px-3 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                        aria-label="Sort by"
+                      >
+                        <option value="">Default</option>
+                        <option value="userId">User ID</option>
+                        <option value="email">Email</option>
+                        <option value="name">Name</option>
+                        <option value="roleName">Role</option>
+                        <option value="status">Status</option>
+                        <option value="joinedAt">Joined</option>
+                      </select>
+                      <select
+                        value={sortDir}
+                        onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
+                        className="px-3 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                        aria-label="Sort direction"
+                      >
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                      </select>
+                    </div>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
                       <thead>
@@ -158,7 +213,7 @@ export default function SecurityUsersPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {members.map((row) => (
+                        {sorted.map((row) => (
                           <tr key={row.userId} className="border-b">
                             <td className="py-2 px-4">{row.userId}</td>
                             <td className="py-2 px-4">{row.email ?? '—'}</td>

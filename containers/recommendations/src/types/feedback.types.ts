@@ -66,6 +66,48 @@ export interface UpdateFeedbackTypeInput {
   translations?: Record<string, { displayName: string; description: string }>;
 }
 
+/** Bulk update operation. Super Admin §1.1.5 */
+export type BulkFeedbackTypeOperation = 'activate' | 'deactivate' | 'setCategory' | 'setSentiment';
+
+export interface BulkFeedbackTypesInput {
+  operation: BulkFeedbackTypeOperation;
+  ids: string[];
+  category?: FeedbackTypeCategory;
+  sentiment?: FeedbackSentiment;
+  sentimentScore?: number;
+}
+
+export interface BulkFeedbackTypesResult {
+  updated: number;
+  failed: { id: string; error: string }[];
+}
+
+export interface ImportFeedbackTypesInput {
+  items: (CreateFeedbackTypeInput & { id?: string })[];
+}
+
+export interface ImportFeedbackTypesResult {
+  created: number;
+  updated: number;
+  failed: { index: number; error: string }[];
+}
+
+/** Global feedback collection defaults. Super Admin §1.2.3 */
+export interface FeedbackCollectionSettings {
+  requireFeedback: boolean;
+  requireFeedbackAfterDays: number;
+  allowComments: boolean;
+  maxCommentLength: number;
+  moderateComments: boolean;
+  allowMultipleSelection: boolean;
+  maxSelectionsPerFeedback: number;
+  allowFeedbackEdit: boolean;
+  editWindowDays: number;
+  trackFeedbackHistory: boolean;
+  allowAnonymousFeedback: boolean;
+  anonymousForNegative: boolean;
+}
+
 export interface GlobalFeedbackConfig {
   id: string;
   partitionKey: string;
@@ -77,8 +119,14 @@ export interface GlobalFeedbackConfig {
   patternDetection: {
     enabled: boolean;
     minSampleSize: number;
-    thresholds: { ignoreRate: number; actionRate: number };
+    thresholds: { ignoreRate: number; actionRate: number; sentimentThreshold: number };
+    autoSuppressEnabled: boolean;
+    autoBoostEnabled: boolean;
+    notifyOnPattern: boolean;
+    patternReportFrequency: 'daily' | 'weekly' | 'monthly';
   };
+  /** Present after first save or seed; missing on legacy docs. */
+  feedbackCollection?: FeedbackCollectionSettings;
   updatedAt: string;
   updatedBy: string;
 }

@@ -46,6 +46,26 @@ export default function SecurityRolesPage() {
   const [createPermissionsLoading, setCreatePermissionsLoading] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'' | 'name' | 'createdAt' | 'userCount'>('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const sorted = (() => {
+    if (!sortBy || items.length === 0) return items;
+    const mult = sortDir === 'asc' ? 1 : -1;
+    return [...items].sort((a, b) => {
+      let base: number;
+      if (sortBy === 'name') {
+        base = (a.name ?? '').localeCompare(b.name ?? '');
+      } else if (sortBy === 'createdAt') {
+        const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        base = ta - tb;
+      } else {
+        base = (a.userCount ?? 0) - (b.userCount ?? 0);
+      }
+      return mult * base;
+    });
+  })();
 
   const fetchRoles = useCallback(async () => {
     if (!apiBaseUrl || !orgId.trim()) return;
@@ -279,7 +299,32 @@ export default function SecurityRolesPage() {
 
           {!loading && items.length > 0 && (
             <div className="rounded-lg border bg-white dark:bg-gray-900 p-6">
-              <h2 className="text-lg font-semibold mb-3">Roles ({items.length})</h2>
+              <div className="flex flex-wrap items-center gap-4 mb-3">
+                <h2 className="text-lg font-semibold">Roles ({items.length})</h2>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by (§10.1)</label>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                    className="px-3 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                    aria-label="Sort by"
+                  >
+                    <option value="">Default</option>
+                    <option value="name">Name</option>
+                    <option value="createdAt">Created</option>
+                    <option value="userCount">User count</option>
+                  </select>
+                  <select
+                    value={sortDir}
+                    onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
+                    className="px-3 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                    aria-label="Sort direction"
+                  >
+                    <option value="asc">Ascending</option>
+                    <option value="desc">Descending</option>
+                  </select>
+                </div>
+              </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
@@ -292,7 +337,7 @@ export default function SecurityRolesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((row) => (
+                    {sorted.map((row) => (
                       <tr key={row.id ?? row.name ?? ''} className="border-b">
                         <td className="py-2 px-4">{row.name ?? '—'}</td>
                         <td className="py-2 px-4">{row.description ?? '—'}</td>

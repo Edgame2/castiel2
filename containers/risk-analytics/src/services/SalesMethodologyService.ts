@@ -17,6 +17,28 @@ export class SalesMethodologyService {
   }
 
   /**
+   * §3.1.1 List methodology type counts across all tenants (for templates usage stats).
+   * Cross-partition query; returns map of methodologyType -> tenant count.
+   */
+  async listMethodologyTypeCounts(): Promise<Record<string, number>> {
+    const container = getContainer(this.containerName);
+    try {
+      const { resources } = await container.items
+        .query<{ methodologyType?: string }>({ query: 'SELECT c.methodologyType FROM c' })
+        .fetchAll();
+      const counts: Record<string, number> = {};
+      for (const r of resources) {
+        const t = r?.methodologyType;
+        if (typeof t === 'string') counts[t] = (counts[t] ?? 0) + 1;
+      }
+      return counts;
+    } catch (err: unknown) {
+      log.error('SalesMethodologyService.listMethodologyTypeCounts failed', err as Error, { service: 'risk-analytics' });
+      return {};
+    }
+  }
+
+  /**
    * Get sales methodology for a tenant. One document per tenant (id = tenantId, partitionKey = tenantId).
    */
   async getByTenantId(tenantId: string): Promise<SalesMethodologyDocument | null> {
@@ -41,13 +63,20 @@ export class SalesMethodologyService {
     const now = new Date().toISOString();
     const existing = await this.getByTenantId(tenantId);
     const meddic = body.meddic !== undefined ? body.meddic : (existing?.meddic);
+    const integrationConfig = body.integrationConfig !== undefined ? body.integrationConfig : existing?.integrationConfig;
     const payload: SalesMethodology = {
       tenantId,
       methodologyType: body.methodologyType,
       stages: body.stages,
       requiredFields: body.requiredFields ?? [],
       risks: body.risks ?? [],
+      name: body.name !== undefined ? body.name : existing?.name,
+      displayName: body.displayName !== undefined ? body.displayName : existing?.displayName,
+      description: body.description !== undefined ? body.description : existing?.description,
+      isActive: body.isActive !== undefined ? body.isActive : existing?.isActive,
+      isDefault: body.isDefault !== undefined ? body.isDefault : existing?.isDefault,
       ...(meddic !== undefined && { meddic }),
+      ...(integrationConfig !== undefined && { integrationConfig }),
     };
     const doc: SalesMethodologyDocument = {
       ...payload,

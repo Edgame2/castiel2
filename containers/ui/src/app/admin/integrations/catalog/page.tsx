@@ -29,6 +29,13 @@ export default function IntegrationCatalogPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    document.title = 'Integration Catalog | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
+
   const fetchIntegrations = useCallback(async () => {
     setLoading(true);
     setError(null);

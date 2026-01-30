@@ -74,6 +74,25 @@ model_monitoring:
   psi_threshold: 0.2
   mae_threshold: 0.2
 
+# Super Admin §5.2.2: feature version policy (versioning strategy, backward compatibility, deprecation).
+feature_version_policy:
+  versioningStrategy: semantic
+  backwardCompatibility:
+    enforceCompatibility: true
+    allowBreakingChanges: false
+    requireMigrationGuide: true
+  deprecationPolicy:
+    deprecationNoticeDays: 30
+    supportOldVersionsDays: 90
+    autoMigrate: false
+
+# Super Admin §5.3.2: default feature quality rules (missing rate, drift, outlier method).
+feature_quality_rules:
+  missingRateThreshold: 0.1
+  driftThreshold: 0.2
+  outlierMethod: zscore
+  outlierNStd: 3
+
 # Plan §978: ONNX/Redis when p95≥500ms; defaults off. deployment/monitoring/runbooks/performance-optimization.md
 onnx:
   enabled: false

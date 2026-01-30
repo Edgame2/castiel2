@@ -7,7 +7,9 @@
   "exports": {
     ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
     "./types/shards": { "types": "./dist/types/shards/index.d.ts", "default": "./dist/types/shards/index.js" },
-    "./database": { "types": "./dist/database/index.d.ts", "default": "./dist/database/index.js" }
+    "./database": { "types": "./dist/database/index.d.ts", "default": "./dist/database/index.js" },
+    "./utils/errors": { "types": "./dist/utils/errors.d.ts", "default": "./dist/utils/errors.js" },
+    "./cache": { "types": "./dist/cache/index.d.ts", "default": "./dist/cache/index.js" }
   },
   "scripts": {
     "build": "tsc",

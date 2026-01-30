@@ -38,6 +38,13 @@ export default function MonitoringDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    document.title = 'Monitoring | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
+
   const fetchMonitoringData = useCallback(async () => {
     if (!apiBaseUrl) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');

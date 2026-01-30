@@ -5,8 +5,9 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -36,10 +37,43 @@ const DEFAULT_CREATE_FORM = {
 
 const COLOR_PRESETS = ['#6b7280', '#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#2563eb', '#9333ea'];
 
+/** §2.2.2 Icon picker: emoji options with searchable labels */
+const ICON_OPTIONS: { emoji: string; label: string }[] = [
+  { emoji: '📁', label: 'folder' },
+  { emoji: '📊', label: 'chart' },
+  { emoji: '⚠️', label: 'warning' },
+  { emoji: '✅', label: 'check' },
+  { emoji: '📌', label: 'pin' },
+  { emoji: '🔗', label: 'link' },
+  { emoji: '💡', label: 'idea' },
+  { emoji: '📋', label: 'clipboard' },
+  { emoji: '🎯', label: 'target' },
+  { emoji: '📈', label: 'trend' },
+  { emoji: '🛡️', label: 'shield' },
+  { emoji: '⚙️', label: 'settings' },
+  { emoji: '📦', label: 'package' },
+  { emoji: '🔔', label: 'bell' },
+  { emoji: '📝', label: 'note' },
+  { emoji: '🏷️', label: 'tag' },
+  { emoji: '🔴', label: 'risk' },
+  { emoji: '🟢', label: 'recommendation' },
+];
+
+function normalizeHex(color: string): string {
+  const hex = color.replace(/^#/, '');
+  if (/^[0-9A-Fa-f]{6}$/.test(hex)) return `#${hex}`;
+  if (/^[0-9A-Fa-f]{3}$/.test(hex)) return `#${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}`;
+  return '#6b7280';
+}
+
 export default function ActionCatalogCategoriesPage() {
   const [categories, setCategories] = useState<ActionCatalogCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<CategoryType | ''>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'' | 'displayName' | 'type' | 'order' | 'entriesCount'>('order');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'delete' | null>(null);
   const [editCategory, setEditCategory] = useState<ActionCatalogCategory | null>(null);
   const [createForm, setCreateForm] = useState(DEFAULT_CREATE_FORM);
@@ -47,6 +81,7 @@ export default function ActionCatalogCategoriesPage() {
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteReassignTo, setDeleteReassignTo] = useState('');
+  const [iconSearch, setIconSearch] = useState('');
 
   const fetchCategories = useCallback(async () => {
     if (!apiBaseUrl) return;
@@ -76,11 +111,42 @@ export default function ActionCatalogCategoriesPage() {
     };
   }, []);
 
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = categories.filter((cat) => {
+    if (typeFilter && cat.type !== typeFilter) return false;
+    if (q) {
+      const name = (cat.displayName ?? '').toLowerCase();
+      const desc = (cat.description ?? '').toLowerCase();
+      const id = (cat.id ?? '').toLowerCase();
+      if (!name.includes(q) && !desc.includes(q) && !id.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const sorted = (() => {
+    if (!sortBy) return filtered;
+    const mult = sortDir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      let base: number;
+      if (sortBy === 'displayName') {
+        base = (a.displayName ?? a.id ?? '').localeCompare(b.displayName ?? b.id ?? '');
+      } else if (sortBy === 'type') {
+        base = (a.type ?? '').localeCompare(b.type ?? '');
+      } else if (sortBy === 'order') {
+        base = (a.order ?? 0) - (b.order ?? 0);
+      } else {
+        base = (a.entriesCount ?? 0) - (b.entriesCount ?? 0);
+      }
+      return mult * base;
+    });
+  })();
+
   const closeModal = () => {
     setModalMode(null);
     setEditCategory(null);
     setFormError(null);
     setDeleteReassignTo('');
+    setIconSearch('');
   };
 
   const openCreate = () => {
@@ -88,6 +154,7 @@ export default function ActionCatalogCategoriesPage() {
     setEditCategory(null);
     setModalMode('create');
     setFormError(null);
+    setIconSearch('');
   };
 
   const openEdit = (cat: ActionCatalogCategory) => {
@@ -96,13 +163,20 @@ export default function ActionCatalogCategoriesPage() {
       displayName: cat.displayName,
       type: cat.type,
       icon: cat.icon || '📁',
-      color: cat.color || '#6b7280',
+      color: normalizeHex(cat.color || '#6b7280'),
       description: cat.description || '',
       order: cat.order,
     });
     setModalMode('edit');
     setFormError(null);
+    setIconSearch('');
   };
+
+  const filteredIconOptions = useMemo(() => {
+    const q = iconSearch.trim().toLowerCase();
+    if (!q) return ICON_OPTIONS;
+    return ICON_OPTIONS.filter((o) => o.label.toLowerCase().includes(q) || o.emoji.includes(q));
+  }, [iconSearch]);
 
   const openDelete = (cat: ActionCatalogCategory) => {
     setEditCategory(cat);
@@ -121,7 +195,7 @@ export default function ActionCatalogCategoriesPage() {
         displayName: createForm.displayName.trim(),
         type: createForm.type,
         icon: createForm.icon.trim() || '📁',
-        color: createForm.color.trim() || '#6b7280',
+        color: normalizeHex(createForm.color.trim() || '#6b7280'),
         description: createForm.description.trim() || undefined,
         order: createForm.order,
       };
@@ -152,7 +226,7 @@ export default function ActionCatalogCategoriesPage() {
         displayName: editForm.displayName.trim(),
         type: editForm.type,
         icon: editForm.icon.trim() || '📁',
-        color: editForm.color.trim() || '#6b7280',
+        color: normalizeHex(editForm.color.trim() || '#6b7280'),
         description: editForm.description.trim() || undefined,
         order: editForm.order,
       };
@@ -260,6 +334,57 @@ export default function ActionCatalogCategoriesPage() {
           >
             Add category
           </button>
+          <div>
+            <label className="block text-sm font-medium mb-1">Type (§2.2.1)</label>
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as CategoryType | '')}
+              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+            >
+              <option value="">All</option>
+              <option value="risk">Risk</option>
+              <option value="recommendation">Recommendation</option>
+              <option value="both">Both</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Search (§2.2.1)</label>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Name or description…"
+              className="w-48 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              aria-label="Search categories by name or description"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Sort by (§2.2.1)</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="w-36 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              aria-label="Sort by"
+            >
+              <option value="">Default</option>
+              <option value="displayName">Name</option>
+              <option value="type">Type</option>
+              <option value="order">Order</option>
+              <option value="entriesCount">Entries count</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Order</label>
+            <select
+              value={sortDir}
+              onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
+              className="w-32 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              aria-label="Sort direction"
+            >
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+          </div>
           <button
             type="button"
             onClick={fetchCategories}
@@ -291,12 +416,16 @@ export default function ActionCatalogCategoriesPage() {
 
       {!loading && apiBaseUrl && !error && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.length === 0 ? (
+          {sorted.length === 0 ? (
             <div className="col-span-full rounded-lg border bg-white dark:bg-gray-900 p-6">
-              <p className="text-sm text-gray-500">No categories yet. Create one to organize entries by risk / recommendation / both.</p>
+              <p className="text-sm text-gray-500">
+                {categories.length === 0
+                  ? 'No categories yet. Create one to organize entries by risk / recommendation / both.'
+                  : 'No categories match the current filters.'}
+              </p>
             </div>
           ) : (
-            categories.map((cat) => (
+            sorted.map((cat) => (
               <div
                 key={cat.id}
                 className="rounded-lg border bg-white dark:bg-gray-900 p-4 flex flex-col"
@@ -315,7 +444,9 @@ export default function ActionCatalogCategoriesPage() {
                 </div>
                 <h3 className="font-semibold mt-2 text-gray-900 dark:text-gray-100">{cat.displayName}</h3>
                 {cat.description && (
-                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">{cat.description}</p>
+                  <div className="text-sm text-gray-500 mt-1 line-clamp-2 prose prose-sm dark:prose-invert max-w-none">
+                    <ReactMarkdown>{cat.description}</ReactMarkdown>
+                  </div>
                 )}
                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 flex flex-wrap gap-x-4">
                   <span>Entries: {cat.entriesCount ?? 0}</span>
@@ -376,23 +507,56 @@ export default function ActionCatalogCategoriesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Icon (emoji or text)</label>
+                  <label className="block text-sm font-medium mb-1">Icon (§2.2.2 picker with search)</label>
+                  <input
+                    type="search"
+                    value={iconSearch}
+                    onChange={(e) => setIconSearch(e.target.value)}
+                    placeholder="Search icons…"
+                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 mb-2 text-sm"
+                    aria-label="Search icon"
+                  />
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {filteredIconOptions.map((o) => (
+                      <button
+                        key={`${o.emoji}-${o.label}`}
+                        type="button"
+                        onClick={() => setCreateForm((f) => ({ ...f, icon: o.emoji }))}
+                        className={`w-9 h-9 rounded border text-lg flex items-center justify-center ${
+                          createForm.icon === o.emoji
+                            ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30'
+                            : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        }`}
+                        title={o.label}
+                      >
+                        {o.emoji}
+                      </button>
+                    ))}
+                  </div>
                   <input
                     type="text"
                     value={createForm.icon}
                     onChange={(e) => setCreateForm((f) => ({ ...f, icon: e.target.value }))}
-                    placeholder="e.g. 📁 or folder"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                    placeholder="Custom emoji"
+                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                    aria-label="Custom icon"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Color (hex)</label>
-                  <div className="flex gap-2">
+                  <label className="block text-sm font-medium mb-1">Color (§2.2.2 picker with presets)</label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="color"
+                      value={normalizeHex(createForm.color)}
+                      onChange={(e) => setCreateForm((f) => ({ ...f, color: e.target.value }))}
+                      className="w-10 h-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                      aria-label="Color picker"
+                    />
                     <input
                       type="text"
                       value={createForm.color}
                       onChange={(e) => setCreateForm((f) => ({ ...f, color: e.target.value }))}
-                      className="flex-1 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                      className="w-24 px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm font-mono"
                       placeholder="#6b7280"
                     />
                     <div className="flex gap-1">
@@ -410,13 +574,19 @@ export default function ActionCatalogCategoriesPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Description (optional)</label>
+                  <label className="block text-sm font-medium mb-1">Description (§2.2.2 rich text / Markdown)</label>
                   <textarea
                     value={createForm.description}
                     onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
-                    rows={2}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                    rows={3}
+                    placeholder="Supports **bold**, *italic*, lists, links…"
+                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                   />
+                  {createForm.description && (
+                    <div className="mt-1 p-2 rounded bg-gray-50 dark:bg-gray-800/50 text-sm prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown>{createForm.description}</ReactMarkdown>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Order</label>
@@ -472,22 +642,56 @@ export default function ActionCatalogCategoriesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Icon (emoji or text)</label>
+                  <label className="block text-sm font-medium mb-1">Icon (§2.2.2 picker with search)</label>
+                  <input
+                    type="search"
+                    value={iconSearch}
+                    onChange={(e) => setIconSearch(e.target.value)}
+                    placeholder="Search icons…"
+                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 mb-2 text-sm"
+                    aria-label="Search icon"
+                  />
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {filteredIconOptions.map((o) => (
+                      <button
+                        key={`${o.emoji}-${o.label}`}
+                        type="button"
+                        onClick={() => setEditForm((f) => ({ ...f, icon: o.emoji }))}
+                        className={`w-9 h-9 rounded border text-lg flex items-center justify-center ${
+                          editForm.icon === o.emoji
+                            ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30'
+                            : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        }`}
+                        title={o.label}
+                      >
+                        {o.emoji}
+                      </button>
+                    ))}
+                  </div>
                   <input
                     type="text"
                     value={editForm.icon}
                     onChange={(e) => setEditForm((f) => ({ ...f, icon: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                    placeholder="Custom emoji"
+                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                    aria-label="Custom icon"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Color (hex)</label>
-                  <div className="flex gap-2">
+                  <label className="block text-sm font-medium mb-1">Color (§2.2.2 picker with presets)</label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="color"
+                      value={normalizeHex(editForm.color)}
+                      onChange={(e) => setEditForm((f) => ({ ...f, color: e.target.value }))}
+                      className="w-10 h-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                      aria-label="Color picker"
+                    />
                     <input
                       type="text"
                       value={editForm.color}
                       onChange={(e) => setEditForm((f) => ({ ...f, color: e.target.value }))}
-                      className="flex-1 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                      className="w-24 px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm font-mono"
                     />
                     <div className="flex gap-1">
                       {COLOR_PRESETS.map((c) => (
@@ -504,13 +708,19 @@ export default function ActionCatalogCategoriesPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Description (optional)</label>
+                  <label className="block text-sm font-medium mb-1">Description (§2.2.2 rich text / Markdown)</label>
                   <textarea
                     value={editForm.description}
                     onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
-                    rows={2}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                    rows={3}
+                    placeholder="Supports **bold**, *italic*, lists, links…"
+                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                   />
+                  {editForm.description && (
+                    <div className="mt-1 p-2 rounded bg-gray-50 dark:bg-gray-800/50 text-sm prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown>{editForm.description}</ReactMarkdown>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Order</label>

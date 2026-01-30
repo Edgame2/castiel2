@@ -112,7 +112,7 @@ export class FeatureVersionManager {
       })
       .fetchNext();
     if (!resources?.[0]) {
-      throw new NotFoundError(`Feature metadata for purpose=${purpose} version=${version} not found`);
+      throw new NotFoundError('Feature metadata', `purpose=${purpose} version=${version}`);
     }
     return resources[0];
   }
@@ -162,7 +162,7 @@ export class FeatureVersionManager {
       createdAt: now,
       updatedAt: now,
     };
-    const { resource } = await container.items.create(doc, { partitionKey: tenantId });
+    const { resource } = await container.items.create(doc, { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]);
     if (!resource) throw new Error('Failed to create feature metadata');
     return resource as FeatureMetadata;
   }

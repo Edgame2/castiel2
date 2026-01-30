@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
@@ -76,6 +76,13 @@ const DEFAULT_DECISION_RULES: DecisionRules = {
   suppressIfSimilarExists: false,
 };
 
+interface CatalogUsage {
+  timesGenerated?: number;
+  avgFeedbackSentiment?: number;
+  avgActionRate?: number;
+  avgImpact?: number;
+}
+
 interface ActionCatalogEntry {
   id: string;
   type: 'risk' | 'recommendation';
@@ -92,6 +99,12 @@ interface ActionCatalogEntry {
   decisionRules?: DecisionRules;
   status?: 'active' | 'deprecated' | 'draft';
   version?: number;
+  usage?: CatalogUsage;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+  tenantId?: string;
+  partitionKey?: string;
 }
 
 export default function ActionCatalogEntriesPage() {
@@ -99,11 +112,31 @@ export default function ActionCatalogEntriesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<'risk' | 'recommendation' | ''>('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [scopeFilter, setScopeFilter] = useState<'' | 'global' | 'tenant'>('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'draft' | 'deprecated' | ''>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [industryFilter, setIndustryFilter] = useState('');
+  const [stageFilter, setStageFilter] = useState('');
+  const [methodologyFilter, setMethodologyFilter] = useState('');
+  const [effectivenessFilter, setEffectivenessFilter] = useState<'' | 'high' | 'medium' | 'low'>('');
+  const [createdByQuery, setCreatedByQuery] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [sortBy, setSortBy] = useState<'' | 'name' | 'category' | 'status' | 'type' | 'effectiveness' | 'createdAt'>('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [editEntryType, setEditEntryType] = useState<'risk' | 'recommendation' | null>(null);
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [selectedEntryIds, setSelectedEntryIds] = useState<Set<string>>(new Set());
+  const [bulkDuplicating, setBulkDuplicating] = useState(false);
+  const [bulkDeprecating, setBulkDeprecating] = useState(false);
+  const selectAllRef = useRef<HTMLInputElement | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+  const [importing, setImporting] = useState(false);
+  const bulkInProgress = bulkDuplicating || bulkDeprecating || importing;
   const [createForm, setCreateForm] = useState({
     type: 'risk' as 'risk' | 'recommendation',
     category: '',
@@ -180,6 +213,118 @@ export default function ActionCatalogEntriesPage() {
       document.title = 'Admin | Castiel';
     };
   }, []);
+
+  useEffect(() => {
+    const el = selectAllRef.current;
+    if (!el) return;
+    const n = sorted.length;
+    const sel = selectedEntryIds.size;
+    el.indeterminate = n > 0 && sel > 0 && sel < n;
+  }, [selectedEntryIds.size, sorted.length]);
+
+  const categories = Array.from(new Set(entries.map((e) => e.category).filter(Boolean))).sort();
+  const industries = Array.from(new Set(entries.flatMap((e) => e.applicableIndustries ?? []).filter(Boolean))).sort();
+  const stages = Array.from(new Set(entries.flatMap((e) => e.applicableStages ?? []).filter(Boolean))).sort();
+  const methodologies = Array.from(new Set(entries.flatMap((e) => e.applicableMethodologies ?? []).filter(Boolean))).sort();
+
+  const effectivenessValue = (e: ActionCatalogEntry): number | null => {
+    const u = e.usage;
+    const v = u?.avgImpact ?? u?.avgActionRate;
+    return typeof v === 'number' ? v : null;
+  };
+
+  const q = searchQuery.trim().toLowerCase();
+  const createdByQ = createdByQuery.trim().toLowerCase();
+  const fromTs = dateFrom ? new Date(dateFrom).getTime() : null;
+  const toTs = dateTo ? new Date(dateTo).getTime() + 86399999 : null;
+
+  const filtered = entries.filter((e) => {
+    if (categoryFilter && e.category !== categoryFilter) return false;
+    if (scopeFilter) {
+      const tid = e.tenantId ?? e.partitionKey ?? '';
+      if (scopeFilter === 'global' && tid !== 'system') return false;
+      if (scopeFilter === 'tenant' && (!tid || tid === 'system')) return false;
+    }
+    if (statusFilter && (e.status ?? '') !== statusFilter) return false;
+    if (industryFilter) {
+      const list = e.applicableIndustries ?? [];
+      if (!list.includes(industryFilter)) return false;
+    }
+    if (stageFilter) {
+      const list = e.applicableStages ?? [];
+      if (!list.includes(stageFilter)) return false;
+    }
+    if (methodologyFilter) {
+      const list = e.applicableMethodologies ?? [];
+      if (!list.includes(methodologyFilter)) return false;
+    }
+    if (effectivenessFilter) {
+      const v = effectivenessValue(e);
+      if (v === null) return false;
+      if (effectivenessFilter === 'high' && v < 0.7) return false;
+      if (effectivenessFilter === 'medium' && (v < 0.4 || v >= 0.7)) return false;
+      if (effectivenessFilter === 'low' && v >= 0.4) return false;
+    }
+    if (createdByQ && !(e.createdBy ?? '').toLowerCase().includes(createdByQ)) return false;
+    if (fromTs != null) {
+      const created = e.createdAt ? new Date(e.createdAt).getTime() : 0;
+      if (created < fromTs) return false;
+    }
+    if (toTs != null) {
+      const created = e.createdAt ? new Date(e.createdAt).getTime() : 0;
+      if (created > toTs) return false;
+    }
+    if (q) {
+      const name = (e.name ?? '').toLowerCase();
+      const displayName = (e.displayName ?? '').toLowerCase();
+      const description = (e.description ?? '').toLowerCase();
+      if (!name.includes(q) && !displayName.includes(q) && !description.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const sorted = (() => {
+    if (!sortBy) return filtered;
+    const arr = [...filtered];
+    const mult = sortDir === 'asc' ? 1 : -1;
+    arr.sort((a, b) => {
+      let va: string | number;
+      let vb: string | number;
+      switch (sortBy) {
+        case 'name':
+          va = (a.displayName ?? a.name ?? '').toLowerCase();
+          vb = (b.displayName ?? b.name ?? '').toLowerCase();
+          return mult * (va < vb ? -1 : va > vb ? 1 : 0);
+        case 'category':
+          va = (a.category ?? '').toLowerCase();
+          vb = (b.category ?? '').toLowerCase();
+          return mult * (va < vb ? -1 : va > vb ? 1 : 0);
+        case 'status':
+          va = a.status ?? '';
+          vb = b.status ?? '';
+          return mult * (va < vb ? -1 : va > vb ? 1 : 0);
+        case 'type':
+          va = a.type ?? '';
+          vb = b.type ?? '';
+          return mult * (va < vb ? -1 : va > vb ? 1 : 0);
+        case 'effectiveness': {
+          const effA = effectivenessValue(a);
+          const effB = effectivenessValue(b);
+          const na = effA ?? -1;
+          const nb = effB ?? -1;
+          return mult * (na - nb);
+        }
+        case 'createdAt': {
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return mult * (ta - tb);
+        }
+        default:
+          return 0;
+      }
+    });
+    return arr;
+  })();
 
   const openCreate = () => {
     setCreateForm({
@@ -361,6 +506,253 @@ export default function ActionCatalogEntriesPage() {
     }
   };
 
+  const handleDuplicate = async (entry: ActionCatalogEntry) => {
+    if (!apiBaseUrl) return;
+    const baseName = entry.name ?? entry.id ?? 'entry';
+    const uniqueName = `${baseName}_copy_${Date.now()}`;
+    const displayName = `${entry.displayName ?? entry.name ?? 'Entry'} (copy)`;
+    const body = {
+      type: entry.type,
+      category: entry.category ?? '',
+      subcategory: entry.subcategory ?? undefined,
+      name: uniqueName,
+      displayName,
+      description: entry.description ?? '',
+      applicableIndustries: entry.applicableIndustries ?? undefined,
+      applicableStages: entry.applicableStages ?? undefined,
+      applicableMethodologies: entry.applicableMethodologies ?? undefined,
+      ...(entry.type === 'risk' ? { riskDetails: entry.riskDetails } : {}),
+      ...(entry.type === 'recommendation' ? { recommendationDetails: entry.recommendationDetails } : {}),
+      decisionRules: entry.decisionRules ?? undefined,
+      status: 'draft' as const,
+    };
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
+      await fetchEntries();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelectedEntryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllOnPage = () => {
+    setSelectedEntryIds(new Set(sorted.map((e) => e.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedEntryIds(new Set());
+  };
+
+  const handleBulkDuplicate = async () => {
+    if (!apiBaseUrl || selectedEntryIds.size === 0) return;
+    const toDuplicate = sorted.filter((e) => selectedEntryIds.has(e.id));
+    if (!window.confirm(`Duplicate ${toDuplicate.length} entr${toDuplicate.length === 1 ? 'y' : 'ies'}? New copies will be created as drafts.`)) return;
+    setBulkDuplicating(true);
+    setError(null);
+    let failed = false;
+    for (let i = 0; i < toDuplicate.length; i++) {
+      const entry = toDuplicate[i];
+      const baseName = entry.name ?? entry.id ?? 'entry';
+      const uniqueName = `${baseName}_copy_${Date.now()}_${i}`;
+      const displayName = `${entry.displayName ?? entry.name ?? 'Entry'} (copy)`;
+      const body = {
+        type: entry.type,
+        category: entry.category ?? '',
+        subcategory: entry.subcategory ?? undefined,
+        name: uniqueName,
+        displayName,
+        description: entry.description ?? '',
+        applicableIndustries: entry.applicableIndustries ?? undefined,
+        applicableStages: entry.applicableStages ?? undefined,
+        applicableMethodologies: entry.applicableMethodologies ?? undefined,
+        ...(entry.type === 'risk' ? { riskDetails: entry.riskDetails } : {}),
+        ...(entry.type === 'recommendation' ? { recommendationDetails: entry.recommendationDetails } : {}),
+        decisionRules: entry.decisionRules ?? undefined,
+        status: 'draft' as const,
+      };
+      try {
+        const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError((data?.error?.message as string) || `HTTP ${res.status}`);
+          failed = true;
+          break;
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        failed = true;
+        break;
+      }
+    }
+    setBulkDuplicating(false);
+    if (!failed) {
+      clearSelection();
+      await fetchEntries();
+    }
+  };
+
+  const handleBulkDeprecate = async () => {
+    if (!apiBaseUrl || selectedEntryIds.size === 0) return;
+    const toDeprecate = sorted.filter((e) => selectedEntryIds.has(e.id));
+    if (!window.confirm(`Deprecate ${toDeprecate.length} entr${toDeprecate.length === 1 ? 'y' : 'ies'}? They will no longer be used for new recommendations.`)) return;
+    setBulkDeprecating(true);
+    setError(null);
+    let failed = false;
+    for (const entry of toDeprecate) {
+      try {
+        const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries/${encodeURIComponent(entry.id)}`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'deprecated' }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError((data?.error?.message as string) || `HTTP ${res.status}`);
+          failed = true;
+          break;
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        failed = true;
+        break;
+      }
+    }
+    setBulkDeprecating(false);
+    if (!failed) {
+      clearSelection();
+      await fetchEntries();
+    }
+  };
+
+  const downloadJson = (data: ActionCatalogEntry[], filename: string) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportSelected = () => {
+    const toExport = sorted.filter((e) => selectedEntryIds.has(e.id));
+    if (toExport.length === 0) return;
+    downloadJson(toExport, `action-catalog-selected-${new Date().toISOString().slice(0, 10)}.json`);
+  };
+
+  const handleExportAll = () => {
+    if (entries.length === 0) return;
+    downloadJson(entries, `action-catalog-all-${new Date().toISOString().slice(0, 10)}.json`);
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !apiBaseUrl) {
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      setImporting(true);
+      setError(null);
+      try {
+        const raw = reader.result as string;
+        const parsed = JSON.parse(raw) as unknown;
+        const items: unknown[] = Array.isArray(parsed) ? parsed : (parsed && typeof parsed === 'object' && 'entries' in parsed && Array.isArray((parsed as { entries: unknown[] }).entries)) ? (parsed as { entries: unknown[] }).entries : [];
+        if (items.length === 0) {
+          setError('JSON must be an array of entries or { "entries": [...] }');
+          e.target.value = '';
+          setImporting(false);
+          return;
+        }
+        const toCreate: Record<string, unknown>[] = [];
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (!item || typeof item !== 'object') {
+            setError(`Entry at index ${i}: must be an object`);
+            e.target.value = '';
+            setImporting(false);
+            return;
+          }
+          const o = item as Record<string, unknown>;
+          const type = o.type === 'risk' || o.type === 'recommendation' ? o.type : null;
+          const name = typeof o.name === 'string' ? o.name : null;
+          const displayName = typeof o.displayName === 'string' ? o.displayName : null;
+          const category = typeof o.category === 'string' ? o.category : null;
+          if (!type || !name || !displayName || !category) {
+            setError(`Entry at index ${i}: type, name, displayName, and category are required`);
+            e.target.value = '';
+            setImporting(false);
+            return;
+          }
+          toCreate.push({
+            type,
+            category,
+            subcategory: typeof o.subcategory === 'string' ? o.subcategory : undefined,
+            name,
+            displayName,
+            description: typeof o.description === 'string' ? o.description : '',
+            applicableIndustries: Array.isArray(o.applicableIndustries) ? o.applicableIndustries : undefined,
+            applicableStages: Array.isArray(o.applicableStages) ? o.applicableStages : undefined,
+            applicableMethodologies: Array.isArray(o.applicableMethodologies) ? o.applicableMethodologies : undefined,
+            ...(type === 'risk' && o.riskDetails && typeof o.riskDetails === 'object' ? { riskDetails: o.riskDetails } : {}),
+            ...(type === 'recommendation' && o.recommendationDetails && typeof o.recommendationDetails === 'object' ? { recommendationDetails: o.recommendationDetails } : {}),
+            decisionRules: o.decisionRules && typeof o.decisionRules === 'object' ? o.decisionRules : undefined,
+            status: o.status === 'active' || o.status === 'deprecated' || o.status === 'draft' ? o.status : 'draft',
+          });
+        }
+        if (!window.confirm(`Import ${toCreate.length} entr${toCreate.length === 1 ? 'y' : 'ies'}? Duplicates (same type+name) may fail or overwrite.`)) {
+          e.target.value = '';
+          setImporting(false);
+          return;
+        }
+        const errors: string[] = [];
+        for (let i = 0; i < toCreate.length; i++) {
+          try {
+            const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(toCreate[i]),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) errors.push(`Entry ${i + 1}: ${(data?.error?.message as string) || `HTTP ${res.status}`}`);
+          } catch (err) {
+            errors.push(`Entry ${i + 1}: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
+        if (errors.length > 0) setError(errors.slice(0, 5).join('; ') + (errors.length > 5 ? ` (+${errors.length - 5} more)` : ''));
+        else await fetchEntries();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Invalid JSON');
+      }
+      e.target.value = '';
+      setImporting(false);
+    };
+    reader.readAsText(file);
+  };
+
   const modalTitle = modalMode === 'create' ? 'Create action catalog entry' : 'Edit action catalog entry';
 
   const subNav = (
@@ -426,7 +818,8 @@ export default function ActionCatalogEntriesPage() {
       )}
 
       {apiBaseUrl && (
-        <div className="mb-4 flex flex-wrap gap-4 items-end">
+        <div className="mb-4 space-y-3">
+          <div className="flex flex-wrap gap-4 items-end">
           <button
             type="button"
             onClick={openCreate}
@@ -435,7 +828,7 @@ export default function ActionCatalogEntriesPage() {
             Create entry
           </button>
           <div>
-            <label className="block text-sm font-medium mb-1">Type filter</label>
+            <label className="block text-sm font-medium mb-1">Type</label>
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as 'risk' | 'recommendation' | '')}
@@ -446,6 +839,115 @@ export default function ActionCatalogEntriesPage() {
               <option value="recommendation">Recommendation</option>
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Category (§2.1.1)</label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+            >
+              <option value="">All</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Scope (§2.1.1)</label>
+            <select
+              value={scopeFilter}
+              onChange={(e) => setScopeFilter(e.target.value as '' | 'global' | 'tenant')}
+              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+            >
+              <option value="">All</option>
+              <option value="global">Global</option>
+              <option value="tenant">Tenant</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Status (§2.1.1)</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as 'active' | 'draft' | 'deprecated' | '')}
+              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+            >
+              <option value="">All</option>
+              <option value="active">Active</option>
+              <option value="draft">Draft</option>
+              <option value="deprecated">Deprecated</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Industry (§2.1.1)</label>
+            <select
+              value={industryFilter}
+              onChange={(e) => setIndustryFilter(e.target.value)}
+              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+            >
+              <option value="">All</option>
+              {industries.map((i) => (
+                <option key={i} value={i}>
+                  {i}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Stage (§2.1.1)</label>
+            <select
+              value={stageFilter}
+              onChange={(e) => setStageFilter(e.target.value)}
+              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+            >
+              <option value="">All</option>
+              {stages.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Methodology (§2.1.1)</label>
+            <select
+              value={methodologyFilter}
+              onChange={(e) => setMethodologyFilter(e.target.value)}
+              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+            >
+              <option value="">All</option>
+              {methodologies.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Effectiveness (§2.1.1)</label>
+            <select
+              value={effectivenessFilter}
+              onChange={(e) => setEffectivenessFilter(e.target.value as '' | 'high' | 'medium' | 'low')}
+              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+            >
+              <option value="">All</option>
+              <option value="high">High (≥0.7)</option>
+              <option value="medium">Medium (0.4–0.7)</option>
+              <option value="low">Low (&lt;0.4)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Search (§2.1.1)</label>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Name or description…"
+              className="w-48 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              aria-label="Search by name or description"
+            />
+          </div>
           <button
             type="button"
             onClick={fetchEntries}
@@ -453,6 +955,131 @@ export default function ActionCatalogEntriesPage() {
           >
             Refresh
           </button>
+          <button
+            type="button"
+            onClick={handleExportAll}
+            disabled={entries.length === 0}
+            className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 text-sm"
+          >
+            Export catalog (§2.4)
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={handleImportFile}
+            aria-label="Import catalog JSON"
+          />
+          <button
+            type="button"
+            onClick={() => importInputRef.current?.click()}
+            disabled={importing}
+            className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 text-sm"
+          >
+            {importing ? 'Importing…' : 'Import catalog (§2.4.1)'}
+          </button>
+          </div>
+          <div className="flex flex-wrap gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium mb-1">Created by (§2.1.1)</label>
+              <input
+                type="text"
+                value={createdByQuery}
+                onChange={(e) => setCreatedByQuery(e.target.value)}
+                placeholder="Filter by creator…"
+                className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                aria-label="Filter by created by"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Date from (§2.1.1)</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                aria-label="Filter from date"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Date to (§2.1.1)</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                aria-label="Filter to date"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Sort by (§2.1.1)</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                aria-label="Sort by"
+              >
+                <option value="">Default</option>
+                <option value="name">Name</option>
+                <option value="category">Category</option>
+                <option value="status">Status</option>
+                <option value="type">Type</option>
+                <option value="effectiveness">Effectiveness</option>
+                <option value="createdAt">Date created</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Order</label>
+              <select
+                value={sortDir}
+                onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
+                className="w-32 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                aria-label="Sort direction"
+              >
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
+            </div>
+          </div>
+
+          {selectedEntryIds.size > 0 && (
+            <div className="flex flex-wrap items-center gap-3 py-2 px-3 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <span className="text-sm font-medium">{selectedEntryIds.size} selected</span>
+              <button
+                type="button"
+                onClick={handleBulkDuplicate}
+                disabled={bulkInProgress}
+                className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+              >
+                {bulkDuplicating ? 'Duplicating…' : 'Duplicate selected (§2.4)'}
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkDeprecate}
+                disabled={bulkInProgress}
+                className="px-3 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 text-sm font-medium"
+              >
+                {bulkDeprecating ? 'Deprecating…' : 'Bulk deprecation (§2.4)'}
+              </button>
+              <button
+                type="button"
+                onClick={handleExportSelected}
+                disabled={bulkInProgress}
+                className="px-3 py-1.5 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium"
+              >
+                Export selected (§2.4)
+              </button>
+              <button
+                type="button"
+                onClick={clearSelection}
+                disabled={bulkInProgress}
+                className="px-3 py-1.5 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+              >
+                Clear selection
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -473,15 +1100,30 @@ export default function ActionCatalogEntriesPage() {
           <div className="p-4 border-b">
             <h2 className="text-lg font-semibold">Entries</h2>
           </div>
-          {entries.length === 0 ? (
+          {sorted.length === 0 ? (
             <div className="p-6">
-              <p className="text-sm text-gray-500">No entries for this tenant.</p>
+              <p className="text-sm text-gray-500">
+                {entries.length === 0 ? 'No entries for this tenant.' : 'No entries match the current filters.'}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50 dark:bg-gray-800">
+                    <th className="text-left py-2 px-4 w-10">
+                      <input
+                        ref={selectAllRef}
+                        type="checkbox"
+                        checked={sorted.length > 0 && sorted.every((e) => selectedEntryIds.has(e.id))}
+                        onChange={() => {
+                          if (selectedEntryIds.size === sorted.length) clearSelection();
+                          else selectAllOnPage();
+                        }}
+                        className="rounded border-gray-300 dark:border-gray-600"
+                        aria-label="Select all on page"
+                      />
+                    </th>
                     <th className="text-left py-2 px-4">Type</th>
                     <th className="text-left py-2 px-4">Name</th>
                     <th className="text-left py-2 px-4">Category</th>
@@ -491,8 +1133,17 @@ export default function ActionCatalogEntriesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.map((e) => (
+                  {sorted.map((e) => (
                     <tr key={e.id} className="border-b">
+                      <td className="py-2 px-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedEntryIds.has(e.id)}
+                          onChange={() => toggleSelection(e.id)}
+                          className="rounded border-gray-300 dark:border-gray-600"
+                          aria-label={`Select ${e.displayName || e.name}`}
+                        />
+                      </td>
                       <td className="py-2 px-4">{e.type}</td>
                       <td className="py-2 px-4">
                         <span className="font-medium">{e.displayName || e.name}</span>
@@ -511,6 +1162,13 @@ export default function ActionCatalogEntriesPage() {
                             className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
                           >
                             Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicate(e)}
+                            className="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 text-sm"
+                          >
+                            Duplicate
                           </button>
                           <button
                             type="button"

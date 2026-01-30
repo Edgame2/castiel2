@@ -1,5 +1,6 @@
 /**
- * Super Admin: Sales Methodology — Current tenant config (§3.1)
+ * Super Admin: Sales Methodology — Current tenant config (§3.1, §3.1.2 View/Edit Methodology)
+ * Tabbed configuration: Basic info, Stages, Required fields, Risks, Integration.
  * GET/PUT /api/v1/sales-methodology via gateway (risk-analytics). Current tenant from session.
  */
 
@@ -12,21 +13,55 @@ const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 type MethodologyType = 'MEDDIC' | 'MEDDPICC' | 'Challenger' | 'Sandler' | 'SPIN' | 'Custom';
 
+type ConfigTab = 'basic' | 'stages' | 'required' | 'risks' | 'integration';
+
+interface IntegrationConfig {
+  featureEngineering?: { enabled: boolean; features: string[] };
+  riskDetection?: { enabled: boolean; detectNonCompliance: boolean };
+  recommendations?: { enabled: boolean; suggestMissingSteps: boolean };
+}
+
 interface SalesMethodology {
   tenantId: string;
   methodologyType: MethodologyType;
+  name?: string;
+  displayName?: string;
+  description?: string;
+  isActive?: boolean;
+  isDefault?: boolean;
   stages: unknown[];
   requiredFields: unknown[];
   risks: unknown[];
+  integrationConfig?: IntegrationConfig;
 }
+
+const defaultIntegrationConfig: IntegrationConfig = {
+  featureEngineering: { enabled: true, features: [] },
+  riskDetection: { enabled: true, detectNonCompliance: true },
+  recommendations: { enabled: true, suggestMissingSteps: true },
+};
 
 const defaultMethodology: SalesMethodology = {
   tenantId: '',
   methodologyType: 'MEDDIC',
+  name: '',
+  displayName: '',
+  description: '',
+  isActive: true,
+  isDefault: false,
   stages: [],
   requiredFields: [],
   risks: [],
+  integrationConfig: defaultIntegrationConfig,
 };
+
+const TABS: { id: ConfigTab; label: string }[] = [
+  { id: 'basic', label: 'Basic info' },
+  { id: 'stages', label: 'Stages' },
+  { id: 'required', label: 'Required fields' },
+  { id: 'risks', label: 'Risks' },
+  { id: 'integration', label: 'Integration' },
+];
 
 export default function SalesMethodologyConfigPage() {
   const [config, setConfig] = useState<SalesMethodology | null>(null);
@@ -34,6 +69,7 @@ export default function SalesMethodologyConfigPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<ConfigTab>('basic');
   const [stagesJson, setStagesJson] = useState('[]');
   const [requiredFieldsJson, setRequiredFieldsJson] = useState('[]');
   const [risksJson, setRisksJson] = useState('[]');
@@ -109,12 +145,18 @@ export default function SalesMethodologyConfigPage() {
     setSaving(true);
     setSaveMessage(null);
     setError(null);
-    try {
+      try {
       const body = {
         methodologyType: bodyConfig.methodologyType,
         stages,
         requiredFields,
         risks,
+        name: bodyConfig.name ?? undefined,
+        displayName: bodyConfig.displayName ?? undefined,
+        description: bodyConfig.description ?? undefined,
+        isActive: bodyConfig.isActive ?? undefined,
+        isDefault: bodyConfig.isDefault ?? undefined,
+        integrationConfig: bodyConfig.integrationConfig ?? undefined,
       };
       const res = await fetch(`${apiBaseUrl}/api/v1/sales-methodology`, {
         method: 'PUT',
@@ -206,57 +248,310 @@ export default function SalesMethodologyConfigPage() {
 
       {!loading && apiBaseUrl && (
         <form onSubmit={handleSave} className="rounded-lg border bg-white dark:bg-gray-900">
-          <div className="p-6 space-y-6">
-            <section>
-              <h2 className="text-lg font-semibold mb-3">Methodology type</h2>
-              <select
-                value={formData.methodologyType}
-                onChange={(e) => setConfig((c) => (c ? { ...c, methodologyType: e.target.value as MethodologyType } : null))}
-                className="w-full max-w-xs px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-              >
-                <option value="MEDDIC">MEDDIC</option>
-                <option value="MEDDPICC">MEDDPICC</option>
-                <option value="Challenger">Challenger</option>
-                <option value="Sandler">Sandler</option>
-                <option value="SPIN">SPIN</option>
-                <option value="Custom">Custom</option>
-              </select>
-            </section>
+          <div className="p-6">
+            <nav className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-6" role="tablist">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-2 text-sm font-medium rounded-t border-b-2 -mb-px transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-900'
+                      : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
 
-            <section>
-              <h2 className="text-lg font-semibold mb-2">Stages (JSON array)</h2>
-              <textarea
-                value={stagesJson}
-                onChange={(e) => setStagesJson(e.target.value)}
-                rows={8}
-                className="w-full px-3 py-2 border rounded font-mono text-sm dark:bg-gray-800 dark:border-gray-700"
-                spellCheck={false}
-              />
-            </section>
+            {activeTab === 'basic' && (
+              <section className="space-y-4" role="tabpanel" aria-labelledby="tab-basic">
+                <h2 className="text-lg font-semibold">Basic info (§3.1.2)</h2>
+                <div>
+                  <label htmlFor="methodologyType" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Methodology type
+                  </label>
+                  <select
+                    id="methodologyType"
+                    value={formData.methodologyType}
+                    onChange={(e) => setConfig((c) => (c ? { ...c, methodologyType: e.target.value as MethodologyType } : null))}
+                    className="w-full max-w-xs px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                  >
+                    <option value="MEDDIC">MEDDIC</option>
+                    <option value="MEDDPICC">MEDDPICC</option>
+                    <option value="Challenger">Challenger</option>
+                    <option value="Sandler">Sandler</option>
+                    <option value="SPIN">SPIN</option>
+                    <option value="Custom">Custom</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="methodologyName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Name
+                  </label>
+                  <input
+                    id="methodologyName"
+                    type="text"
+                    value={formData.name ?? ''}
+                    onChange={(e) => setConfig((c) => (c ? { ...c, name: e.target.value } : null))}
+                    className="w-full max-w-md px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                    placeholder="Optional display name"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="methodologyDisplayName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Display name
+                  </label>
+                  <input
+                    id="methodologyDisplayName"
+                    type="text"
+                    value={formData.displayName ?? ''}
+                    onChange={(e) => setConfig((c) => (c ? { ...c, displayName: e.target.value } : null))}
+                    className="w-full max-w-md px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                    placeholder="Optional UI display name"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="methodologyDescription" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    id="methodologyDescription"
+                    value={formData.description ?? ''}
+                    onChange={(e) => setConfig((c) => (c ? { ...c, description: e.target.value } : null))}
+                    className="w-full max-w-md px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 min-h-[80px]"
+                    placeholder="Optional description"
+                    rows={3}
+                  />
+                </div>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.isActive ?? true}
+                      onChange={(e) => setConfig((c) => (c ? { ...c, isActive: e.target.checked } : null))}
+                      className="rounded"
+                    />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Active</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.isDefault ?? false}
+                      onChange={(e) => setConfig((c) => (c ? { ...c, isDefault: e.target.checked } : null))}
+                      className="rounded"
+                    />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Default methodology</span>
+                  </label>
+                </div>
+              </section>
+            )}
 
-            <section>
-              <h2 className="text-lg font-semibold mb-2">Required fields (JSON array)</h2>
-              <textarea
-                value={requiredFieldsJson}
-                onChange={(e) => setRequiredFieldsJson(e.target.value)}
-                rows={4}
-                className="w-full px-3 py-2 border rounded font-mono text-sm dark:bg-gray-800 dark:border-gray-700"
-                spellCheck={false}
-              />
-            </section>
+            {activeTab === 'stages' && (
+              <section className="space-y-4" role="tabpanel" aria-labelledby="tab-stages">
+                <h2 className="text-lg font-semibold">Stages</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  JSON array of stages (stageId, stageName, displayName, order, requirements, exitCriteria, typicalDurationDays, expectedActivities).
+                </p>
+                <textarea
+                  value={stagesJson}
+                  onChange={(e) => setStagesJson(e.target.value)}
+                  rows={12}
+                  className="w-full px-3 py-2 border rounded font-mono text-sm dark:bg-gray-800 dark:border-gray-700"
+                  spellCheck={false}
+                />
+              </section>
+            )}
 
-            <section>
-              <h2 className="text-lg font-semibold mb-2">Risks (JSON array)</h2>
-              <textarea
-                value={risksJson}
-                onChange={(e) => setRisksJson(e.target.value)}
-                rows={4}
-                className="w-full px-3 py-2 border rounded font-mono text-sm dark:bg-gray-800 dark:border-gray-700"
-                spellCheck={false}
-              />
-            </section>
+            {activeTab === 'required' && (
+              <section className="space-y-4" role="tabpanel" aria-labelledby="tab-required">
+                <h2 className="text-lg font-semibold">Required fields</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  JSON array of required fields (fieldName, stages, dataType). Stages is an array of stage IDs that require this field.
+                </p>
+                <textarea
+                  value={requiredFieldsJson}
+                  onChange={(e) => setRequiredFieldsJson(e.target.value)}
+                  rows={8}
+                  className="w-full px-3 py-2 border rounded font-mono text-sm dark:bg-gray-800 dark:border-gray-700"
+                  spellCheck={false}
+                />
+              </section>
+            )}
 
-            <div className="flex justify-end">
+            {activeTab === 'risks' && (
+              <section className="space-y-4" role="tabpanel" aria-labelledby="tab-risks">
+                <h2 className="text-lg font-semibold">Risks</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  JSON array of methodology-specific risks (riskId, stage, description, severity). Link to risk catalog by riskId.
+                </p>
+                <textarea
+                  value={risksJson}
+                  onChange={(e) => setRisksJson(e.target.value)}
+                  rows={8}
+                  className="w-full px-3 py-2 border rounded font-mono text-sm dark:bg-gray-800 dark:border-gray-700"
+                  spellCheck={false}
+                />
+              </section>
+            )}
+
+            {activeTab === 'integration' && (
+              <section className="space-y-4" role="tabpanel" aria-labelledby="tab-integration">
+                <h2 className="text-lg font-semibold">Integration (§3.1.2 – How to use in CAIS)</h2>
+                {(() => {
+                  const ic = formData.integrationConfig ?? defaultIntegrationConfig;
+                  const fe = ic.featureEngineering ?? defaultIntegrationConfig.featureEngineering!;
+                  const rd = ic.riskDetection ?? defaultIntegrationConfig.riskDetection!;
+                  const rec = ic.recommendations ?? defaultIntegrationConfig.recommendations!;
+                  return (
+                    <>
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Feature engineering</h3>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={fe.enabled}
+                            onChange={(e) =>
+                              setConfig((c) =>
+                                c
+                                  ? {
+                                      ...c,
+                                      integrationConfig: {
+                                        ...(c.integrationConfig ?? defaultIntegrationConfig),
+                                        featureEngineering: { ...fe, enabled: e.target.checked },
+                                      },
+                                    }
+                                  : null
+                              )}
+                            className="rounded"
+                          />
+                          <span className="text-sm">Enabled</span>
+                        </label>
+                        <div>
+                          <label htmlFor="integrationFeatures" className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                            Features (one per line)
+                          </label>
+                          <textarea
+                            id="integrationFeatures"
+                            value={(fe.features ?? []).join('\n')}
+                            onChange={(e) =>
+                              setConfig((c) =>
+                                c
+                                  ? {
+                                      ...c,
+                                      integrationConfig: {
+                                        ...(c.integrationConfig ?? defaultIntegrationConfig),
+                                        featureEngineering: {
+                                          ...fe,
+                                          features: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
+                                        },
+                                      },
+                                    }
+                                  : null
+                              )}
+                            className="w-full max-w-md px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm min-h-[80px]"
+                            rows={4}
+                            placeholder="feature1&#10;feature2"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Risk detection</h3>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={rd.enabled}
+                            onChange={(e) =>
+                              setConfig((c) =>
+                                c
+                                  ? {
+                                      ...c,
+                                      integrationConfig: {
+                                        ...(c.integrationConfig ?? defaultIntegrationConfig),
+                                        riskDetection: { ...rd, enabled: e.target.checked },
+                                      },
+                                    }
+                                  : null
+                              )}
+                            className="rounded"
+                          />
+                          <span className="text-sm">Enabled</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={rd.detectNonCompliance}
+                            onChange={(e) =>
+                              setConfig((c) =>
+                                c
+                                  ? {
+                                      ...c,
+                                      integrationConfig: {
+                                        ...(c.integrationConfig ?? defaultIntegrationConfig),
+                                        riskDetection: { ...rd, detectNonCompliance: e.target.checked },
+                                      },
+                                    }
+                                  : null
+                              )}
+                            className="rounded"
+                          />
+                          <span className="text-sm">Detect non-compliance</span>
+                        </label>
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Recommendations</h3>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={rec.enabled}
+                            onChange={(e) =>
+                              setConfig((c) =>
+                                c
+                                  ? {
+                                      ...c,
+                                      integrationConfig: {
+                                        ...(c.integrationConfig ?? defaultIntegrationConfig),
+                                        recommendations: { ...rec, enabled: e.target.checked },
+                                      },
+                                    }
+                                  : null
+                              )}
+                            className="rounded"
+                          />
+                          <span className="text-sm">Enabled</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={rec.suggestMissingSteps}
+                            onChange={(e) =>
+                              setConfig((c) =>
+                                c
+                                  ? {
+                                      ...c,
+                                      integrationConfig: {
+                                        ...(c.integrationConfig ?? defaultIntegrationConfig),
+                                        recommendations: { ...rec, suggestMissingSteps: e.target.checked },
+                                      },
+                                    }
+                                  : null
+                              )}
+                            className="rounded"
+                          />
+                          <span className="text-sm">Suggest missing steps</span>
+                        </label>
+                      </div>
+                    </>
+                  );
+                })()}
+              </section>
+            )}
+
+            <div className="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 type="submit"
                 disabled={saving}

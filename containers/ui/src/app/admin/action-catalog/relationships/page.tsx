@@ -26,6 +26,9 @@ export default function ActionCatalogRelationshipsPage() {
   const [entries, setEntries] = useState<ActionCatalogEntryMin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'' | 'risk' | 'recommendation'>('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [modalMode, setModalMode] = useState<'create' | 'delete' | null>(null);
   const [createForm, setCreateForm] = useState({ riskId: '', recommendationId: '' });
   const [deleteRel, setDeleteRel] = useState<ActionCatalogRelationship | null>(null);
@@ -135,6 +138,25 @@ export default function ActionCatalogRelationshipsPage() {
   const risks = entries.filter((e) => e.type === 'risk');
   const recommendations = entries.filter((e) => e.type === 'recommendation');
   const entryName = (id: string) => entries.find((e) => e.id === id)?.displayName ?? id;
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = relationships.filter((r) => {
+    if (!q) return true;
+    const riskName = entryName(r.riskId).toLowerCase();
+    const recName = entryName(r.recommendationId).toLowerCase();
+    return riskName.includes(q) || recName.includes(q);
+  });
+
+  const sorted = (() => {
+    if (!sortBy) return filtered;
+    const mult = sortDir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const base =
+        sortBy === 'risk'
+          ? entryName(a.riskId).localeCompare(entryName(b.riskId))
+          : entryName(a.recommendationId).localeCompare(entryName(b.recommendationId));
+      return mult * base;
+    });
+  })();
 
   return (
     <div className="p-6">
@@ -196,6 +218,42 @@ export default function ActionCatalogRelationshipsPage() {
           >
             Add link
           </button>
+          <div>
+            <label className="block text-sm font-medium mb-1">Search (§2.3)</label>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Risk or recommendation name…"
+              className="w-56 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              aria-label="Search by risk or recommendation name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Sort by (§2.3)</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="w-36 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              aria-label="Sort by"
+            >
+              <option value="">Default</option>
+              <option value="risk">Risk name</option>
+              <option value="recommendation">Recommendation name</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Order</label>
+            <select
+              value={sortDir}
+              onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
+              className="w-32 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              aria-label="Sort direction"
+            >
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+          </div>
           <button
             type="button"
             onClick={fetchData}
@@ -227,9 +285,13 @@ export default function ActionCatalogRelationshipsPage() {
 
       {!loading && apiBaseUrl && !error && (
         <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-hidden">
-          {relationships.length === 0 ? (
+          {sorted.length === 0 ? (
             <div className="p-6">
-              <p className="text-sm text-gray-500">No risk–recommendation links yet. Add a link to indicate which recommendation mitigates which risk.</p>
+              <p className="text-sm text-gray-500">
+                {relationships.length === 0
+                  ? 'No risk–recommendation links yet. Add a link to indicate which recommendation mitigates which risk.'
+                  : 'No relationships match the search.'}
+              </p>
             </div>
           ) : (
             <table className="w-full text-sm">
@@ -241,7 +303,7 @@ export default function ActionCatalogRelationshipsPage() {
                 </tr>
               </thead>
               <tbody>
-                {relationships.map((rel, i) => (
+                {sorted.map((rel, i) => (
                   <tr key={`${rel.riskId}-${rel.recommendationId}-${i}`} className="border-b border-gray-200 dark:border-gray-700 last:border-0">
                     <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{entryName(rel.riskId)}</td>
                     <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{entryName(rel.recommendationId)}</td>

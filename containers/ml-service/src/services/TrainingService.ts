@@ -17,7 +17,6 @@ import {
   TrainingJob,
   CreateTrainingJobInput,
   TrainingJobStatus,
-  ModelType,
   ModelStatus,
 } from '../types/ml.types';
 
@@ -66,7 +65,7 @@ export class TrainingService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(job, {
         partitionKey: input.tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create training job');
@@ -102,7 +101,7 @@ export class TrainingService {
       const { resource } = await container.item(jobId, tenantId).read<TrainingJob>();
 
       if (!resource) {
-        throw new NotFoundError(`Training job ${jobId} not found`);
+        throw new NotFoundError('Training job', jobId);
       }
 
       return resource;
@@ -111,7 +110,7 @@ export class TrainingService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Training job ${jobId} not found`);
+        throw new NotFoundError('Training job', jobId);
       }
       throw error;
     }
@@ -186,7 +185,7 @@ export class TrainingService {
       return resource as TrainingJob;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Training job ${jobId} not found`);
+        throw new NotFoundError('Training job', jobId);
       }
       throw error;
     }

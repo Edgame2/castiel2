@@ -148,6 +148,7 @@ export default function DecisionRulesConflictsPage() {
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Type</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Rules</th>
                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Message</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
@@ -162,6 +163,14 @@ export default function DecisionRulesConflictsPage() {
                         {(c.ruleNames ?? []).join(', ') || (c.ruleIds ?? []).join(', ')}
                       </td>
                       <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{c.message}</td>
+                      <td className="px-4 py-2 text-sm">
+                        <Link
+                          href="/admin/decision-rules/rules"
+                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                        >
+                          Resolve (§6.3.2) →
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

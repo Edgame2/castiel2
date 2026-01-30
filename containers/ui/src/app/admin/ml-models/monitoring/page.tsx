@@ -42,14 +42,28 @@ const METRICS = ['accuracy', 'latency', 'error_rate', 'drift'];
 const OPERATORS = ['>', '<', '=', '>=', '<='];
 const SEVERITIES = ['critical', 'high', 'medium', 'low'];
 
-const DEFAULT_ALERT_FORM = {
+type AlertFormOperator = '>' | '<' | '=' | '>=' | '<=';
+type AlertFormSeverity = 'critical' | 'high' | 'medium' | 'low';
+
+interface AlertFormState {
+  name: string;
+  metric: string;
+  operator: AlertFormOperator;
+  threshold: number;
+  enabled: boolean;
+  duration: number;
+  severity: AlertFormSeverity;
+  throttleMinutes: number;
+}
+
+const DEFAULT_ALERT_FORM: AlertFormState = {
   name: '',
   metric: 'accuracy',
-  operator: '>' as const,
+  operator: '>',
   threshold: 0,
   enabled: true,
   duration: 60,
-  severity: 'medium' as const,
+  severity: 'medium',
   throttleMinutes: 60,
 };
 
@@ -59,11 +73,11 @@ export default function MLModelsMonitoringPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateAlert, setShowCreateAlert] = useState(false);
-  const [createForm, setCreateForm] = useState(DEFAULT_ALERT_FORM);
+  const [createForm, setCreateForm] = useState<AlertFormState>(DEFAULT_ALERT_FORM);
   const [formSaving, setFormSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [editAlert, setEditAlert] = useState<AlertRuleItem | null>(null);
-  const [editForm, setEditForm] = useState(DEFAULT_ALERT_FORM);
+  const [editForm, setEditForm] = useState<AlertFormState>(DEFAULT_ALERT_FORM);
   const [deleteAlert, setDeleteAlert] = useState<AlertRuleItem | null>(null);
   const [deleteSaving, setDeleteSaving] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -176,14 +190,16 @@ export default function MLModelsMonitoringPage() {
 
   const openEdit = (a: AlertRuleItem) => {
     setEditAlert(a);
+    const op = a.operator ?? '>';
+    const sev = a.severity ?? 'medium';
     setEditForm({
       name: a.name ?? '',
       metric: a.metric ?? 'accuracy',
-      operator: (a.operator ?? '>') as '>' | '<' | '=' | '>=' | '<=',
+      operator: OPERATORS.includes(op) ? (op as AlertFormOperator) : '>',
       threshold: a.threshold ?? 0,
       enabled: a.enabled !== false,
       duration: a.duration ?? 60,
-      severity: (a.severity ?? 'medium') as 'critical' | 'high' | 'medium' | 'low',
+      severity: SEVERITIES.includes(sev) ? (sev as AlertFormSeverity) : 'medium',
       throttleMinutes: a.throttleMinutes ?? 60,
     });
     setFormError(null);

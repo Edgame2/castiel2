@@ -1,6 +1,6 @@
 /**
  * Super Admin: Feature Engineering — Versioning (§5.2)
- * Version history (§5.2.1) from GET /api/v1/ml/features/versions. Version policy (§5.2.2) when backend supports it.
+ * Version history (§5.2.1) from GET /api/v1/ml/features/versions. Version policy (§5.2.2) from GET /api/v1/ml/features/version-policy.
  */
 
 'use client';
@@ -25,12 +25,27 @@ interface VersionsResponse {
   items: FeatureVersionItem[];
 }
 
+interface VersionPolicy {
+  versioningStrategy: 'semantic' | 'timestamp' | 'hash';
+  backwardCompatibility: {
+    enforceCompatibility: boolean;
+    allowBreakingChanges: boolean;
+    requireMigrationGuide: boolean;
+  };
+  deprecationPolicy: {
+    deprecationNoticeDays: number;
+    supportOldVersionsDays: number;
+    autoMigrate: boolean;
+  };
+}
+
 export default function FeatureEngineeringVersioningPage() {
   const [data, setData] = useState<VersionsResponse | null>(null);
+  const [policyData, setPolicyData] = useState<VersionPolicy | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchVersions = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (!apiBaseUrl) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
@@ -38,14 +53,22 @@ export default function FeatureEngineeringVersioningPage() {
     }
     setLoading(true);
     setError(null);
+    setPolicyData(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/ml/features/versions`, { credentials: 'include' });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
+      const [versionsRes, policyRes] = await Promise.all([
+        fetch(`${apiBaseUrl}/api/v1/ml/features/versions`, { credentials: 'include' }),
+        fetch(`${apiBaseUrl}/api/v1/ml/features/version-policy`, { credentials: 'include' }),
+      ]);
+      if (!versionsRes.ok) {
+        const j = await versionsRes.json().catch(() => ({}));
+        throw new Error((j?.error?.message as string) || `HTTP ${versionsRes.status}`);
       }
-      const json = await res.json();
-      setData(json);
+      const versionsJson = await versionsRes.json();
+      setData(versionsJson);
+      if (policyRes.ok) {
+        const policyJson = await policyRes.json();
+        setPolicyData(policyJson);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setData(null);
@@ -55,8 +78,8 @@ export default function FeatureEngineeringVersioningPage() {
   }, []);
 
   useEffect(() => {
-    fetchVersions();
-  }, [fetchVersions]);
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
     document.title = 'Versioning | Admin | Castiel';
@@ -134,7 +157,7 @@ export default function FeatureEngineeringVersioningPage() {
           <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
           <button
             type="button"
-            onClick={fetchVersions}
+            onClick={fetchData}
             className="mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
           >
             Retry
@@ -149,7 +172,7 @@ export default function FeatureEngineeringVersioningPage() {
               <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Version history</h2>
               <button
                 type="button"
-                onClick={fetchVersions}
+                onClick={fetchData}
                 className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
               >
                 Refresh
@@ -206,10 +229,35 @@ export default function FeatureEngineeringVersioningPage() {
           </div>
 
           <div className="rounded-lg border bg-gray-50 dark:bg-gray-800/50 p-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Version policy</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Version policy (versioning strategy, backward compatibility, deprecation notice window, support for old versions) will be configurable when the backend exposes §5.2.2. Pin and deprecate actions are available via ml-service APIs: POST /api/v1/ml/features/versions/pin and POST /api/v1/ml/features/versions/deprecate.
-            </p>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Version policy (§5.2.2)</h3>
+            {policyData ? (
+              <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300">
+                <p><span className="font-medium text-gray-900 dark:text-gray-100">Strategy:</span> {policyData.versioningStrategy}</p>
+                <div>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Backward compatibility:</span>
+                  <ul className="list-disc list-inside mt-1 ml-1">
+                    <li>Enforce compatibility: {policyData.backwardCompatibility?.enforceCompatibility ? 'Yes' : 'No'}</li>
+                    <li>Allow breaking changes: {policyData.backwardCompatibility?.allowBreakingChanges ? 'Yes' : 'No'}</li>
+                    <li>Require migration guide: {policyData.backwardCompatibility?.requireMigrationGuide ? 'Yes' : 'No'}</li>
+                  </ul>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Deprecation:</span>
+                  <ul className="list-disc list-inside mt-1 ml-1">
+                    <li>Notice period: {policyData.deprecationPolicy?.deprecationNoticeDays ?? '—'} days</li>
+                    <li>Support old versions: {policyData.deprecationPolicy?.supportOldVersionsDays ?? '—'} days</li>
+                    <li>Auto-migrate: {policyData.deprecationPolicy?.autoMigrate ? 'Yes' : 'No'}</li>
+                  </ul>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  To change, update ml-service config (feature_version_policy). Pin/deprecate: POST /api/v1/ml/features/versions/pin, POST /api/v1/ml/features/versions/deprecate.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Policy is read from ml-service config (feature_version_policy). Pin and deprecate via POST /api/v1/ml/features/versions/pin and POST /api/v1/ml/features/versions/deprecate.
+              </p>
+            )}
           </div>
         </>
       )}

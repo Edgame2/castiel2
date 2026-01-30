@@ -179,6 +179,14 @@ export class DecisionEngineService {
   }
 
   /**
+   * Delete a rule by id (partitionKey = tenantId). §6.1.1.
+   */
+  async deleteRule(tenantId: string, ruleId: string): Promise<void> {
+    const container = getContainer(this.rulesContainerName);
+    await container.item(ruleId, tenantId).delete();
+  }
+
+  /**
    * Test rule against sample data (stub: run evaluateRules with test context).
    */
   async testRule(rule: Rule, testData: { riskScore?: number; opportunityId: string }): Promise<{ matched: boolean; actions: Action[] }> {

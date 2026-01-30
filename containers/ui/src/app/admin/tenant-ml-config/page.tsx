@@ -70,6 +70,13 @@ export default function TenantMLConfigPage() {
   const [error, setError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    document.title = 'Tenant ML Config | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
+
   const fetchConfig = useCallback(async () => {
     if (!apiBaseUrl) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');

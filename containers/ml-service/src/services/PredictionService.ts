@@ -174,13 +174,13 @@ export class PredictionService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(prediction, {
         partitionKey: input.tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create prediction');
       }
 
-      const prediction = resource as Prediction;
+      const saved = resource as Prediction;
 
       // recordPrediction for CAIS outcome collection (MISSING_FEATURES 3.2)
       if (this.config.services.adaptive_learning?.url) {
@@ -190,18 +190,18 @@ export class PredictionService {
             '/api/v1/adaptive-learning/outcomes/record-prediction',
             {
               component: 'ml-prediction',
-              predictionId: prediction.id,
+              predictionId: saved.id,
               context: { modelId: input.modelId, modelVersion: model.version },
-              predictedValue: prediction.confidence,
+              predictedValue: saved.confidence,
             },
             { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': input.tenantId } }
           );
         } catch (e: unknown) {
-          console.warn('recordPrediction (adaptive-learning) failed', { error: (e as Error).message, predictionId: prediction.id, service: 'ml-service' });
+          console.warn('recordPrediction (adaptive-learning) failed', { error: (e as Error).message, predictionId: saved.id, service: 'ml-service' });
         }
       }
 
-      return prediction;
+      return saved;
     } catch (error: any) {
       throw error;
     }
@@ -242,7 +242,7 @@ export class PredictionService {
   /**
    * Generate placeholder prediction (for demonstration)
    */
-  private generatePlaceholderPrediction(modelType: string, input: Record<string, any>): any {
+  private generatePlaceholderPrediction(modelType: string, _input: Record<string, any>): any {
     // Placeholder logic - would be replaced with actual model inference
     switch (modelType) {
       case 'classification':
@@ -370,7 +370,7 @@ export class PredictionService {
     query += ' ORDER BY c.createdAt ASC';
     try {
       const { resources } = await container.items
-        .query<{ createdAt?: string; probability?: number }>({ query, parameters }, { partitionKey: tenantId })
+        .query<{ createdAt?: string; probability?: number }>({ query, parameters }, { partitionKey: tenantId } as Parameters<typeof container.items.query>[1])
         .fetchAll();
       const points = (resources ?? []).map((r) => ({
         date: (r.createdAt || '').slice(0, 10),
@@ -428,7 +428,7 @@ export class PredictionService {
     try {
       const vec = await this.featureService.buildVectorForOpportunity(tenantId, opportunityId, 'anomaly');
       if (vec == null) {
-        throw new NotFoundError('Opportunity not found');
+        throw new NotFoundError('Opportunity', '');
       }
       if (!this.azureMlClient.hasEndpoint('anomaly')) {
         throw new Error('Anomaly endpoint not configured');
@@ -638,7 +638,7 @@ export class PredictionService {
       const { resource } = await container.item(predictionId, tenantId).read<Prediction>();
 
       if (!resource) {
-        throw new NotFoundError(`Prediction ${predictionId} not found`);
+        throw new NotFoundError('Prediction', predictionId);
       }
 
       return resource;
@@ -647,7 +647,7 @@ export class PredictionService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Prediction ${predictionId} not found`);
+        throw new NotFoundError('Prediction', predictionId);
       }
       throw error;
     }

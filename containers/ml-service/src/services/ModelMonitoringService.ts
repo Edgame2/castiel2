@@ -207,9 +207,14 @@ export class ModelMonitoringService {
           baseStart.setUTCDate(baseStart.getUTCDate() - 60);
 
           const tenantSet = new Set(tenantIds);
+          const dlConfig: DataLakeConfig = {
+            connection_string: dl.connection_string!,
+            container: dl.container!,
+            ml_inference_logs_prefix: dl.ml_inference_logs_prefix,
+          };
           const [baselineRows, currentRows] = await Promise.all([
-            readInferenceLogsFromDataLake(dl, baseStart, baseEnd, tenantSet),
-            readInferenceLogsFromDataLake(dl, curStart, curEnd, tenantSet),
+            readInferenceLogsFromDataLake(dlConfig, baseStart, baseEnd, tenantSet),
+            readInferenceLogsFromDataLake(dlConfig, curStart, curEnd, tenantSet),
           ]);
 
           const key = (t: string, m: string) => `${t}\t${m}`;

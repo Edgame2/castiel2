@@ -30,20 +30,32 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
     const tenantTemplateService = new TenantTemplateService();
 
     // ——— Admin: Feedback types (Super Admin, global) ———
-    fastify.get(
+    fastify.get<{ Querystring: { includeUsage?: string } }>(
       '/api/v1/admin/feedback-types',
       {
         preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
         schema: {
-          description: 'Get all feedback types (global). Super Admin. Seeds 25+ types if empty.',
+          description: 'Get all feedback types (global). Super Admin. Seeds 25+ types if empty. includeUsage=true adds usageCount and lastUsed (§1.1.1).',
           tags: ['Admin', 'Feedback'],
           security: [{ bearerAuth: [] }],
+          querystring: { type: 'object', properties: { includeUsage: { type: 'string', enum: ['true', 'false'] } } },
           response: { 200: { type: 'array', items: { type: 'object' } } },
         },
       },
-      async (_request, reply) => {
+      async (request, reply) => {
         try {
           const types = await feedbackService.getFeedbackTypes();
+          const includeUsage = request.query?.includeUsage !== 'false';
+          if (includeUsage && types.length > 0) {
+            const stats = await feedbackService.getFeedbackTypeUsageStats(types.map((t) => t.id));
+            const withUsage = types.map((t) => {
+              const s = stats.get(t.id);
+              return s
+                ? { ...t, usageCount: s.usageCount, lastUsed: s.lastUsed || undefined }
+                : { ...t, usageCount: 0, lastUsed: undefined };
+            });
+            return reply.send(withUsage);
+          }
           return reply.send(types);
         } catch (error: unknown) {
           const msg = error instanceof Error ? error.message : String(error);
@@ -179,11 +191,16 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       {
         preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
         schema: {
-          description: 'Delete a feedback type. Super Admin. Removes from global config if referenced.',
+          description: 'Delete a feedback type. Super Admin §1.1.4. Pre-deletion checks: not default, not in use, inactive 30 days.',
           tags: ['Admin', 'Feedback'],
           security: [{ bearerAuth: [] }],
           params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
-          response: { 204: { type: 'null' }, 404: { type: 'object' }, 500: { type: 'object' } },
+          response: {
+            204: { type: 'null' },
+            400: { type: 'object', properties: { error: { type: 'object', properties: { code: { type: 'string' }, message: { type: 'string' } } } } },
+            404: { type: 'object' },
+            500: { type: 'object' },
+          },
         },
       },
       async (request, reply) => {
@@ -193,8 +210,128 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
           if (!deleted) return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Feedback type not found' } });
           return reply.status(204).send();
         } catch (error: unknown) {
+          const err = error as Error & { statusCode?: number };
+          const msg = err.message ?? String(error);
+          const code = err.statusCode === 400 ? 400 : 500;
+          return (reply as { status: (code: number) => { send: (body: unknown) => unknown } })
+            .status(code)
+            .send({ error: { code: code === 400 ? 'DELETE_NOT_ALLOWED' : 'FEEDBACK_TYPE_DELETE_FAILED', message: msg } });
+        }
+      }
+    );
+
+    // ——— Admin: Feedback types bulk (must be before :id for clarity) ———
+    fastify.post<{ Body: import('../types/feedback.types').BulkFeedbackTypesInput }>(
+      '/api/v1/admin/feedback-types/bulk',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Bulk update feedback types. Super Admin §1.1.5. Operations: activate, deactivate, setCategory, setSentiment.',
+          tags: ['Admin', 'Feedback'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['operation', 'ids'],
+            properties: {
+              operation: { type: 'string', enum: ['activate', 'deactivate', 'setCategory', 'setSentiment'] },
+              ids: { type: 'array', items: { type: 'string' } },
+              category: { type: 'string', enum: ['action', 'relevance', 'quality', 'timing', 'other'] },
+              sentiment: { type: 'string', enum: ['positive', 'neutral', 'negative'] },
+              sentimentScore: { type: 'number' },
+            },
+          },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                updated: { type: 'number' },
+                failed: {
+                  type: 'array',
+                  items: { type: 'object', properties: { id: { type: 'string' }, error: { type: 'string' } } },
+                },
+              },
+            },
+            400: { type: 'object', properties: { error: { type: 'object', properties: { code: { type: 'string' }, message: { type: 'string' } } } } },
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const updatedBy = request.user?.id ?? 'unknown';
+          const result = await feedbackService.bulkUpdateFeedbackTypes(request.body, updatedBy);
+          return reply.send(result);
+        } catch (error: unknown) {
+          const err = error as Error & { statusCode?: number };
+          const msg = err.message ?? String(error);
+          const code = err.statusCode === 400 ? 400 : 500;
+          return (reply as { status: (code: number) => { send: (body: unknown) => unknown } })
+            .status(code)
+            .send({ error: { code: code === 400 ? 'VALIDATION_ERROR' : 'BULK_UPDATE_FAILED', message: msg } });
+        }
+      }
+    );
+
+    fastify.post<{ Body: import('../types/feedback.types').ImportFeedbackTypesInput }>(
+      '/api/v1/admin/feedback-types/import',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Import feedback types from JSON. Super Admin §1.1.5. Create or update by name.',
+          tags: ['Admin', 'Feedback'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['items'],
+            properties: {
+              items: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    displayName: { type: 'string' },
+                    category: { type: 'string', enum: ['action', 'relevance', 'quality', 'timing', 'other'] },
+                    sentiment: { type: 'string', enum: ['positive', 'neutral', 'negative'] },
+                    sentimentScore: { type: 'number' },
+                    icon: { type: 'string' },
+                    color: { type: 'string' },
+                    order: { type: 'number' },
+                    behavior: { type: 'object' },
+                    applicableToRecTypes: { type: 'array', items: { type: 'string' } },
+                    isActive: { type: 'boolean' },
+                    isDefault: { type: 'boolean' },
+                    translations: { type: 'object' },
+                  },
+                },
+              },
+            },
+          },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                created: { type: 'number' },
+                updated: { type: 'number' },
+                failed: {
+                  type: 'array',
+                  items: { type: 'object', properties: { index: { type: 'number' }, error: { type: 'string' } } },
+                },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const createdBy = request.user?.id ?? 'unknown';
+          const result = await feedbackService.importFeedbackTypes(request.body, createdBy);
+          return reply.send(result);
+        } catch (error: unknown) {
           const msg = error instanceof Error ? error.message : String(error);
-          return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(500).send({ error: { code: 'FEEDBACK_TYPE_DELETE_FAILED', message: msg } });
+          return (reply as { status: (code: number) => { send: (body: unknown) => unknown } })
+            .status(500)
+            .send({ error: { code: 'IMPORT_FAILED', message: msg } });
         }
       }
     );
@@ -230,7 +367,29 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
         maxLimit?: number;
         availableTypes?: string[];
         defaultActiveTypes?: string[];
-        patternDetection?: { enabled?: boolean; minSampleSize?: number; thresholds?: { ignoreRate?: number; actionRate?: number } };
+        patternDetection?: {
+          enabled?: boolean;
+          minSampleSize?: number;
+          thresholds?: { ignoreRate?: number; actionRate?: number; sentimentThreshold?: number };
+          autoSuppressEnabled?: boolean;
+          autoBoostEnabled?: boolean;
+          notifyOnPattern?: boolean;
+          patternReportFrequency?: 'daily' | 'weekly' | 'monthly';
+        };
+        feedbackCollection?: {
+          requireFeedback?: boolean;
+          requireFeedbackAfterDays?: number;
+          allowComments?: boolean;
+          maxCommentLength?: number;
+          moderateComments?: boolean;
+          allowMultipleSelection?: boolean;
+          maxSelectionsPerFeedback?: number;
+          allowFeedbackEdit?: boolean;
+          editWindowDays?: number;
+          trackFeedbackHistory?: boolean;
+          allowAnonymousFeedback?: boolean;
+          anonymousForNegative?: boolean;
+        };
       };
     }>(
       '/api/v1/admin/feedback-config',
@@ -255,13 +414,41 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
                   minSampleSize: { type: 'number' },
                   thresholds: {
                     type: 'object',
-                    properties: { ignoreRate: { type: 'number' }, actionRate: { type: 'number' } },
+                    properties: {
+                      ignoreRate: { type: 'number' },
+                      actionRate: { type: 'number' },
+                      sentimentThreshold: { type: 'number' },
+                    },
                   },
+                  autoSuppressEnabled: { type: 'boolean' },
+                  autoBoostEnabled: { type: 'boolean' },
+                  notifyOnPattern: { type: 'boolean' },
+                  patternReportFrequency: { type: 'string', enum: ['daily', 'weekly', 'monthly'] },
+                },
+              },
+              feedbackCollection: {
+                type: 'object',
+                properties: {
+                  requireFeedback: { type: 'boolean' },
+                  requireFeedbackAfterDays: { type: 'number' },
+                  allowComments: { type: 'boolean' },
+                  maxCommentLength: { type: 'number' },
+                  moderateComments: { type: 'boolean' },
+                  allowMultipleSelection: { type: 'boolean' },
+                  maxSelectionsPerFeedback: { type: 'number' },
+                  allowFeedbackEdit: { type: 'boolean' },
+                  editWindowDays: { type: 'number' },
+                  trackFeedbackHistory: { type: 'boolean' },
+                  allowAnonymousFeedback: { type: 'boolean' },
+                  anonymousForNegative: { type: 'boolean' },
                 },
               },
             },
           },
-          response: { 200: { type: 'object' } },
+          response: {
+            200: { type: 'object' },
+            400: { type: 'object', properties: { error: { type: 'object', properties: { code: { type: 'string' }, message: { type: 'string' } } } } },
+          },
         },
       },
       async (request, reply) => {
@@ -273,8 +460,12 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
           );
           return reply.send(config);
         } catch (error: unknown) {
-          const msg = error instanceof Error ? error.message : String(error);
-          return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(500).send({ error: { code: 'FEEDBACK_CONFIG_UPDATE_FAILED', message: msg } });
+          const err = error as Error & { statusCode?: number };
+          const msg = err.message ?? String(error);
+          const code = err.statusCode === 400 ? 400 : 500;
+          return (reply as { status: (code: number) => { send: (body: unknown) => unknown } })
+            .status(code)
+            .send({ error: { code: code === 400 ? 'VALIDATION_ERROR' : 'FEEDBACK_CONFIG_UPDATE_FAILED', message: msg } });
         }
       }
     );
@@ -285,7 +476,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       {
         preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
         schema: {
-          description: 'List all tenants (Super Admin). Returns tenant id, name, industry, status, usage summary.',
+          description: 'List all tenants (Super Admin §7.1.1). Returns tenant id, name, industry, status, usage, configuration, and performance fields.',
           tags: ['Admin', 'Tenants'],
           security: [{ bearerAuth: [] }],
           response: {
@@ -298,13 +489,21 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
                     type: 'object',
                     properties: {
                       id: { type: 'string' },
-                      name: { type: 'string' },
-                      industry: { type: 'string' },
-                      status: { type: 'string', enum: ['active', 'trial', 'suspended', 'inactive'] },
-                      createdAt: { type: 'string' },
-                      activeUsers: { type: 'number' },
-                      activeOpportunities: { type: 'number' },
+                      name: { type: 'string', nullable: true },
+                      industry: { type: 'string', nullable: true },
+                      status: { type: 'string', enum: ['active', 'trial', 'suspended', 'inactive'], nullable: true },
+                      createdAt: { type: 'string', nullable: true },
+                      activeUsers: { type: 'number', nullable: true },
+                      activeOpportunities: { type: 'number', nullable: true },
+                      predictionsPerDay: { type: 'number', nullable: true },
+                      feedbackPerDay: { type: 'number', nullable: true },
+                      methodology: { type: 'string', nullable: true },
+                      feedbackLimit: { type: 'number', nullable: true },
+                      customCatalogEntries: { type: 'number', nullable: true },
+                      avgRecommendationAccuracy: { type: 'number', nullable: true },
+                      avgActionRate: { type: 'number', nullable: true },
                     },
+                    required: ['id'],
                   },
                 },
               },
@@ -319,6 +518,54 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
           const msg = error instanceof Error ? error.message : String(error);
           log.error('List tenants failed', error as Error, { service: 'recommendations' });
           return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(500).send({ error: { code: 'TENANTS_LIST_FAILED', message: msg } });
+        }
+      }
+    );
+
+    // ——— Admin: Get tenant by id (Super Admin §7.1.2 Overview). Stub: returns tenant id and nulls; replace with tenant store when available. ———
+    fastify.get<{ Params: { tenantId: string } }>(
+      '/api/v1/admin/tenants/:tenantId',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Get a single tenant by id (Super Admin §7.1.2 Overview).',
+          tags: ['Admin', 'Tenants'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { tenantId: { type: 'string' } }, required: ['tenantId'] },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                name: { type: 'string', nullable: true },
+                industry: { type: 'string', nullable: true },
+                status: { type: 'string', enum: ['active', 'trial', 'suspended', 'inactive'], nullable: true },
+                createdAt: { type: 'string', nullable: true },
+                activeUsers: { type: 'number', nullable: true },
+                activeOpportunities: { type: 'number', nullable: true },
+              },
+              required: ['id'],
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const tenantId = request.params.tenantId;
+          const tenant = {
+            id: tenantId,
+            name: null as string | null,
+            industry: null as string | null,
+            status: null as string | null,
+            createdAt: null as string | null,
+            activeUsers: null as number | null,
+            activeOpportunities: null as number | null,
+          };
+          return reply.send(tenant);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Get tenant failed', error as Error, { service: 'recommendations' });
+          return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(500).send({ error: { code: 'TENANT_GET_FAILED', message: msg } });
         }
       }
     );

@@ -48,7 +48,7 @@ import { getContainer } from '@coder/shared/database';
 import { CreateRiskInput, UpdateRiskInput, SetPonderationInput } from '../types/risk-catalog.types';
 import type { ExplainPredictionRequest, ExplainBatchRequest } from '../types/explanation.types';
 import type { EvaluateDecisionRequest, ExecuteDecisionRequest, ApplyCatalogRulesRequest, MakeMethodologyDecisionRequest, Rule as RuleType } from '../types/decision.types';
-import type { UpsertSalesMethodologyBody } from '../types/sales-methodology.types';
+import type { MethodologyCard, UpsertSalesMethodologyBody } from '../types/sales-methodology.types';
 import type { UpsertTenantMLConfigBody } from '../types/tenant-ml-config.types';
 import { DecisionEngineService } from '../services/DecisionEngineService';
 import { ActionExecutor } from '../services/ActionExecutor';
@@ -3160,21 +3160,25 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       }
     );
 
-    fastify.get(
+    fastify.get<{ Querystring: { all?: string } }>(
       '/api/v1/decisions/rules',
       {
         preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
         schema: {
-          description: 'List enabled rules for tenant (Plan W5 Layer 6).',
+          description: 'List rules for tenant (Plan W5 Layer 6). Default: enabled only. Query ?all=true for all rules (§6.1.1).',
           tags: ['Decision Engine'],
           security: [{ bearerAuth: [] }],
+          querystring: { type: 'object', properties: { all: { type: 'string', enum: ['true', 'false'] } } },
           response: { 200: { type: 'object', properties: { rules: { type: 'array', items: { type: 'object' } } } } },
         },
       },
       async (request, reply) => {
         const tenantId = request.user!.tenantId;
+        const all = request.query?.all === 'true';
         try {
-          const rules = await decisionEngineService.getRules(tenantId);
+          const rules = all
+            ? await decisionEngineService.getAllRules(tenantId)
+            : await decisionEngineService.getRules(tenantId);
           return reply.send({ rules });
         } catch (error: unknown) {
           const msg = error instanceof Error ? error.message : String(error);
@@ -3266,6 +3270,42 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       }
     );
 
+    fastify.delete<{ Params: { ruleId: string } }>(
+      '/api/v1/decisions/rules/:ruleId',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Delete a rule (§6.1.1).',
+          tags: ['Decision Engine'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { ruleId: { type: 'string' } }, required: ['ruleId'] },
+          response: { 204: { description: 'Rule deleted' }, 404: { description: 'Rule not found' } },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = request.user!.tenantId;
+        const { ruleId } = request.params;
+        try {
+          await decisionEngineService.deleteRule(tenantId, ruleId);
+          return reply.status(204).send();
+        } catch (error: unknown) {
+          const err = error as { code?: number; statusCode?: number };
+          const code = err?.code ?? err?.statusCode;
+          if (code === 404) {
+            return reply.status(404).send({
+              error: { code: 'RULE_NOT_FOUND', message: 'Rule not found' },
+            });
+          }
+          const msg = error instanceof Error ? (error as Error).message : String(error);
+          log.error('Delete rule failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          const statusCode = (err?.statusCode ?? 500) as number;
+          return reply.status(statusCode).send({
+            error: { code: 'RULE_DELETE_FAILED', message: msg || 'Failed to delete rule' },
+          });
+        }
+      }
+    );
+
     fastify.post<{ Params: { ruleId: string }; Body: { riskScore?: number; opportunityId: string } }>(
       '/api/v1/decisions/rules/:ruleId/test',
       {
@@ -3284,7 +3324,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
         const { ruleId } = request.params;
         const body = request.body as { riskScore?: number; opportunityId: string };
         try {
-          const rules = await decisionEngineService.getRules(tenantId);
+          const rules = await decisionEngineService.getAllRules(tenantId);
           const rule = rules.find((r) => r.id === ruleId);
           if (!rule) {
             return reply.status(404).send({
@@ -3348,7 +3388,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       {
         preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
         schema: {
-          description: 'Create or update tenant sales methodology. Body: methodologyType, stages, requiredFields, risks. tenantId from X-Tenant-ID.',
+          description: 'Create or update tenant sales methodology. Body: methodologyType, stages, requiredFields, risks; §3.1.2 optional name, displayName, description, isActive, isDefault. tenantId from X-Tenant-ID.',
           tags: ['Sales Methodology'],
           security: [{ bearerAuth: [] }],
           body: {
@@ -3359,6 +3399,20 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
               stages: { type: 'array', items: { type: 'object' } },
               requiredFields: { type: 'array', items: { type: 'object' } },
               risks: { type: 'array', items: { type: 'object' } },
+              name: { type: 'string', nullable: true },
+              displayName: { type: 'string', nullable: true },
+              description: { type: 'string', nullable: true },
+              isActive: { type: 'boolean', nullable: true },
+              isDefault: { type: 'boolean', nullable: true },
+              integrationConfig: {
+                type: 'object',
+                nullable: true,
+                properties: {
+                  featureEngineering: { type: 'object', properties: { enabled: { type: 'boolean' }, features: { type: 'array', items: { type: 'string' } } } },
+                  riskDetection: { type: 'object', properties: { enabled: { type: 'boolean' }, detectNonCompliance: { type: 'boolean' } } },
+                  recommendations: { type: 'object', properties: { enabled: { type: 'boolean' }, suggestMissingSteps: { type: 'boolean' } } },
+                },
+              },
             },
           },
           response: { 200: { type: 'object', description: 'SalesMethodology document' } },
@@ -3379,6 +3433,63 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           return reply.status(statusCode).send({
             error: { code: 'SALES_METHODOLOGY_UPSERT_FAILED', message: msg || 'Failed to upsert sales methodology' },
+          });
+        }
+      }
+    );
+
+    // §3.1.1 View All Methodologies: list methodology templates (card grid) with usage stats
+    const METHODOLOGY_TEMPLATES_BASE: MethodologyCard[] = [
+      { id: 'MEDDIC', name: 'MEDDIC', type: 'standard', description: 'Metrics, Economic buyer, Decision criteria, Decision process, Identify pain, Champion. Qualification framework for complex sales.', stages: 6, requiredFields: 0, exitCriteria: 0, tenantsUsing: 0, activeOpportunities: null, avgComplianceScore: null },
+      { id: 'MEDDPICC', name: 'MEDDPICC', type: 'standard', description: 'MEDDIC plus Paper process and Identify competition. Extended qualification framework.', stages: 8, requiredFields: 0, exitCriteria: 0, tenantsUsing: 0, activeOpportunities: null, avgComplianceScore: null },
+      { id: 'Challenger', name: 'Challenger', type: 'standard', description: 'Teach, Tailor, Take control. Commercial teaching and insight-led selling.', stages: 3, requiredFields: 0, exitCriteria: 0, tenantsUsing: 0, activeOpportunities: null, avgComplianceScore: null },
+      { id: 'Sandler', name: 'Sandler', type: 'standard', description: 'Pain-focused selling. No pressure tactics; uncover pain and qualify through structured discovery.', stages: 7, requiredFields: 0, exitCriteria: 0, tenantsUsing: 0, activeOpportunities: null, avgComplianceScore: null },
+      { id: 'SPIN', name: 'SPIN', type: 'standard', description: 'Situation, Problem, Implication, Need-payoff. Question-based selling for discovery and value.', stages: 4, requiredFields: 0, exitCriteria: 0, tenantsUsing: 0, activeOpportunities: null, avgComplianceScore: null },
+      { id: 'Custom', name: 'Custom', type: 'custom', description: 'Tenant-defined methodology. Configure stages, requirements, and risks per tenant.', stages: 0, requiredFields: 0, exitCriteria: 0, tenantsUsing: 0, activeOpportunities: null, avgComplianceScore: null },
+    ];
+    fastify.get(
+      '/api/v1/sales-methodology/templates',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'List methodology templates for View All Methodologies (§3.1.1). Returns standard + Custom cards; tenantsUsing from DB; activeOpportunities/avgComplianceScore when available.',
+          tags: ['Sales Methodology'],
+          security: [{ bearerAuth: [] }],
+          response: {
+            200: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  name: { type: 'string' },
+                  type: { type: 'string', enum: ['standard', 'custom'] },
+                  description: { type: 'string' },
+                  stages: { type: 'number' },
+                  requiredFields: { type: 'number' },
+                  exitCriteria: { type: 'number' },
+                  tenantsUsing: { type: 'number' },
+                  activeOpportunities: { type: ['number', 'null'] },
+                  avgComplianceScore: { type: ['number', 'null'] },
+                },
+              },
+            },
+          },
+        },
+      },
+      async (_request, reply) => {
+        try {
+          const counts = await salesMethodologyService.listMethodologyTypeCounts();
+          const templates: MethodologyCard[] = METHODOLOGY_TEMPLATES_BASE.map((t) => ({
+            ...t,
+            tenantsUsing: counts[t.id] ?? 0,
+          }));
+          return reply.send(templates);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('List methodology templates failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return reply.status(500).send({
+            error: { code: 'METHODOLOGY_TEMPLATES_FAILED', message: msg || 'Failed to list methodology templates' },
           });
         }
       }

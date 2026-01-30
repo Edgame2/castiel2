@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
@@ -36,6 +36,8 @@ interface FeedbackTypeRow {
   isActive: boolean;
   isDefault: boolean;
   updatedAt?: string;
+  usageCount?: number;
+  lastUsed?: string;
 }
 
 const DEFAULT_BEHAVIOR: FeedbackTypeBehavior = {
@@ -78,7 +80,12 @@ export default function FeedbackTypesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<FeedbackTypeCategory | ''>('');
-  const [sortBy, setSortBy] = useState<'displayName' | 'order' | 'updatedAt'>('order');
+  const [sentimentFilter, setSentimentFilter] = useState<FeedbackSentiment | ''>('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive' | ''>('');
+  const [usageFilter, setUsageFilter] = useState<'high' | 'medium' | 'low' | 'unused' | ''>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'displayName' | 'order' | 'updatedAt' | 'usageCount' | 'sentimentScore'>('order');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [formSaving, setFormSaving] = useState(false);
@@ -97,13 +104,20 @@ export default function FeedbackTypesPage() {
     isActive: true,
     isDefault: false,
   });
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkModal, setBulkModal] = useState<'setCategory' | 'setSentiment' | null>(null);
+  const [bulkCategory, setBulkCategory] = useState<FeedbackTypeCategory>('action');
+  const [bulkSentiment, setBulkSentiment] = useState<FeedbackSentiment>('neutral');
+  const [bulkSentimentScore, setBulkSentimentScore] = useState(0);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const fetchTypes = useCallback(async () => {
     if (!apiBaseUrl) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types`, { credentials: 'include' });
+      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types?includeUsage=true`, { credentials: 'include' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setTypes(Array.isArray(json) ? json : []);
@@ -263,7 +277,7 @@ export default function FeedbackTypesPage() {
 
   const handleDelete = async (id: string) => {
     if (!apiBaseUrl) return;
-    if (!window.confirm('Delete this feedback type? It will be removed from global config if referenced.')) return;
+    if (!window.confirm('Delete this feedback type? It cannot be default or in use, and must be inactive for 30 days.')) return;
     try {
       const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types/${encodeURIComponent(id)}`, {
         method: 'DELETE',
@@ -279,16 +293,131 @@ export default function FeedbackTypesPage() {
     }
   };
 
-  const filtered = types.filter((t) => !categoryFilter || t.category === categoryFilter);
+  const usageBand = (n: number): 'high' | 'medium' | 'low' | 'unused' => {
+    if (n === 0) return 'unused';
+    if (n <= 9) return 'low';
+    if (n <= 100) return 'medium';
+    return 'high';
+  };
+  const filtered = types.filter((t) => {
+    if (categoryFilter && t.category !== categoryFilter) return false;
+    if (sentimentFilter && t.sentiment !== sentimentFilter) return false;
+    if (statusFilter === 'active' && !t.isActive) return false;
+    if (statusFilter === 'inactive' && t.isActive) return false;
+    if (usageFilter) {
+      const u = typeof t.usageCount === 'number' ? t.usageCount : 0;
+      if (usageBand(u) !== usageFilter) return false;
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const name = (t.displayName || t.name || '').toLowerCase();
+      const id = (t.id || '').toLowerCase();
+      if (!name.includes(q) && !id.includes(q)) return false;
+    }
+    return true;
+  });
   const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === 'displayName') return (a.displayName || a.name).localeCompare(b.displayName || b.name);
-    if (sortBy === 'updatedAt') {
+    let base: number;
+    if (sortBy === 'displayName') {
+      base = (a.displayName || a.name).localeCompare(b.displayName || b.name);
+    } else if (sortBy === 'updatedAt') {
       const da = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
       const db = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-      return db - da;
+      base = da - db;
+    } else if (sortBy === 'usageCount') {
+      const ua = typeof a.usageCount === 'number' ? a.usageCount : 0;
+      const ub = typeof b.usageCount === 'number' ? b.usageCount : 0;
+      base = ua - ub;
+    } else if (sortBy === 'sentimentScore') {
+      const sa = typeof a.sentimentScore === 'number' ? a.sentimentScore : 0;
+      const sb = typeof b.sentimentScore === 'number' ? b.sentimentScore : 0;
+      base = sa - sb;
+    } else {
+      base = (a.order ?? 0) - (b.order ?? 0);
     }
-    return (a.order ?? 0) - (b.order ?? 0);
+    return sortDir === 'desc' ? -base : base;
   });
+
+  const selectedArray = Array.from(selectedIds);
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectAll = () => {
+    if (selectedIds.size === sorted.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(sorted.map((t) => t.id)));
+  };
+  const isAllSelected = sorted.length > 0 && selectedIds.size === sorted.length;
+
+  const runBulk = async (operation: 'activate' | 'deactivate' | 'setCategory' | 'setSentiment', payload?: { category?: FeedbackTypeCategory; sentiment?: FeedbackSentiment; sentimentScore?: number }) => {
+    if (!apiBaseUrl || selectedArray.length === 0) return;
+    setBulkSaving(true);
+    setError(null);
+    try {
+      const body: Record<string, unknown> = { operation, ids: selectedArray };
+      if (operation === 'setCategory' && payload?.category != null) body.category = payload.category;
+      if (operation === 'setSentiment' && payload?.sentiment != null) {
+        body.sentiment = payload.sentiment;
+        body.sentimentScore = payload.sentimentScore ?? (payload.sentiment === 'positive' ? 1 : payload.sentiment === 'negative' ? -1 : 0);
+      }
+      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types/bulk`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
+      setBulkModal(null);
+      setSelectedIds(new Set());
+      await fetchTypes();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
+  const handleExportSelected = () => {
+    const selected = sorted.filter((t) => selectedIds.has(t.id));
+    const blob = new Blob([JSON.stringify(selected, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `feedback-types-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !apiBaseUrl) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const raw = reader.result as string;
+        const parsed = JSON.parse(raw);
+        const items = Array.isArray(parsed) ? parsed : [parsed];
+        const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types/import`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
+        setError(null);
+        await fetchTypes();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  };
 
   const modalTitle = modalMode === 'create' ? 'Create feedback type' : 'Edit feedback type';
 
@@ -359,7 +488,72 @@ export default function FeedbackTypesPage() {
             >
               Create type
             </button>
-            <label className="text-sm font-medium">Category</label>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={handleImportFile}
+            />
+            <button
+              type="button"
+              onClick={() => importInputRef.current?.click()}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
+            >
+              Import from JSON
+            </button>
+            {selectedIds.size > 0 && (
+              <div className="flex flex-wrap items-center gap-2 ml-2 pl-2 border-l border-gray-200 dark:border-gray-600">
+                <span className="text-sm text-gray-600 dark:text-gray-400">{selectedIds.size} selected</span>
+                <button
+                  type="button"
+                  onClick={() => runBulk('activate')}
+                  disabled={bulkSaving}
+                  className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                >
+                  Activate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runBulk('deactivate')}
+                  disabled={bulkSaving}
+                  className="px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50 text-sm"
+                >
+                  Deactivate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkModal('setCategory')}
+                  disabled={bulkSaving}
+                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 text-sm"
+                >
+                  Set category
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkModal('setSentiment')}
+                  disabled={bulkSaving}
+                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 text-sm"
+                >
+                  Set sentiment
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportSelected}
+                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                >
+                  Export to JSON
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds(new Set())}
+                  className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:underline text-sm"
+                >
+                  Clear selection
+                </button>
+              </div>
+            )}
+            <label className="text-sm font-medium ml-2">Category</label>
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter((e.target.value || '') as FeedbackTypeCategory | '')}
@@ -372,15 +566,71 @@ export default function FeedbackTypesPage() {
                 </option>
               ))}
             </select>
+            <label className="text-sm font-medium ml-2">Sentiment</label>
+            <select
+              value={sentimentFilter}
+              onChange={(e) => setSentimentFilter((e.target.value || '') as FeedbackSentiment | '')}
+              className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+            >
+              <option value="">All</option>
+              {(Object.keys(SENTIMENT_LABELS) as FeedbackSentiment[]).map((s) => (
+                <option key={s} value={s}>
+                  {SENTIMENT_LABELS[s]}
+                </option>
+              ))}
+            </select>
+            <label className="text-sm font-medium ml-2">Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter((e.target.value || '') as 'active' | 'inactive' | '')}
+              className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+            >
+              <option value="">All</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <label className="text-sm font-medium ml-2">Usage</label>
+            <select
+              value={usageFilter}
+              onChange={(e) => setUsageFilter((e.target.value || '') as 'high' | 'medium' | 'low' | 'unused' | '')}
+              className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+            >
+              <option value="">All</option>
+              <option value="high">High (&gt;100)</option>
+              <option value="medium">Medium (10–100)</option>
+              <option value="low">Low (1–9)</option>
+              <option value="unused">Unused (0)</option>
+            </select>
+            <label className="text-sm font-medium ml-2">Search</label>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="By name…"
+              className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm w-40"
+              aria-label="Search by name"
+            />
             <label className="text-sm font-medium ml-2">Sort by</label>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'displayName' | 'order' | 'updatedAt')}
+              onChange={(e) => setSortBy(e.target.value as 'displayName' | 'order' | 'updatedAt' | 'usageCount' | 'sentimentScore')}
               className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              aria-label="Sort by"
             >
               <option value="order">Order</option>
               <option value="displayName">Name</option>
+              <option value="usageCount">Usage</option>
               <option value="updatedAt">Last updated</option>
+              <option value="sentimentScore">Sentiment score</option>
+            </select>
+            <select
+              value={sortDir}
+              onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
+              className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm ml-1"
+              aria-label="Sort direction"
+            >
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
             </select>
           </div>
 
@@ -389,11 +639,22 @@ export default function FeedbackTypesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50 dark:bg-gray-800/50">
+                    <th className="text-left p-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        onChange={toggleSelectAll}
+                        aria-label="Select all"
+                        className="rounded"
+                      />
+                    </th>
                     <th className="text-left p-3 font-medium">Display Name</th>
                     <th className="text-left p-3 font-medium">Category</th>
                     <th className="text-left p-3 font-medium">Sentiment</th>
                     <th className="text-left p-3 font-medium">Status</th>
                     <th className="text-left p-3 font-medium">Default</th>
+                    <th className="text-left p-3 font-medium">Usage</th>
+                    <th className="text-left p-3 font-medium">Last Used</th>
                     <th className="text-left p-3 font-medium">Order</th>
                     <th className="text-left p-3 font-medium">Updated</th>
                     <th className="text-left p-3 font-medium">Actions</th>
@@ -402,13 +663,22 @@ export default function FeedbackTypesPage() {
                 <tbody>
                   {sorted.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-6 text-gray-500 text-center">
+                      <td colSpan={11} className="p-6 text-gray-500 text-center">
                         No feedback types found.
                       </td>
                     </tr>
                   ) : (
                     sorted.map((t) => (
                       <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                        <td className="p-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(t.id)}
+                            onChange={() => toggleSelect(t.id)}
+                            aria-label={`Select ${t.displayName || t.name}`}
+                            className="rounded"
+                          />
+                        </td>
                         <td className="p-3">
                           <span className="font-medium">{t.displayName || t.name}</span>
                           {t.icon && <span className="ml-2" aria-hidden>{t.icon}</span>}
@@ -437,6 +707,16 @@ export default function FeedbackTypesPage() {
                           ) : (
                             <span className="text-gray-400">—</span>
                           )}
+                        </td>
+                        <td className="p-3">{typeof t.usageCount === 'number' ? t.usageCount : '—'}</td>
+                        <td className="p-3 text-gray-500">
+                          {t.lastUsed
+                            ? new Date(t.lastUsed).toLocaleDateString(undefined, {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })
+                            : '—'}
                         </td>
                         <td className="p-3">{t.order ?? '—'}</td>
                         <td className="p-3 text-gray-500">
@@ -676,6 +956,98 @@ export default function FeedbackTypesPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkModal === 'setCategory' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="bulk-category-title">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
+            <h2 id="bulk-category-title" className="text-lg font-semibold mb-3">Set category for {selectedIds.size} types</h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Category</label>
+              <select
+                value={bulkCategory}
+                onChange={(e) => setBulkCategory(e.target.value as FeedbackTypeCategory)}
+                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              >
+                {(Object.keys(CATEGORY_LABELS) as FeedbackTypeCategory[]).map((c) => (
+                  <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setBulkModal(null)}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => runBulk('setCategory', { category: bulkCategory })}
+                disabled={bulkSaving}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                {bulkSaving ? 'Applying…' : 'Apply'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkModal === 'setSentiment' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="bulk-sentiment-title">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
+            <h2 id="bulk-sentiment-title" className="text-lg font-semibold mb-3">Set sentiment for {selectedIds.size} types</h2>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Sentiment</label>
+                <select
+                  value={bulkSentiment}
+                  onChange={(e) => {
+                    const s = e.target.value as FeedbackSentiment;
+                    setBulkSentiment(s);
+                    setBulkSentimentScore(s === 'positive' ? 1 : s === 'negative' ? -1 : 0);
+                  }}
+                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                >
+                  {(Object.keys(SENTIMENT_LABELS) as FeedbackSentiment[]).map((s) => (
+                    <option key={s} value={s}>{SENTIMENT_LABELS[s]}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Sentiment score (-1 to 1)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min={-1}
+                  max={1}
+                  value={bulkSentimentScore}
+                  onChange={(e) => setBulkSentimentScore(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setBulkModal(null)}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => runBulk('setSentiment', { sentiment: bulkSentiment, sentimentScore: bulkSentimentScore })}
+                disabled={bulkSaving}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                {bulkSaving ? 'Applying…' : 'Apply'}
+              </button>
             </div>
           </div>
         </div>

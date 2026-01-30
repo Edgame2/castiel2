@@ -67,13 +67,32 @@ export interface MeddicMapping {
   competition?: MeddicComponentMapping;
 }
 
+/** §3.1.2 Tab 5: Integration – how methodology is used in CAIS. */
+export interface MethodologyIntegrationConfig {
+  featureEngineering?: { enabled: boolean; features: string[] };
+  riskDetection?: { enabled: boolean; detectNonCompliance: boolean };
+  recommendations?: { enabled: boolean; suggestMissingSteps: boolean };
+}
+
 export interface SalesMethodology {
   tenantId: string;
   methodologyType: MethodologyType;
+  /** §3.1.2 Basic info: optional display name for this tenant's methodology. */
+  name?: string;
+  /** §3.1.2 Basic info: optional display name for UI. */
+  displayName?: string;
+  /** §3.1.2 Basic info: optional description. */
+  description?: string;
+  /** §3.1.2 Basic info: whether this methodology is active for the tenant. */
+  isActive?: boolean;
+  /** §3.1.2 Basic info: whether this is the tenant's default methodology. */
+  isDefault?: boolean;
   stages: MethodologyStage[];
   requiredFields: RequiredField[];
   risks: MethodologyRisk[];
   meddic?: MeddicMapping;
+  /** §3.1.2 Tab 5: Integration (CAIS). */
+  integrationConfig?: MethodologyIntegrationConfig;
 }
 
 /** Cosmos document: id = tenantId, partitionKey = tenantId */
@@ -85,4 +104,18 @@ export interface SalesMethodologyDocument extends SalesMethodology {
 
 export interface UpsertSalesMethodologyBody extends SalesMethodology {
   tenantId?: string;
+}
+
+/** §3.1.1 View All Methodologies: card grid item (templates list). */
+export interface MethodologyCard {
+  id: string;
+  name: string;
+  type: 'standard' | 'custom';
+  description: string;
+  stages: number;
+  requiredFields: number;
+  exitCriteria: number;
+  tenantsUsing: number;
+  activeOpportunities: number | null;
+  avgComplianceScore: number | null;
 }

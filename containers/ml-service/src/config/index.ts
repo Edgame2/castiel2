@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { load } from 'yaml';
+import { parse as parseYaml } from 'yaml';
 
 export interface MLServiceConfig {
   module: { name: string; version: string };
@@ -35,13 +35,34 @@ export interface MLServiceConfig {
   cache?: { redis?: { enabled?: boolean; url?: string; ttl_seconds?: number } };
   /** Plan §940, §9.3: model-monitoring thresholds; model-monitoring runbook */
   model_monitoring?: { brier_threshold?: number; psi_threshold?: number; mae_threshold?: number };
+  /** Super Admin §5.2.2: feature version policy (versioning strategy, backward compatibility, deprecation). */
+  feature_version_policy?: {
+    versioningStrategy?: 'semantic' | 'timestamp' | 'hash';
+    backwardCompatibility?: {
+      enforceCompatibility?: boolean;
+      allowBreakingChanges?: boolean;
+      requireMigrationGuide?: boolean;
+    };
+    deprecationPolicy?: {
+      deprecationNoticeDays?: number;
+      supportOldVersionsDays?: number;
+      autoMigrate?: boolean;
+    };
+  };
+  /** Super Admin §5.3.2: default quality rules (missing rate, drift, outlier method). Applied when no per-feature override. */
+  feature_quality_rules?: {
+    missingRateThreshold?: number;
+    driftThreshold?: number;
+    outlierMethod?: 'iqr' | 'zscore' | 'isolation_forest';
+    outlierNStd?: number;
+  };
   /** Plan §9.3, §11.3: read /ml_inference_logs for PSI when implemented. Writer: logging DataLakeCollector. */
   data_lake?: { connection_string?: string; container?: string; ml_inference_logs_prefix?: string };
 }
 
 export function loadConfig(): MLServiceConfig {
   const configPath = join(__dirname, '../../config/default.yaml');
-  const config = load(readFileSync(configPath, 'utf-8')) as MLServiceConfig;
+  const config = parseYaml(readFileSync(configPath, 'utf-8')) as MLServiceConfig;
   if (process.env.PORT) config.server.port = parseInt(process.env.PORT, 10);
   if (process.env.HOST) config.server.host = process.env.HOST;
   if (process.env.COSMOS_DB_ENDPOINT) config.cosmos_db.endpoint = process.env.COSMOS_DB_ENDPOINT;

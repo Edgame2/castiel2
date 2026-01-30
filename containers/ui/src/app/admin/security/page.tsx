@@ -5,9 +5,17 @@
 
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 
 export default function SecurityPage() {
+  useEffect(() => {
+    document.title = 'Security & Access Control | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
+
   return (
     <div className="p-6">
       <div className="flex items-center gap-2 mb-4">

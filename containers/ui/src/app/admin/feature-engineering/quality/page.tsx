@@ -1,6 +1,6 @@
 /**
  * Super Admin: Feature Engineering — Quality (§5.3)
- * Quality dashboard (§5.3.1) from GET /api/v1/ml/features/quality and GET /api/v1/ml/features/statistics. Quality rules (§5.3.2) when backend supports it.
+ * Quality dashboard (§5.3.1) from GET /api/v1/ml/features/quality and GET /api/v1/ml/features/statistics. Quality rules (§5.3.2) from GET /api/v1/ml/features/quality-rules.
  */
 
 'use client';
@@ -34,11 +34,19 @@ interface FeatureStatistic {
   sampleCount?: number;
 }
 
+interface QualityRules {
+  missingRateThreshold: number;
+  driftThreshold: number;
+  outlierMethod: string;
+  outlierNStd: number;
+}
+
 export default function FeatureEngineeringQualityPage() {
   const [purpose, setPurpose] = useState<FeaturePurpose>('risk-scoring');
   const [alerts, setAlerts] = useState<QualityAlert[]>([]);
   const [statistics, setStatistics] = useState<FeatureStatistic[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [rulesData, setRulesData] = useState<QualityRules | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchQuality = useCallback(async () => {
@@ -46,9 +54,10 @@ export default function FeatureEngineeringQualityPage() {
     setLoading(true);
     setError(null);
     try {
-      const [qualityRes, statsRes] = await Promise.all([
+      const [qualityRes, statsRes, rulesRes] = await Promise.all([
         fetch(`${apiBaseUrl}/api/v1/ml/features/quality?purpose=${encodeURIComponent(purpose)}`, { credentials: 'include' }),
         fetch(`${apiBaseUrl}/api/v1/ml/features/statistics?purpose=${encodeURIComponent(purpose)}`, { credentials: 'include' }),
+        fetch(`${apiBaseUrl}/api/v1/ml/features/quality-rules`, { credentials: 'include' }),
       ]);
       if (!qualityRes.ok) throw new Error(`Quality: ${qualityRes.status}`);
       if (!statsRes.ok) throw new Error(`Statistics: ${statsRes.status}`);
@@ -56,6 +65,12 @@ export default function FeatureEngineeringQualityPage() {
       const statsJson = await statsRes.json();
       setAlerts(Array.isArray(qualityJson?.alerts) ? qualityJson.alerts : []);
       setStatistics(Array.isArray(statsJson?.statistics) ? statsJson.statistics : []);
+      if (rulesRes.ok) {
+        const rulesJson = await rulesRes.json();
+        setRulesData(rulesJson);
+      } else {
+        setRulesData(null);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setAlerts([]);
@@ -224,10 +239,22 @@ export default function FeatureEngineeringQualityPage() {
           </div>
 
           <div className="rounded-lg border bg-gray-50 dark:bg-gray-800/50 p-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Quality rules</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Per-feature quality rules (missing rate threshold, outlier method, drift method and threshold, alert settings) will be configurable when the backend exposes §5.3.2. Alerts above use default thresholds (e.g. missing rate &gt; 10%, drift &gt; 0.2).
-            </p>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Quality rules (§5.3.2)</h3>
+            {rulesData ? (
+              <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                <p><span className="font-medium text-gray-900 dark:text-gray-100">Missing rate threshold:</span> {(rulesData.missingRateThreshold * 100).toFixed(0)}%</p>
+                <p><span className="font-medium text-gray-900 dark:text-gray-100">Drift threshold:</span> {rulesData.driftThreshold}</p>
+                <p><span className="font-medium text-gray-900 dark:text-gray-100">Outlier method:</span> {rulesData.outlierMethod}</p>
+                <p><span className="font-medium text-gray-900 dark:text-gray-100">Outlier N std:</span> {rulesData.outlierNStd}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  To change, update ml-service config (feature_quality_rules). Alerts above use these thresholds.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Default quality rules (missing rate &gt; 10%, drift &gt; 0.2, outlier: zscore). To configure, set ml-service config feature_quality_rules and use GET /api/v1/ml/features/quality-rules.
+              </p>
+            )}
           </div>
         </>
       )}

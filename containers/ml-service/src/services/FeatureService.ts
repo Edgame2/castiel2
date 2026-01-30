@@ -478,8 +478,9 @@ export class FeatureService {
       ? (closeDate <= now ? 0 : Math.min(999, Math.round((closeDate - now) / MS_PER_DAY)))
       : 0;
 
-    const stageUpdatedAt = (sd.StageUpdatedAt as string) || (sd.StageDates && (sd.StageDates as Record<string, string>)[sd.StageName as string]);
-    const daysInStage = stageUpdatedAt
+    const stageUpdatedAtRaw = (sd.StageUpdatedAt as string) || (sd.StageDates && (sd.StageDates as Record<string, string>)[sd.StageName as string]);
+    const stageUpdatedAt = typeof stageUpdatedAtRaw === 'string' || typeof stageUpdatedAtRaw === 'number' || stageUpdatedAtRaw instanceof Date ? stageUpdatedAtRaw : null;
+    const daysInStage = stageUpdatedAt != null
       ? Math.max(0, Math.round((now - new Date(stageUpdatedAt).getTime()) / MS_PER_DAY))
       : 0;
 
@@ -575,7 +576,7 @@ export class FeatureService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(feature, {
         partitionKey: tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create feature');
@@ -603,14 +604,14 @@ export class FeatureService {
       const { resource } = await container.item(featureId, tenantId).read<Feature>();
 
       if (!resource) {
-        throw new NotFoundError(`Feature ${featureId} not found`);
+        throw new NotFoundError('Feature', featureId);
       }
 
       return resource;
     } catch (error: unknown) {
       if (error instanceof NotFoundError) throw error;
       if ((error as { code?: number }).code === 404) {
-        throw new NotFoundError(`Feature ${featureId} not found`);
+        throw new NotFoundError('Feature', featureId);
       }
       throw error;
     }
@@ -643,7 +644,7 @@ export class FeatureService {
       return resource as Feature;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Feature ${featureId} not found`);
+        throw new NotFoundError('Feature', featureId);
       }
       throw error;
     }

@@ -1,7 +1,7 @@
 import './instrumentation';
 
 import { randomUUID } from 'crypto';
-import Fastify, { FastifyInstance } from 'fastify';
+import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { initializeDatabase, connectDatabase, disconnectDatabase, setupJWT, healthCheck as dbHealthCheck } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
@@ -129,7 +129,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await registerRoutes(fastify, config);
 
   const metricsConf = config.metrics ?? { path: '/metrics', require_auth: false, bearer_token: '' };
-  fastify.get(metricsConf.path, async (request, reply) => {
+  const metricsPath = metricsConf.path ?? '/metrics';
+  fastify.get(metricsPath, async (request: FastifyRequest, reply: FastifyReply) => {
     if (metricsConf.require_auth) {
       const raw = (request.headers.authorization as string) || '';
       const token = raw.startsWith('Bearer ') ? raw.slice(7) : raw;

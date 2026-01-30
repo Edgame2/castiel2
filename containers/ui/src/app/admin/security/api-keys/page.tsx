@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
@@ -54,6 +54,31 @@ export default function SecurityApiKeysPage() {
   const [rotateKeyId, setRotateKeyId] = useState<string | null>(null);
   const [rotatedKey, setRotatedKey] = useState<RotatedKey | null>(null);
   const [rotateError, setRotateError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'' | 'name' | 'scope' | 'createdAt' | 'expiresAt' | 'lastUsedAt'>('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const sorted = (() => {
+    if (!sortBy || items.length === 0) return items;
+    const mult = sortDir === 'asc' ? 1 : -1;
+    return [...items].sort((a, b) => {
+      let base: number;
+      if (sortBy === 'name' || sortBy === 'scope') {
+        base = (a[sortBy] ?? '').toString().toLowerCase().localeCompare((b[sortBy] ?? '').toString().toLowerCase());
+      } else {
+        const ta = (a[sortBy] as string | undefined) ? new Date((a[sortBy] as string)).getTime() : 0;
+        const tb = (b[sortBy] as string | undefined) ? new Date((b[sortBy] as string)).getTime() : 0;
+        base = ta - tb;
+      }
+      return mult * base;
+    });
+  })();
+
+  useEffect(() => {
+    document.title = 'API Keys | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
 
   const fetchKeys = useCallback(async () => {
     if (!apiBaseUrl || !orgId.trim()) return;
@@ -372,24 +397,55 @@ export default function SecurityApiKeysPage() {
 
           {!loading && orgId.trim() && !error && (
             <div className="rounded-lg border bg-white dark:bg-gray-900 p-6">
-              <h2 className="text-lg font-semibold mb-3">API keys</h2>
               {items.length === 0 ? (
-                <p className="text-sm text-gray-500">No API keys for this organization. Use &quot;Create API key&quot; to add one.</p>
+                <>
+                  <h2 className="text-lg font-semibold mb-3">API keys</h2>
+                  <p className="text-sm text-gray-500">No API keys for this organization. Use &quot;Create API key&quot; to add one.</p>
+                </>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-gray-50 dark:bg-gray-800">
-                        <th className="text-left py-2 px-4">Name</th>
-                        <th className="text-left py-2 px-4">Scope</th>
-                        <th className="text-left py-2 px-4">Expires</th>
-                        <th className="text-left py-2 px-4">Created</th>
-                        <th className="text-left py-2 px-4">Last used</th>
-                        <th className="text-left py-2 px-4">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((row, idx) => (
+                <>
+                  <div className="flex flex-wrap items-center gap-4 mb-3">
+                    <h2 className="text-lg font-semibold">API keys ({items.length})</h2>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by (§10.3)</label>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                        className="px-3 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                        aria-label="Sort by"
+                      >
+                        <option value="">Default</option>
+                        <option value="name">Name</option>
+                        <option value="scope">Scope</option>
+                        <option value="createdAt">Created</option>
+                        <option value="expiresAt">Expires</option>
+                        <option value="lastUsedAt">Last used</option>
+                      </select>
+                      <select
+                        value={sortDir}
+                        onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
+                        className="px-3 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                        aria-label="Sort direction"
+                      >
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-gray-50 dark:bg-gray-800">
+                          <th className="text-left py-2 px-4">Name</th>
+                          <th className="text-left py-2 px-4">Scope</th>
+                          <th className="text-left py-2 px-4">Expires</th>
+                          <th className="text-left py-2 px-4">Created</th>
+                          <th className="text-left py-2 px-4">Last used</th>
+                          <th className="text-left py-2 px-4">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sorted.map((row, idx) => (
                         <tr key={row.id ?? idx} className="border-b">
                           <td className="py-2 px-4">{row.name ?? '—'}</td>
                           <td className="py-2 px-4">{row.scope ?? '—'}</td>
@@ -415,10 +471,11 @@ export default function SecurityApiKeysPage() {
                             </button>
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </div>
           )}

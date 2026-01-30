@@ -9,12 +9,18 @@ import { log } from '../utils/logger';
 import {
   FeedbackType,
   GlobalFeedbackConfig,
+  FeedbackCollectionSettings,
   TenantFeedbackConfig,
   RecommendationFeedbackRecord,
   FeedbackAggregation,
   FeedbackAggregationPeriod,
   CreateFeedbackTypeInput,
   UpdateFeedbackTypeInput,
+  BulkFeedbackTypesInput,
+  BulkFeedbackTypesResult,
+  ImportFeedbackTypesInput,
+  ImportFeedbackTypesResult,
+  FeedbackSentiment,
 } from '../types/feedback.types';
 import { FEEDBACK_TYPES_SEED, toFeedbackTypeDoc, GLOBAL_FEEDBACK_CONFIG_SEED } from '../constants/feedback-types-seed';
 
@@ -65,6 +71,41 @@ export class FeedbackService {
       return this.getFeedbackTypes();
     }
     return resources as FeedbackType[];
+  }
+
+  /**
+   * Get usage stats (count and lastUsed) per feedback type from recommendation_feedback.
+   * Cross-partition query; capped at maxRows for performance. Super Admin §1.1.1.
+   */
+  async getFeedbackTypeUsageStats(
+    typeIds: string[],
+    maxRows: number = 50_000
+  ): Promise<Map<string, { usageCount: number; lastUsed: string }>> {
+    const stats = new Map<string, { usageCount: number; lastUsed: string }>();
+    if (typeIds.length === 0) return stats;
+    const container = getContainer(this.feedbackContainerName);
+    const querySpec = 'SELECT c.feedbackTypeId, c.createdAt FROM c WHERE c.feedbackTypeId != null';
+    const feedOptions = {
+      enableCrossPartitionQuery: true,
+      maxItemCount: 1000,
+    } as Parameters<typeof container.items.query>[1];
+    let totalProcessed = 0;
+    const iterator = container.items
+      .query<{ feedbackTypeId: string; createdAt?: string }>(querySpec, feedOptions)
+      .getAsyncIterator();
+    for await (const { resources: page } of iterator) {
+      for (const r of page) {
+        const id = r.feedbackTypeId;
+        if (!id || !typeIds.includes(id)) continue;
+        const cur = stats.get(id) ?? { usageCount: 0, lastUsed: '' };
+        cur.usageCount += 1;
+        if (r.createdAt && (!cur.lastUsed || r.createdAt > cur.lastUsed)) cur.lastUsed = r.createdAt;
+        stats.set(id, cur);
+      }
+      totalProcessed += page.length;
+      if (totalProcessed >= maxRows) break;
+    }
+    return stats;
   }
 
   /**
@@ -171,12 +212,186 @@ export class FeedbackService {
     return doc as FeedbackType;
   }
 
+  /** Default sentiment score when not provided in bulk setSentiment. */
+  private static defaultSentimentScore(sentiment: FeedbackSentiment): number {
+    switch (sentiment) {
+      case 'positive': return 1;
+      case 'negative': return -1;
+      default: return 0;
+    }
+  }
+
   /**
-   * Delete a feedback type (Super Admin). Removes id from global config defaultActiveTypes and availableTypes if present.
+   * Bulk update feedback types. Super Admin §1.1.5.
+   */
+  async bulkUpdateFeedbackTypes(
+    input: BulkFeedbackTypesInput,
+    updatedBy: string
+  ): Promise<BulkFeedbackTypesResult> {
+    const failed: { id: string; error: string }[] = [];
+    let updated = 0;
+    let updates: UpdateFeedbackTypeInput;
+    switch (input.operation) {
+      case 'activate':
+        updates = { isActive: true };
+        break;
+      case 'deactivate':
+        updates = { isActive: false };
+        break;
+      case 'setCategory':
+        if (input.category == null) {
+          const err = new Error('category is required for setCategory');
+          (err as Error & { statusCode?: number }).statusCode = 400;
+          throw err;
+        }
+        updates = { category: input.category };
+        break;
+      case 'setSentiment':
+        if (input.sentiment == null) {
+          const err = new Error('sentiment is required for setSentiment');
+          (err as Error & { statusCode?: number }).statusCode = 400;
+          throw err;
+        }
+        updates = {
+          sentiment: input.sentiment,
+          sentimentScore: input.sentimentScore ?? FeedbackService.defaultSentimentScore(input.sentiment),
+        };
+        break;
+      default:
+        const bad = new Error(`Unknown operation: ${(input as { operation: string }).operation}`);
+        (bad as Error & { statusCode?: number }).statusCode = 400;
+        throw bad;
+    }
+    for (const id of input.ids) {
+      if (!id || !id.startsWith('feedback_type_')) continue;
+      try {
+        const result = await this.updateFeedbackType(id, updates, updatedBy);
+        if (result) updated += 1;
+      } catch (e) {
+        failed.push({ id, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return { updated, failed };
+  }
+
+  /**
+   * Import feedback types from JSON (create or update by name). Super Admin §1.1.5.
+   */
+  async importFeedbackTypes(
+    input: ImportFeedbackTypesInput,
+    createdBy: string
+  ): Promise<ImportFeedbackTypesResult> {
+    const failed: { index: number; error: string }[] = [];
+    let created = 0;
+    let updated = 0;
+    for (let i = 0; i < input.items.length; i++) {
+      const item = input.items[i];
+      const id = item.id ?? `feedback_type_${item.name}`;
+      try {
+        const existing = await this.getFeedbackTypeById(id);
+        if (existing) {
+          await this.updateFeedbackType(id, {
+            displayName: item.displayName,
+            category: item.category,
+            sentiment: item.sentiment,
+            sentimentScore: item.sentimentScore,
+            icon: item.icon,
+            color: item.color,
+            order: item.order,
+            behavior: item.behavior,
+            applicableToRecTypes: item.applicableToRecTypes ?? [],
+            isActive: item.isActive,
+            isDefault: item.isDefault,
+            translations: item.translations,
+          }, createdBy);
+          updated += 1;
+        } else {
+          await this.createFeedbackType(
+            {
+              name: item.name,
+              displayName: item.displayName,
+              category: item.category,
+              sentiment: item.sentiment,
+              sentimentScore: item.sentimentScore,
+              icon: item.icon,
+              color: item.color,
+              order: item.order,
+              behavior: item.behavior,
+              applicableToRecTypes: item.applicableToRecTypes ?? [],
+              isActive: item.isActive,
+              isDefault: item.isDefault,
+              translations: item.translations,
+            },
+            createdBy
+          );
+          created += 1;
+        }
+      } catch (e) {
+        failed.push({ index: i, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return { created, updated, failed };
+  }
+
+  /**
+   * Check if a feedback type is in use: has feedback records or is in any tenant's activeTypes. Super Admin §1.1.4.
+   */
+  async isFeedbackTypeInUse(id: string): Promise<{ usageCount: number; usedByTenants: boolean }> {
+    const statsMap = await this.getFeedbackTypeUsageStats([id], 10_000);
+    const stats = statsMap.get(id);
+    const usageCount = stats?.usageCount ?? 0;
+    const configContainer = getContainer(this.configContainerName);
+    const { resources } = await configContainer.items
+      .query<{ tenantId: string }>(
+        {
+          query:
+            'SELECT * FROM c WHERE c.tenantId != @global AND EXISTS(SELECT VALUE 1 FROM t IN c.activeTypes WHERE t.feedbackTypeId = @id)',
+          parameters: [
+            { name: '@global', value: GLOBAL_TENANT_ID },
+            { name: '@id', value: id },
+          ],
+        },
+        { enableCrossPartitionQuery: true } as Parameters<typeof configContainer.items.query>[1]
+      )
+      .fetchNext();
+    const usedByTenants = (resources?.length ?? 0) > 0;
+    return { usageCount, usedByTenants };
+  }
+
+  /**
+   * Delete a feedback type (Super Admin). Pre-deletion checks per §1.1.4; removes from global config if present.
    */
   async deleteFeedbackType(id: string): Promise<boolean> {
     const existing = await this.getFeedbackTypeById(id);
     if (!existing) return false;
+
+    if (existing.isDefault) {
+      const err = new Error('Cannot delete default feedback type');
+      (err as Error & { statusCode?: number }).statusCode = 400;
+      throw err;
+    }
+
+    const { usageCount, usedByTenants } = await this.isFeedbackTypeInUse(id);
+    if (usageCount > 0 || usedByTenants) {
+      const err = new Error('Cannot delete: feedback type is in use by tenants or has feedback records');
+      (err as Error & { statusCode?: number }).statusCode = 400;
+      throw err;
+    }
+
+    if (existing.isActive) {
+      const err = new Error('Deactivate the feedback type before deleting');
+      (err as Error & { statusCode?: number }).statusCode = 400;
+      throw err;
+    }
+
+    const inactiveMs = Date.now() - new Date(existing.updatedAt).getTime();
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    if (inactiveMs < thirtyDaysMs) {
+      const err = new Error('Feedback type must be inactive for at least 30 days before deletion');
+      (err as Error & { statusCode?: number }).statusCode = 400;
+      throw err;
+    }
+
     const container = getContainer(this.configContainerName);
     await container.item(id, GLOBAL_TENANT_ID).delete();
     const globalConfig = await this.getGlobalFeedbackConfig();
@@ -206,26 +421,82 @@ export class FeedbackService {
   }
 
   /**
-   * Update global feedback config (Super Admin).
+   * Update global feedback config (Super Admin). Validates default limits per §1.2.1.
    */
   async updateGlobalFeedbackConfig(updates: Partial<GlobalFeedbackConfig>, updatedBy: string): Promise<GlobalFeedbackConfig> {
     const container = getContainer(this.configContainerName);
     const existing = await this.getGlobalFeedbackConfig();
+    const minLimit = updates.minLimit ?? existing?.minLimit ?? 3;
+    const maxLimit = updates.maxLimit ?? existing?.maxLimit ?? 10;
+    const defaultLimit = updates.defaultLimit ?? existing?.defaultLimit ?? 5;
+    if (minLimit > maxLimit) {
+      const err = new Error('minLimit must be less than or equal to maxLimit');
+      (err as Error & { statusCode?: number }).statusCode = 400;
+      throw err;
+    }
+    if (defaultLimit < minLimit || defaultLimit > maxLimit) {
+      const err = new Error('defaultLimit must be between minLimit and maxLimit (inclusive)');
+      (err as Error & { statusCode?: number }).statusCode = 400;
+      throw err;
+    }
     const now = new Date().toISOString();
+    const prevPattern = existing?.patternDetection;
+    const nextPattern = updates.patternDetection;
+    const thresholds = {
+      ignoreRate: nextPattern?.thresholds?.ignoreRate ?? prevPattern?.thresholds?.ignoreRate ?? 0.6,
+      actionRate: nextPattern?.thresholds?.actionRate ?? prevPattern?.thresholds?.actionRate ?? 0.4,
+      sentimentThreshold: nextPattern?.thresholds?.sentimentThreshold ?? prevPattern?.thresholds?.sentimentThreshold ?? 0.3,
+    };
+    const patternDetection = {
+      enabled: nextPattern?.enabled ?? prevPattern?.enabled ?? true,
+      minSampleSize: nextPattern?.minSampleSize ?? prevPattern?.minSampleSize ?? 50,
+      thresholds,
+      autoSuppressEnabled: nextPattern?.autoSuppressEnabled ?? prevPattern?.autoSuppressEnabled ?? false,
+      autoBoostEnabled: nextPattern?.autoBoostEnabled ?? prevPattern?.autoBoostEnabled ?? false,
+      notifyOnPattern: nextPattern?.notifyOnPattern ?? prevPattern?.notifyOnPattern ?? false,
+      patternReportFrequency: nextPattern?.patternReportFrequency ?? prevPattern?.patternReportFrequency ?? 'weekly',
+    };
+    const defaultFeedbackCollection: FeedbackCollectionSettings = {
+      requireFeedback: false,
+      requireFeedbackAfterDays: 7,
+      allowComments: true,
+      maxCommentLength: 500,
+      moderateComments: false,
+      allowMultipleSelection: false,
+      maxSelectionsPerFeedback: 1,
+      allowFeedbackEdit: false,
+      editWindowDays: 1,
+      trackFeedbackHistory: false,
+      allowAnonymousFeedback: false,
+      anonymousForNegative: false,
+    };
+    const prevFc = existing?.feedbackCollection;
+    const nextFc = updates.feedbackCollection;
+    const feedbackCollection: FeedbackCollectionSettings = {
+      requireFeedback: nextFc?.requireFeedback ?? prevFc?.requireFeedback ?? defaultFeedbackCollection.requireFeedback,
+      requireFeedbackAfterDays: nextFc?.requireFeedbackAfterDays ?? prevFc?.requireFeedbackAfterDays ?? defaultFeedbackCollection.requireFeedbackAfterDays,
+      allowComments: nextFc?.allowComments ?? prevFc?.allowComments ?? defaultFeedbackCollection.allowComments,
+      maxCommentLength: nextFc?.maxCommentLength ?? prevFc?.maxCommentLength ?? defaultFeedbackCollection.maxCommentLength,
+      moderateComments: nextFc?.moderateComments ?? prevFc?.moderateComments ?? defaultFeedbackCollection.moderateComments,
+      allowMultipleSelection: nextFc?.allowMultipleSelection ?? prevFc?.allowMultipleSelection ?? defaultFeedbackCollection.allowMultipleSelection,
+      maxSelectionsPerFeedback: nextFc?.maxSelectionsPerFeedback ?? prevFc?.maxSelectionsPerFeedback ?? defaultFeedbackCollection.maxSelectionsPerFeedback,
+      allowFeedbackEdit: nextFc?.allowFeedbackEdit ?? prevFc?.allowFeedbackEdit ?? defaultFeedbackCollection.allowFeedbackEdit,
+      editWindowDays: nextFc?.editWindowDays ?? prevFc?.editWindowDays ?? defaultFeedbackCollection.editWindowDays,
+      trackFeedbackHistory: nextFc?.trackFeedbackHistory ?? prevFc?.trackFeedbackHistory ?? defaultFeedbackCollection.trackFeedbackHistory,
+      allowAnonymousFeedback: nextFc?.allowAnonymousFeedback ?? prevFc?.allowAnonymousFeedback ?? defaultFeedbackCollection.allowAnonymousFeedback,
+      anonymousForNegative: nextFc?.anonymousForNegative ?? prevFc?.anonymousForNegative ?? defaultFeedbackCollection.anonymousForNegative,
+    };
     const doc = {
       id: 'global_feedback_config',
       tenantId: GLOBAL_TENANT_ID,
       partitionKey: GLOBAL_TENANT_ID,
-      defaultLimit: updates.defaultLimit ?? existing?.defaultLimit ?? 5,
-      minLimit: updates.minLimit ?? existing?.minLimit ?? 3,
-      maxLimit: updates.maxLimit ?? existing?.maxLimit ?? 10,
+      defaultLimit,
+      minLimit,
+      maxLimit,
       availableTypes: updates.availableTypes ?? existing?.availableTypes ?? [],
       defaultActiveTypes: updates.defaultActiveTypes ?? existing?.defaultActiveTypes ?? [],
-      patternDetection: updates.patternDetection ?? existing?.patternDetection ?? {
-        enabled: true,
-        minSampleSize: 50,
-        thresholds: { ignoreRate: 0.6, actionRate: 0.4 },
-      },
+      patternDetection,
+      feedbackCollection,
       updatedAt: now,
       updatedBy,
     };

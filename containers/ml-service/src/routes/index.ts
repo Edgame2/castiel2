@@ -25,14 +25,11 @@ import {
   UpdateMLModelInput,
   CreateTrainingJobInput,
   CreatePredictionInput,
-  ModelType,
-  ModelStatus,
-  TrainingJobStatus,
+  type Feature,
 } from '../types/ml.types';
 import {
   CreateMultiModalJobInput,
   UpdateMultiModalJobInput,
-  ModalType,
   ProcessingStatus,
 } from '../types/multimodal.types';
 import { trace } from '@opentelemetry/api';
@@ -382,8 +379,8 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       };
       const containerName = config.cosmos_db?.containers?.alert_rules ?? 'ml_alert_rules';
       const container = getContainer(containerName);
-      const { resource } = await container.items.create(doc, { partitionKey: tenantId });
-      const created = resource as Record<string, unknown>;
+      const { resource } = await container.items.create(doc, { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]);
+      const created = resource as unknown as Record<string, unknown>;
       return reply.code(201).send({
         id: created.id,
         name: created.name,
@@ -447,10 +444,10 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const merged = {
         ...existing,
         ...body,
-        id: existing.id,
-        tenantId: existing.tenantId,
+        id: existing.id as string,
+        tenantId: existing.tenantId as string,
       };
-      const { resource } = await container.item(id, tenantId).replace(merged);
+      const { resource } = await container.item(id, tenantId).replace(merged as Record<string, unknown>);
       const updated = resource as Record<string, unknown>;
       return reply.send({
         id: updated.id,
@@ -1148,6 +1145,61 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     }
   );
 
+  /** Super Admin §5.2.2: Feature version policy (read-only from config). GET /api/v1/ml/features/version-policy */
+  app.get<Record<string, never>>(
+    '/api/v1/ml/features/version-policy',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Feature version policy (versioning strategy, backward compatibility, deprecation). Super Admin §5.2.2. Read from config.',
+        tags: ['Features'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              versioningStrategy: { type: 'string', enum: ['semantic', 'timestamp', 'hash'] },
+              backwardCompatibility: {
+                type: 'object',
+                properties: {
+                  enforceCompatibility: { type: 'boolean' },
+                  allowBreakingChanges: { type: 'boolean' },
+                  requireMigrationGuide: { type: 'boolean' },
+                },
+              },
+              deprecationPolicy: {
+                type: 'object',
+                properties: {
+                  deprecationNoticeDays: { type: 'number' },
+                  supportOldVersionsDays: { type: 'number' },
+                  autoMigrate: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    async (_request, reply) => {
+      const policy = config.feature_version_policy ?? {};
+      const versioningStrategy = policy.versioningStrategy ?? 'semantic';
+      const backwardCompatibility = {
+        enforceCompatibility: policy.backwardCompatibility?.enforceCompatibility ?? true,
+        allowBreakingChanges: policy.backwardCompatibility?.allowBreakingChanges ?? false,
+        requireMigrationGuide: policy.backwardCompatibility?.requireMigrationGuide ?? true,
+      };
+      const deprecationPolicy = {
+        deprecationNoticeDays: policy.deprecationPolicy?.deprecationNoticeDays ?? 30,
+        supportOldVersionsDays: policy.deprecationPolicy?.supportOldVersionsDays ?? 90,
+        autoMigrate: policy.deprecationPolicy?.autoMigrate ?? false,
+      };
+      return reply.send({
+        versioningStrategy,
+        backwardCompatibility,
+        deprecationPolicy,
+      });
+    }
+  );
+
   /** Layer 2: Pin version. POST /api/v1/ml/features/versions/pin */
   app.post<{ Body: { purpose: string; version: string } }>(
     '/api/v1/ml/features/versions/pin',
@@ -1186,13 +1238,45 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     }
   );
 
+  /** Super Admin §5.3.2: Feature quality rules (read-only from config). GET /api/v1/ml/features/quality-rules */
+  app.get<Record<string, never>>(
+    '/api/v1/ml/features/quality-rules',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Default feature quality rules (missing rate, drift, outlier method). Super Admin §5.3.2. Read from config.',
+        tags: ['Features'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              missingRateThreshold: { type: 'number' },
+              driftThreshold: { type: 'number' },
+              outlierMethod: { type: 'string', enum: ['iqr', 'zscore', 'isolation_forest'] },
+              outlierNStd: { type: 'number' },
+            },
+          },
+        },
+      },
+    },
+    async (_request, reply) => {
+      const rules = config.feature_quality_rules ?? {};
+      return reply.send({
+        missingRateThreshold: rules.missingRateThreshold ?? 0.1,
+        driftThreshold: rules.driftThreshold ?? 0.2,
+        outlierMethod: rules.outlierMethod ?? 'zscore',
+        outlierNStd: rules.outlierNStd ?? 3,
+      });
+    }
+  );
+
   /** Layer 2: Quality check. GET /api/v1/ml/features/quality */
   app.get<{ Querystring: { purpose: string; version?: string } }>(
     '/api/v1/ml/features/quality',
     {
       preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
       schema: {
-        description: 'Layer 2: Check feature quality (missing rate, drift).',
+        description: 'Layer 2: Check feature quality (missing rate, drift). Uses config feature_quality_rules for thresholds.',
         tags: ['Features'],
         querystring: { type: 'object', required: ['purpose'], properties: { purpose: { type: 'string' }, version: { type: 'string' } } },
         response: { 200: { type: 'object', properties: { alerts: { type: 'array' } } } },
@@ -1200,7 +1284,12 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
-      const alerts = await featureQualityMonitor.checkQuality(tenantId, request.query.purpose as FeaturePurpose, request.query.version ?? 'v1', {});
+      const rules = config.feature_quality_rules ?? {};
+      const options = {
+        missingRateThreshold: rules.missingRateThreshold ?? 0.1,
+        driftThreshold: rules.driftThreshold ?? 0.2,
+      };
+      const alerts = await featureQualityMonitor.checkQuality(tenantId, request.query.purpose as FeaturePurpose, request.query.version ?? 'v1', options);
       return reply.send({ alerts });
     }
   );
@@ -1345,7 +1434,8 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
-      const feature = await featureService.update(request.params.id, tenantId, request.body);
+      const body = request.body as Partial<{ name: string; description?: string; type: Feature['type']; source?: string; transformation?: string; statistics?: Feature['statistics'] }>;
+      const feature = await featureService.update(request.params.id, tenantId, body);
       reply.send(feature);
     }
   );

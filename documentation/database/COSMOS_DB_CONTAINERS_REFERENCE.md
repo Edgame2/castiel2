@@ -125,9 +125,15 @@ This document lists all Cosmos DB containers required by the 16 new containers. 
 |---------------|---------------|---------|
 | `signal_communications` | `/tenantId` | Signal analysis results |
 
+### 17. ML Service (Super Admin §4.4.2)
+
+| Container Name | Partition Key | Purpose |
+|---------------|---------------|---------|
+| `ml_alert_rules` | `/tenantId` | ML monitoring alert rules (accuracy, latency, error rate, drift; configurable via Admin Monitoring) |
+
 ## Summary
 
-**Total Containers:** 36  
+**Total Containers:** 37  
 **Partition Key:** `/tenantId` (all containers)  
 **Database:** Shared database (default: `castiel`)
 

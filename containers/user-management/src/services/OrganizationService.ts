@@ -5,8 +5,11 @@
  * Per ModuleImplementationGuide Section 6
  */
 
-import { getDatabaseClient } from '@coder/shared';
+import { getDatabaseClient, getContainer } from '@coder/shared';
+import { loadConfig } from '../config';
 import { slugify, isValidSlug } from '../utils/stringUtils';
+
+const ORGANIZATIONS_CONTAINER_KEY = 'user_organizations';
 
 /** Prisma-like DB client shape used by this service (shared returns Cosmos Database) */
 type OrganizationDb = {
@@ -366,6 +369,89 @@ export async function listUserOrganizations(
   }
   
   return organizations;
+}
+
+/**
+ * Check if the user has Super Admin role in any organization.
+ * Used for admin-only operations (e.g. list all organizations).
+ */
+async function userHasSuperAdminInAnyOrg(userId: string): Promise<boolean> {
+  const db = getDb();
+  const memberships = (await db.organizationMembership.findMany({
+    where: { userId, status: 'active' },
+    include: { role: { select: { isSuperAdmin: true } } },
+  })) as Array<{ role?: { isSuperAdmin?: boolean } }>;
+  return memberships.some((m) => m.role?.isSuperAdmin === true);
+}
+
+/**
+ * List all organizations (Super Admin only).
+ * Caller must have Super Admin role in at least one organization.
+ *
+ * @param userId - User ID of the requester (must be Super Admin)
+ * @returns Promise resolving to array of organization summaries
+ */
+export async function listAllOrganizationsForSuperAdmin(
+  userId: string
+): Promise<Array<{ id: string; name: string; slug: string; description?: string | null; createdAt?: string | null; isActive?: boolean }>> {
+  const hasSuperAdmin = await userHasSuperAdminInAnyOrg(userId);
+  if (!hasSuperAdmin) {
+    throw new Error('Permission denied. Super Admin role required to list all organizations.');
+  }
+  const config = loadConfig();
+  const containerName = config.cosmos_db?.containers?.organizations ?? ORGANIZATIONS_CONTAINER_KEY;
+  const container = getContainer(containerName);
+  const { resources } = await container.items
+    .query(
+      {
+        query: 'SELECT c.id, c.name, c.slug, c.description, c.createdAt, c.isActive FROM c',
+        parameters: [],
+      },
+      { enableCrossPartitionQuery: true }
+    )
+    .fetchAll();
+  return (resources as Array<{ id: string; name: string; slug: string; description?: string | null; createdAt?: string; isActive?: boolean }>).map((r) => ({
+    id: r.id,
+    name: r.name,
+    slug: r.slug,
+    description: r.description ?? null,
+    createdAt: r.createdAt ?? null,
+    isActive: r.isActive,
+  }));
+}
+
+/**
+ * Get a single organization by id (Super Admin only).
+ * Caller must have Super Admin role in at least one organization.
+ *
+ * @param orgId - Organization ID
+ * @param userId - User ID of the requester (must be Super Admin)
+ * @returns Promise resolving to organization or null if not found
+ */
+export async function getOrganizationForSuperAdmin(
+  orgId: string,
+  userId: string
+): Promise<{ id: string; name: string; slug: string; description?: string | null; createdAt?: string | null; isActive?: boolean; ownerUserId?: string; memberLimit?: number } | null> {
+  const hasSuperAdmin = await userHasSuperAdminInAnyOrg(userId);
+  if (!hasSuperAdmin) {
+    throw new Error('Permission denied. Super Admin role required.');
+  }
+  const db = getDb();
+  const organization = (await db.organization.findUnique({
+    where: { id: orgId },
+    select: { id: true, name: true, slug: true, description: true, createdAt: true, isActive: true, ownerUserId: true, memberLimit: true },
+  })) as { id: string; name: string; slug: string; description?: string | null; createdAt?: Date | null; isActive?: boolean; ownerUserId?: string; memberLimit?: number } | null;
+  if (!organization) return null;
+  return {
+    id: organization.id,
+    name: organization.name,
+    slug: organization.slug,
+    description: organization.description ?? null,
+    createdAt: organization.createdAt instanceof Date ? organization.createdAt.toISOString() : (organization.createdAt ?? null),
+    isActive: organization.isActive,
+    ownerUserId: organization.ownerUserId,
+    memberLimit: organization.memberLimit,
+  };
 }
 
 /**

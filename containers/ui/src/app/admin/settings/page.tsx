@@ -329,11 +329,24 @@ export default function SystemSettingsPage() {
         <Link href="/admin" className="text-sm font-medium hover:underline">
           Admin
         </Link>
+        <span className="text-sm text-gray-500">/</span>
+        <span className="text-sm font-medium">Settings</span>
       </div>
       <h1 className="text-2xl font-bold mb-2">System Settings</h1>
-      <p className="text-muted-foreground mb-6">
+      <p className="text-muted-foreground mb-4">
         Manage system-wide settings (Super Admin only)
       </p>
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={fetchSettings}
+          disabled={loading}
+          className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
+          title="Refetch system settings"
+        >
+          Refresh
+        </button>
+      </div>
 
       {loading && (
         <div className="rounded-lg border p-6 bg-white dark:bg-gray-900">

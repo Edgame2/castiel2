@@ -21,8 +21,10 @@ import {
   ImportFeedbackTypesInput,
   ImportFeedbackTypesResult,
   FeedbackSentiment,
+  PatternDetectionTestResult,
 } from '../types/feedback.types';
 import { FEEDBACK_TYPES_SEED, toFeedbackTypeDoc, GLOBAL_FEEDBACK_CONFIG_SEED } from '../constants/feedback-types-seed';
+import { publishRecommendationEvent } from '../events/publishers/RecommendationEventPublisher';
 
 const GLOBAL_TENANT_ID = '_global';
 
@@ -334,6 +336,55 @@ export class FeedbackService {
   }
 
   /**
+   * Update a feedback type's behavior and return affected tenant IDs. Super Admin §1.1.3 "Bulk update behavior for all tenants".
+   * Behavior is stored on the type; all tenants using this type see the new behavior on next load.
+   */
+  async updateFeedbackTypeBehaviorAndGetAffectedTenants(
+    id: string,
+    behavior: Partial<FeedbackType['behavior']>,
+    updatedBy: string
+  ): Promise<{ type: FeedbackType; affectedTenantIds: string[] }> {
+    const existing = await this.getFeedbackTypeById(id);
+    if (!existing) {
+      const err = new Error('Feedback type not found');
+      (err as Error & { statusCode?: number }).statusCode = 404;
+      throw err;
+    }
+    const mergedBehavior = { ...existing.behavior, ...behavior };
+    const updated = await this.updateFeedbackType(id, { behavior: mergedBehavior }, updatedBy);
+    if (!updated) {
+      const err = new Error('Failed to update feedback type');
+      (err as Error & { statusCode?: number }).statusCode = 500;
+      throw err;
+    }
+    const affectedTenantIds = await this.getTenantIdsUsingFeedbackType(id);
+    return { type: updated, affectedTenantIds };
+  }
+
+  /**
+   * Get tenant IDs that have this feedback type in their activeTypes. Super Admin §1.1.3 "View tenants using this type".
+   */
+  async getTenantIdsUsingFeedbackType(feedbackTypeId: string): Promise<string[]> {
+    const existing = await this.getFeedbackTypeById(feedbackTypeId);
+    if (!existing) return [];
+    const configContainer = getContainer(this.configContainerName);
+    const { resources } = await configContainer.items
+      .query<{ tenantId: string }>(
+        {
+          query:
+            'SELECT c.tenantId FROM c WHERE c.tenantId != @global AND EXISTS(SELECT VALUE 1 FROM t IN c.activeTypes WHERE t.feedbackTypeId = @id)',
+          parameters: [
+            { name: '@global', value: GLOBAL_TENANT_ID },
+            { name: '@id', value: feedbackTypeId },
+          ],
+        },
+        { enableCrossPartitionQuery: true } as Parameters<typeof configContainer.items.query>[1]
+      )
+      .fetchNext();
+    return (resources ?? []).map((r) => r.tenantId).filter(Boolean);
+  }
+
+  /**
    * Check if a feedback type is in use: has feedback records or is in any tenant's activeTypes. Super Admin §1.1.4.
    */
   async isFeedbackTypeInUse(id: string): Promise<{ usageCount: number; usedByTenants: boolean }> {
@@ -486,6 +537,7 @@ export class FeedbackService {
       allowAnonymousFeedback: nextFc?.allowAnonymousFeedback ?? prevFc?.allowAnonymousFeedback ?? defaultFeedbackCollection.allowAnonymousFeedback,
       anonymousForNegative: nextFc?.anonymousForNegative ?? prevFc?.anonymousForNegative ?? defaultFeedbackCollection.anonymousForNegative,
     };
+    const allowTenantOverride = updates.allowTenantOverride ?? existing?.allowTenantOverride ?? true;
     const doc = {
       id: 'global_feedback_config',
       tenantId: GLOBAL_TENANT_ID,
@@ -493,6 +545,7 @@ export class FeedbackService {
       defaultLimit,
       minLimit,
       maxLimit,
+      allowTenantOverride,
       availableTypes: updates.availableTypes ?? existing?.availableTypes ?? [],
       defaultActiveTypes: updates.defaultActiveTypes ?? existing?.defaultActiveTypes ?? [],
       patternDetection,
@@ -502,6 +555,57 @@ export class FeedbackService {
     };
     await container.items.upsert(doc);
     return doc as GlobalFeedbackConfig;
+  }
+
+  /**
+   * §1.2.1 Apply current global feedback config to all existing tenant configs.
+   * Discovers tenant IDs from config container (docs with id like tenant_feedback_config_*).
+   * Returns applied tenant IDs and any failures.
+   */
+  async applyGlobalConfigToAllTenants(updatedBy: string): Promise<{ applied: string[]; failed: { tenantId: string; error: string }[] }> {
+    const globalConfig = await this.getGlobalFeedbackConfig();
+    if (!globalConfig) {
+      return { applied: [], failed: [{ tenantId: '_global', error: 'Global feedback config not found' }] };
+    }
+    const container = getContainer(this.configContainerName);
+    const { resources } = await container.items
+      .query<{ partitionKey: string }>({
+        query: "SELECT DISTINCT c.partitionKey FROM c WHERE STARTSWITH(c.id, 'tenant_feedback_config_')",
+        parameters: [],
+      })
+      .fetchAll();
+    const tenantIds = resources.map((r) => r.partitionKey).filter((id) => id && id !== GLOBAL_TENANT_ID);
+    const applied: string[] = [];
+    const failed: { tenantId: string; error: string }[] = [];
+    const defaultActiveTypes = globalConfig.defaultActiveTypes ?? [];
+    const fc = globalConfig.feedbackCollection;
+    const pd = globalConfig.patternDetection;
+    for (const tenantId of tenantIds) {
+      try {
+        await this.updateTenantFeedbackConfig(
+          tenantId,
+          {
+            activeLimit: globalConfig.defaultLimit ?? 5,
+            activeTypes: defaultActiveTypes.map((feedbackTypeId, i) => ({ feedbackTypeId, order: i })),
+            requireFeedback: fc?.requireFeedback ?? false,
+            allowComments: fc?.allowComments ?? true,
+            commentRequired: false,
+            allowMultipleSelection: fc?.allowMultipleSelection ?? false,
+            patternDetection: {
+              enabled: pd?.enabled ?? true,
+              autoSuppressEnabled: pd?.autoSuppressEnabled ?? false,
+              autoBoostEnabled: pd?.autoBoostEnabled ?? false,
+            },
+          },
+          updatedBy
+        );
+        applied.push(tenantId);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        failed.push({ tenantId, error: msg });
+      }
+    }
+    return { applied, failed };
   }
 
   /**
@@ -587,6 +691,28 @@ export class FeedbackService {
     };
     await container.items.create(doc, { partitionKey: record.tenantId } as Parameters<typeof container.items.create>[1]);
     return doc;
+  }
+
+  /**
+   * Get tenant-level feedback usage statistics. Super Admin §1.3.2.
+   */
+  async getTenantFeedbackStats(tenantId: string): Promise<{ totalFeedbackCount: number; lastFeedbackAt: string | null }> {
+    const container = getContainer(this.feedbackContainerName);
+    const countResult = await container.items
+      .query<unknown>(
+        { query: 'SELECT VALUE COUNT(1) FROM c' },
+        { partitionKey: tenantId } as Parameters<typeof container.items.query>[1]
+      )
+      .fetchNext();
+    const totalFeedbackCount = (countResult.resources?.[0] as number) ?? 0;
+    const lastResult = await container.items
+      .query<{ recordedAt: string }>(
+        { query: 'SELECT TOP 1 c.recordedAt FROM c ORDER BY c.recordedAt DESC' },
+        { partitionKey: tenantId } as Parameters<typeof container.items.query>[1]
+      )
+      .fetchNext();
+    const lastFeedbackAt = (lastResult.resources?.[0]?.recordedAt as string) ?? null;
+    return { totalFeedbackCount, lastFeedbackAt };
   }
 
   /**
@@ -677,6 +803,112 @@ export class FeedbackService {
       updatedAt: new Date().toISOString(),
     };
     await aggregationContainer.items.upsert(doc);
+    await publishRecommendationEvent('feedback.aggregation.updated', tenantId, {
+      aggregationKey: tenantId,
+      period,
+      startDate: windowStart,
+      endDate: windowEnd,
+      aggregationId: id,
+    });
     return doc as FeedbackAggregation;
+  }
+
+  /**
+   * §1.2.2 Run pattern detection against historical feedback using current global thresholds.
+   * Groups by recommendationId (and tenantId), computes ignore rate, action rate, avg sentiment;
+   * applies minSampleSize and thresholds; returns counts and sample recs (suppressed / flagged).
+   */
+  async runPatternDetectionTest(options?: {
+    tenantId?: string;
+    maxFeedbackRows?: number;
+    windowDays?: number;
+  }): Promise<PatternDetectionTestResult> {
+    const globalConfig = await this.getGlobalFeedbackConfig();
+    const pd = globalConfig?.patternDetection;
+    const minSampleSize = pd?.minSampleSize ?? 50;
+    const ignoreRateThreshold = pd?.thresholds?.ignoreRate ?? 0.6;
+    const actionRateThreshold = pd?.thresholds?.actionRate ?? 0.4;
+    const sentimentThreshold = pd?.thresholds?.sentimentThreshold ?? 0.3;
+
+    const maxRows = Math.min(options?.maxFeedbackRows ?? 10_000, 50_000);
+    const windowDays = options?.windowDays ?? 90;
+    const end = new Date();
+    const start = new Date(end.getTime() - windowDays * 24 * 60 * 60 * 1000);
+    const windowStart = start.toISOString();
+    const windowEnd = end.toISOString();
+
+    const feedbackContainer = getContainer(this.feedbackContainerName);
+    const query =
+      options?.tenantId
+        ? 'SELECT * FROM c WHERE c.tenantId = @tid AND c.recordedAt >= @start AND c.recordedAt <= @end'
+        : 'SELECT * FROM c WHERE c.recordedAt >= @start AND c.recordedAt <= @end';
+    const parameters: { name: string; value: string }[] = [
+      { name: '@start', value: windowStart },
+      { name: '@end', value: windowEnd },
+    ];
+    if (options?.tenantId) parameters.push({ name: '@tid', value: options.tenantId });
+
+    const feedOptions = {
+      enableCrossPartitionQuery: !options?.tenantId,
+      maxItemCount: 500,
+    } as Parameters<typeof feedbackContainer.items.query>[1];
+
+    const rows: RecommendationFeedbackRecord[] = [];
+    const iterator = feedbackContainer.items
+      .query<RecommendationFeedbackRecord>({ query, parameters }, feedOptions)
+      .getAsyncIterator();
+    for await (const { resources: page } of iterator) {
+      rows.push(...page);
+      if (rows.length >= maxRows) break;
+    }
+    const totalFeedbackRows = rows.length;
+
+    type RecKey = string;
+    const key = (tid: string, recId: string): RecKey => `${tid}|${recId}`;
+    const stats = new Map<
+      RecKey,
+      { tenantId: string; recommendationId: string; total: number; ignoreCount: number; acceptCount: number; sentimentSum: number }
+    >();
+    for (const r of rows) {
+      const k = key(r.tenantId, r.recommendationId);
+      let s = stats.get(k);
+      if (!s) {
+        s = { tenantId: r.tenantId, recommendationId: r.recommendationId, total: 0, ignoreCount: 0, acceptCount: 0, sentimentSum: 0 };
+        stats.set(k, s);
+      }
+      s.total += 1;
+      const act = (r.action ?? '').toLowerCase();
+      if (act === 'ignore') s.ignoreCount += 1;
+      else if (act === 'accept') s.acceptCount += 1;
+      s.sentimentSum += r.feedback?.sentimentScore ?? 0;
+    }
+
+    const aboveMin = Array.from(stats.values()).filter((s) => s.total >= minSampleSize);
+    const recommendationCount = aboveMin.length;
+
+    const suppressed: PatternDetectionTestResult['sampleSuppressed'] = [];
+    const flagged: PatternDetectionTestResult['sampleFlagged'] = [];
+    for (const s of aboveMin) {
+      const ignoreRate = s.total > 0 ? s.ignoreCount / s.total : 0;
+      const actionRate = s.total > 0 ? s.acceptCount / s.total : 0;
+      const avgSentiment = s.total > 0 ? s.sentimentSum / s.total : 0;
+      const wouldSuppress = ignoreRate > ignoreRateThreshold;
+      const wouldFlag = actionRate < actionRateThreshold || avgSentiment < sentimentThreshold;
+      const item = { recommendationId: s.recommendationId, tenantId: s.tenantId, feedbackCount: s.total, ignoreRate, actionRate, avgSentiment };
+      if (wouldSuppress) suppressed.push(item);
+      if (wouldFlag && !wouldSuppress) flagged.push(item);
+    }
+    const suppressedCount = suppressed.length;
+    const flaggedCount = flagged.length;
+
+    return {
+      totalFeedbackRows,
+      recommendationCount,
+      suppressedCount,
+      flaggedCount,
+      sampleSuppressed: suppressed.slice(0, 10),
+      sampleFlagged: flagged.slice(0, 10),
+      appliedThresholds: { minSampleSize, ignoreRate: ignoreRateThreshold, actionRate: actionRateThreshold, sentimentThreshold },
+    };
   }
 }

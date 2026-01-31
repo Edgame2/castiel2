@@ -231,8 +231,9 @@ export default function SecurityAuditPage() {
               </div>
             </div>
             <div className="flex gap-2 mt-3">
-              <button type="button" onClick={() => fetchLogs(0)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Apply</button>
-              <button type="button" onClick={handleExport} className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">Request CSV export</button>
+              <button type="button" onClick={() => fetchLogs(0)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" aria-label="Apply filters and load first page">Apply</button>
+              <button type="button" onClick={() => fetchLogs(offset)} disabled={loading} className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50" title="Refetch current page" aria-label="Refresh audit log page">Refresh</button>
+              <button type="button" onClick={handleExport} className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700" aria-label="Request CSV export of audit logs">Request CSV export</button>
             </div>
             {exportJobId && <p className="text-sm text-green-600 dark:text-green-400 mt-2">Export job created: {exportJobId}. Check status at GET /api/v1/export/{exportJobId}</p>}
             {exportError && <p className="text-sm text-red-600 dark:text-red-400 mt-2">Export error: {exportError}</p>}

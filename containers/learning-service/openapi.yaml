@@ -95,6 +95,39 @@ paths:
       responses:
         '200':
           description: Summary (totalFeedback, byType, satisfactionScore, linkedToPrediction)
+  /feedback/{feedbackId}/link-prediction:
+    put:
+      summary: Link feedback to a prediction
+      description: Plan W6 Layer 7 – link existing feedback record to a prediction ID.
+      tags: [Feedback]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: feedbackId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [predictionId]
+              properties:
+                predictionId: { type: string }
+      responses:
+        '200':
+          description: Feedback linked; returns id, predictionId, linkedAt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  predictionId: { type: string }
+                  linkedAt: { type: string, format: date-time }
+        '404':
+          description: Feedback not found
   /feedback/trends/{modelId}:
     get:
       summary: Feedback trends by model

@@ -114,6 +114,8 @@ export interface GlobalFeedbackConfig {
   defaultLimit: number;
   minLimit: number;
   maxLimit: number;
+  /** §1.2.1 Can Super Admin override per tenant? Default true. */
+  allowTenantOverride?: boolean;
   availableTypes: string[];
   defaultActiveTypes: string[];
   patternDetection: {
@@ -303,6 +305,17 @@ export interface FeedbackAggregation {
     actionRate: number;
   };
   updatedAt: string;
+}
+
+/** §1.2.2 Test pattern detection against historical feedback. Super Admin. */
+export interface PatternDetectionTestResult {
+  totalFeedbackRows: number;
+  recommendationCount: number;
+  suppressedCount: number;
+  flaggedCount: number;
+  sampleSuppressed: { recommendationId: string; tenantId: string; feedbackCount: number; ignoreRate: number; actionRate: number; avgSentiment: number }[];
+  sampleFlagged: { recommendationId: string; tenantId: string; feedbackCount: number; ignoreRate: number; actionRate: number; avgSentiment: number }[];
+  appliedThresholds: { minSampleSize: number; ignoreRate: number; actionRate: number; sentimentThreshold: number };
 }
 
 /** Tenant template: default feedback config (and optional methodology/limits) for applying to tenants. Super Admin §7.2 */

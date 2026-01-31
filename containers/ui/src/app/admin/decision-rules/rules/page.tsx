@@ -272,6 +272,10 @@ export default function DecisionRulesRulesPage() {
       setFormError('Name is required');
       return;
     }
+    if (formConditions.length === 0) {
+      setFormError('At least one condition is required');
+      return;
+    }
     const actions = formActions.map((a) => ({
       type: a.type,
       details: a.details ?? {},

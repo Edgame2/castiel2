@@ -74,7 +74,7 @@ export default function ActionCatalogCategoriesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'' | 'displayName' | 'type' | 'order' | 'entriesCount'>('order');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'delete' | null>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'delete' | 'merge' | null>(null);
   const [editCategory, setEditCategory] = useState<ActionCatalogCategory | null>(null);
   const [createForm, setCreateForm] = useState(DEFAULT_CREATE_FORM);
   const [editForm, setEditForm] = useState(DEFAULT_CREATE_FORM);
@@ -82,6 +82,16 @@ export default function ActionCatalogCategoriesPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteReassignTo, setDeleteReassignTo] = useState('');
   const [iconSearch, setIconSearch] = useState('');
+  const [reorderLoading, setReorderLoading] = useState<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [mergeSourceId, setMergeSourceId] = useState('');
+  const [mergeTargetId, setMergeTargetId] = useState('');
+
+  const orderedIds = useMemo(
+    () => [...categories].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((c) => c.id),
+    [categories]
+  );
 
   const fetchCategories = useCallback(async () => {
     if (!apiBaseUrl) return;
@@ -147,6 +157,8 @@ export default function ActionCatalogCategoriesPage() {
     setFormError(null);
     setDeleteReassignTo('');
     setIconSearch('');
+    setMergeSourceId('');
+    setMergeTargetId('');
   };
 
   const openCreate = () => {
@@ -183,6 +195,13 @@ export default function ActionCatalogCategoriesPage() {
     const others = categories.filter((c) => c.id !== cat.id);
     setDeleteReassignTo(others[0]?.id ?? '');
     setModalMode('delete');
+  };
+
+  const openMerge = () => {
+    setMergeSourceId('');
+    setMergeTargetId('');
+    setFormError(null);
+    setModalMode('merge');
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -274,6 +293,121 @@ export default function ActionCatalogCategoriesPage() {
     }
   };
 
+  const handleMerge = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!apiBaseUrl) return;
+    if (!mergeSourceId.trim() || !mergeTargetId.trim()) {
+      setFormError('Select both source and target category.');
+      return;
+    }
+    if (mergeSourceId === mergeTargetId) {
+      setFormError('Source and target must be different.');
+      return;
+    }
+    setFormSaving(true);
+    setFormError(null);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/categories/merge`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId: mergeSourceId, targetId: mergeTargetId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
+      closeModal();
+      await fetchCategories();
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFormSaving(false);
+    }
+  };
+
+  const handleReorder = useCallback(
+    async (newOrder: string[]) => {
+      if (!apiBaseUrl || newOrder.length === 0) return;
+      setReorderLoading('_');
+      try {
+        const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/categories/reorder`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ categoryIds: newOrder }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
+        await fetchCategories();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setReorderLoading(null);
+      }
+    },
+    [fetchCategories]
+  );
+
+  const handleMoveUp = useCallback(
+    (categoryId: string) => {
+      const i = orderedIds.indexOf(categoryId);
+      if (i <= 0) return;
+      const newOrder = [...orderedIds];
+      [newOrder[i - 1], newOrder[i]] = [newOrder[i], newOrder[i - 1]];
+      handleReorder(newOrder);
+    },
+    [orderedIds, handleReorder]
+  );
+
+  const handleMoveDown = useCallback(
+    (categoryId: string) => {
+      const i = orderedIds.indexOf(categoryId);
+      if (i < 0 || i >= orderedIds.length - 1) return;
+      const newOrder = [...orderedIds];
+      [newOrder[i], newOrder[i + 1]] = [newOrder[i + 1], newOrder[i]];
+      handleReorder(newOrder);
+    },
+    [orderedIds, handleReorder]
+  );
+
+  /** §2.2.1 Drag-and-drop to reorder: set drag data and state */
+  const handleDragStart = useCallback((e: React.DragEvent, categoryId: string) => {
+    if (reorderLoading) return;
+    e.dataTransfer.setData('text/plain', categoryId);
+    e.dataTransfer.effectAllowed = 'move';
+    setDragId(categoryId);
+  }, [reorderLoading]);
+
+  const handleDragEnd = useCallback(() => {
+    setDragId(null);
+    setDropTargetId(null);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, targetCategoryId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragId && dragId !== targetCategoryId) setDropTargetId(targetCategoryId);
+  }, [dragId]);
+
+  const handleDragLeave = useCallback(() => {
+    setDropTargetId(null);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent, targetCategoryId: string) => {
+      e.preventDefault();
+      setDropTargetId(null);
+      const draggedId = e.dataTransfer.getData('text/plain');
+      if (!draggedId || draggedId === targetCategoryId || reorderLoading) return;
+      const without = orderedIds.filter((id) => id !== draggedId);
+      const targetIndex = without.indexOf(targetCategoryId);
+      if (targetIndex === -1) return;
+      const newOrder = [...without.slice(0, targetIndex), draggedId, ...without.slice(targetIndex)];
+      handleReorder(newOrder);
+      setDragId(null);
+    },
+    [orderedIds, handleReorder, reorderLoading]
+  );
+
   return (
     <div className="p-6">
       <div className="flex items-center gap-2 mb-4">
@@ -331,8 +465,19 @@ export default function ActionCatalogCategoriesPage() {
             type="button"
             onClick={openCreate}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+            aria-label="Add action catalog category"
           >
             Add category
+          </button>
+          <button
+            type="button"
+            onClick={openMerge}
+            disabled={categories.length < 2}
+            className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Merge categories (§2.2.1)"
+            aria-label="Merge categories (§2.2.1)"
+          >
+            Merge categories
           </button>
           <div>
             <label className="block text-sm font-medium mb-1">Type (§2.2.1)</label>
@@ -389,6 +534,7 @@ export default function ActionCatalogCategoriesPage() {
             type="button"
             onClick={fetchCategories}
             className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+            aria-label="Refresh categories"
           >
             Refresh
           </button>
@@ -415,7 +561,25 @@ export default function ActionCatalogCategoriesPage() {
       )}
 
       {!loading && apiBaseUrl && !error && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h2 className="text-lg font-semibold">Categories</h2>
+            <button
+              type="button"
+              onClick={fetchCategories}
+              disabled={loading}
+              className="px-3 py-1.5 text-sm font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+              aria-label="Refresh categories"
+            >
+              Refresh
+            </button>
+          </div>
+          {sorted.length > 0 && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2" aria-live="polite">
+              §2.2.1: Drag cards to reorder, or use ↑ Up / ↓ Down.
+            </p>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {sorted.length === 0 ? (
             <div className="col-span-full rounded-lg border bg-white dark:bg-gray-900 p-6">
               <p className="text-sm text-gray-500">
@@ -428,8 +592,17 @@ export default function ActionCatalogCategoriesPage() {
             sorted.map((cat) => (
               <div
                 key={cat.id}
-                className="rounded-lg border bg-white dark:bg-gray-900 p-4 flex flex-col"
+                draggable={!reorderLoading}
+                onDragStart={(e) => handleDragStart(e, cat.id)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, cat.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, cat.id)}
+                className={`rounded-lg border bg-white dark:bg-gray-900 p-4 flex flex-col transition-opacity ${
+                  dragId === cat.id ? 'opacity-50' : ''
+                } ${dropTargetId === cat.id ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
                 style={{ borderLeftWidth: 4, borderLeftColor: cat.color || '#6b7280' }}
+                aria-label={`Category ${cat.displayName}. Drag to reorder.`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-lg" title={cat.icon || 'category'}>
@@ -455,7 +628,34 @@ export default function ActionCatalogCategoriesPage() {
                     <span>Effectiveness: {(Number(cat.avgEffectiveness) * 100).toFixed(0)}%</span>
                   )}
                 </div>
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(() => {
+                    const orderIndex = orderedIds.indexOf(cat.id);
+                    const canMoveUp = orderIndex > 0 && !reorderLoading;
+                    const canMoveDown = orderIndex >= 0 && orderIndex < orderedIds.length - 1 && !reorderLoading;
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveUp(cat.id)}
+                          disabled={!canMoveUp}
+                          className="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Move up (§2.2.1)"
+                        >
+                          ↑ Up
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveDown(cat.id)}
+                          disabled={!canMoveDown}
+                          className="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Move down (§2.2.1)"
+                        >
+                          ↓ Down
+                        </button>
+                      </>
+                    );
+                  })()}
                   <button
                     type="button"
                     onClick={() => openEdit(cat)}
@@ -475,6 +675,7 @@ export default function ActionCatalogCategoriesPage() {
             ))
           )}
         </div>
+        </>
       )}
 
       {modalMode === 'create' && (
@@ -788,6 +989,66 @@ export default function ActionCatalogCategoriesPage() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {modalMode === 'merge' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="modal-merge-title">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h2 id="modal-merge-title" className="text-lg font-semibold mb-2">Merge categories (§2.2.1)</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Merge the source category into the target. All entries in the source will be moved to the target; the source category will be deleted.
+            </p>
+            <form onSubmit={handleMerge} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Source category (will be deleted)</label>
+                <select
+                  value={mergeSourceId}
+                  onChange={(e) => setMergeSourceId(e.target.value)}
+                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                  required
+                  aria-label="Source category"
+                >
+                  <option value="">— Select —</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.displayName} ({c.id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Target category (entries move here)</label>
+                <select
+                  value={mergeTargetId}
+                  onChange={(e) => setMergeTargetId(e.target.value)}
+                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                  required
+                  aria-label="Target category"
+                >
+                  <option value="">— Select —</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.displayName} ({c.id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {formError && <p className="text-sm text-red-600 dark:text-red-400">{formError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={formSaving}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+                >
+                  {formSaving ? 'Merging…' : 'Merge'}
+                </button>
+                <button type="button" onClick={closeModal} disabled={formSaving} className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm">
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -3,25 +3,44 @@
  * Overview page for Super Admin features
  */
 
-import type { Metadata } from 'next';
+'use client';
+
+import { useEffect } from 'react';
 import Link from 'next/link';
 
-export const metadata: Metadata = {
-  title: 'Super Admin',
-};
-
 export default function AdminPage() {
+  useEffect(() => {
+    document.title = 'Super Admin | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
+
   return (
     <div className="p-6">
       <div className="flex items-center gap-2 mb-4">
         <Link href="/dashboard" className="text-sm font-medium hover:underline">
           ← Dashboard
         </Link>
+        <span className="text-sm text-gray-500">/</span>
+        <span className="text-sm font-medium">Admin</span>
       </div>
-      <h1 className="text-2xl font-bold mb-2">Super Admin</h1>
-      <p className="text-muted-foreground mb-6">
-        System administration and configuration (Super Admin only)
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold mb-2">Super Admin</h1>
+          <p className="text-muted-foreground">
+            System administration and configuration (Super Admin only)
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+          title="Reload page"
+        >
+          Refresh
+        </button>
+      </div>
 
       <div className="grid grid-cols-2 gap-6">
         <Link
@@ -184,6 +203,9 @@ export default function AdminPage() {
           </p>
         </Link>
       </div>
+      <p className="mt-6 text-sm text-gray-500">
+        Full screen list and UI spec: documentation/specifications/feedbacks and recommendations/SUPER_ADMIN_CONFIGURATION_REQUIREMENTS.md (§1–§10). Placeholder sub-pages and builders (e.g. feedback type create/edit, catalog entry builder, rule builder) are implemented incrementally per spec.
+      </p>
     </div>
   );
 }

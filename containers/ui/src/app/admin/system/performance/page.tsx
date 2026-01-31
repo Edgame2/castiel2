@@ -259,8 +259,20 @@ export default function SystemPerformancePage() {
 
       {config && (
         <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h2 className="text-lg font-semibold">Performance (§8.1)</h2>
+            <button
+              type="button"
+              onClick={() => { setLoading(true); fetchConfig().finally(() => setLoading(false)); }}
+              disabled={loading}
+              className="px-3 py-1.5 text-sm font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+              aria-label="Refresh performance config"
+            >
+              Refresh
+            </button>
+          </div>
           <section>
-            <h2 className="text-sm font-semibold mb-3">Latency targets (ms)</h2>
+            <h3 className="text-sm font-semibold mb-3">Latency targets (ms)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {LATENCY_KEYS.map((key) => (
                 <div key={key} className="border rounded p-3 space-y-2">
@@ -309,7 +321,7 @@ export default function SystemPerformancePage() {
           </section>
 
           <section>
-            <h2 className="text-sm font-semibold mb-3">Throughput targets</h2>
+            <h3 className="text-sm font-semibold mb-3">Throughput targets</h3>
             <div className="flex flex-wrap gap-4">
               <label className="text-sm">
                 Predictions/sec
@@ -351,7 +363,7 @@ export default function SystemPerformancePage() {
           </section>
 
           <section>
-            <h2 className="text-sm font-semibold mb-3">Alerts</h2>
+            <h3 className="text-sm font-semibold mb-3">Alerts</h3>
             <div className="flex flex-wrap items-center gap-4">
               <label className="flex items-center gap-2 text-sm">
                 <input
@@ -375,6 +387,12 @@ export default function SystemPerformancePage() {
                 />
               </label>
             </div>
+          </section>
+
+          <section>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              §8.1.2 Caching (Redis, cacheStrategy, hit-rate monitoring) is configured per-service via YAML/env; no central admin API for caching yet.
+            </p>
           </section>
 
           {dirty && (

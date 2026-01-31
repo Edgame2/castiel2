@@ -569,6 +569,65 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       }
     );
 
+    fastify.put<{ Body: { categoryIds: string[] } }>(
+      '/api/v1/action-catalog/categories/reorder',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Reorder action catalog categories (§2.2.1). categoryIds is the desired order; each category order is set to its index.',
+          tags: ['Action Catalog'],
+          security: [{ bearerAuth: [] }],
+          body: { type: 'object', properties: { categoryIds: { type: 'array', items: { type: 'string' } } }, required: ['categoryIds'] },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const tenantId = request.user!.tenantId;
+          const userId = request.user!.id;
+          const { categoryIds } = request.body ?? {};
+          if (!Array.isArray(categoryIds)) {
+            return reply.status(400).send({ error: { code: 'BAD_REQUEST', message: 'categoryIds must be an array' } });
+          }
+          await actionCatalogService.reorderCategories(tenantId, userId, categoryIds);
+          return reply.status(204).send();
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          const status = error instanceof Error && msg.includes('not found') ? 404 : 500;
+          return reply.status(status).send({ error: { code: 'ACTION_CATALOG_CATEGORIES_REORDER_FAILED', message: msg } });
+        }
+      }
+    );
+
+    fastify.post<{ Body: { sourceId: string; targetId: string } }>(
+      '/api/v1/action-catalog/categories/merge',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Merge category source into target (§2.2.1). Reassigns all entries from source to target, then deletes source.',
+          tags: ['Action Catalog'],
+          security: [{ bearerAuth: [] }],
+          body: { type: 'object', properties: { sourceId: { type: 'string' }, targetId: { type: 'string' } }, required: ['sourceId', 'targetId'] },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const tenantId = request.user!.tenantId;
+          const userId = request.user!.id;
+          const { sourceId, targetId } = request.body ?? {};
+          if (!sourceId || !targetId) {
+            return reply.status(400).send({ error: { code: 'BAD_REQUEST', message: 'sourceId and targetId are required' } });
+          }
+          const ok = await actionCatalogService.mergeCategories(sourceId, targetId, tenantId, userId);
+          if (!ok) return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Source category not found' } });
+          return reply.status(204).send();
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          const status = error instanceof Error && msg.includes('must be different') ? 400 : error instanceof Error && msg.includes('not found') ? 404 : 500;
+          return reply.status(status).send({ error: { code: 'ACTION_CATALOG_CATEGORIES_MERGE_FAILED', message: msg } });
+        }
+      }
+    );
+
     fastify.get<{ Params: { categoryId: string } }>(
       '/api/v1/action-catalog/categories/:categoryId',
       {

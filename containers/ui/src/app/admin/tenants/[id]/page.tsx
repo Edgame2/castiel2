@@ -95,11 +95,52 @@ export default function TenantDetailPage() {
   const [globalLimits, setGlobalLimits] = useState<GlobalLimits | null>(null);
   const [useGlobalDefaultLimit, setUseGlobalDefaultLimit] = useState(true);
   const [activeTab, setActiveTab] = useState<TenantDetailTab>('overview');
+  /** §1.3.2 Tenant feedback usage statistics */
+  const [feedbackStats, setFeedbackStats] = useState<{ totalFeedbackCount: number; lastFeedbackAt: string | null } | null>(null);
+  const [feedbackStatsLoading, setFeedbackStatsLoading] = useState(false);
+  const [feedbackStatsError, setFeedbackStatsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.title = overviewTenant?.name
+      ? `Tenant: ${overviewTenant.name} | Admin | Castiel`
+      : 'Tenant | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, [overviewTenant?.name]);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab === 'feedback') setActiveTab('feedback');
+    else if (tab === 'analytics') setActiveTab('analytics');
+    else if (tab === 'catalog') setActiveTab('catalog');
+    else if (tab === 'methodology') setActiveTab('methodology');
+    else if (tab === 'limits') setActiveTab('limits');
+    else if (tab === 'custom') setActiveTab('custom');
+    else if (tab === 'overview') setActiveTab('overview');
   }, [searchParams]);
+
+  /** §1.3.2 Fetch tenant feedback stats when Feedback tab is active */
+  useEffect(() => {
+    if (!apiBaseUrl || !id.trim() || activeTab !== 'feedback') return;
+    setFeedbackStatsLoading(true);
+    setFeedbackStatsError(null);
+    setFeedbackStats(null);
+    const encoded = encodeURIComponent(id.trim());
+    fetch(`${apiBaseUrl}/api/v1/admin/tenants/${encoded}/feedback-stats`, { credentials: 'include' })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data: { totalFeedbackCount?: number; lastFeedbackAt?: string | null }) => {
+        setFeedbackStats({
+          totalFeedbackCount: typeof data.totalFeedbackCount === 'number' ? data.totalFeedbackCount : 0,
+          lastFeedbackAt: data.lastFeedbackAt ?? null,
+        });
+      })
+      .catch((e) => setFeedbackStatsError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setFeedbackStatsLoading(false));
+  }, [id, activeTab]);
 
   const fetchConfig = useCallback(async () => {
     if (!apiBaseUrl || !id.trim()) return;
@@ -252,6 +293,16 @@ export default function TenantDetailPage() {
         <Link href="/admin/tenants" className="text-sm font-medium hover:underline">
           Tenant Management
         </Link>
+        <span className="text-sm text-gray-500">/</span>
+        <Link href="/admin/tenants/list" className="text-sm font-medium hover:underline">
+          Tenants
+        </Link>
+        {id.trim() && (
+          <>
+            <span className="text-sm text-gray-500">/</span>
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Tenant: {id}</span>
+          </>
+        )}
       </div>
       <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
         <Link
@@ -273,7 +324,21 @@ export default function TenantDetailPage() {
           Templates
         </Link>
       </nav>
-      <h1 className="text-2xl font-bold mb-2">Tenant: {id || '—'}</h1>
+      <div className="flex items-center gap-3 mb-2">
+        <h1 className="text-2xl font-bold">Tenant: {id || '—'}</h1>
+        {apiBaseUrl && id.trim() && (
+          <button
+            type="button"
+            onClick={() => { setError(null); setOverviewError(null); fetchConfig(); fetchOverview(); }}
+            disabled={loading || overviewLoading}
+            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 text-sm font-medium"
+            title="Refetch tenant config and overview"
+            aria-label="Refresh tenant config and overview"
+          >
+            Refresh
+          </button>
+        )}
+      </div>
       <p className="text-muted-foreground mb-2">
         Feedback config for this tenant (recommendations service). Part of Feedback System (Super Admin §1.3).
       </p>
@@ -342,7 +407,10 @@ export default function TenantDetailPage() {
               </nav>
               {activeTab === 'overview' && (
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
-                  <h2 className="text-lg font-semibold mb-3">Overview (§7.1.2)</h2>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <h2 className="text-lg font-semibold">Overview (§7.1.2)</h2>
+                    <button type="button" onClick={() => fetchOverview()} disabled={overviewLoading} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50" aria-label="Refresh overview">Refresh</button>
+                  </div>
                   {overviewLoading && (
                     <p className="text-sm text-gray-500">Loading…</p>
                   )}
@@ -373,7 +441,10 @@ export default function TenantDetailPage() {
               )}
               {activeTab === 'feedback' && (
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel" aria-labelledby="tab-feedback">
-                  <h2 className="text-lg font-semibold mb-3">Feedback config</h2>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <h2 className="text-lg font-semibold">Feedback config</h2>
+                    <button type="button" onClick={() => fetchConfig()} disabled={loading} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50" aria-label="Refresh feedback config">Refresh</button>
+                  </div>
                   {editing ? (
                 <div className="space-y-3 max-w-md">
                   <div className="border-b border-gray-200 dark:border-gray-700 pb-3">
@@ -647,6 +718,22 @@ export default function TenantDetailPage() {
                     <div><dt className="font-medium text-gray-500">Pattern detection</dt><dd>{config.patternDetection?.enabled ? 'Yes' : 'No'}</dd></div>
                     <div><dt className="font-medium text-gray-500">Auto suppress</dt><dd>{config.patternDetection?.autoSuppressEnabled ? 'Yes' : 'No'}</dd></div>
                     <div><dt className="font-medium text-gray-500">Auto boost</dt><dd>{config.patternDetection?.autoBoostEnabled ? 'Yes' : 'No'}</dd></div>
+                    <div>
+                      <dt className="font-medium text-gray-500">Usage statistics (§1.3.2)</dt>
+                      <dd className="text-gray-600 dark:text-gray-400">
+                        {feedbackStatsLoading && 'Loading…'}
+                        {feedbackStatsError && !feedbackStatsLoading && `Error: ${feedbackStatsError}`}
+                        {feedbackStats && !feedbackStatsLoading && !feedbackStatsError && (
+                          <>
+                            {feedbackStats.totalFeedbackCount} feedback{feedbackStats.totalFeedbackCount !== 1 ? 's' : ''}
+                            {feedbackStats.lastFeedbackAt
+                              ? `; last: ${new Date(feedbackStats.lastFeedbackAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}`
+                              : '; no feedback yet'}
+                          </>
+                        )}
+                        {!feedbackStats && !feedbackStatsLoading && !feedbackStatsError && '—'}
+                      </dd>
+                    </div>
                     <div><dt className="font-medium text-gray-500">Updated</dt><dd>{config.updatedAt ? new Date(config.updatedAt).toLocaleString() : '—'}</dd></div>
                   </dl>
                   <button
@@ -678,32 +765,162 @@ export default function TenantDetailPage() {
               )}
               {activeTab === 'catalog' && (
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
-                  <h2 className="text-lg font-semibold mb-3">Catalog Configuration (§7.1.2)</h2>
-                  <p className="text-sm text-gray-500">Assign catalog entries, enable/disable entries, set overrides. Not yet implemented.</p>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <h2 className="text-lg font-semibold">Catalog Configuration (§7.1.2)</h2>
+                    <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" aria-label="Refresh catalog configuration">Refresh</button>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Assign Action Catalog entries to this tenant, enable or disable entries, and set per-tenant overrides. Full per-tenant catalog assignment will be available when the backend supports it.
+                  </p>
+                  <Link href="/admin/action-catalog" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                    Manage Action Catalog →
+                  </Link>
                 </div>
               )}
               {activeTab === 'methodology' && (
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
-                  <h2 className="text-lg font-semibold mb-3">Methodology Configuration (§7.1.2)</h2>
-                  <p className="text-sm text-gray-500">Detailed in Section 3.2. Not yet implemented.</p>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <h2 className="text-lg font-semibold">Methodology Configuration (§7.1.2)</h2>
+                    <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" aria-label="Refresh methodology configuration">Refresh</button>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Configure sales methodology (MEDDIC, MEDDPICC, Challenger, etc.) for this tenant. Per-tenant methodology selection is detailed in Section 3.2 of the spec.
+                  </p>
+                  <Link href="/admin/sales-methodology" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                    Manage Sales Methodology →
+                  </Link>
                 </div>
               )}
               {activeTab === 'limits' && (
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
-                  <h2 className="text-lg font-semibold mb-3">Limits & Quotas (§7.1.2)</h2>
-                  <p className="text-sm text-gray-500">Limits (maxUsers, maxOpportunities, maxPredictionsPerDay, maxFeedbackPerDay), quotas, alerts. Not yet implemented.</p>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <h2 className="text-lg font-semibold">Limits & Quotas (§7.1.2)</h2>
+                    <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" aria-label="Refresh limits and quotas">Refresh</button>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Configure limits for this tenant and view current usage. Editable when the backend API is available.
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2 text-sm">
+                    <div className="rounded border border-gray-200 dark:border-gray-700 p-3">
+                      <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Limits</h3>
+                      <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                        <li>Max users</li>
+                        <li>Max opportunities</li>
+                        <li>Max predictions per day</li>
+                        <li>Max feedback per day</li>
+                      </ul>
+                    </div>
+                    <div className="rounded border border-gray-200 dark:border-gray-700 p-3">
+                      <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Current usage (quotas)</h3>
+                      <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                        <li>Used users</li>
+                        <li>Used opportunities</li>
+                        <li>Predictions today</li>
+                        <li>Feedback today</li>
+                      </ul>
+                    </div>
+                    <div className="rounded border border-gray-200 dark:border-gray-700 p-3 sm:col-span-2">
+                      <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Alert thresholds</h3>
+                      <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                        <li>Alert at % of limit</li>
+                        <li>Throttle at % of limit</li>
+                        <li>Block at % of limit</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm text-gray-500">Values will load and be editable when the backend API is available.</p>
                 </div>
               )}
               {activeTab === 'custom' && (
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
-                  <h2 className="text-lg font-semibold mb-3">Custom Configuration (§7.1.2)</h2>
-                  <p className="text-sm text-gray-500">Risk tolerance, decision preferences, model preferences, custom features. Not yet implemented.</p>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <h2 className="text-lg font-semibold">Custom Configuration (§7.1.2)</h2>
+                    <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" aria-label="Refresh custom configuration">Refresh</button>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Tenant-specific settings: risk tolerance, decision preferences, model preferences, custom feature flags. Editable when the backend API is available.
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2 text-sm">
+                    <div className="rounded border border-gray-200 dark:border-gray-700 p-3">
+                      <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Risk tolerance</h3>
+                      <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                        <li>Overall (conservative / balanced / aggressive)</li>
+                        <li>Per-category overrides</li>
+                        <li>Auto-escalation threshold</li>
+                      </ul>
+                    </div>
+                    <div className="rounded border border-gray-200 dark:border-gray-700 p-3">
+                      <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Decision preferences</h3>
+                      <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                        <li>Auto-mark hot</li>
+                        <li>Auto-create tasks</li>
+                        <li>Require approval for actions</li>
+                      </ul>
+                    </div>
+                    <div className="rounded border border-gray-200 dark:border-gray-700 p-3">
+                      <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Model preferences</h3>
+                      <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                        <li>Prefer industry models</li>
+                        <li>Min confidence threshold</li>
+                      </ul>
+                    </div>
+                    <div className="rounded border border-gray-200 dark:border-gray-700 p-3">
+                      <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Custom features</h3>
+                      <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                        <li>Feature name, data source, transformation</li>
+                        <li>Enabled per tenant</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm text-gray-500">Values will load and be editable when the backend API is available.</p>
                 </div>
               )}
               {activeTab === 'analytics' && (
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
-                  <h2 className="text-lg font-semibold mb-3">Analytics (§7.1.2)</h2>
-                  <p className="text-sm text-gray-500">Tenant-specific analytics, usage trends, performance metrics, feedback analysis. Not yet implemented.</p>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <h2 className="text-lg font-semibold">Analytics (§7.1.2)</h2>
+                    <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" aria-label="Refresh analytics">Refresh</button>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Tenant-specific analytics: usage trends, performance metrics, feedback analysis. Filter global dashboards and reports by this tenant when viewing.
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2 text-sm mb-4">
+                    <div className="rounded border border-gray-200 dark:border-gray-700 p-3">
+                      <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Usage trends</h3>
+                      <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                        <li>Active users over time</li>
+                        <li>Opportunities and predictions</li>
+                        <li>Feedback volume</li>
+                      </ul>
+                    </div>
+                    <div className="rounded border border-gray-200 dark:border-gray-700 p-3">
+                      <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Performance metrics</h3>
+                      <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                        <li>Model accuracy by tenant</li>
+                        <li>Recommendation uptake</li>
+                        <li>Risk detection rates</li>
+                      </ul>
+                    </div>
+                    <div className="rounded border border-gray-200 dark:border-gray-700 p-3 sm:col-span-2">
+                      <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Feedback analysis</h3>
+                      <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                        <li>Sentiment and action rates</li>
+                        <li>Top feedback types</li>
+                        <li>Effectiveness by recommendation</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <Link href={`/admin/analytics/dashboards${id ? `?tenantId=${encodeURIComponent(id)}` : ''}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                      View dashboards →
+                    </Link>
+                    <Link href={`/admin/analytics/reports${id ? `?tenantId=${encodeURIComponent(id)}` : ''}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                      View reports →
+                    </Link>
+                    <Link href="/admin/analytics" className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                      Analytics overview
+                    </Link>
+                  </div>
                 </div>
               )}
             </>

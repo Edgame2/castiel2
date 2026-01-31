@@ -143,6 +143,84 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       }
     );
 
+    fastify.get<{ Params: { id: string } }>(
+      '/api/v1/admin/feedback-types/:id/tenants',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'List tenant IDs that have this feedback type in their active config. Super Admin §1.1.3.',
+          tags: ['Admin', 'Feedback'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+          response: { 200: { type: 'object', properties: { tenantIds: { type: 'array', items: { type: 'string' } } } }, 404: { type: 'object' } },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { id } = request.params;
+          const type = await feedbackService.getFeedbackTypeById(id);
+          if (!type) return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Feedback type not found' } });
+          const tenantIds = await feedbackService.getTenantIdsUsingFeedbackType(id);
+          return reply.send({ tenantIds });
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(500).send({ error: { code: 'FEEDBACK_TYPE_FAILED', message: msg } });
+        }
+      }
+    );
+
+    fastify.post<{
+      Params: { id: string };
+      Body: { behavior?: Partial<import('../types/feedback.types').FeedbackType['behavior']> };
+    }>(
+      '/api/v1/admin/feedback-types/:id/bulk-update-behavior',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Update this feedback type\'s behavior and return affected tenant IDs. Super Admin §1.1.3.',
+          tags: ['Admin', 'Feedback'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+          body: {
+            type: 'object',
+            properties: {
+              behavior: {
+                type: 'object',
+                properties: {
+                  createsTask: { type: 'boolean' },
+                  hidesRecommendation: { type: 'boolean' },
+                  hideDurationDays: { type: 'number' },
+                  suppressSimilar: { type: 'boolean' },
+                  requiresComment: { type: 'boolean' },
+                },
+              },
+            },
+          },
+          response: {
+            200: { type: 'object', properties: { affectedTenantIds: { type: 'array', items: { type: 'string' } } } },
+            404: { type: 'object' },
+            500: { type: 'object' },
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { id } = request.params;
+          const behavior = request.body?.behavior ?? {};
+          const updatedBy = request.user?.id ?? 'unknown';
+          const result = await feedbackService.updateFeedbackTypeBehaviorAndGetAffectedTenants(id, behavior, updatedBy);
+          return reply.send({ affectedTenantIds: result.affectedTenantIds });
+        } catch (error: unknown) {
+          const err = error as Error & { statusCode?: number };
+          const msg = err.message ?? String(error);
+          const code = err.statusCode === 404 ? 404 : 500;
+          return (reply as { status: (code: number) => { send: (body: unknown) => unknown } })
+            .status(code)
+            .send({ error: { code: code === 404 ? 'NOT_FOUND' : 'FEEDBACK_TYPE_FAILED', message: msg } });
+        }
+      }
+    );
+
     fastify.put<{ Params: { id: string }; Body: import('../types/feedback.types').UpdateFeedbackTypeInput }>(
       '/api/v1/admin/feedback-types/:id',
       {
@@ -365,6 +443,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
         defaultLimit?: number;
         minLimit?: number;
         maxLimit?: number;
+        allowTenantOverride?: boolean;
         availableTypes?: string[];
         defaultActiveTypes?: string[];
         patternDetection?: {
@@ -405,6 +484,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
               defaultLimit: { type: 'number' },
               minLimit: { type: 'number' },
               maxLimit: { type: 'number' },
+              allowTenantOverride: { type: 'boolean' },
               availableTypes: { type: 'array', items: { type: 'string' } },
               defaultActiveTypes: { type: 'array', items: { type: 'string' } },
               patternDetection: {
@@ -466,6 +546,129 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
           return (reply as { status: (code: number) => { send: (body: unknown) => unknown } })
             .status(code)
             .send({ error: { code: code === 400 ? 'VALIDATION_ERROR' : 'FEEDBACK_CONFIG_UPDATE_FAILED', message: msg } });
+        }
+      }
+    );
+
+    fastify.post(
+      '/api/v1/admin/feedback-config/apply-to-all-tenants',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Apply current global feedback config to all existing tenant configs (§1.2.1). Discovers tenants from config container.',
+          tags: ['Admin', 'Feedback'],
+          security: [{ bearerAuth: [] }],
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                applied: { type: 'array', items: { type: 'string' } },
+                failed: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: { tenantId: { type: 'string' }, error: { type: 'string' } },
+                    required: ['tenantId', 'error'],
+                  },
+                },
+              },
+              required: ['applied', 'failed'],
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const updatedBy = request.user?.id ?? 'unknown';
+          const result = await feedbackService.applyGlobalConfigToAllTenants(updatedBy);
+          return reply.send(result);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return (reply as { status: (code: number) => { send: (body: unknown) => unknown } })
+            .status(500)
+            .send({ error: { code: 'FEEDBACK_CONFIG_APPLY_FAILED', message: msg } });
+        }
+      }
+    );
+
+    fastify.post<{
+      Body: { tenantId?: string; maxFeedbackRows?: number; windowDays?: number };
+    }>(
+      '/api/v1/admin/feedback-config/test-pattern-detection',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Run pattern detection against historical feedback using current global thresholds (§1.2.2).',
+          tags: ['Admin', 'Feedback'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            properties: {
+              tenantId: { type: 'string' },
+              maxFeedbackRows: { type: 'number' },
+              windowDays: { type: 'number' },
+            },
+          },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                totalFeedbackRows: { type: 'number' },
+                recommendationCount: { type: 'number' },
+                suppressedCount: { type: 'number' },
+                flaggedCount: { type: 'number' },
+                sampleSuppressed: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      recommendationId: { type: 'string' },
+                      tenantId: { type: 'string' },
+                      feedbackCount: { type: 'number' },
+                      ignoreRate: { type: 'number' },
+                      actionRate: { type: 'number' },
+                      avgSentiment: { type: 'number' },
+                    },
+                  },
+                },
+                sampleFlagged: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      recommendationId: { type: 'string' },
+                      tenantId: { type: 'string' },
+                      feedbackCount: { type: 'number' },
+                      ignoreRate: { type: 'number' },
+                      actionRate: { type: 'number' },
+                      avgSentiment: { type: 'number' },
+                    },
+                  },
+                },
+                appliedThresholds: {
+                  type: 'object',
+                  properties: {
+                    minSampleSize: { type: 'number' },
+                    ignoreRate: { type: 'number' },
+                    actionRate: { type: 'number' },
+                    sentimentThreshold: { type: 'number' },
+                  },
+                },
+              },
+              required: ['totalFeedbackRows', 'recommendationCount', 'suppressedCount', 'flaggedCount', 'sampleSuppressed', 'sampleFlagged', 'appliedThresholds'],
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const result = await feedbackService.runPatternDetectionTest(request.body ?? undefined);
+          return reply.send(result);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return (reply as { status: (code: number) => { send: (body: unknown) => unknown } })
+            .status(500)
+            .send({ error: { code: 'PATTERN_TEST_FAILED', message: msg } });
         }
       }
     );
@@ -887,6 +1090,40 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
           const msg = err instanceof Error ? err.message : String(error);
           log.error('Apply tenant template failed', error as Error, { service: 'recommendations' });
           return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(500).send({ error: { code: 'TENANT_TEMPLATE_APPLY_FAILED', message: msg } });
+        }
+      }
+    );
+
+    // ——— Admin: Tenant feedback stats (§1.3.2) ———
+    fastify.get<{ Params: { tenantId: string } }>(
+      '/api/v1/admin/tenants/:tenantId/feedback-stats',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Get tenant-level feedback usage statistics. Super Admin §1.3.2.',
+          tags: ['Admin', 'Feedback'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { tenantId: { type: 'string' } }, required: ['tenantId'] },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                totalFeedbackCount: { type: 'number' },
+                lastFeedbackAt: { type: ['string', 'null'] },
+              },
+              required: ['totalFeedbackCount', 'lastFeedbackAt'],
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { tenantId } = request.params;
+          const stats = await feedbackService.getTenantFeedbackStats(tenantId);
+          return reply.send(stats);
+        } catch (error: unknown) {
+          const msg = error instanceof Error ? error.message : String(error);
+          return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(500).send({ error: { code: 'FEEDBACK_STATS_FAILED', message: msg } });
         }
       }
     );

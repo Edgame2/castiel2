@@ -52,6 +52,16 @@ The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers)
 | azure_ml.endpoints | object | {} | ModelId → scoring URL (win-probability-model, risk-scoring-model, risk_trajectory_lstm, revenue_forecasting, anomaly, etc.). Env: `AZURE_ML_WIN_PROBABILITY_URL`, `AZURE_ML_RISK_SCORING_URL`; Plan §8.2: `AZURE_ML_ENDPOINT_WIN_PROB`, `AZURE_ML_ENDPOINT_RISK_GLOBAL`, `AZURE_ML_ENDPOINT_LSTM`, etc. See [ml-training-jobs](../../deployment/monitoring/runbooks/ml-training-jobs.md). |
 | azure_ml.api_key | string | "" | Optional; env `AZURE_ML_API_KEY`. |
 
+### Azure ML integration (when workspace is ready)
+
+Layer 3 (ML prediction) currently uses mocks when Azure ML endpoints are not configured. When the Azure ML workspace and managed endpoints are provisioned:
+
+1. **Config**: Set `azure_ml.endpoints` (modelId → scoring URL) and `azure_ml.api_key` (or key per endpoint) in `config/default.yaml` or environment (e.g. `AZURE_ML_WIN_PROBABILITY_URL`, `AZURE_ML_RISK_SCORING_URL`, `AZURE_ML_API_KEY`).
+2. **Code**: PredictionService and AzureMLClient will call live endpoints instead of returning mock scores. No code change is required beyond ensuring config is loaded; existing circuit breaker, retry, and fallback logic apply.
+3. **Deployment**: Register models in Azure ML, create managed endpoints, copy scoring URLs and keys into config. See [ml-training-jobs](../../deployment/monitoring/runbooks/ml-training-jobs.md) and Azure ML docs for model register and endpoint create.
+4. **Health**: `GET /api/v1/ml/models/health` reports endpoint status and latency; use it to verify live endpoints after provisioning.
+5. **A/B and model selection**: Model selection (global vs industry-specific) and A/B routing use the same config-driven endpoint URLs; ensure `azure_ml.endpoints` includes all required model IDs.
+
 ## API Reference
 
 ### Key Endpoints

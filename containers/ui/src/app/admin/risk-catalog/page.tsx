@@ -75,6 +75,8 @@ export default function RiskCatalogPage() {
         <Link href="/admin" className="text-sm font-medium hover:underline">
           Admin
         </Link>
+        <span className="text-sm text-gray-500">/</span>
+        <span className="text-sm font-medium">Risk Catalog</span>
       </div>
       <h1 className="text-2xl font-bold mb-2">Risk Catalog – Tenant Catalog View</h1>
       <p className="text-muted-foreground mb-6">

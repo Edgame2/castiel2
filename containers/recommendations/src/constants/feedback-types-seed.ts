@@ -89,6 +89,7 @@ export const GLOBAL_FEEDBACK_CONFIG_SEED = {
   defaultLimit: 5,
   minLimit: 3,
   maxLimit: 10,
+  allowTenantOverride: true,
   availableTypes: FEEDBACK_TYPES_SEED.map((t) => t.id),
   defaultActiveTypes: [
     'feedback_type_act_on_it',

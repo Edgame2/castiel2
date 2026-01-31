@@ -150,6 +150,15 @@ export default function SecurityUsersPage() {
               >
                 {loading ? 'Loading…' : 'Load summary'}
               </button>
+              <button
+                type="button"
+                onClick={fetchSummary}
+                disabled={!orgId.trim() || loading}
+                className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                title="Refetch member summary for current organization"
+              >
+                Refresh
+              </button>
             </div>
           </div>
 

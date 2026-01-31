@@ -6,7 +6,6 @@
 import { randomUUID } from 'crypto';
 import { getContainer } from '@coder/shared/database';
 import { loadConfig } from '../config';
-import { log } from '../utils/logger';
 import type {
   UserFeedback,
   Outcome,

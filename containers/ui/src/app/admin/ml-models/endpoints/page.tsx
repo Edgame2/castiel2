@@ -126,6 +126,20 @@ export default function MLModelsEndpointsPage() {
         </Link>
       </nav>
 
+      {apiBaseUrl && (
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={fetchEndpoints}
+            disabled={loading}
+            className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
+            title="Refetch ML endpoints"
+          >
+            Refresh
+          </button>
+        </div>
+      )}
+
       {!apiBaseUrl && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>

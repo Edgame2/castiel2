@@ -27,10 +27,22 @@ export default function SystemPage() {
           Admin
         </Link>
       </div>
-      <h1 className="text-2xl font-bold mb-2">System Configuration</h1>
-      <p className="text-muted-foreground mb-4">
-        Performance targets, Data Lake, logging, and API security (Super Admin §8).
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+        <div>
+          <h1 className="text-2xl font-bold mb-2">System Configuration</h1>
+          <p className="text-muted-foreground">
+            Performance targets, Data Lake, logging, and API security (Super Admin §8).
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+          title="Reload page (§8)"
+        >
+          Refresh
+        </button>
+      </div>
       <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
         <span className="text-sm font-medium text-gray-900 dark:text-gray-100 border-b-2 border-blue-600 pb-2 -mb-0.5">
           Overview

@@ -113,6 +113,17 @@ export default function TenantsListPage() {
     return arr;
   })();
 
+  const handleExportTenantData = () => {
+    if (sorted.length === 0) return;
+    const blob = new Blob([JSON.stringify(sorted, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tenants-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const subNav = (
     <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
       <Link
@@ -220,8 +231,17 @@ export default function TenantsListPage() {
             type="button"
             onClick={fetchTenants}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            aria-label="Refresh tenant list"
           >
             Refresh
+          </button>
+          <button
+            type="button"
+            onClick={handleExportTenantData}
+            disabled={sorted.length === 0}
+            className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm"
+          >
+            Export tenant data (§7.1.3)
           </button>
           <Link
             href="/admin/tenants/templates"
@@ -300,6 +320,9 @@ export default function TenantsListPage() {
                           </Link>
                           <Link href={`/admin/tenants/${row.id}?tab=feedback`} className="text-blue-600 dark:text-blue-400 hover:underline">
                             Configure
+                          </Link>
+                          <Link href={`/admin/tenants/${row.id}?tab=analytics`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                            Analytics
                           </Link>
                           <button type="button" disabled className="text-gray-400 cursor-not-allowed" title="Coming soon">
                             Suspend

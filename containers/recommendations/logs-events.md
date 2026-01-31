@@ -18,6 +18,7 @@ The Recommendations module publishes the following events to the `coder_events` 
 | `recommendation.generation.completed` | Recommendations generated | Logging module |
 | `recommendation.generation.failed` | Recommendation generation failed | Logging module |
 | `recommendation.feedback.received` | User feedback on recommendation | Logging module |
+| `feedback.aggregation.updated` | (Optional) Feedback aggregation was computed and upserted. Payload: aggregationKey, period, startDate, endDate, aggregationId. Publisher: FeedbackService.computeAndUpsertAggregation. | — |
 | `remediation.workflow.created` | Remediation workflow created (Plan §7.1, §929). Payload: workflowId, opportunityId, assignedTo. Consumers: notification-manager. | notification-manager |
 | `remediation.step.completed` | A remediation step completed; allStepsComplete=false until last. Payload: workflowId, stepNumber, completedBy, allStepsComplete. Consumers: notification-manager. | notification-manager |
 | `remediation.workflow.completed` | Remediation workflow completed or cancelled (Plan §10, §929). Payload: workflowId, opportunityId, status, completedAt, userId?, duration?. Consumed by **logging MLAuditConsumer**. | Logging module |

@@ -123,7 +123,7 @@ export default function DecisionRulesConflictsPage() {
       {error && (
         <div className="rounded-lg border p-4 bg-white dark:bg-gray-900 mb-4">
           <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
-          <button type="button" onClick={fetchConflicts} className="mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Retry</button>
+          <button type="button" onClick={fetchConflicts} className="mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" aria-label="Retry loading rule conflicts">Retry</button>
         </div>
       )}
 

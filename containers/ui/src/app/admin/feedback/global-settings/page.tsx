@@ -32,6 +32,8 @@ interface GlobalFeedbackConfig {
   defaultLimit?: number;
   minLimit?: number;
   maxLimit?: number;
+  /** §1.2.1 Can Super Admin override per tenant? Default true. */
+  allowTenantOverride?: boolean;
   availableTypes?: string[];
   defaultActiveTypes?: string[];
   patternDetection?: {
@@ -77,11 +79,17 @@ const DEFAULT_CONFIG: GlobalFeedbackConfig = {
   defaultLimit: 5,
   minLimit: 3,
   maxLimit: 10,
+  allowTenantOverride: true,
   availableTypes: [],
   defaultActiveTypes: [],
   patternDetection: DEFAULT_PATTERN,
   feedbackCollection: DEFAULT_FEEDBACK_COLLECTION,
 };
+
+interface ApplyToAllResult {
+  applied: string[];
+  failed: { tenantId: string; error: string }[];
+}
 
 export default function FeedbackGlobalSettingsPage() {
   const [config, setConfig] = useState<GlobalFeedbackConfig | null>(null);
@@ -89,6 +97,24 @@ export default function FeedbackGlobalSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [applyingToAll, setApplyingToAll] = useState(false);
+  const [applyToAllResult, setApplyToAllResult] = useState<ApplyToAllResult | null>(null);
+  const [defaultTypesDragId, setDefaultTypesDragId] = useState<string | null>(null);
+  const [defaultTypesDropTargetId, setDefaultTypesDropTargetId] = useState<string | null>(null);
+  const [addTypeInput, setAddTypeInput] = useState('');
+  /** §1.2.2 Test with historical data modal */
+  const [patternTestModalOpen, setPatternTestModalOpen] = useState(false);
+  const [patternTestLoading, setPatternTestLoading] = useState(false);
+  const [patternTestError, setPatternTestError] = useState<string | null>(null);
+  const [patternTestResult, setPatternTestResult] = useState<{
+    totalFeedbackRows: number;
+    recommendationCount: number;
+    suppressedCount: number;
+    flaggedCount: number;
+    sampleSuppressed: { recommendationId: string; tenantId: string; feedbackCount: number; ignoreRate: number; actionRate: number; avgSentiment: number }[];
+    sampleFlagged: { recommendationId: string; tenantId: string; feedbackCount: number; ignoreRate: number; actionRate: number; avgSentiment: number }[];
+    appliedThresholds: { minSampleSize: number; ignoreRate: number; actionRate: number; sentimentThreshold: number };
+  } | null>(null);
 
   const fetchConfig = useCallback(async () => {
     if (!apiBaseUrl) return;
@@ -153,6 +179,66 @@ export default function FeedbackGlobalSettingsPage() {
     updateConfig({ feedbackCollection: { ...fc, ...patch } });
   };
 
+  const defaultActiveTypesList = formConfig.defaultActiveTypes ?? [];
+  const setDefaultActiveTypesOrder = useCallback((newOrder: string[]) => {
+    updateConfig({ defaultActiveTypes: newOrder });
+  }, []);
+
+  /** §1.2.1 Drag-to-reorder default active types (same pattern as action-catalog categories) */
+  const handleDefaultTypesDragStart = useCallback((e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('text/plain', id);
+    e.dataTransfer.effectAllowed = 'move';
+    setDefaultTypesDragId(id);
+  }, []);
+
+  const handleDefaultTypesDragEnd = useCallback(() => {
+    setDefaultTypesDragId(null);
+    setDefaultTypesDropTargetId(null);
+  }, []);
+
+  const handleDefaultTypesDragOver = useCallback((e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (defaultTypesDragId && defaultTypesDragId !== targetId) setDefaultTypesDropTargetId(targetId);
+  }, [defaultTypesDragId]);
+
+  const handleDefaultTypesDrop = useCallback(
+    (e: React.DragEvent, targetId: string) => {
+      e.preventDefault();
+      setDefaultTypesDropTargetId(null);
+      const draggedId = e.dataTransfer.getData('text/plain');
+      if (!draggedId || draggedId === targetId) return;
+      const without = defaultActiveTypesList.filter((id) => id !== draggedId);
+      const targetIndex = without.indexOf(targetId);
+      if (targetIndex === -1) return;
+      const newOrder = [...without.slice(0, targetIndex), draggedId, ...without.slice(targetIndex)];
+      setDefaultActiveTypesOrder(newOrder);
+      setDefaultTypesDragId(null);
+    },
+    [defaultActiveTypesList, setDefaultActiveTypesOrder]
+  );
+
+  const removeDefaultActiveType = useCallback(
+    (id: string) => {
+      updateConfig({ defaultActiveTypes: defaultActiveTypesList.filter((x) => x !== id) });
+    },
+    [defaultActiveTypesList]
+  );
+
+  const addDefaultActiveTypes = useCallback(() => {
+    const ids = addTypeInput
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (ids.length === 0) return;
+    const combined = [...defaultActiveTypesList];
+    for (const id of ids) {
+      if (!combined.includes(id)) combined.push(id);
+    }
+    updateConfig({ defaultActiveTypes: combined });
+    setAddTypeInput('');
+  }, [addTypeInput, defaultActiveTypesList]);
+
   /** Validation per §1.2.1: minLimit <= maxLimit, minLimit <= defaultLimit <= maxLimit */
   const validateLimits = (c: GlobalFeedbackConfig): string[] => {
     const min = c.minLimit ?? 3;
@@ -192,6 +278,7 @@ export default function FeedbackGlobalSettingsPage() {
         defaultLimit: bodyConfig.defaultLimit,
         minLimit: bodyConfig.minLimit,
         maxLimit: bodyConfig.maxLimit,
+        allowTenantOverride: bodyConfig.allowTenantOverride ?? true,
         availableTypes: bodyConfig.availableTypes ?? [],
         defaultActiveTypes: bodyConfig.defaultActiveTypes ?? [],
         patternDetection: {
@@ -225,6 +312,34 @@ export default function FeedbackGlobalSettingsPage() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
+    }
+  };
+
+  /** §1.2.1 Apply current global config to all existing tenant configs (with confirmation). */
+  const handleApplyToAllTenants = async () => {
+    if (!apiBaseUrl) return;
+    if (
+      !window.confirm(
+        'Apply current global feedback config (default limit, active types, pattern detection, collection settings) to all existing tenant configs? This overwrites per-tenant overrides.',
+      )
+    )
+      return;
+    setApplyingToAll(true);
+    setError(null);
+    setApplyToAllResult(null);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-config/apply-to-all-tenants`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
+      setApplyToAllResult(data as ApplyToAllResult);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setApplyingToAll(false);
     }
   };
 
@@ -292,9 +407,40 @@ export default function FeedbackGlobalSettingsPage() {
         </div>
       )}
 
+      {applyToAllResult && (
+        <div className="rounded-lg border p-4 bg-blue-50 dark:bg-blue-900/20 mb-4">
+          <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">
+            Apply to all tenants (§1.2.1): {applyToAllResult.applied.length} applied.
+          </p>
+          {applyToAllResult.failed.length > 0 && (
+            <p className="text-sm text-amber-700 dark:text-amber-300 mb-2">
+              {applyToAllResult.failed.length} failed: {applyToAllResult.failed.map((f) => `${f.tenantId}: ${f.error}`).join('; ')}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => setApplyToAllResult(null)}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {!loading && apiBaseUrl && (
         <section className="rounded-lg border bg-white dark:bg-gray-900 p-6">
-          <h2 className="text-lg font-semibold mb-3">Global feedback config</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h2 className="text-lg font-semibold">Global feedback config</h2>
+            <button
+              type="button"
+              onClick={() => { setLoading(true); fetchConfig().finally(() => setLoading(false)); }}
+              disabled={loading}
+              className="px-3 py-1.5 text-sm font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+              aria-label="Refresh global feedback config"
+            >
+              Refresh
+            </button>
+          </div>
           {config === null && (
             <p className="text-sm text-gray-500 mb-4">No config set. Save below to create.</p>
           )}
@@ -303,6 +449,16 @@ export default function FeedbackGlobalSettingsPage() {
               {validationErrors.join(' ')}
             </p>
           )}
+          <div className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3 mb-4" role="region" aria-labelledby="default-tenant-preview-heading">
+            <h3 id="default-tenant-preview-heading" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Preview of default tenant config (§1.2.1)</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              New tenants will get: active limit <strong>{formConfig.defaultLimit ?? 5}</strong> (range {formConfig.minLimit ?? 3}–{formConfig.maxLimit ?? 10})
+              {formConfig.allowTenantOverride !== false ? '; tenant override allowed' : '; tenant override not allowed'}.
+              Default active types: {defaultActiveTypesList.length > 0 ? defaultActiveTypesList.join(', ') : 'none'}.
+              Pattern detection: {pd.enabled ? 'on' : 'off'}.
+              Collection: feedback {fc.requireFeedback ? `required after ${fc.requireFeedbackAfterDays} days` : 'not required'}, comments {fc.allowComments ? `allowed (max ${fc.maxCommentLength} chars)` : 'off'}, multi-select {fc.allowMultipleSelection ? `yes (max ${fc.maxSelectionsPerFeedback})` : 'no'}.
+            </p>
+          </div>
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-2 gap-4 max-w-md">
               <div>
@@ -336,6 +492,40 @@ export default function FeedbackGlobalSettingsPage() {
                 />
               </div>
             </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="allowTenantOverride"
+                checked={formConfig.allowTenantOverride !== false}
+                onChange={(e) => updateConfig({ allowTenantOverride: e.target.checked })}
+                className="rounded border-gray-300 dark:border-gray-600"
+                aria-describedby="allow-tenant-override-desc"
+              />
+              <label htmlFor="allowTenantOverride" className="text-sm font-medium">
+                Allow tenant override (§1.2.1)
+              </label>
+            </div>
+            <p id="allow-tenant-override-desc" className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
+              When enabled, Super Admin can override feedback limit per tenant.
+            </p>
+            <div className="max-w-md" id="default-limit-slider-desc">
+              <label className="block text-sm font-medium mb-1">Default limit (slider §1.2.1)</label>
+              <input
+                type="range"
+                min={formConfig.minLimit ?? 3}
+                max={Math.max(formConfig.minLimit ?? 3, formConfig.maxLimit ?? 10)}
+                value={Math.max(
+                  formConfig.minLimit ?? 3,
+                  Math.min(formConfig.maxLimit ?? 10, formConfig.defaultLimit ?? 5),
+                )}
+                onChange={(e) => updateConfig({ defaultLimit: parseInt(e.target.value, 10) })}
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gray-200 dark:bg-gray-700 accent-blue-600"
+                aria-label="Default limit slider"
+              />
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {formConfig.minLimit ?? 3} – {formConfig.maxLimit ?? 10}
+              </span>
+            </div>
             <div>
               <label className="block text-sm font-medium mb-1">Available types (comma-separated IDs)</label>
               <input
@@ -347,14 +537,59 @@ export default function FeedbackGlobalSettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Default active types (comma-separated IDs)</label>
-              <input
-                type="text"
-                value={(formConfig.defaultActiveTypes ?? []).join(', ')}
-                onChange={(e) => updateConfig({ defaultActiveTypes: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-                placeholder="e.g. type1, type2"
-                className="w-full max-w-md px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-              />
+              <label className="block text-sm font-medium mb-1">Default active types (§1.2.1): drag to reorder</label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                Order defines default for new tenants. Drag items to reorder; use Add to append IDs.
+              </p>
+              <ul className="space-y-1 max-w-md mb-2">
+                {defaultActiveTypesList.length === 0 ? (
+                  <li className="text-sm text-gray-500 dark:text-gray-400 py-2">No default types. Add IDs below.</li>
+                ) : (
+                  defaultActiveTypesList.map((id) => (
+                    <li
+                      key={id}
+                      draggable
+                      onDragStart={(e) => handleDefaultTypesDragStart(e, id)}
+                      onDragEnd={handleDefaultTypesDragEnd}
+                      onDragOver={(e) => handleDefaultTypesDragOver(e, id)}
+                      onDragLeave={() => setDefaultTypesDropTargetId(null)}
+                      onDrop={(e) => handleDefaultTypesDrop(e, id)}
+                      className={`flex items-center gap-2 rounded border px-3 py-2 text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 ${
+                        defaultTypesDragId === id ? 'opacity-50' : ''
+                      } ${defaultTypesDropTargetId === id ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
+                      aria-label={`Type ${id}. Drag to reorder.`}
+                    >
+                      <span className="flex-1 font-mono text-gray-800 dark:text-gray-200">{id}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeDefaultActiveType(id)}
+                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs"
+                        aria-label={`Remove ${id}`}
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+              <div className="flex gap-2 items-center max-w-md">
+                <input
+                  type="text"
+                  value={addTypeInput}
+                  onChange={(e) => setAddTypeInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addDefaultActiveTypes())}
+                  placeholder="Add type ID(s), comma-separated"
+                  className="flex-1 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                  aria-label="Add type IDs"
+                />
+                <button
+                  type="button"
+                  onClick={addDefaultActiveTypes}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                >
+                  Add
+                </button>
+              </div>
             </div>
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
               <h3 className="text-sm font-medium mb-2">Pattern detection (§1.2.2)</h3>
@@ -378,6 +613,17 @@ export default function FeedbackGlobalSettingsPage() {
                     onChange={(e) => updatePattern({ minSampleSize: parseInt(e.target.value, 10) || 1 })}
                     className="w-full max-w-xs px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                   />
+                  <label className="block text-xs text-gray-600 dark:text-gray-400 mt-1 mb-0.5">Min sample size (slider §1.2.2)</label>
+                  <input
+                    type="range"
+                    min={1}
+                    max={200}
+                    value={Math.max(1, Math.min(200, pd.minSampleSize))}
+                    onChange={(e) => updatePattern({ minSampleSize: parseInt(e.target.value, 10) || 1 })}
+                    className="w-full max-w-xs h-2 rounded-lg appearance-none cursor-pointer bg-gray-200 dark:bg-gray-700 accent-blue-600"
+                    aria-label="Min sample size slider"
+                  />
+                  <span className="text-xs text-gray-500 dark:text-gray-400">1 – 200</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 max-w-lg">
                   <div>
@@ -429,6 +675,18 @@ export default function FeedbackGlobalSettingsPage() {
                     />
                   </div>
                 </div>
+                <div className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3 text-sm">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Preview of pattern detection logic (§1.2.2)</span>
+                  <ul className="mt-2 space-y-1 text-gray-600 dark:text-gray-400 list-disc list-inside">
+                    <li>Require at least {pd.minSampleSize} feedback events before applying pattern rules.</li>
+                    <li>If ignore rate &gt; {(pd.thresholds.ignoreRate * 100).toFixed(0)}%, suppress recommendation.</li>
+                    <li>If action rate &lt; {(pd.thresholds.actionRate * 100).toFixed(0)}%, flag for review.</li>
+                    <li>If average sentiment &lt; {(pd.thresholds.sentimentThreshold * 100).toFixed(0)}%, flag recommendation.</li>
+                    {pd.autoSuppressEnabled && <li>Auto-suppress recommendations when patterns match.</li>}
+                    {pd.autoBoostEnabled && <li>Auto-boost recommendations when patterns match.</li>}
+                    {pd.notifyOnPattern && <li>Notify admins of detected patterns ({pd.patternReportFrequency}).</li>}
+                  </ul>
+                </div>
                 <div className="flex flex-wrap gap-4">
                   <div className="flex items-center gap-2">
                     <input
@@ -477,12 +735,22 @@ export default function FeedbackGlobalSettingsPage() {
                     <option value="monthly">Monthly</option>
                   </select>
                 </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setPatternTestModalOpen(true)}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
+                    title="Run pattern detection against historical feedback data (§1.2.2)"
+                  >
+                    Test with historical data (§1.2.2)
+                  </button>
+                </div>
               </div>
             </div>
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
               <h3 className="text-sm font-medium mb-2">Feedback collection (§1.2.3)</h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                Defaults for requirement, comments, multi-select, editing, and privacy.
+                Defaults for requirement, comments, multi-select, editing, and privacy. Hover labels for help (§1.2.3).
               </p>
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-4 items-center">
@@ -494,10 +762,10 @@ export default function FeedbackGlobalSettingsPage() {
                       onChange={(e) => updateFeedbackCollection({ requireFeedback: e.target.checked })}
                       className="rounded"
                     />
-                    <label htmlFor="requireFeedback" className="text-sm">Require feedback</label>
+                    <label htmlFor="requireFeedback" className="text-sm cursor-help" title="When enabled, users must submit feedback on recommendations (e.g. after viewing).">Require feedback</label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-600 dark:text-gray-400">Require after (days)</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400 cursor-help" title="Require feedback after this many days since recommendation was shown (0 = immediately).">Require after (days)</span>
                     <input
                       type="number"
                       min={0}
@@ -516,10 +784,10 @@ export default function FeedbackGlobalSettingsPage() {
                       onChange={(e) => updateFeedbackCollection({ allowComments: e.target.checked })}
                       className="rounded"
                     />
-                    <label htmlFor="allowComments" className="text-sm">Allow comments</label>
+                    <label htmlFor="allowComments" className="text-sm cursor-help" title="Users can add a free-text comment with their feedback.">Allow comments</label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-600 dark:text-gray-400">Max comment length</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400 cursor-help" title="Maximum character length for feedback comments.">Max comment length</span>
                     <input
                       type="number"
                       min={1}
@@ -536,7 +804,7 @@ export default function FeedbackGlobalSettingsPage() {
                       onChange={(e) => updateFeedbackCollection({ moderateComments: e.target.checked })}
                       className="rounded"
                     />
-                    <label htmlFor="moderateComments" className="text-sm">Moderate comments</label>
+                    <label htmlFor="moderateComments" className="text-sm cursor-help" title="Comments are held for review before being stored or visible.">Moderate comments</label>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 items-center">
@@ -548,10 +816,10 @@ export default function FeedbackGlobalSettingsPage() {
                       onChange={(e) => updateFeedbackCollection({ allowMultipleSelection: e.target.checked })}
                       className="rounded"
                     />
-                    <label htmlFor="allowMultipleSelection" className="text-sm">Allow multiple selection</label>
+                    <label htmlFor="allowMultipleSelection" className="text-sm cursor-help" title="Users can select more than one feedback type per recommendation (e.g. helpful + will act).">Allow multiple selection</label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-600 dark:text-gray-400">Max selections per feedback</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400 cursor-help" title="When multiple selection is allowed, maximum number of types per feedback.">Max selections per feedback</span>
                     <input
                       type="number"
                       min={1}
@@ -570,10 +838,10 @@ export default function FeedbackGlobalSettingsPage() {
                       onChange={(e) => updateFeedbackCollection({ allowFeedbackEdit: e.target.checked })}
                       className="rounded"
                     />
-                    <label htmlFor="allowFeedbackEdit" className="text-sm">Allow feedback edit</label>
+                    <label htmlFor="allowFeedbackEdit" className="text-sm cursor-help" title="Users can change their feedback within the edit window.">Allow feedback edit</label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-600 dark:text-gray-400">Edit window (days)</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400 cursor-help" title="Number of days after submission during which feedback can be edited.">Edit window (days)</span>
                     <input
                       type="number"
                       min={0}
@@ -590,7 +858,7 @@ export default function FeedbackGlobalSettingsPage() {
                       onChange={(e) => updateFeedbackCollection({ trackFeedbackHistory: e.target.checked })}
                       className="rounded"
                     />
-                    <label htmlFor="trackFeedbackHistory" className="text-sm">Track feedback history</label>
+                    <label htmlFor="trackFeedbackHistory" className="text-sm cursor-help" title="Store a history of changes when feedback is edited (for audit and analytics).">Track feedback history</label>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 items-center">
@@ -602,7 +870,7 @@ export default function FeedbackGlobalSettingsPage() {
                       onChange={(e) => updateFeedbackCollection({ allowAnonymousFeedback: e.target.checked })}
                       className="rounded"
                     />
-                    <label htmlFor="allowAnonymousFeedback" className="text-sm">Allow anonymous feedback</label>
+                    <label htmlFor="allowAnonymousFeedback" className="text-sm cursor-help" title="Users can submit feedback without their identity being stored.">Allow anonymous feedback</label>
                   </div>
                   <div className="flex items-center gap-2">
                     <input
@@ -612,20 +880,164 @@ export default function FeedbackGlobalSettingsPage() {
                       onChange={(e) => updateFeedbackCollection({ anonymousForNegative: e.target.checked })}
                       className="rounded"
                     />
-                    <label htmlFor="anonymousForNegative" className="text-sm">Anonymous for negative only</label>
+                    <label htmlFor="anonymousForNegative" className="text-sm cursor-help" title="Only negative feedback can be submitted anonymously; other feedback requires identity.">Anonymous for negative only</label>
                   </div>
+                </div>
+                <div className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3 text-sm mt-3 space-y-3">
+                  <span className="font-medium text-gray-700 dark:text-gray-300">Preview of feedback UI with current settings (§1.2.3)</span>
+                  {/* Visual mock: how the feedback widget looks to end users */}
+                  <div className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 p-3 max-w-md" aria-label="Preview of feedback widget as seen by users">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Sample recommendation</p>
+                    <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">Review account health for Acme Corp</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Your feedback {fc.requireFeedback ? `(required after ${fc.requireFeedbackAfterDays} day${fc.requireFeedbackAfterDays === 1 ? '' : 's'})` : '(optional)'}</p>
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {Array.from({ length: Math.min(formConfig.defaultLimit ?? 5, 5) }, (_, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          disabled
+                          className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-default"
+                          aria-hidden
+                        >
+                          {['Helpful', 'Will act', 'Not relevant', 'Dismiss', 'Other'][i]}
+                        </button>
+                      ))}
+                      {(formConfig.defaultLimit ?? 5) > 5 && (
+                        <span className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400">+{(formConfig.defaultLimit ?? 5) - 5} more</span>
+                      )}
+                    </div>
+                    {fc.allowMultipleSelection && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Pick up to {fc.maxSelectionsPerFeedback} option{fc.maxSelectionsPerFeedback === 1 ? '' : 's'}</p>
+                    )}
+                    {fc.allowComments && (
+                      <div className="mt-2">
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Comment (max {fc.maxCommentLength} chars)</label>
+                        <textarea
+                          readOnly
+                          rows={2}
+                          placeholder="Optional comment…"
+                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs bg-gray-50 dark:bg-gray-800 resize-none"
+                          aria-hidden
+                        />
+                        {fc.moderateComments && <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">Moderated before storage</p>}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      {fc.allowFeedbackEdit && <span>Editable for {fc.editWindowDays} day{fc.editWindowDays === 1 ? '' : 's'}</span>}
+                      {fc.allowAnonymousFeedback && <span>{fc.anonymousForNegative ? 'Anonymous for negative' : 'Can submit anonymously'}</span>}
+                    </div>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Summary: Feedback is {fc.requireFeedback ? `required after ${fc.requireFeedbackAfterDays} days` : 'not required'}. Comments {fc.allowComments ? `allowed, max ${fc.maxCommentLength} chars` : 'not allowed'}
+                    {fc.allowComments && fc.moderateComments ? ' (moderated)' : ''}. {fc.allowMultipleSelection ? `Multi-select, max ${fc.maxSelectionsPerFeedback}` : 'Single selection only'}. Edit {fc.allowFeedbackEdit ? `${fc.editWindowDays} days` : 'no'}
+                    {fc.allowFeedbackEdit && fc.trackFeedbackHistory ? ', history tracked' : ''}. Anonymous {fc.allowAnonymousFeedback ? (fc.anonymousForNegative ? 'negative only' : 'yes') : 'no'}.
+                  </p>
                 </div>
               </div>
             </div>
-            <button
-              type="submit"
-              disabled={saving || validationErrors.length > 0}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? 'Saving…' : 'Save global config'}
-            </button>
+            <div className="flex flex-wrap gap-3 items-center">
+              <button
+                type="submit"
+                disabled={saving || validationErrors.length > 0}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? 'Saving…' : 'Save global config'}
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyToAllTenants}
+                disabled={applyingToAll}
+                className="px-4 py-2 border border-amber-600 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-50 dark:hover:bg-amber-900/20 disabled:opacity-50 text-sm"
+                title="Apply current global config to all existing tenant configs (§1.2.1)"
+              >
+                {applyingToAll ? 'Applying…' : 'Apply to all existing tenants (§1.2.1)'}
+              </button>
+            </div>
           </form>
         </section>
+      )}
+
+      {patternTestModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="pattern-test-modal-title">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-2xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h2 id="pattern-test-modal-title" className="text-lg font-semibold mb-4">Test with historical data (§1.2.2)</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Runs pattern detection against stored feedback using current thresholds (min sample size {pd.minSampleSize}, ignore rate {(pd.thresholds.ignoreRate * 100).toFixed(0)}%, action rate {(pd.thresholds.actionRate * 100).toFixed(0)}%, sentiment threshold {(pd.thresholds.sentimentThreshold * 100).toFixed(0)}%).
+            </p>
+            {patternTestError && (
+              <p className="text-sm text-red-600 dark:text-red-400 mb-4" role="alert">{patternTestError}</p>
+            )}
+            {patternTestResult && (
+              <div className="mb-4 space-y-3 text-sm">
+                <p className="text-gray-700 dark:text-gray-300">
+                  <strong>{patternTestResult.totalFeedbackRows}</strong> feedback rows; <strong>{patternTestResult.recommendationCount}</strong> recommendations with ≥{patternTestResult.appliedThresholds.minSampleSize} samples.
+                </p>
+                <p className="text-gray-700 dark:text-gray-300">
+                  Would <strong>suppress</strong>: {patternTestResult.suppressedCount} (ignore rate &gt; {(patternTestResult.appliedThresholds.ignoreRate * 100).toFixed(0)}%). Would <strong>flag for review</strong>: {patternTestResult.flaggedCount} (low action rate or low sentiment).
+                </p>
+                {patternTestResult.sampleSuppressed.length > 0 && (
+                  <div>
+                    <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">Sample suppressed (up to 10)</p>
+                    <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-0.5">
+                      {patternTestResult.sampleSuppressed.map((s, i) => (
+                        <li key={i}>{s.recommendationId} (tenant: {s.tenantId}) — {s.feedbackCount} feedback, ignore rate {(s.ignoreRate * 100).toFixed(0)}%</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {patternTestResult.sampleFlagged.length > 0 && (
+                  <div>
+                    <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">Sample flagged (up to 10)</p>
+                    <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-0.5">
+                      {patternTestResult.sampleFlagged.map((s, i) => (
+                        <li key={i}>{s.recommendationId} (tenant: {s.tenantId}) — {s.feedbackCount} feedback, action rate {(s.actionRate * 100).toFixed(0)}%, avg sentiment {s.avgSentiment.toFixed(2)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2 justify-end">
+              {!patternTestResult && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!apiBaseUrl) return;
+                    setPatternTestLoading(true);
+                    setPatternTestError(null);
+                    setPatternTestResult(null);
+                    try {
+                      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-config/test-pattern-detection`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ windowDays: 90 }),
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
+                      setPatternTestResult(data);
+                    } catch (e) {
+                      setPatternTestError(e instanceof Error ? e.message : String(e));
+                    } finally {
+                      setPatternTestLoading(false);
+                    }
+                  }}
+                  disabled={patternTestLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+                >
+                  {patternTestLoading ? 'Running…' : 'Run test'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => { setPatternTestModalOpen(false); setPatternTestResult(null); setPatternTestError(null); }}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

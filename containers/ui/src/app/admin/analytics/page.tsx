@@ -29,10 +29,22 @@ export default function AnalyticsPage() {
         <span className="text-sm text-gray-500">/</span>
         <span className="text-sm font-medium">Analytics</span>
       </div>
-      <h1 className="text-2xl font-bold mb-2">Analytics & Reporting</h1>
-      <p className="text-muted-foreground mb-4">
-        Configure dashboards, reports, and data exports (Super Admin §9).
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+        <div>
+          <h1 className="text-2xl font-bold mb-2">Analytics & Reporting</h1>
+          <p className="text-muted-foreground">
+            Configure dashboards, reports, and data exports (Super Admin §9).
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+          title="Reload page (§9)"
+        >
+          Refresh
+        </button>
+      </div>
       <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
         <span className="text-sm font-medium text-gray-900 dark:text-gray-100 border-b-2 border-blue-600 pb-2 -mb-0.5">
           Overview

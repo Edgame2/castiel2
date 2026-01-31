@@ -438,6 +438,42 @@ paths:
                 properties:
                   modelId: { type: string }
                   confidence: { type: number }
+  /ml/evaluation:
+    post:
+      tags: [Training, Evaluation]
+      summary: Run model evaluation (W6 Layer 8)
+      description: Run model evaluation; returns metrics (accuracy, precision, recall, f1Score). Optional testDataPath/actualsPath for full evaluation when implemented.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [modelId]
+              properties:
+                modelId: { type: string }
+                testDataPath: { type: string }
+                actualsPath: { type: string }
+      responses:
+        '200':
+          description: modelId, metrics, evaluationDate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  modelId: { type: string }
+                  metrics:
+                    type: object
+                    properties:
+                      accuracy: { type: number }
+                      precision: { type: number }
+                      recall: { type: number }
+                      f1Score: { type: number }
+                      evaluationTime: { type: string, format: date-time }
+                  evaluationDate: { type: string, format: date-time }
   /ml/evaluation/drift/{modelId}:
     get:
       tags: [Training, Evaluation]

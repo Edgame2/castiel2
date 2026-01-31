@@ -135,6 +135,15 @@ export default function DecisionRulesTemplatesPage() {
         >
           Create rule (Rules page)
         </Link>
+        <button
+          type="button"
+          onClick={fetchTemplates}
+          disabled={loading}
+          className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
+          title="Refetch rule templates"
+        >
+          Refresh
+        </button>
       </div>
 
       {loading ? (

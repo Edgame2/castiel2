@@ -1780,6 +1780,68 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   );
 
   /**
+   * W6 Layer 8 – Run model evaluation.
+   * POST /api/v1/ml/evaluation
+   */
+  app.post<{
+    Body: { modelId: string; testDataPath?: string; actualsPath?: string };
+  }>(
+    '/api/v1/ml/evaluation',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Run model evaluation (Plan W6 Layer 8)',
+        tags: ['Training', 'Evaluation'],
+        body: {
+          type: 'object',
+          required: ['modelId'],
+          properties: {
+            modelId: { type: 'string' },
+            testDataPath: { type: 'string' },
+            actualsPath: { type: 'string' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              modelId: { type: 'string' },
+              metrics: {
+                type: 'object',
+                properties: {
+                  accuracy: { type: 'number' },
+                  precision: { type: 'number' },
+                  recall: { type: 'number' },
+                  f1Score: { type: 'number' },
+                  evaluationTime: { type: 'string', format: 'date-time' },
+                },
+              },
+              evaluationDate: { type: 'string', format: 'date-time' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const { modelId, testDataPath, actualsPath } = request.body;
+      const metrics = await evaluationService.evaluateModel(tenantId, modelId, {
+        testDataPath,
+        actualsPath,
+      });
+      const evaluationDate = new Date().toISOString();
+      reply.send({
+        modelId,
+        metrics: {
+          ...metrics,
+          evaluationTime: metrics.evaluationTime instanceof Date ? metrics.evaluationTime.toISOString() : metrics.evaluationTime,
+        },
+        evaluationDate,
+      });
+    }
+  );
+
+  /**
    * W6 Layer 8 – Get drift metrics for a model.
    * GET /api/v1/ml/evaluation/drift/:modelId
    */

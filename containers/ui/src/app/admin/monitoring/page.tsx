@@ -94,11 +94,24 @@ export default function MonitoringDashboardPage() {
         <Link href="/admin" className="text-sm font-medium hover:underline">
           Admin
         </Link>
+        <span className="text-sm text-gray-500">/</span>
+        <span className="text-sm font-medium">Monitoring</span>
       </div>
       <h1 className="text-2xl font-bold mb-2">System Monitoring</h1>
-      <p className="text-muted-foreground mb-6">
+      <p className="text-muted-foreground mb-4">
         Monitor system health, queues, processors, and performance (Super Admin only)
       </p>
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={fetchMonitoringData}
+          disabled={loading}
+          className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
+          title="Refetch monitoring data"
+        >
+          Refresh
+        </button>
+      </div>
 
       {!apiBaseUrl && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20 mb-4">

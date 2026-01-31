@@ -136,6 +136,38 @@ export async function registerRoutes(
     }
   );
 
+  const linkPredictionBodySchema = {
+    type: 'object',
+    required: ['predictionId'],
+    properties: { predictionId: { type: 'string' } },
+  };
+
+  fastify.put<{ Params: { feedbackId: string }; Body: { predictionId: string } }>(
+    '/api/v1/feedback/:feedbackId/link-prediction',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Link feedback to a prediction (Plan W6 Layer 7)',
+        tags: ['Feedback'],
+        security: [{ bearerAuth: [] }],
+        params: { type: 'object', required: ['feedbackId'], properties: { feedbackId: { type: 'string' } } },
+        body: linkPredictionBodySchema,
+        response: {
+          200: { type: 'object', properties: { id: { type: 'string' }, predictionId: { type: 'string' }, linkedAt: { type: 'string' } } },
+          404: { type: 'object', properties: { message: { type: 'string' } } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = (request as { user?: { tenantId: string } }).user!.tenantId;
+      const { feedbackId } = request.params;
+      const { predictionId } = request.body as { predictionId: string };
+      const updated = await service.linkFeedbackToPrediction(tenantId, feedbackId, predictionId);
+      if (!updated) return reply.status(404).send({ message: 'Feedback not found' });
+      return reply.send({ id: updated.id, predictionId: updated.predictionId, linkedAt: updated.linkedAt });
+    }
+  );
+
   fastify.get<{
     Params: { modelId: string };
     Querystring: { from?: string; to?: string; alertThreshold?: string };

@@ -66,6 +66,9 @@ function shardToEntry(shard: Shard): ActionCatalogEntry {
     applicableIndustries: (d.applicableIndustries as string[]) ?? [],
     applicableStages: (d.applicableStages as string[]) ?? [],
     applicableMethodologies: (d.applicableMethodologies as string[]) ?? [],
+    applicableOpportunityTypes: (d.applicableOpportunityTypes as string[]) ?? [],
+    minAmount: d.minAmount as number | undefined,
+    maxAmount: d.maxAmount as number | undefined,
     riskDetails: d.riskDetails as ActionCatalogEntry['riskDetails'],
     recommendationDetails: d.recommendationDetails as ActionCatalogEntry['recommendationDetails'],
     decisionRules: d.decisionRules as ActionCatalogEntry['decisionRules'],
@@ -362,6 +365,9 @@ export class ActionCatalogService {
       applicableIndustries: input.applicableIndustries ?? [],
       applicableStages: input.applicableStages ?? [],
       applicableMethodologies: input.applicableMethodologies ?? [],
+      applicableOpportunityTypes: input.applicableOpportunityTypes ?? undefined,
+      minAmount: input.minAmount,
+      maxAmount: input.maxAmount,
       riskDetails: input.riskDetails,
       recommendationDetails: input.recommendationDetails,
       decisionRules: input.decisionRules,
@@ -574,6 +580,29 @@ export class ActionCatalogService {
       headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': SYSTEM_TENANT_ID } },
     );
     return true;
+  }
+
+  /** Merge category source into target (§2.2.1): reassign all entries from source to target, then delete source. */
+  async mergeCategories(sourceId: string, targetId: string, tenantId: string, userId: string): Promise<boolean> {
+    if (sourceId === targetId) throw new Error('Source and target category must be different');
+    const source = await this.getCategory(sourceId, tenantId);
+    if (!source) throw new Error(`Category not found: ${sourceId}`);
+    const target = await this.getCategory(targetId, tenantId);
+    if (!target) throw new Error(`Category not found: ${targetId}`);
+    return this.deleteCategory(sourceId, tenantId, userId, targetId);
+  }
+
+  /** Reorder categories by id list (§2.2.1). categoryIds is the desired order; each category's order is set to its index. */
+  async reorderCategories(tenantId: string, userId: string, categoryIds: string[]): Promise<void> {
+    if (categoryIds.length === 0) return;
+    const categories = await this.listCategories(tenantId);
+    const idSet = new Set(categories.map((c) => c.id));
+    for (const id of categoryIds) {
+      if (!idSet.has(id)) throw new Error(`Category not found: ${id}`);
+    }
+    for (let i = 0; i < categoryIds.length; i++) {
+      await this.updateCategory(categoryIds[i], tenantId, userId, { order: i });
+    }
   }
 
   /** List risk–recommendation relationships (§2.3). Derived from entries. */

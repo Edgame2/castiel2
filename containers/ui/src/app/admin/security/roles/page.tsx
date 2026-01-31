@@ -188,6 +188,34 @@ export default function SecurityRolesPage() {
 
       {apiBaseUrl && (
         <>
+          <section className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4">
+            <h2 className="text-sm font-semibold mb-2">Pre-defined roles (§10.1)</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              Reference list of standard roles. Load roles for an organization below to view and manage.
+            </p>
+            <ul className="list-none space-y-2" aria-label="Pre-defined roles">
+              <li className="flex items-center gap-2 rounded border border-gray-200 dark:border-gray-700 p-3">
+                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">Super Admin</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">All permissions</span>
+              </li>
+              <li className="flex items-center gap-2 rounded border border-gray-200 dark:border-gray-700 p-3">
+                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">Tenant Admin</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">Tenant-specific admin</span>
+              </li>
+              <li className="flex items-center gap-2 rounded border border-gray-200 dark:border-gray-700 p-3">
+                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">Data Scientist</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">ML models, features</span>
+              </li>
+              <li className="flex items-center gap-2 rounded border border-gray-200 dark:border-gray-700 p-3">
+                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">Sales Manager</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">Analytics, reports</span>
+              </li>
+              <li className="flex items-center gap-2 rounded border border-gray-200 dark:border-gray-700 p-3">
+                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">Sales User</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">Opportunity view only</span>
+              </li>
+            </ul>
+          </section>
           <div className="rounded-lg border bg-white dark:bg-gray-900 p-4 mb-4">
             <label className="block text-sm font-medium mb-2">Organization ID</label>
             <div className="flex gap-2">
@@ -205,6 +233,15 @@ export default function SecurityRolesPage() {
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Loading…' : 'Load roles'}
+              </button>
+              <button
+                type="button"
+                onClick={fetchRoles}
+                disabled={!orgId.trim() || loading}
+                className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                title="Refetch roles for current organization"
+              >
+                Refresh
               </button>
               <button
                 type="button"

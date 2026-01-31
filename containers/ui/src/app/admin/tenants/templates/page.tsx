@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
@@ -105,6 +105,15 @@ export default function TenantTemplatesPage() {
   const [editMaxOpportunities, setEditMaxOpportunities] = useState('');
   const [editMaxPredictionsPerDay, setEditMaxPredictionsPerDay] = useState('');
   const [editMaxFeedbackPerDay, setEditMaxFeedbackPerDay] = useState('');
+  /** §7.2.2 Apply Template: Select tenants from list */
+  const [showTenantPicker, setShowTenantPicker] = useState(false);
+  const [tenantListForPicker, setTenantListForPicker] = useState<{ id: string; name?: string | null }[]>([]);
+  const [tenantPickerLoading, setTenantPickerLoading] = useState(false);
+  const [tenantPickerError, setTenantPickerError] = useState<string | null>(null);
+  const [selectedTenantIdsForPicker, setSelectedTenantIdsForPicker] = useState<string[]>([]);
+  const selectFromListButtonRef = useRef<HTMLButtonElement>(null);
+  const tenantPickerCancelButtonRef = useRef<HTMLButtonElement>(null);
+  const tenantPickerWasOpenRef = useRef(false);
 
   const fetchTemplates = useCallback(async () => {
     if (!apiBaseUrl) return;
@@ -130,6 +139,56 @@ export default function TenantTemplatesPage() {
       setLoading(false);
     }
   }, [apiBaseUrl, fetchTemplates]);
+
+  /** Escape key closes Tenant Picker, then Create, Edit, or Apply panel (do not close while submitting). */
+  useEffect(() => {
+    const open = showTenantPicker || showCreate || editId !== null || applyTemplateId !== null;
+    if (!open || creating || editSaving || applyLoading) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (showTenantPicker) {
+        setShowTenantPicker(false);
+      } else if (applyTemplateId) {
+        setApplyTemplateId(null);
+        setApplyTenantIdsInput('');
+        setApplyResult(null);
+        setApplyError(null);
+      } else if (editId) {
+        setEditId(null);
+        setEditError(null);
+      } else if (showCreate) {
+        setShowCreate(false);
+        setCreateError(null);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [showTenantPicker, showCreate, editId, applyTemplateId, creating, editSaving, applyLoading]);
+
+  useEffect(() => {
+    document.title = 'Tenant Templates | Admin | Castiel';
+    return () => {
+      document.title = 'Admin | Castiel';
+    };
+  }, []);
+
+  /** Tenant picker modal: focus Cancel when open (a11y). */
+  useEffect(() => {
+    if (!showTenantPicker) return;
+    tenantPickerWasOpenRef.current = true;
+    const id = requestAnimationFrame(() => {
+      tenantPickerCancelButtonRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [showTenantPicker]);
+
+  /** Tenant picker modal: restore focus to Select from list when closed (a11y). */
+  useEffect(() => {
+    if (showTenantPicker) return;
+    if (!tenantPickerWasOpenRef.current) return;
+    tenantPickerWasOpenRef.current = false;
+    selectFromListButtonRef.current?.focus();
+  }, [showTenantPicker]);
 
   const loadFeedbackTypes = useCallback(async () => {
     if (!apiBaseUrl || feedbackTypesLoaded) return;
@@ -285,6 +344,35 @@ export default function TenantTemplatesPage() {
     setApplyResult(null);
     setApplyError(null);
   }, []);
+
+  /** §7.2.2 Open tenant picker and fetch tenant list */
+  const openTenantPicker = useCallback(async () => {
+    setShowTenantPicker(true);
+    setTenantListForPicker([]);
+    setTenantPickerError(null);
+    setSelectedTenantIdsForPicker([]);
+    if (!apiBaseUrl) {
+      setTenantPickerError('API URL not set');
+      return;
+    }
+    setTenantPickerLoading(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/v1/admin/tenants`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const items = Array.isArray(json?.items) ? json.items : [];
+      setTenantListForPicker(
+        items.map((t: { id?: string; name?: string | null }) => ({
+          id: typeof t.id === 'string' ? t.id : '',
+          name: t.name ?? null,
+        })).filter((t: { id: string }) => t.id)
+      );
+    } catch (e) {
+      setTenantPickerError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTenantPickerLoading(false);
+    }
+  }, [apiBaseUrl]);
 
   const fetchOne = useCallback(async (templateId: string): Promise<TenantTemplateRow | null> => {
     if (!apiBaseUrl) return null;
@@ -461,6 +549,7 @@ export default function TenantTemplatesPage() {
               type="button"
               onClick={fetchTemplates}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              aria-label="Refresh template list"
             >
               Refresh
             </button>
@@ -468,6 +557,7 @@ export default function TenantTemplatesPage() {
               type="button"
               onClick={handleOpenCreate}
               className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+              aria-label="Create new tenant template"
             >
               Create template
             </button>
@@ -1003,6 +1093,7 @@ export default function TenantTemplatesPage() {
                 type="button"
                 onClick={fetchTemplates}
                 className="mt-2 text-sm font-medium text-blue-600 hover:underline"
+                aria-label="Retry loading templates"
               >
                 Retry
               </button>
@@ -1011,57 +1102,61 @@ export default function TenantTemplatesPage() {
 
           {!loading && !error && (
             <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-6">
-              <h2 className="text-lg font-semibold mb-3">Templates</h2>
+              <h2 className="text-lg font-semibold mb-3">
+                Templates (§7.2.1 card grid)
+                {items.length > 0 ? ` — ${items.length} template${items.length === 1 ? '' : 's'}` : ''}
+              </h2>
               {items.length === 0 ? (
                 <p className="text-sm text-gray-500">No templates yet. Create one to get started.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-gray-50 dark:bg-gray-800">
-                        <th className="text-left py-2 px-4">Name</th>
-                        <th className="text-left py-2 px-4">Description</th>
-                        <th className="text-left py-2 px-4">Methodology</th>
-                        <th className="text-left py-2 px-4">Created</th>
-                        <th className="text-left py-2 px-4">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((row) => (
-                        <tr key={row.id} className="border-b">
-                          <td className="py-2 px-4">{row.name}</td>
-                          <td className="py-2 px-4">{row.description ?? '—'}</td>
-                          <td className="py-2 px-4">{row.methodology ?? '—'}</td>
-                          <td className="py-2 px-4">{row.createdAt ? new Date(row.createdAt).toLocaleString() : '—'}</td>
-                          <td className="py-2 px-4">
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => openEdit(row)}
-                                className="text-blue-600 dark:text-blue-400 hover:underline"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => openApply(row.id)}
-                                className="text-blue-600 dark:text-blue-400 hover:underline"
-                              >
-                                Apply
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(row.id)}
-                                className="text-red-600 dark:text-red-400 hover:underline"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" role="list">
+                  {items.map((row) => (
+                    <article
+                      key={row.id}
+                      className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-4 flex flex-col"
+                      role="listitem"
+                    >
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate" title={row.name}>
+                        {row.name}
+                      </h3>
+                      {row.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{row.description}</p>
+                      )}
+                      {row.methodology && (
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                          Methodology: <span className="font-medium">{row.methodology}</span>
+                        </p>
+                      )}
+                      {row.createdAt && (
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                          Created: {new Date(row.createdAt).toLocaleString()}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(row)}
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openApply(row.id)}
+                          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          Apply
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(row.id)}
+                          className="text-sm text-red-600 dark:text-red-400 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </article>
+                  ))}
                 </div>
               )}
             </div>
@@ -1076,6 +1171,17 @@ export default function TenantTemplatesPage() {
               <p className="text-sm text-gray-500 mb-3">
                 Enter tenant IDs (one per line or comma-separated). Applying overwrites each tenant’s feedback config with this template’s.
               </p>
+              <div className="flex gap-2 mb-2">
+                <button
+                  ref={selectFromListButtonRef}
+                  type="button"
+                  onClick={openTenantPicker}
+                  disabled={applyLoading}
+                  className="px-3 py-1.5 text-sm border rounded dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+                >
+                  Select from list
+                </button>
+              </div>
               <textarea
                 value={applyTenantIdsInput}
                 onChange={(e) => setApplyTenantIdsInput(e.target.value)}
@@ -1120,6 +1226,95 @@ export default function TenantTemplatesPage() {
                 >
                   Close
                 </button>
+              </div>
+            </div>
+          )}
+
+          {showTenantPicker && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="tenant-picker-title"
+              onClick={() => setShowTenantPicker(false)}
+            >
+              <div
+                className="max-h-[80vh] w-full max-w-md overflow-hidden rounded-lg border bg-white dark:bg-gray-900 shadow-xl flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 id="tenant-picker-title" className="text-lg font-semibold p-4 border-b dark:border-gray-700">
+                  Select tenants (§7.2.2)
+                </h2>
+                <div className="p-4 overflow-y-auto flex-1">
+                  {tenantPickerLoading && <p className="text-sm text-gray-500">Loading tenants…</p>}
+                  {tenantPickerError && (
+                    <p className="text-sm text-red-600 dark:text-red-400 mb-2">{tenantPickerError}</p>
+                  )}
+                  {!tenantPickerLoading && !tenantPickerError && tenantListForPicker.length === 0 && (
+                    <p className="text-sm text-gray-500">No tenants found.</p>
+                  )}
+                  {!tenantPickerLoading && tenantListForPicker.length > 0 && (
+                    <>
+                      <div className="flex gap-2 mb-3">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTenantIdsForPicker(tenantListForPicker.map((t) => t.id))}
+                          className="text-xs px-2 py-1 border rounded dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        >
+                          Select all
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTenantIdsForPicker([])}
+                          className="text-xs px-2 py-1 border rounded dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                      <ul className="space-y-1 text-sm max-h-60 overflow-y-auto">
+                        {tenantListForPicker.map((t) => (
+                          <li key={t.id} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id={`picker-${t.id}`}
+                              checked={selectedTenantIdsForPicker.includes(t.id)}
+                              onChange={() => {
+                                setSelectedTenantIdsForPicker((prev) =>
+                                  prev.includes(t.id) ? prev.filter((id) => id !== t.id) : [...prev, t.id]
+                                );
+                              }}
+                              className="rounded border-gray-300 dark:border-gray-600"
+                            />
+                            <label htmlFor={`picker-${t.id}`} className="cursor-pointer truncate">
+                              {t.name || t.id}
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+                <div className="flex gap-2 p-4 border-t dark:border-gray-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setApplyTenantIdsInput(selectedTenantIdsForPicker.join('\n'));
+                      setShowTenantPicker(false);
+                    }}
+                    disabled={selectedTenantIdsForPicker.length === 0}
+                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Use selected ({selectedTenantIdsForPicker.length})
+                  </button>
+                  <button
+                    ref={tenantPickerCancelButtonRef}
+                    type="button"
+                    onClick={() => setShowTenantPicker(false)}
+                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           )}

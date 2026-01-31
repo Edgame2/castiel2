@@ -172,6 +172,14 @@ export default function RoleDetailPage() {
         <Link href="/admin" className="text-sm font-medium hover:underline">Admin</Link>
         <span className="text-sm text-gray-500">/</span>
         <Link href="/admin/security" className="text-sm font-medium hover:underline">Security & Access Control</Link>
+        <span className="text-sm text-gray-500">/</span>
+        <Link href={backToRolesUrl} className="text-sm font-medium hover:underline">Roles</Link>
+        {(id.trim() || role?.name) && (
+          <>
+            <span className="text-sm text-gray-500">/</span>
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Role: {role?.name ?? id ?? '—'}</span>
+          </>
+        )}
       </div>
       <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
         <Link
@@ -254,7 +262,10 @@ export default function RoleDetailPage() {
           {!loading && role && (
             <>
               <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4">
-                <h2 className="text-lg font-semibold mb-3">Details</h2>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h2 className="text-lg font-semibold">Details</h2>
+                  <button type="button" onClick={fetchRole} disabled={loading} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50" aria-label="Refresh role details">Refresh</button>
+                </div>
                 {editing ? (
                   <div className="space-y-3">
                     <div>

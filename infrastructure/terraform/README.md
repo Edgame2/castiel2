@@ -24,6 +24,20 @@ If a Key Vault ID is provided, the following secrets are stored:
 - `speech-endpoint` - Speech Services endpoint URL
 - `speech-key` - Speech Services API key
 
+## Assumed Resources (Full Stack)
+
+This Terraform module provisions **integration infrastructure only** (Blob Storage, Cognitive Services, Key Vault). The following resources are **not** managed here; they are assumed to exist and are supplied via application config (YAML/env) or provisioned separately:
+
+| Resource | Purpose | Config / Provisioning |
+|----------|---------|------------------------|
+| **Cosmos DB** | Shards, feedback, config, action catalog, ML metadata | Connection string and container names in each service `config/default.yaml` and env (e.g. `COSMOS_DB_CONNECTION_STRING`). Provision via Azure Portal, ARM/Bicep, or a separate Terraform module. |
+| **Redis** | Caching (features, predictions, explanations) | URL/host in service config and env. Provision Azure Cache for Redis or equivalent; set `REDIS_URL` (or per-service config). |
+| **RabbitMQ** | Events (recommendation, feedback, ML, workflow) | URL and exchange in service config and env. Provision Azure or self-hosted RabbitMQ; set `RABBITMQ_URL`, exchange (e.g. `coder_events`). |
+| **Data Lake** | Parquet writes (risk_evaluations, ml_predictions, feedback, ml_outcomes) | Storage account connection string in logging/risk-analytics config. Can reuse a Blob Storage account or use ADLS Gen2; paths follow BI_SALES_RISK_DATA_LAKE_LAYOUT (e.g. `/risk_evaluations/year=.../month=.../day=.../`). |
+| **Azure ML** | Model endpoints (risk scoring, win probability, recommendations) | Workspace and managed endpoint URLs/keys in ml-service config when real Azure ML is used. Provision Azure ML workspace and deploy models; then set endpoint URL and key in config. See `containers/ml-service/README.md` for integration path. |
+
+To run the full application stack (feedback, recommendations, risk-catalog, ml-service, learning-service, etc.), ensure Cosmos DB, Redis, RabbitMQ, Data Lake, and (when required) Azure ML are provisioned and their connection details are available to each container via config or environment variables. Optional: add separate Terraform modules or ARM/Bicep templates for these resources and document them in this README or in `infrastructure/` elsewhere.
+
 ## Prerequisites
 
 1. **Azure CLI** installed and authenticated

@@ -3,6 +3,8 @@
  * Links to Feature Engineering (versions, schema); full feature store when available.
  */
 
+'use client';
+
 import Link from 'next/link';
 
 export default function MLModelsFeaturesPage() {
@@ -23,10 +25,15 @@ export default function MLModelsFeaturesPage() {
         <span className="text-sm text-gray-500">/</span>
         <span className="text-sm font-medium">Features</span>
       </div>
-      <h1 className="text-2xl font-bold mb-2">Features</h1>
-      <p className="text-muted-foreground mb-4">
-        Feature versions and schema for ml-service Layer 2 (§4.3). Full feature store config when available.
-      </p>
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div>
+          <h1 className="text-2xl font-bold mb-2">Features</h1>
+          <p className="text-muted-foreground">
+            Feature versions and schema for ml-service Layer 2 (§4.3). Full feature store config when available.
+          </p>
+        </div>
+        <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline shrink-0" aria-label="Refresh ML features page">Refresh</button>
+      </div>
       <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
         <Link
           href="/admin/ml-models"

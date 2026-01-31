@@ -138,6 +138,16 @@ export default function ActionCatalogRelationshipsPage() {
   const risks = entries.filter((e) => e.type === 'risk');
   const recommendations = entries.filter((e) => e.type === 'recommendation');
   const entryName = (id: string) => entries.find((e) => e.id === id)?.displayName ?? id;
+
+  // §2.3.3 Relationship Analytics: metrics from current data
+  const riskIdsLinked = new Set(relationships.map((r) => r.riskId));
+  const recommendationIdsLinked = new Set(relationships.map((r) => r.recommendationId));
+  const orphanedRisksCount = risks.filter((r) => !riskIdsLinked.has(r.id)).length;
+  const orphanedRecsCount = recommendations.filter((r) => !recommendationIdsLinked.has(r.id)).length;
+  const risksWithLinks = riskIdsLinked.size;
+  const recsWithLinks = recommendationIdsLinked.size;
+  const coverageRisks = risks.length > 0 ? Math.round((risksWithLinks / risks.length) * 100) : 0;
+  const coverageRecs = recommendations.length > 0 ? Math.round((recsWithLinks / recommendations.length) * 100) : 0;
   const q = searchQuery.trim().toLowerCase();
   const filtered = relationships.filter((r) => {
     if (!q) return true;
@@ -284,7 +294,41 @@ export default function ActionCatalogRelationshipsPage() {
       )}
 
       {!loading && apiBaseUrl && !error && (
-        <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-hidden">
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h2 className="text-lg font-semibold">Relationships</h2>
+            <button
+              type="button"
+              onClick={fetchData}
+              disabled={loading}
+              className="px-3 py-1.5 text-sm font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+              aria-label="Refresh relationships"
+            >
+              Refresh
+            </button>
+          </div>
+          <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50" aria-label="Relationship analytics">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">§2.3.3 Relationship Analytics</h2>
+            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+              <div>
+                <dt className="text-gray-500 dark:text-gray-400">Total links</dt>
+                <dd className="font-medium text-gray-900 dark:text-gray-100">{relationships.length}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 dark:text-gray-400">Risks with links</dt>
+                <dd className="font-medium text-gray-900 dark:text-gray-100">{risksWithLinks} / {risks.length} ({coverageRisks}%)</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 dark:text-gray-400">Recommendations with links</dt>
+                <dd className="font-medium text-gray-900 dark:text-gray-100">{recsWithLinks} / {recommendations.length} ({coverageRecs}%)</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 dark:text-gray-400">Orphaned</dt>
+                <dd className="font-medium text-gray-900 dark:text-gray-100">{orphanedRisksCount} risks, {orphanedRecsCount} recommendations</dd>
+              </div>
+            </dl>
+          </div>
+          <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-hidden">
           {sorted.length === 0 ? (
             <div className="p-6">
               <p className="text-sm text-gray-500">
@@ -321,7 +365,8 @@ export default function ActionCatalogRelationshipsPage() {
               </tbody>
             </table>
           )}
-        </div>
+          </div>
+        </>
       )}
 
       {modalMode === 'create' && (

@@ -18,11 +18,58 @@ export interface ActionTemplate {
   expectedOutcomeTemplate: string;
 }
 
+/** Impact assessment per §2.1.2 Create Risk Entry (SUPER_ADMIN_CONFIGURATION_REQUIREMENTS) */
+export interface RiskImpactAssessment {
+  probabilityDecrease?: number;
+  revenueAtRisk?: number;
+  timelineDelay?: number;
+  description?: string;
+}
+
+/** §2.1.2 Step 4 Decision Rules: notification options for risk detection */
+export interface RiskNotificationRules {
+  notifyOwner?: boolean;
+  notifyManager?: boolean;
+  escalateIfCritical?: boolean;
+  escalationDelayHours?: number;
+}
+
 export interface RiskDetails {
   severity: RiskSeverity;
   impactType: RiskImpactType;
   indicators: string[];
   mitigatingRecommendations: string[];
+  /** Impact assessment (§2.1.2) */
+  impact?: RiskImpactAssessment;
+  /** ML feature names for detection (§2.1.2) */
+  mlFeatures?: string[];
+  /** Feature value threshold for detection (§2.1.2) */
+  mlThreshold?: number;
+  /** §2.1.2 Step 4: auto-detect this risk */
+  autoDetect?: boolean;
+  /** §2.1.2 Step 4: notification rules when risk is detected */
+  notificationRules?: RiskNotificationRules;
+}
+
+/** Action type per §2.1.3 Create Recommendation Entry (SUPER_ADMIN_CONFIGURATION_REQUIREMENTS) */
+export type RecommendationActionType = 'meeting' | 'email' | 'task' | 'document' | 'question' | 'analysis';
+
+/** Expected outcome per §2.1.3 */
+export interface RecommendationExpectedOutcome {
+  description: string;
+  quantifiedImpact?: string;
+  impactType?: 'probability' | 'revenue' | 'timeline' | 'risk_reduction' | 'efficiency';
+  confidence?: 'low' | 'medium' | 'high';
+  evidence?: string;
+}
+
+/** Implementation details per §2.1.3 */
+export interface RecommendationImplementation {
+  effort?: 'low' | 'medium' | 'high';
+  complexity?: 'simple' | 'moderate' | 'complex';
+  estimatedTime?: string;
+  prerequisites?: string[];
+  skillsRequired?: string[];
 }
 
 export interface RecommendationDetails {
@@ -31,6 +78,10 @@ export interface RecommendationDetails {
   mitigatesRisks: string[];
   requiredData: string[];
   contentResources?: Array<{ type: string; title: string; url?: string }>;
+  /** §2.1.3 */
+  actionType?: RecommendationActionType;
+  expectedOutcome?: RecommendationExpectedOutcome;
+  implementation?: RecommendationImplementation;
 }
 
 export interface DecisionRules {
@@ -60,6 +111,12 @@ export interface ActionCatalogEntry {
   applicableIndustries: string[];
   applicableStages: string[];
   applicableMethodologies: string[];
+  /** §2.1.2/§2.1.3 Step 3: new_business, renewal, expansion */
+  applicableOpportunityTypes?: string[];
+  /** Only for opps with amount > minAmount (§2.1.2/§2.1.3) */
+  minAmount?: number;
+  /** Only for opps with amount < maxAmount (§2.1.2/§2.1.3) */
+  maxAmount?: number;
   riskDetails?: RiskDetails;
   recommendationDetails?: RecommendationDetails;
   decisionRules?: DecisionRules;
@@ -87,6 +144,9 @@ export interface CreateActionCatalogEntryInput {
   applicableIndustries?: string[];
   applicableStages?: string[];
   applicableMethodologies?: string[];
+  applicableOpportunityTypes?: string[];
+  minAmount?: number;
+  maxAmount?: number;
   riskDetails?: RiskDetails;
   recommendationDetails?: RecommendationDetails;
   decisionRules?: DecisionRules;
@@ -101,6 +161,9 @@ export interface UpdateActionCatalogEntryInput {
   applicableIndustries?: string[];
   applicableStages?: string[];
   applicableMethodologies?: string[];
+  applicableOpportunityTypes?: string[];
+  minAmount?: number;
+  maxAmount?: number;
   riskDetails?: RiskDetails;
   recommendationDetails?: RecommendationDetails;
   decisionRules?: DecisionRules;

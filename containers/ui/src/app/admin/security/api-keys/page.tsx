@@ -244,6 +244,15 @@ export default function SecurityApiKeysPage() {
             </button>
             <button
               type="button"
+              onClick={fetchKeys}
+              disabled={loading || !orgId.trim()}
+              className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              title="Refetch API keys for current organization"
+            >
+              Refresh
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 setShowCreate(true);
                 setCreateError(null);

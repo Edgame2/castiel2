@@ -134,6 +134,8 @@ export default function FeedbackSystemPage() {
         <Link href="/admin" className="text-sm font-medium hover:underline">
           Admin
         </Link>
+        <span className="text-sm text-gray-500">/</span>
+        <span className="text-sm font-medium">Feedback System</span>
       </div>
       <h1 className="text-2xl font-bold mb-2">Feedback System</h1>
       <p className="text-muted-foreground mb-4">
@@ -157,6 +159,21 @@ export default function FeedbackSystemPage() {
         </Link>
       </nav>
 
+      {apiBaseUrl && (
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => fetchAll()}
+            disabled={loading}
+            className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
+            title="Refetch types, config, and aggregation"
+            aria-label="Refresh feedback types, config, and aggregation"
+          >
+            Refresh
+          </button>
+        </div>
+      )}
+
       {!apiBaseUrl && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
@@ -177,6 +194,19 @@ export default function FeedbackSystemPage() {
 
       {!loading && apiBaseUrl && (
         <div className="space-y-6">
+          <div className="rounded-lg border bg-gray-50 dark:bg-gray-800/50 p-4 flex flex-wrap items-center gap-4" role="region" aria-label="Feedback system summary">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Feedback types: <strong>{types.length}</strong>
+            </span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Global config: <strong>{config != null ? 'Set' : 'Not set'}</strong>
+            </span>
+            {aggregation != null && (
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Aggregation ({aggregationPeriod}): <strong>Available</strong>
+              </span>
+            )}
+          </div>
           <section className="rounded-lg border bg-white dark:bg-gray-900 p-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold">Feedback types (global)</h2>
@@ -239,7 +269,7 @@ export default function FeedbackSystemPage() {
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
               </select>
-              <button type="button" onClick={fetchAggregation} className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">Refresh</button>
+              <button type="button" onClick={fetchAggregation} className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700" aria-label="Refresh aggregation for selected period">Refresh</button>
             </div>
             {aggregation == null ? (
               <p className="text-sm text-gray-500">No aggregation for this period (or not yet computed).</p>

@@ -58,7 +58,6 @@ The Adaptive Learning Service module provides the CAIS (Compound AI System) adap
 
 For complete documentation, see:
 - [Module README](../../../../containers/adaptive-learning/README.md)
-- [CAIS System Documentation](../../../../old_code/apps/api/src/services/adaptive-learning/README.md)
 
 ## Dependencies
 

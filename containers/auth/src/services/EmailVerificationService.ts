@@ -25,7 +25,7 @@ export function generateVerificationToken(): string {
  * In production, consider a dedicated EmailVerificationToken table
  */
 export async function generateAndStoreVerificationToken(userId: string): Promise<string> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   const token = generateVerificationToken();
   const expiresInSeconds = VERIFICATION_TOKEN_EXPIRY_HOURS * 60 * 60;
 
@@ -68,7 +68,7 @@ export async function verifyEmail(token: string): Promise<{ success: boolean; us
     await redis.del(tokenKey);
 
     // Mark email as verified
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
     await db.user.update({
       where: { id: userId },
       data: { isEmailVerified: true },
@@ -86,7 +86,7 @@ export async function verifyEmail(token: string): Promise<{ success: boolean; us
  * Generates token and publishes event for notification service to send email
  */
 export async function sendVerificationEmail(userId: string): Promise<string> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   const user = await db.user.findUnique({
     where: { id: userId },
     select: { email: true, isEmailVerified: true },
@@ -105,13 +105,13 @@ export async function sendVerificationEmail(userId: string): Promise<string> {
   // Publish event for notification service to send email
   // Import here to avoid circular dependency
   const { publishEventSafely, createBaseEvent } = await import('../events/publishers/AuthEventPublisher');
-  const { AuthEvent } = await import('../types/events');
+  type AuthEvent = import('../types/events').UserEmailVerificationRequestedEvent;
   
   await publishEventSafely({
     ...createBaseEvent('user.email_verification_requested', userId, undefined, undefined, {
       userId,
       email: user.email,
-      verificationToken: token, // Include token in event data for email service
+      verificationToken: token,
     }),
   } as AuthEvent);
   
@@ -143,7 +143,7 @@ export async function verifyEmailWithToken(userId: string, token: string): Promi
     await redis.del(tokenKey);
 
     // Mark email as verified
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
     await db.user.update({
       where: { id: userId },
       data: { isEmailVerified: true },

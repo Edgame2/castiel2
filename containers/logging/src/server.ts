@@ -272,8 +272,8 @@ export async function start(): Promise<void> {
   try {
     app = await buildApp();
     
-    // Setup JWT for authentication
-    await setupJWT(app);
+    // Setup JWT for authentication (cast for cross-package Fastify type compatibility)
+    await setupJWT(app as any, { secret: process.env.JWT_SECRET || '' });
     log.info('JWT authentication configured');
     
     // Connect to database

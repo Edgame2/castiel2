@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AuditService } from '../../../../src/services/AuditService';
-import { getLoggingClient } from '../../../../src/services/logging/LoggingClient';
+import { AuditService } from '../../../src/services/AuditService';
+import { getLoggingClient } from '../../../src/services/logging/LoggingClient';
 
 // Mock dependencies
 vi.mock('@coder/shared', () => {
@@ -18,7 +18,7 @@ vi.mock('@coder/shared', () => {
   };
 });
 
-vi.mock('../../../../src/services/logging/LoggingClient');
+vi.mock('../../../src/services/logging/LoggingClient');
 
 describe('AuditService', () => {
   let auditService: AuditService;
@@ -72,7 +72,7 @@ describe('AuditService', () => {
       
       mockDb.secret_audit_logs.findMany.mockResolvedValue(mockLogs);
       
-      const result = await auditService.getAuditLogs({
+      const result = await auditService.listLogs({
         secretId: 'secret-1',
         limit: 10,
       });

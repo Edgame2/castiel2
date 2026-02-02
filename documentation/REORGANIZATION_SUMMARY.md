@@ -82,7 +82,7 @@ documentation/
 - **Core Modules**: 5
 - **Extension Modules**: 29
   - Existing: 16 (ai-service, embeddings, planning, execution-service, mcp-server, knowledge-base, dashboard, calendar, messaging, learning-development, collaboration, quality, resource-management, workflow, observability, prompt-management, usage-tracking)
-  - New: 13 (context-service, agent-registry, validation-engine, pattern-recognition, migration-service, bug-detection, code-generation, performance-optimization, security-service, compliance-service, multi-modal-service, reasoning-engine, developer-experience)
+  - New: 10 (context-service, validation-engine, pattern-recognition, migration-service, performance-optimization, security-service, compliance-service, multi-modal-service, reasoning-engine, developer-experience). bug-detection removed from system.
 
 ## Old Structure (To Be Archived)
 

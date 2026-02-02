@@ -134,12 +134,12 @@ export class ExplainabilityService {
       detectedRisks?: Array<{ riskName?: string; contribution?: number; category?: string }>;
       categoryScores?: Record<string, number>;
     };
-    const effectiveOpportunityId = opportunityId || ev.opportunityId ?? '';
+    const effectiveOpportunityId = (opportunityId || ev.opportunityId) ?? '';
     const riskScore = typeof ev.riskScore === 'number' ? ev.riskScore : 0;
     const risks = ev.detectedRisks ?? [];
     const categoryScores = ev.categoryScores ?? {};
 
-    const positiveFactors: Factor[] = risks.slice(0, 5).map((r, i) => ({
+    const positiveFactors: Factor[] = risks.slice(0, 5).map((r, _i) => ({
       feature: r.riskName ?? 'Risk',
       value: r.contribution,
       impact: typeof r.contribution === 'number' ? r.contribution : 0.1,
@@ -152,7 +152,7 @@ export class ExplainabilityService {
     const negativeFactors: Factor[] = Object.entries(categoryScores)
       .filter(([, v]) => typeof v === 'number' && v < 0.3)
       .slice(0, 3)
-      .map(([name, v], i) => ({
+      .map(([name, v], _i) => ({
         feature: name,
         value: v,
         impact: -(0.3 - (v as number)),
@@ -163,7 +163,7 @@ export class ExplainabilityService {
       }));
 
     const shapValues: Record<string, number> = {};
-    positiveFactors.forEach((f, i) => { shapValues[f.feature] = f.impact; });
+    positiveFactors.forEach((f) => { shapValues[f.feature] = f.impact; });
     negativeFactors.forEach((f) => { shapValues[f.feature] = f.impact; });
 
     const now = new Date().toISOString();

@@ -10,6 +10,10 @@ export enum ModelType {
   RECOMMENDATION = 'recommendation',
   FORECASTING = 'forecasting',
   ANOMALY_DETECTION = 'anomaly_detection',
+  /** BI/risk: risk scoring model */
+  RISK_SCORING = 'risk-scoring',
+  /** BI/risk: win probability model */
+  WIN_PROBABILITY = 'win-probability',
 }
 
 export enum ModelStatus {

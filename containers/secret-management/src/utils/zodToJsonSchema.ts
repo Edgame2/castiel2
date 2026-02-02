@@ -9,12 +9,8 @@ import { z } from 'zod';
  * Convert a Zod schema to JSON Schema format for Fastify
  */
 export function zodToFastifySchema(zodSchema: z.ZodTypeAny): any {
-  const jsonSchema = zodToJsonSchema(zodSchema, {
-    target: 'openApi3',
-    $refStrategy: 'none', // Inline all schemas
-  });
-  
-  return jsonSchema;
+  const opts = { target: 'openApi3', $refStrategy: 'none' as const };
+  return zodToJsonSchema(zodSchema as any, opts as any);
 }
 
 

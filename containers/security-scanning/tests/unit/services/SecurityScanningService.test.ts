@@ -11,6 +11,11 @@ vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(),
 }));
 
+const mockServiceClient = vi.hoisted(() => vi.fn());
+vi.mock('@coder/shared', () => ({
+  ServiceClient: mockServiceClient,
+}));
+
 vi.mock('../../../src/config', () => ({
   loadConfig: vi.fn(() => ({
     database: {
@@ -18,6 +23,11 @@ vi.mock('../../../src/config', () => ({
         security_scans: 'security_scans',
         pii_detections: 'pii_detections',
       },
+    },
+    services: {
+      auth: { url: 'http://auth:3000' },
+      secret_management: { url: 'http://secret-management:3000' },
+      shard_manager: { url: 'http://shard-manager:3000' },
     },
   })),
 }));
@@ -37,6 +47,9 @@ describe('SecurityScanningService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockServiceClient.mockImplementation(function (this: any) {
+      return this ?? {};
+    });
 
     mockScansContainer = {
       items: {
@@ -46,6 +59,7 @@ describe('SecurityScanningService', () => {
         })),
         read: vi.fn(),
       },
+      item: vi.fn().mockReturnValue({ replace: vi.fn().mockResolvedValue(undefined) }),
     };
 
     mockPiiContainer = {
@@ -61,7 +75,7 @@ describe('SecurityScanningService', () => {
       if (name === 'security_scans') {
         return mockScansContainer;
       }
-      if (name === 'pii_detections') {
+      if (name === 'security_pii_detections' || name === 'pii_detections') {
         return mockPiiContainer;
       }
       return mockScansContainer;
@@ -70,69 +84,59 @@ describe('SecurityScanningService', () => {
     service = new SecurityScanningService();
   });
 
-  describe('scanForPII', () => {
+  describe('detectPII', () => {
     it('should detect PII successfully', async () => {
       const tenantId = 'tenant-123';
-      const content = 'Contact John Doe at john.doe@example.com or call 555-1234';
+      const contentId = 'content-1';
+      const content = 'Contact John Doe at john.doe@example.com or call 555-123-4567';
 
-      const mockDetection = {
-        id: 'detection-123',
-        tenantId,
-        piiTypes: ['email', 'phone'],
-        locations: [
-          { type: 'email', value: 'john.doe@example.com', position: 20 },
-          { type: 'phone', value: '555-1234', position: 50 },
-        ],
-        severity: 'high',
-      };
+      mockPiiContainer.items.create.mockImplementation((detection: any) =>
+        Promise.resolve({ resource: detection })
+      );
 
-      mockPiiContainer.items.create.mockResolvedValue({
-        resource: mockDetection,
-      });
+      const result = await service.detectPII(tenantId, contentId, content);
 
-      const result = await service.scanForPII(tenantId, content);
-
-      expect(result).toHaveProperty('piiTypes');
-      expect(result.piiTypes.length).toBeGreaterThan(0);
+      expect(result).toHaveProperty('detectedPII');
+      expect(result.detectedPII.length).toBeGreaterThan(0);
+      expect(result.detectionId).toBeDefined();
       expect(mockPiiContainer.items.create).toHaveBeenCalled();
     });
 
     it('should return empty when no PII detected', async () => {
       const tenantId = 'tenant-123';
+      const contentId = 'content-1';
       const content = 'This is a normal text without any sensitive information';
 
-      const result = await service.scanForPII(tenantId, content);
+      mockPiiContainer.items.create.mockImplementation((detection: any) =>
+        Promise.resolve({ resource: detection })
+      );
 
-      expect(result.piiTypes).toEqual([]);
+      const result = await service.detectPII(tenantId, contentId, content);
+
+      expect(result.detectedPII).toEqual([]);
     });
   });
 
-  describe('scanForVulnerabilities', () => {
-    it('should detect vulnerabilities successfully', async () => {
+  describe('scanSecurity', () => {
+    it('should run vulnerability scan and store scan', async () => {
       const tenantId = 'tenant-123';
-      const code = 'SELECT * FROM users WHERE id = ' + userId; // SQL injection example
+      const targetId = 'doc-1';
+      const targetType = 'document' as const;
 
-      const mockScan = {
-        id: 'scan-123',
+      mockScansContainer.items.create.mockImplementation((scan: any) =>
+        Promise.resolve({ resource: scan })
+      );
+
+      const result = await service.scanSecurity(
         tenantId,
-        vulnerabilities: [
-          {
-            type: 'sql_injection',
-            severity: 'high',
-            location: { line: 1, column: 30 },
-            description: 'Potential SQL injection vulnerability',
-          },
-        ],
-      };
+        targetId,
+        targetType,
+        'vulnerability'
+      );
 
-      mockScansContainer.items.create.mockResolvedValue({
-        resource: mockScan,
-      });
-
-      const result = await service.scanForVulnerabilities(tenantId, code);
-
-      expect(result).toHaveProperty('vulnerabilities');
-      expect(result.vulnerabilities.length).toBeGreaterThan(0);
+      expect(result).toHaveProperty('findings');
+      expect(result.scanId).toBeDefined();
+      expect(result.status).toBe('completed');
       expect(mockScansContainer.items.create).toHaveBeenCalled();
     });
   });
@@ -140,12 +144,13 @@ describe('SecurityScanningService', () => {
   describe('redactPII', () => {
     it('should redact PII from content', async () => {
       const tenantId = 'tenant-123';
+      const contentId = 'content-1';
       const content = 'Contact John Doe at john.doe@example.com';
 
-      const result = await service.redactPII(tenantId, content);
+      const result = await service.redactPII(tenantId, contentId, content);
 
       expect(result).not.toContain('john.doe@example.com');
-      expect(result).toContain('[REDACTED]');
+      expect(result).toContain('***@');
     });
   });
 });

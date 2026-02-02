@@ -3,7 +3,8 @@
  * Type definitions for risk evaluation and analytics
  */
 
-import { RiskCatalog, DetectedRisk, RiskCategory } from './risk-catalog.types';
+import { DetectedRisk } from './risk-catalog.types';
+export type { DetectedRisk };
 
 export type DetectionMethod = 'rule' | 'ai' | 'historical' | 'semantic' | 'ml';
 

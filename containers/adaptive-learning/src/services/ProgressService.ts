@@ -57,7 +57,7 @@ export class ProgressService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(progress, {
         partitionKey: tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create progress');
@@ -105,10 +105,7 @@ export class ProgressService {
 
     try {
       const { resources } = await container.items
-        .query<UserProgress>({
-          query,
-          parameters,
-        })
+        .query<UserProgress>({ query, parameters }, { partitionKey: tenantId } as Record<string, unknown>)
         .fetchNext();
 
       return resources.length > 0 ? resources[0] : null;
@@ -130,7 +127,7 @@ export class ProgressService {
       const { resource: existing } = await container.item(progressId, tenantId).read<UserProgress>();
 
       if (!existing) {
-        throw new NotFoundError(`Progress ${progressId} not found`);
+        throw new NotFoundError('Progress', progressId);
       }
 
       const updated: UserProgress = {
@@ -169,7 +166,7 @@ export class ProgressService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Progress ${progressId} not found`);
+        throw new NotFoundError('Progress', progressId);
       }
       throw error;
     }

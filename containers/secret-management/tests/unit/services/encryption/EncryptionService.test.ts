@@ -13,15 +13,16 @@ describe('EncryptionService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    const keyBuffer = Buffer.alloc(32, 'a');
+    const keyRecord = {
+      keyId: 'key-1',
+      key: keyBuffer,
+      version: 1,
+    };
     mockKeyManager = {
-      getActiveKey: vi.fn().mockResolvedValue({
-        keyId: 'key-1',
-        key: Buffer.from('test-key-32-bytes-long-key-12345'),
-      }),
-      getKey: vi.fn().mockResolvedValue({
-        keyId: 'key-1',
-        key: Buffer.from('test-key-32-bytes-long-key-12345'),
-      }),
+      getActiveKey: vi.fn().mockResolvedValue(keyRecord),
+      getKey: vi.fn().mockResolvedValue(keyRecord),
+      decryptKeyMaterial: vi.fn().mockImplementation((key: { key: Buffer }) => Promise.resolve(key.key)),
     };
     encryptionService = new EncryptionService(mockKeyManager);
   });

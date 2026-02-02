@@ -21,12 +21,12 @@ export class ContentGenerationService {
 
   constructor(aiServiceUrl: string, shardManagerUrl: string) {
     this.aiServiceClient = new ServiceClient({
-      baseUrl: aiServiceUrl,
+      baseURL: aiServiceUrl,
       timeout: 60000, // Longer timeout for AI generation
       retries: 2,
     });
     this.shardManagerClient = new ServiceClient({
-      baseUrl: shardManagerUrl,
+      baseURL: shardManagerUrl,
       timeout: 10000,
       retries: 2,
     });
@@ -59,7 +59,7 @@ export class ContentGenerationService {
     };
 
     try {
-      const container = getContainer(this.containerName);
+      const container = getContainer(this.containerName) as any;
       const { resource } = await container.items.create(job, {
         partitionKey: input.tenantId,
       });
@@ -137,8 +137,8 @@ export class ContentGenerationService {
         completedAt: new Date(),
       };
 
-      const container = getContainer(this.containerName);
-      await container.item(jobId, tenantId).replace(updatedJob);
+      const container = getContainer(this.containerName) as any;
+      await (container.item(jobId, tenantId) as any).replace(updatedJob);
     } catch (error: any) {
       // Update job with error
       const updatedJob: ContentGenerationJob = {
@@ -152,8 +152,8 @@ export class ContentGenerationService {
         completedAt: new Date(),
       };
 
-      const container = getContainer(this.containerName);
-      await container.item(jobId, tenantId).replace(updatedJob);
+      const container = getContainer(this.containerName) as any;
+      await (container.item(jobId, tenantId) as any).replace(updatedJob);
     }
   }
 
@@ -203,11 +203,12 @@ export class ContentGenerationService {
     }
 
     try {
-      const container = getContainer(this.containerName);
-      const { resource } = await container.item(jobId, tenantId).read<ContentGenerationJob>();
+      const container = getContainer(this.containerName) as any;
+      const result = (await (container.item(jobId, tenantId) as any).read()) as any;
+      const resource = result.resource;
 
       if (!resource) {
-        throw new NotFoundError(`Content generation job ${jobId} not found`);
+        throw new NotFoundError('Content generation job', jobId);
       }
 
       return resource;
@@ -216,7 +217,7 @@ export class ContentGenerationService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Content generation job ${jobId} not found`);
+        throw new NotFoundError('Content generation job', jobId);
       }
       throw error;
     }
@@ -242,8 +243,9 @@ export class ContentGenerationService {
           : existing.completedAt,
     };
 
-    const container = getContainer(this.containerName);
-    const { resource } = await container.item(jobId, tenantId).replace(updated);
+    const container = getContainer(this.containerName) as any;
+    const result = (await (container.item(jobId, tenantId) as any).replace(updated)) as any;
+    const resource = result.resource;
 
     if (!resource) {
       throw new Error('Failed to update job status');
@@ -286,7 +288,7 @@ export class ContentGenerationService {
       throw new BadRequestError('tenantId is required');
     }
 
-    const container = getContainer(this.containerName);
+    const container = getContainer(this.containerName) as any;
     let query = 'SELECT * FROM c WHERE c.tenantId = @tenantId';
     const parameters: any[] = [{ name: '@tenantId', value: tenantId }];
 
@@ -310,15 +312,12 @@ export class ContentGenerationService {
     const limit = filters?.limit || 100;
 
     try {
-      const { resources, continuationToken } = await container.items
-        .query<ContentGenerationJob>({
-          query,
-          parameters,
-        })
+      const { resources, continuationToken } = await (container.items as any)
+        .query({ query, parameters })
         .fetchNext();
 
       return {
-        items: resources.slice(0, limit),
+        items: (resources as ContentGenerationJob[]).slice(0, limit),
         continuationToken,
       };
     } catch (error: any) {

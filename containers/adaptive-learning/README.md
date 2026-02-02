@@ -113,9 +113,7 @@ The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers)
 
 ## Documentation
 
-For complete CAIS documentation, see:
-- [CAIS README](../../old_code/apps/api/src/services/adaptive-learning/README.md)
-- [CAIS Documentation](../../old_code/apps/api/docs/ai system/)
+For CAIS and AI system documentation, see `documentation/` in the repository.
 
 ## License
 

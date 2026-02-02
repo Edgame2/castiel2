@@ -8,6 +8,7 @@
     "lint:fix": "pnpm -r --filter './containers/*' lint --fix",
     "type-check:all": "pnpm -r --filter './containers/*' exec tsc --noEmit",
     "test:all": "pnpm -r --filter './containers/*' test",
+    "test:unit:all": "pnpm -r --filter './containers/*' run test:unit",
     "test:coverage": "pnpm -r --filter './containers/*' test:coverage",
     "format:check": "prettier --check \"containers/**/*.{ts,tsx,json,yaml,md}\"",
     "format:write": "prettier --write \"containers/**/*.{ts,tsx,json,yaml,md}\"",

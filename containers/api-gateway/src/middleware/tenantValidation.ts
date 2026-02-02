@@ -5,6 +5,30 @@
 
 import { FastifyRequest, FastifyReply } from 'fastify';
 
+/** Path prefixes that do not require a Bearer token (public auth endpoints) */
+const PUBLIC_AUTH_PATH_PREFIXES = [
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/google/callback',
+  '/api/auth/oauth/github/callback',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+  '/api/auth/sso/saml/initiate',
+  '/api/auth/sso/saml/callback',
+  '/api/auth/verify-email',
+  '/api/auth/health',
+];
+
+/**
+ * Returns true if the request path is a public auth path (no tenant/JWT required).
+ */
+export function isPublicAuthPath(url: string): boolean {
+  const pathname = url.split('?')[0];
+  return PUBLIC_AUTH_PATH_PREFIXES.some(
+    (p) => pathname === p || (pathname.startsWith(p) && (pathname.length === p.length || pathname[p.length] === '/'))
+  );
+}
+
 /**
  * Tenant validation middleware
  * Extracts tenantId from JWT token and injects X-Tenant-ID header
@@ -16,6 +40,10 @@ export async function tenantValidationMiddleware(
   try {
     // Skip for health checks and public endpoints
     if (request.url === '/health' || request.url === '/ready') {
+      return;
+    }
+    // Skip for public auth paths (login, register, callbacks, password-reset, etc.)
+    if (isPublicAuthPath(request.url)) {
       return;
     }
 
@@ -32,12 +60,13 @@ export async function tenantValidationMiddleware(
 
       const token = authHeader.substring(7);
       try {
-        const decoded = request.server.jwt.verify(token) as any;
+        const server = request.server as unknown as { jwt: { verify: (t: string) => Promise<Record<string, unknown>> } };
+        const decoded = await server.jwt.verify(token);
         (request as any).user = decoded;
-        
-        // Extract tenantId from token
-        const tenantId = decoded.tenantId || decoded.organizationId;
-        
+
+        const raw = decoded.tenantId ?? decoded.organizationId;
+        const tenantId = typeof raw === 'string' ? raw : undefined;
+
         if (!tenantId) {
           reply.code(400).send({ error: 'Missing tenantId in token' });
           return;
@@ -59,8 +88,9 @@ export async function tenantValidationMiddleware(
       }
     } else {
       // User already verified, extract tenantId
-      const tenantId = user.tenantId || user.organizationId;
-      
+      const raw = (user as Record<string, unknown>).tenantId ?? (user as Record<string, unknown>).organizationId;
+      const tenantId = typeof raw === 'string' ? raw : undefined;
+
       if (!tenantId) {
         reply.code(400).send({ error: 'Missing tenantId in token' });
         return;

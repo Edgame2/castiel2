@@ -130,7 +130,6 @@ Optional extension modules that provide additional functionality. Each module co
 #### Additional Services
 - [Multi-Modal Service](./modules/extensions/multi-modal-service/) - Multi-modal understanding (Port 3044)
 - [Reasoning Engine](./modules/extensions/reasoning-engine/) - Advanced reasoning capabilities (Port 3045)
-- [Agent Registry](./modules/extensions/agent-registry/) - Specialized AI agent management (Port 3035)
 - [Migration Service](./modules/extensions/migration-service/) - Code migration and refactoring (Port 3038)
 
 ### [Infrastructure](./global/Infrastructure.md)

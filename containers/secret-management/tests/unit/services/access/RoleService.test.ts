@@ -15,6 +15,7 @@ describe('RoleService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUserManagementClient = {
+      baseUrl: 'http://user-management:3000',
       getUserRoles: vi.fn(),
       getOrganizationUserRoles: vi.fn(),
       hasPermission: vi.fn(),
@@ -73,6 +74,7 @@ describe('RoleService', () => {
           id: 'role-1',
           name: 'Admin',
           permissions: ['SECRET_READ'],
+          isSuperAdmin: false,
         },
       ]);
       

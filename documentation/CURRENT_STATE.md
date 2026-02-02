@@ -9,7 +9,6 @@ Single reference for all containers: list, description, features, and dependenci
 | Container | Default Port | Path |
 |-----------|-------------|------|
 | adaptive-learning | 3032 | `containers/adaptive-learning/` |
-| agent-registry | 3035 | `containers/agent-registry/` |
 | ai-analytics | 3057 | `containers/ai-analytics/` |
 | ai-conversation | 3045 | `containers/ai-conversation/` |
 | ai-insights | 3027 | `containers/ai-insights/` |
@@ -63,7 +62,7 @@ Single reference for all containers: list, description, features, and dependenci
 **Supporting / Non-service:**
 - **shared** – Shared types and utilities (`@coder/shared`).
 - **ui** – Next.js frontend; consumes API Gateway.
-- **bug-detection**, **code-generation** – Stub/placeholder only (README).
+- **bug-detection** – Removed from the system.
 
 ---
 
@@ -73,13 +72,6 @@ Single reference for all containers: list, description, features, and dependenci
 - **Description:** CAIS adaptive learning: learns component weights, model selection, signal weights; feature engineering; outcome collection; validation; rollout.
 - **Features:** Adaptive weight learning, adaptive model selection, signal weighting, feature engineering, outcome collection, performance tracking, validation, rollout management.
 - **Dependencies:** ai-service, ml-service, logging.
-
----
-
-### agent-registry
-- **Description:** Registry of specialized AI agents (architecture, security, performance, testing, documentation, refactoring, etc.).
-- **Features:** Agent CRUD, agent execution, multi-agent specialization, agent selector/loader/monitor/updater.
-- **Dependencies:** ai-service, prompt-service, quality (quality-monitoring), observability, logging.
 
 ---
 
@@ -268,7 +260,7 @@ Single reference for all containers: list, description, features, and dependenci
 ### multi-modal-service
 - **Description:** Multi-modal inputs: image, diagram, audio, video; design-to-code, etc.
 - **Features:** Image/diagram/audio/video processing, modal router, design-to-code.
-- **Dependencies:** ai-service, code-generation, context-service, logging.
+- **Dependencies:** ai-service, context-service, logging.
 
 ---
 
@@ -436,7 +428,6 @@ Dependencies are derived from `config/default.yaml` `services:` and from event b
 | Container | Depends on (REST / config-driven) |
 |-----------|-----------------------------------|
 | adaptive-learning | ai-service, ml-service, logging |
-| agent-registry | ai-service, prompt-service, quality-monitoring, observability, logging |
 | ai-analytics | auth, logging, user-management, ai-service, ai-insights, analytics-service |
 | ai-conversation | auth, logging, user-management, ai-service, context-service, shard-manager, embeddings, search-service |
 | ai-insights | ai-service, shard-manager, embeddings, logging |
@@ -462,7 +453,7 @@ Dependencies are derived from `config/default.yaml` `services:` and from event b
 | integration-sync | auth, logging, user-management, integration-manager, secret-management, shard-manager |
 | migration-service | context-service, execution, quality-monitoring, knowledge-base, logging |
 | ml-service | ai-service, embeddings, logging, adaptive-learning |
-| multi-modal-service | ai-service, code-generation, context-service, logging |
+| multi-modal-service | ai-service, context-service, logging |
 | notification-manager | user-management, secret-management, logging |
 | pattern-recognition | context-service, embeddings, knowledge-base, quality-monitoring, logging |
 | performance-optimization | context-service, observability, execution, quality-monitoring, logging |
@@ -495,12 +486,12 @@ Containers that are frequently used as dependencies (from the table above):
 | **logging** | Most containers |
 | **auth** | Many user-facing and workflow containers |
 | **user-management** | Many user/org-scoped containers |
-| **ai-service** | ai-*, embeddings, search, content-generation, template, prompt, reasoning, agent-registry, ml, etc. |
+| **ai-service** | ai-*, embeddings, search, content-generation, template, prompt, reasoning, ml, etc. |
 | **shard-manager** | context, integration-*, pipeline, document, collaboration, analytics, ai-insights, search, data-enrichment, risk-*, etc. |
 | **embeddings** | context, search, ai-insights, ml, cache-service, data-enrichment, risk-analytics, recommendations, web-search, cache-management |
 | **secret-management** | ai-service, auth, user-management, integration-manager, integration-sync, notification-manager, security-*, api-gateway |
 | **context-service** | ai-conversation, configuration, security, migration, multi-modal, pattern, performance, validation, web-search |
-| **quality-monitoring** | agent-registry, compliance, configuration, migration, pattern, performance, security, validation |
+| **quality-monitoring** | compliance, configuration, migration, pattern, performance, security, validation |
 | **analytics-service** | dashboard, dashboard-analytics, forecasting, quality-monitoring, recommendations, risk-analytics, signal-intelligence, workflow-orchestrator |
 | **ml-service** | adaptive-learning, analytics-service, forecasting, quality-monitoring, recommendations, risk-analytics, workflow-orchestrator |
 | **notification-manager** | auth, user-management, secret-management, collaboration-service; api-gateway routes |
@@ -515,8 +506,8 @@ Containers that are frequently used as dependencies (from the table above):
 
 ### 3.4 Optional / stubs
 
-- **observability**, **execution**, **planning**, **knowledge_base**, **code_generation:** Referenced in some `config/default.yaml`; these may be external or not yet implemented. If not deployed, those integrations are disabled or stubbed.
-- **bug-detection**, **code-generation:** Stub containers (README only).
+- **observability**, **execution**, **planning**, **knowledge_base:** Referenced in some `config/default.yaml`; these may be external or not yet implemented. If not deployed, those integrations are disabled or stubbed.
+- **bug-detection:** Removed from the system.
 - **Ports:** Default ports come from each container’s config; `api-gateway` and `notification-manager` both use 3001 in their config—in Docker they run as separate services on different hostnames.
 
 ---

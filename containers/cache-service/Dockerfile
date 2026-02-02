@@ -10,9 +10,11 @@ COPY containers/cache-service ./containers/cache-service
 COPY containers/shared ./containers/shared
 
 WORKDIR /app/containers/shared
+RUN npm install
 RUN npm run build
 
 WORKDIR /app/containers/cache-service
+RUN npm install --legacy-peer-deps
 RUN npm run build
 
 EXPOSE 3035

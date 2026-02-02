@@ -53,7 +53,7 @@ export class OutcomeCollectorService {
     };
     try {
       const container = getContainer(this.containerName);
-      await container.items.create(doc, { partitionKey: tenantId });
+      await container.items.create(doc, { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]);
       return { id };
     } catch (error: unknown) {
       console.warn('OutcomeCollector.recordPrediction failed', {
@@ -83,7 +83,7 @@ export class OutcomeCollectorService {
     };
     try {
       const container = getContainer(this.containerName);
-      await container.items.create(doc, { partitionKey: tenantId });
+      await container.items.create(doc, { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]);
       return { id };
     } catch (error: unknown) {
       console.warn('OutcomeCollector.recordOutcome failed', {
@@ -116,7 +116,7 @@ export class OutcomeCollectorService {
     };
     try {
       const container = getContainer(this.containerName);
-      await container.items.create(doc, { partitionKey: tenantId });
+      await container.items.create(doc, { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]);
       return { id };
     } catch (error: unknown) {
       console.warn('OutcomeCollector.recordFromEvent failed', {

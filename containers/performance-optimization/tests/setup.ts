@@ -62,37 +62,39 @@ rabbitmq:
 });
 
 // Mock yaml parser
+const perfYamlConfig = () => ({
+  module: { name: 'performance-optimization', version: '1.0.0' },
+  server: { port: 3021, host: '0.0.0.0' },
+  cosmos_db: {
+    endpoint: process.env.COSMOS_DB_ENDPOINT,
+    key: process.env.COSMOS_DB_KEY,
+    database_id: process.env.COSMOS_DB_DATABASE_ID,
+  },
+  jwt: { secret: process.env.JWT_SECRET },
+  rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
+  services: {},
+});
 vi.mock('yaml', () => ({
-  parse: vi.fn((content: string) => {
-    const config: any = {
-      module: { name: 'performance-optimization', version: '1.0.0' },
-      server: { port: 3021, host: '0.0.0.0' },
-      cosmos_db: {
-        endpoint: process.env.COSMOS_DB_ENDPOINT,
-        key: process.env.COSMOS_DB_KEY,
-        database_id: process.env.COSMOS_DB_DATABASE_ID,
-      },
-      jwt: { secret: process.env.JWT_SECRET },
-      rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
-      services: {},
-    };
-    return config;
-  }),
+  parse: vi.fn(perfYamlConfig),
+  load: vi.fn(perfYamlConfig),
 }));
 
 // Mock @coder/shared database
 vi.mock('@coder/shared/database', () => ({
-  getContainer: vi.fn(() => ({
+  getContainer: vi.fn((name: string) => ({
     items: {
-      create: vi.fn(),
+      create: vi.fn().mockImplementation((doc: any) =>
+        Promise.resolve({ resource: { ...doc, id: doc.id || 'created-id' } })
+      ),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
       })),
     },
-    item: vi.fn(() => ({
+    item: vi.fn((id: string, partitionKey: string) => ({
       read: vi.fn().mockResolvedValue({ resource: null }),
-      replace: vi.fn(),
-      delete: vi.fn(),
+      replace: vi.fn().mockImplementation((doc: any) => Promise.resolve({ resource: doc })),
+      delete: vi.fn().mockResolvedValue(undefined),
     })),
   })),
   initializeDatabase: vi.fn(),

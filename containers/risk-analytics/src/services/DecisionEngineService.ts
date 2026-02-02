@@ -28,19 +28,17 @@ export class DecisionEngineService {
   private decisionsContainerName: string;
   private rulesContainerName: string;
   private riskCatalogService: RiskCatalogServiceType | null;
-  private salesMethodologyService: SalesMethodologyService | null;
   private getMethodologyFeatures: GetMethodologyFeaturesFn | null;
 
   constructor(
     riskCatalogService?: RiskCatalogServiceType,
-    salesMethodologyService?: SalesMethodologyService | null,
+    _salesMethodologyService?: SalesMethodologyService | null,
     getMethodologyFeatures?: GetMethodologyFeaturesFn | null
   ) {
     this.config = loadConfig();
     this.decisionsContainerName = this.config.cosmos_db.containers.decisions ?? 'risk_decisions';
     this.rulesContainerName = this.config.cosmos_db.containers.rules ?? 'risk_rules';
     this.riskCatalogService = riskCatalogService ?? null;
-    this.salesMethodologyService = salesMethodologyService ?? null;
     this.getMethodologyFeatures = getMethodologyFeatures ?? null;
   }
 

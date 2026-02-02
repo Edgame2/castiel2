@@ -15,8 +15,8 @@ export async function initializeEventConsumer(): Promise<void> {
     console.warn('RabbitMQ URL not configured, outcome event consumption disabled');
     return;
   }
-  const bindings = config.rabbitmq.bindings ?? ['adaptive.learning.outcome.recorded'];
-  if (bindings.length === 0) return;
+  const routingKeys = config.rabbitmq.bindings ?? ['adaptive.learning.outcome.recorded'];
+  if (routingKeys.length === 0) return;
 
   try {
     const outcomeCollector = new OutcomeCollectorService();
@@ -24,7 +24,7 @@ export async function initializeEventConsumer(): Promise<void> {
       url: config.rabbitmq.url,
       exchange: config.rabbitmq.exchange || 'coder_events',
       queue: config.rabbitmq.queue,
-      bindings,
+      routingKeys,
     });
 
     consumer.on('adaptive.learning.outcome.recorded', async (event) => {

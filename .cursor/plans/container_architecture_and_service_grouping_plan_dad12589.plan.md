@@ -1,6 +1,6 @@
 ---
 name: Container Architecture and Service Grouping Plan
-overview: Complete container architecture mapping all services from old_code/ to containers/, showing current containers with their features, new containers to be created with grouped services, and comprehensive communication patterns including async event-driven workflows with CAIS integration.
+overview: Complete container architecture mapping legacy services to containers/, showing current containers with their features, new containers to be created with grouped services, and comprehensive communication patterns including async event-driven workflows with CAIS integration.
 todos: []
 isProject: false
 ---
@@ -9,7 +9,7 @@ isProject: false
 
 ## Overview
 
-This plan defines the complete container architecture, mapping all services from `old_code/` to appropriate containers in `containers/`. Services are grouped logically to minimize inter-container dependencies and follow microservices best practices.
+This plan defines the complete container architecture, mapping legacy services to appropriate containers in `containers/`. Services are grouped logically to minimize inter-container dependencies and follow microservices best practices.
 
 **Platform Context:** Castiel is an AI-native business intelligence platform. The platform is being enhanced with a **Machine Learning system** focused on three priority use cases: **Risk Scoring**, **Revenue Forecasting**, and **Recommendations**. The `ml-service` in containers/ is the core of this critical ML enhancement.
 
@@ -21,7 +21,7 @@ This plan defines the complete container architecture, mapping all services from
 
 ---
 
-## Current Containers (38 Total)
+## Current Containers (36 Total)
 
 ### Foundation Containers (5)
 
@@ -70,52 +70,36 @@ This plan defines the complete container architecture, mapping all services from
 26. **compliance-service** - Standards compliance (WCAG, OWASP, ISO27001), regulatory compliance (GDPR, HIPAA, SOC2, PCI-DSS), policy management
 27. **security-service** - Secret scanning, vulnerability scanning, PII detection, SAST/DAST
 
-### Development & Quality Containers (6)
+### Development & Quality Containers (5)
 
-28. **code-generation** - Specialized code generation service providing:
-    - UI Component Generation: React/Vue/Angular components from specifications
-    - API Endpoint Generation: REST API endpoints from requirements
-    - Database Schema Generation: Database schemas from models
-    - Test Data Generation: Test data and fixtures
-    - Configuration Generation: Configuration files
-    - Migration Generation: Database migrations
-    - IaC Generation: Infrastructure as Code
-    - Template-Based Generation: Customizable generation templates
-    - Natural Language Specification: Generate code from natural language
-    - Context-Aware Generation: Use codebase context for generation
-    - Example-Based Generation: Learn from examples
-    - **Dependencies:** ai-service, context-service, validation-engine, pattern-recognition
-    - **Database Containers:** `codegen_jobs`, `codegen_templates` (partition: `/tenantId`)
-    - **Events Published:** `codegen.job.created`, `codegen.job.completed`, `codegen.job.failed`
-29. **bug-detection** - Anomaly detection, bug prediction, root cause analysis, auto-fix suggestions
-30. **pattern-recognition** - Pattern learning, style consistency, design pattern detection, anti-pattern detection
-31. **performance-optimization** - Code optimization, bundle optimization, query optimization, algorithm selection, memory optimization
-32. **validation-engine** - Syntax validation, semantic validation, architecture validation, security validation, performance validation
-33. **migration-service** - Migration management, step execution, rollback, version upgrades
+28. **bug-detection** - Anomaly detection, bug prediction, root cause analysis, auto-fix suggestions
+29. **pattern-recognition** - Pattern learning, style consistency, design pattern detection, anti-pattern detection
+30. **performance-optimization** - Code optimization, bundle optimization, query optimization, algorithm selection, memory optimization
+31. **validation-engine** - Syntax validation, semantic validation, architecture validation, security validation, performance validation
+32. **migration-service** - Migration management, step execution, rollback, version upgrades
 
 ### Infrastructure Containers (2)
 
-34. **configuration-service** - Centralized configuration storage and retrieval
-35. **shared** - Shared utilities, types, database client (CosmosDBClient), cache (MultiLayerCache, RedisClient), events (EventPublisher, EventConsumer), middleware (auth, tenantEnforcement), services (ServiceClient, ServiceRegistry)
+33. **configuration-service** - Centralized configuration storage and retrieval
+34. **shared** - Shared utilities, types, database client (CosmosDBClient), cache (MultiLayerCache, RedisClient), events (EventPublisher, EventConsumer), middleware (auth, tenantEnforcement), services (ServiceClient, ServiceRegistry)
 
 ### UI Container (1)
 
-36. **ui** - Next.js 16 frontend application with React 19, TypeScript, Shadcn UI, Tailwind CSS
+35. **ui** - Next.js 16 frontend application with React 19, TypeScript, Shadcn UI, Tailwind CSS
 
-### Specialized Containers (2)
+### Specialized Containers (1)
 
-37. **agent-registry** - Agent management, selection, execution tracking, versioning, capability matching
-38. **notification-manager** - Multi-channel notification service providing:
+36. **notification-manager** - Multi-channel notification service providing:
     - Event consumption from RabbitMQ
     - Notification creation and management
-    - **Email delivery** (SendGrid, SMTP, SES providers) - **Email services from old_code will be integrated here**
+    - **Email delivery** (SendGrid, SMTP, SES providers) - **Email services (legacy) will be integrated here**
     - Email template rendering and management
     - In-app notifications
     - Push notifications (future)
     - SMS notifications (future)
     - Notification preferences
     - Mark as read/unread tracking
-    - **Services to Migrate from old_code:** email, email-rendering, email-template (integrate into notification-manager)
+    - **Services to integrate (legacy):** email, email-rendering, email-template (integrate into notification-manager)
     - **Dependencies:** template-service (for email templates), secret-management (for email provider credentials)
     - **Database Containers:** `notification_notifications`, `notification_templates`, `notification_preferences` (partition: `/tenantId`)
 
@@ -131,17 +115,17 @@ This plan defines the complete container architecture, mapping all services from
 
 **Services to Include:**
 
-- conversation (from old_code) - Main conversation management (5,292 lines)
-- ai-context-assembly (from old_code) - Context assembly (1,074 lines)
-- grounding (from old_code) - Response grounding and citation
-- intent-analyzer (from old_code) - Intent classification
-- context-quality (from old_code) - Context quality assessment
-- context-cache (from old_code) - Context caching
-- citation-validation (from old_code) - Citation validation
-- conversation-summarization (from old_code) - Conversation summarization
-- conversation-context-retrieval (from old_code) - Context retrieval
-- prompt-injection-defense (from old_code) - Prompt injection defense
-- context-aware-query-parser (from old_code) - Query parsing
+- conversation (legacy) - Main conversation management (5,292 lines)
+- ai-context-assembly (legacy) - Context assembly (1,074 lines)
+- grounding (legacy) - Response grounding and citation
+- intent-analyzer (legacy) - Intent classification
+- context-quality (legacy) - Context quality assessment
+- context-cache (legacy) - Context caching
+- citation-validation (legacy) - Citation validation
+- conversation-summarization (legacy) - Conversation summarization
+- conversation-context-retrieval (legacy) - Context retrieval
+- prompt-injection-defense (legacy) - Prompt injection defense
+- context-aware-query-parser (legacy) - Query parsing
 
 **Dependencies:** ai-service, context-service, shard-manager, embeddings
 
@@ -170,7 +154,7 @@ This plan defines the complete container architecture, mapping all services from
 
 **Services to Include:**
 
-- risk-catalog (from old_code) - Risk catalog service with complete feature set:
+- risk-catalog (legacy) - Risk catalog service with complete feature set:
 
   **Core Features:**
   - Get applicable risk catalog (global + industry + tenant-specific)
@@ -262,16 +246,16 @@ This plan defines the complete container architecture, mapping all services from
 
 **Services to Include:**
 
-- risk-evaluation (from old_code) - Risk evaluation (2,508 lines) - **ASYNC via events**
-- revenue-at-risk (from old_code) - Revenue calculations - **ASYNC via events**
-- quota (from old_code) - Quota management
-- early-warning (from old_code) - Early warning system - **ASYNC via events**
-- benchmarking (from old_code) - Benchmarking functionality
-- simulation (from old_code) - Risk simulation
-- data-quality (from old_code) - Data quality validation
-- trust-level (from old_code) - Trust level calculation
-- risk-ai-validation (from old_code) - AI validation
-- risk-explainability (from old_code) - Explainability
+- risk-evaluation (legacy) - Risk evaluation (2,508 lines) - **ASYNC via events**
+- revenue-at-risk (legacy) - Revenue calculations - **ASYNC via events**
+- quota (legacy) - Quota management
+- early-warning (legacy) - Early warning system - **ASYNC via events**
+- benchmarking (legacy) - Benchmarking functionality
+- simulation (legacy) - Risk simulation
+- data-quality (legacy) - Data quality validation
+- trust-level (legacy) - Trust level calculation
+- risk-ai-validation (legacy) - AI validation
+- risk-explainability (legacy) - Explainability
 
 **Dependencies:** risk-catalog, ai-insights, ml-service, analytics-service, shard-manager, adaptive-learning
 
@@ -343,7 +327,7 @@ This plan defines the complete container architecture, mapping all services from
 
 **Services to Include:**
 
-- recommendation (from old_code) - Multi-factor recommendation engine:
+- recommendation (legacy) - Multi-factor recommendation engine:
   - Vector search-based recommendations (semantic similarity)
   - Collaborative filtering recommendations
   - Temporal/recency-based recommendations
@@ -351,7 +335,7 @@ This plan defines the complete container architecture, mapping all services from
   - ML-enhanced recommendations (via ml-service)
   - Recommendation explanation generation
   - Recommendation feedback collection
-- ai-recommendation (from old_code) - AI-powered recommendation handlers
+- ai-recommendation (legacy) - AI-powered recommendation handlers
 
 **Dependencies:** ml-service, ai-service, embeddings, shard-manager, adaptive-learning, analytics-service
 
@@ -431,10 +415,10 @@ This plan defines the complete container architecture, mapping all services from
 
 **Services to Include:**
 
-- forecast-decomposition (from old_code) - Forecast decomposition - **ASYNC via events**
-- consensus-forecasting (from old_code) - Consensus forecasting - **ASYNC via events**
-- forecast-commitment (from old_code) - Forecast commitment - **ASYNC via events**
-- pipeline-health (from old_code) - Pipeline health analysis
+- forecast-decomposition (legacy) - Forecast decomposition - **ASYNC via events**
+- consensus-forecasting (legacy) - Consensus forecasting - **ASYNC via events**
+- forecast-commitment (legacy) - Forecast commitment - **ASYNC via events**
+- pipeline-health (legacy) - Pipeline health analysis
 
 **Dependencies:** risk-analytics, analytics-service, ml-service, adaptive-learning, pipeline-manager
 
@@ -576,12 +560,12 @@ When integration-manager detects Salesforce opportunity change:
 
 **Services to Include:**
 
-- integration-catalog (from old_code) - Integration catalog
-- integration-connection (from old_code) - Connection management
-- adapter-manager (from old_code) - Adapter orchestration
-- sync-task (from old_code) - Sync task management
-- bidirectional-sync (from old_code) - Bidirectional synchronization
-- webhook-management (from old_code) - Webhook management
+- integration-catalog (legacy) - Integration catalog
+- integration-connection (legacy) - Connection management
+- adapter-manager (legacy) - Adapter orchestration
+- sync-task (legacy) - Sync task management
+- bidirectional-sync (legacy) - Bidirectional synchronization
+- webhook-management (legacy) - Webhook management
 
 **Note:** These complement the existing `integration-manager` container. Consider merging or keeping separate based on complexity.
 
@@ -614,13 +598,13 @@ When integration-manager detects Salesforce opportunity change:
 
 **Services to Include:**
 
-- enrichment (from old_code) - AI enrichment pipeline
-- vectorization (from old_code) - Vectorization service
-- shard-embedding (from old_code) - Shard embedding management
-- shard-linking (from old_code) - Shard linking
-- shard-relationship (from old_code) - Graph relationships
-- acl (from old_code) - Access control lists
-- acl-cache (from old_code) - ACL caching
+- enrichment (legacy) - AI enrichment pipeline
+- vectorization (legacy) - Vectorization service
+- shard-embedding (legacy) - Shard embedding management
+- shard-linking (legacy) - Shard linking
+- shard-relationship (legacy) - Graph relationships
+- acl (legacy) - Access control lists
+- acl-cache (legacy) - ACL caching
 
 **Dependencies:** shard-manager, embeddings, ai-service
 
@@ -652,12 +636,12 @@ When integration-manager detects Salesforce opportunity change:
 
 **Services to Include:**
 
-- cache-monitor (from old_code) - Cache monitoring
-- cache-optimization (from old_code) - Cache optimization
-- cache-subscriber (from old_code) - Cache event subscription
-- cache-warming (from old_code) - Cache warming
-- semantic-cache (from old_code) - Semantic caching
-- vector-search-cache (from old_code) - Vector search caching
+- cache-monitor (legacy) - Cache monitoring
+- cache-optimization (legacy) - Cache optimization
+- cache-subscriber (legacy) - Cache event subscription
+- cache-warming (legacy) - Cache warming
+- semantic-cache (legacy) - Semantic caching
+- vector-search-cache (legacy) - Vector search caching
 
 **Note:** These complement the existing `cache-service` container. Consider merging.
 
@@ -676,12 +660,12 @@ When integration-manager detects Salesforce opportunity change:
 
 **Services to Include:**
 
-- pii-detection (from old_code) - PII detection
-- pii-redaction (from old_code) - PII redaction
-- field-security (from old_code) - Field-level security
-- device-security (from old_code) - Device security
-- password-history (from old_code) - Password history
-- rate-limiter (from old_code) - Rate limiting
+- pii-detection (legacy) - PII detection
+- pii-redaction (legacy) - PII redaction
+- field-security (legacy) - Field-level security
+- device-security (legacy) - Device security
+- password-history (legacy) - Password history
+- rate-limiter (legacy) - Rate limiting
 
 **Note:** Some of these may belong in the `auth` container. Review during migration.
 
@@ -701,9 +685,9 @@ When integration-manager detects Salesforce opportunity change:
 
 **Services to Include:**
 
-- admin-dashboard (from old_code) - Admin dashboard service
-- dashboard-cache (from old_code) - Dashboard caching
-- widget-data (from old_code) - Widget data service
+- admin-dashboard (legacy) - Admin dashboard service
+- dashboard-cache (legacy) - Dashboard caching
+- widget-data (legacy) - Widget data service
 
 **Note:** These complement the existing `dashboard` container. Consider merging.
 
@@ -722,9 +706,9 @@ When integration-manager detects Salesforce opportunity change:
 
 **Services to Include:**
 
-- web-search-integration (from old_code) - Web search integration
-- web-search-cosmos (from old_code) - Web search Cosmos service
-- web-search-context-integration (from old_code) - Context integration
+- web-search-integration (legacy) - Web search integration
+- web-search-cosmos (legacy) - Web search Cosmos service
+- web-search-context-integration (legacy) - Context integration
 
 **Dependencies:** ai-service, context-service, embeddings
 
@@ -741,12 +725,12 @@ When integration-manager detects Salesforce opportunity change:
 
 **Services to Include:**
 
-- ai-analytics (from old_code) - AI analytics
-- ai-chat-catalog (from old_code) - Chat catalog
-- ai-config (from old_code) - AI configuration
-- ai-model-seeder (from old_code) - Model seeding
-- proactive-insight (from old_code) - Proactive insights
-- feedback-learning (from old_code) - Feedback loop
+- ai-analytics (legacy) - AI analytics
+- ai-chat-catalog (legacy) - Chat catalog
+- ai-config (legacy) - AI configuration
+- ai-model-seeder (legacy) - Model seeding
+- proactive-insight (legacy) - Proactive insights
+- feedback-learning (legacy) - Feedback loop
 
 **Dependencies:** ai-service, ai-insights, analytics-service
 
@@ -764,10 +748,10 @@ When integration-manager detects Salesforce opportunity change:
 
 **Services to Include:**
 
-- collaborative-insights (from old_code) - Collaborative insights
-- collaborative-intelligence (from old_code) - Collaborative intelligence
-- memory-context (from old_code) - Memory context service
-- sharing (from old_code) - Sharing service
+- collaborative-insights (legacy) - Collaborative insights
+- collaborative-intelligence (legacy) - Collaborative intelligence
+- memory-context (legacy) - Memory context service
+- sharing (legacy) - Sharing service
 
 **Note:** Some of these may belong in `collaboration-service`. Review during migration.
 
@@ -786,12 +770,12 @@ When integration-manager detects Salesforce opportunity change:
 
 **Services to Include:**
 
-- communication-analysis (from old_code) - Email and meeting analysis
-- calendar-intelligence (from old_code) - Calendar pattern analysis
-- social-signal (from old_code) - Social media monitoring
-- product-usage (from old_code) - Product usage integration
-- competitive-intelligence (from old_code) - Competitive intelligence
-- customer-success-integration (from old_code) - Customer success integration
+- communication-analysis (legacy) - Email and meeting analysis
+- calendar-intelligence (legacy) - Calendar pattern analysis
+- social-signal (legacy) - Social media monitoring
+- product-usage (legacy) - Product usage integration
+- competitive-intelligence (legacy) - Competitive intelligence
+- customer-success-integration (legacy) - Customer success integration
 
 **Dependencies:** ai-service, analytics-service, integration-manager
 
@@ -809,11 +793,11 @@ When integration-manager detects Salesforce opportunity change:
 
 **Services to Include:**
 
-- anomaly-detection (from old_code) - Anomaly detection
-- explanation-quality (from old_code) - Explanation quality
-- explanation-monitoring (from old_code) - Explanation monitoring
-- explainable-ai (from old_code) - Explainable AI
-- data-quality (from old_code) - Data quality (if not in risk-analytics)
+- anomaly-detection (legacy) - Anomaly detection
+- explanation-quality (legacy) - Explanation quality
+- explanation-monitoring (legacy) - Explanation monitoring
+- explainable-ai (legacy) - Explainable AI
+- data-quality (legacy) - Data quality (if not in risk-analytics)
 
 **Dependencies:** ai-service, ml-service, analytics-service
 
@@ -831,13 +815,13 @@ When integration-manager detects Salesforce opportunity change:
 
 **Services to Include:**
 
-- import-export (from old_code) - Import/export functionality
-- schema-migration (from old_code) - Schema migrations
-- computed-field (from old_code) - Computed fields
-- field-validation (from old_code) - Field validation
-- onboarding (from old_code) - User onboarding
-- project-activity (from old_code) - Project activity tracking
-- service-registry (from old_code) - Service registry
+- import-export (legacy) - Import/export functionality
+- schema-migration (legacy) - Schema migrations
+- computed-field (legacy) - Computed fields
+- field-validation (legacy) - Field validation
+- onboarding (legacy) - User onboarding
+- project-activity (legacy) - Project activity tracking
+- service-registry (legacy) - Service registry
 
 **Dependencies:** Various (low coupling)
 
@@ -1583,13 +1567,8 @@ Example structure:
 | workflow-orchestrator | risk-analytics | Events | Trigger risk analysis |
 | workflow-orchestrator | recommendations | Events | Trigger recommendation generation |
 | workflow-orchestrator | forecasting | Events | Trigger forecasting |
-| code-generation | ai-service | REST | Code generation (existing container #28) |
-| code-generation | context-service | REST | Codebase context (existing container #28) |
-| code-generation | validation-engine | REST | Code validation (existing container #28) |
 | notification-manager | All services | Events | Event consumption |
 | logging | All services | Events | Event consumption |
-
-**Note on code-generation:** Code-generation appears in this matrix because it's an **existing container (#28)** that communicates with other services. It's not a new container to create - it already exists and needs to be included in the communication architecture.
 
 **CAIS Integration Pattern (Hybrid):**
 
@@ -1777,37 +1756,35 @@ Future Recommendations
 
 2. **Adaptive Learning:** The `adaptive-learning` container already contains 22 CAIS sub-services. No additional containers needed for these.
 
-3. **Email Services Integration:** Email services (email, email-rendering, email-template) from old_code should be migrated INTO the existing `notification-manager` container. The notification-manager already has:
+3. **Email Services Integration:** Email services (email, email-rendering, email-template) should be migrated INTO the existing `notification-manager` container. The notification-manager already has:
    - EmailService for email delivery
    - EmailProvider implementations (SendGrid, SMTP, SES)
    - TemplateEngine for email template rendering
    - Multi-channel notification support
    Do NOT create a separate email-service container.
 
-4. **Code Generation Container:** The `code-generation` container (#28) is an **existing container**, not a new one to create. It appears in the communication matrix because it communicates with other services (ai-service, context-service, validation-engine). This is correct and expected.
-
-5. **Risk Catalog Container:** Risk catalog is a **separate container** (not part of risk-analytics) because:
+4. **Risk Catalog Container:** Risk catalog is a **separate container** (not part of risk-analytics) because:
    - It's a read-only service used by multiple containers
    - It manages global, industry, and tenant-specific risk definitions
    - Risk-analytics queries it via REST API before performing evaluations
 
-6. **Asynchronous Architecture:** Risk analysis, risk scoring, forecasting, and recommendations all operate **asynchronously via events** to enable:
+5. **Asynchronous Architecture:** Risk analysis, risk scoring, forecasting, and recommendations all operate **asynchronously via events** to enable:
    - Parallel processing
    - Better scalability
    - Resilience (services can fail independently)
    - Decoupling
 
-7. **Workflow Orchestrator:** A separate container that coordinates async workflows. When integration-manager detects a Salesforce opportunity change, the orchestrator triggers parallel analysis workflows.
+6. **Workflow Orchestrator:** A separate container that coordinates async workflows. When integration-manager detects a Salesforce opportunity change, the orchestrator triggers parallel analysis workflows.
 
-8. **Dependency Management:** Each container should use `@coder/shared` for common functionality and communicate via REST API or events.
+7. **Dependency Management:** Each container should use `@coder/shared` for common functionality and communicate via REST API or events.
 
-9. **Database Naming:** All containers use prefixed container names (e.g., `conversation_conversations`) with `/tenantId` as partition key.
+8. **Database Naming:** All containers use prefixed container names (e.g., `conversation_conversations`) with `/tenantId` as partition key.
 
-10. **Configuration:** Each container must have `config/default.yaml` and `config/schema.json` following ModuleImplementationGuide.md.
+9. **Configuration:** Each container must have `config/default.yaml` and `config/schema.json` following ModuleImplementationGuide.md.
 
-11. **Documentation:** Each container must have README.md, CHANGELOG.md, and openapi.yaml.
+10. **Documentation:** Each container must have README.md, CHANGELOG.md, and openapi.yaml.
 
-12. **CAIS Integration:** All AI/ML services (risk-analytics, recommendations, forecasting) integrate with adaptive-learning using hybrid approach:
+11. **CAIS Integration:** All AI/ML services (risk-analytics, recommendations, forecasting) integrate with adaptive-learning using hybrid approach:
     - REST API for getting learned weights/parameters
     - Events for publishing outcomes for continuous learning
     - User feedback events feed back into CAIS for improvement

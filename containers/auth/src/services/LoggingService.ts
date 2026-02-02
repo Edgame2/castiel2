@@ -35,7 +35,7 @@ export class LoggingService {
 
   constructor() {
     const config = loadConfig();
-    this.baseUrl = config.services?.logging?.url || 'http://localhost:3014';
+    this.baseUrl = config.services?.logging?.url ?? '';
     this.enabled = !!config.services?.logging?.url;
   }
 
@@ -70,7 +70,7 @@ export class LoggingService {
 
       return token;
     } catch (error: any) {
-      log.warn('Failed to generate service token', error, { service: 'auth' });
+      log.warn('Failed to generate service token', { error, service: 'auth' });
       return null;
     }
   }
@@ -86,9 +86,9 @@ export class LoggingService {
 
     try {
       // Get authentication token (provided or generate service token)
-      let token = authToken;
+      let token: string | undefined = authToken;
       if (!token) {
-        token = await this.generateServiceToken();
+        token = (await this.generateServiceToken()) ?? undefined;
       }
 
       const headers: Record<string, string> = {
@@ -116,7 +116,8 @@ export class LoggingService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        log.warn('Failed to create audit log', new Error(errorText), {
+        log.warn('Failed to create audit log', {
+          error: new Error(errorText),
           action: input.action,
           status: response.status,
           service: 'auth',
@@ -132,7 +133,8 @@ export class LoggingService {
       });
     } catch (error: any) {
       // Don't throw - logging failures shouldn't break the main flow
-      log.warn('Error creating audit log', error, {
+      log.warn('Error creating audit log', {
+        error,
         action: input.action,
         service: 'auth',
       });

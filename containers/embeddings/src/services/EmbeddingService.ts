@@ -18,7 +18,7 @@ export interface SimilaritySearchResult {
 }
 
 export class EmbeddingService {
-  private db = getDatabaseClient();
+  private db = getDatabaseClient() as any;
 
   async storeEmbedding(
     projectId: string | undefined,

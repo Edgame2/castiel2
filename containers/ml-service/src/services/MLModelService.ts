@@ -79,6 +79,8 @@ export class MLModelService {
       [ModelType.RECOMMENDATION]: 'Ranked recommendations',
       [ModelType.FORECASTING]: 'Forecast values (point and/or quantiles)',
       [ModelType.ANOMALY_DETECTION]: 'Anomaly score (0-1) or binary',
+      [ModelType.RISK_SCORING]: 'Risk score (0-1)',
+      [ModelType.WIN_PROBABILITY]: 'Win probability (0-1)',
     };
     const output = outputByType[model.type] || 'See model type and metrics';
     const limitations = model.limitations ?? [];

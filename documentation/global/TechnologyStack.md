@@ -17,7 +17,7 @@ This document provides a comprehensive overview of the technology stack used in 
   - Server Components
   - API Routes for backend-for-frontend
   - Built-in optimizations
-- **Component Reuse**: Components and pages from `old_code/apps/web/` are reused
+- **Component Reuse**: Components and pages from the legacy web app are reused
 
 ### UI Framework
 

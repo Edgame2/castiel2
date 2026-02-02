@@ -4,18 +4,26 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DashboardAnalyticsService } from '../../../src/services/DashboardAnalyticsService';
-import { ServiceClient } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 
-// Mock dependencies
+const { mockDashboardClient, mockAnalyticsServiceClient, mockCacheServiceClient } = vi.hoisted(() => ({
+  mockDashboardClient: { get: vi.fn() },
+  mockAnalyticsServiceClient: { get: vi.fn(), post: vi.fn() },
+  mockCacheServiceClient: { get: vi.fn(), post: vi.fn() },
+}));
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(),
 }));
-
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(),
+  ServiceClient: vi.fn().mockImplementation(function (this: any, config: any) {
+    if (config?.baseURL?.includes('dashboard')) return mockDashboardClient;
+    if (config?.baseURL?.includes('analytics-service')) return mockAnalyticsServiceClient;
+    if (config?.baseURL?.includes('cache-service')) return mockCacheServiceClient;
+    return { get: vi.fn(), post: vi.fn() };
+  }),
 }));
 
+vi.mock('uuid', () => ({ v4: vi.fn(() => 'test-uuid-123') }));
 vi.mock('../../../src/config', () => ({
   loadConfig: vi.fn(() => ({
     services: {
@@ -37,9 +45,6 @@ vi.mock('../../../src/utils/logger', () => ({
 describe('DashboardAnalyticsService', () => {
   let service: DashboardAnalyticsService;
   let mockContainer: any;
-  let mockDashboardClient: any;
-  let mockAnalyticsServiceClient: any;
-  let mockCacheServiceClient: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -47,38 +52,13 @@ describe('DashboardAnalyticsService', () => {
     mockContainer = {
       items: {
         query: vi.fn(() => ({
-          fetchAll: vi.fn(),
+          fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
         })),
         create: vi.fn(),
-        replace: vi.fn(),
       },
+      item: vi.fn(() => ({ replace: vi.fn().mockResolvedValue({}) })),
     };
     (getContainer as any).mockReturnValue(mockContainer);
-
-    mockDashboardClient = {
-      get: vi.fn(),
-    };
-    mockAnalyticsServiceClient = {
-      post: vi.fn(),
-    };
-    mockCacheServiceClient = {
-      get: vi.fn(),
-      post: vi.fn(),
-    };
-
-    (ServiceClient as any).mockImplementation((config: any) => {
-      if (config.baseURL?.includes('dashboard')) {
-        return mockDashboardClient;
-      }
-      if (config.baseURL?.includes('analytics-service')) {
-        return mockAnalyticsServiceClient;
-      }
-      if (config.baseURL?.includes('cache-service')) {
-        return mockCacheServiceClient;
-      }
-      return {};
-    });
-
     service = new DashboardAnalyticsService();
   });
 
@@ -89,9 +69,7 @@ describe('DashboardAnalyticsService', () => {
       const widgetId = 'widget-123';
 
       mockContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
-          resources: [],
-        }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
       });
 
       mockContainer.items.create.mockResolvedValue({
@@ -118,24 +96,23 @@ describe('DashboardAnalyticsService', () => {
         tenantId,
         dashboardId,
         viewCount: 5,
+        lastViewed: new Date(),
+        averageLoadTime: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       mockContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
-          resources: [existing],
-        }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [existing] }),
       });
 
-      mockContainer.items.replace.mockResolvedValue({
-        resource: {
-          ...existing,
-          viewCount: 6,
-        },
-      });
+      const replaceFn = vi.fn().mockResolvedValue({});
+      mockContainer.item.mockReturnValue({ replace: replaceFn });
 
       await service.recordView(tenantId, dashboardId);
 
-      expect(mockContainer.items.replace).toHaveBeenCalled();
+      expect(mockContainer.item).toHaveBeenCalledWith(existing.id, tenantId);
+      expect(replaceFn).toHaveBeenCalled();
     });
   });
 
@@ -150,12 +127,19 @@ describe('DashboardAnalyticsService', () => {
         widgetId,
         data: { value: 'cached-data' },
         expiresAt: new Date(Date.now() + 3600000),
+        createdAt: new Date(),
       };
 
-      mockContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
-          resources: [mockCache],
-        }),
+      const widgetCacheContainer = {
+        items: {
+          query: vi.fn().mockReturnValue({
+            fetchNext: vi.fn().mockResolvedValue({ resources: [mockCache] }),
+          }),
+        },
+      };
+      (getContainer as any).mockImplementation((name: string) => {
+        if (name === 'dashboard_widget_cache') return widgetCacheContainer;
+        return mockContainer;
       });
 
       const result = await service.getWidgetCache(tenantId, widgetId);
@@ -163,22 +147,21 @@ describe('DashboardAnalyticsService', () => {
       expect(result).toEqual(mockCache);
     });
 
-    it('should return null for expired cache', async () => {
+    it('should return null when no cache found', async () => {
       const tenantId = 'tenant-123';
       const widgetId = 'widget-123';
 
-      const expiredCache = {
-        id: 'cache-123',
-        tenantId,
-        widgetId,
-        data: { value: 'cached-data' },
-        expiresAt: new Date(Date.now() - 3600000), // Expired
-      };
-
-      mockContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
-          resources: [expiredCache],
-        }),
+      (getContainer as any).mockImplementation((name: string) => {
+        if (name === 'dashboard_widget_cache') {
+          return {
+            items: {
+              query: vi.fn().mockReturnValue({
+                fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
+              }),
+            },
+          };
+        }
+        return mockContainer;
       });
 
       const result = await service.getWidgetCache(tenantId, widgetId);

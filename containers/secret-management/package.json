@@ -19,7 +19,7 @@
     "@azure/identity": "^4.0.1",
     "@aws-sdk/client-secrets-manager": "^3.490.0",
     "@google-cloud/secret-manager": "^5.0.0",
-    "@coder/shared": "workspace:*",
+    "@coder/shared": "file:../shared",
     "@fastify/swagger": "^8.15.0",
     "@fastify/swagger-ui": "^2.1.0",
     "ajv": "^8.12.0",
@@ -33,9 +33,9 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.0.5",
-    "@vitest/coverage-v8": "^2.1.0",
+    "@vitest/coverage-v8": "^4.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
-    "vitest": "^2.1.0"
+    "vitest": "^4.0.0"
   }
 }

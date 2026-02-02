@@ -51,7 +51,7 @@ vi.mock('bcrypt', () => {
     return storedPassword === password;
   });
   
-  // Export as namespace (import * as bcrypt)
+  // Export as namespace (import * as bcryptjs)
   return {
     hash: mockHash,
     compare: mockCompare,

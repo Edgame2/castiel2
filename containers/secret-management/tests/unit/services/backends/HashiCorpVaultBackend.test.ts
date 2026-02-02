@@ -160,7 +160,7 @@ describe('HashiCorpVaultBackend', () => {
       
       await expect(
         backend.retrieveSecret({ secretRef: 'non-existent' })
-      ).rejects.toThrow(SecretNotFoundError);
+      ).rejects.toMatchObject({ name: 'SecretNotFoundError' });
     });
     
     it('should throw DecryptionError for non-404 errors', async () => {

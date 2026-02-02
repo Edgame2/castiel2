@@ -61,23 +61,23 @@ rabbitmq:
   };
 });
 
-// Mock yaml parser
+// Mock yaml parser (config uses load())
+const yamlConfig = () => ({
+  module: { name: 'dashboard', version: '1.0.0' },
+  server: { port: 3011, host: '0.0.0.0' },
+  cosmos_db: {
+    endpoint: process.env.COSMOS_DB_ENDPOINT,
+    key: process.env.COSMOS_DB_KEY,
+    database_id: process.env.COSMOS_DB_DATABASE_ID,
+  },
+  jwt: { secret: process.env.JWT_SECRET },
+  rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
+  services: {},
+  redis: { host: 'localhost', port: 6379 },
+});
 vi.mock('yaml', () => ({
-  parse: vi.fn((content: string) => {
-    const config: any = {
-      module: { name: 'dashboard', version: '1.0.0' },
-      server: { port: 3011, host: '0.0.0.0' },
-      cosmos_db: {
-        endpoint: process.env.COSMOS_DB_ENDPOINT,
-        key: process.env.COSMOS_DB_KEY,
-        database_id: process.env.COSMOS_DB_DATABASE_ID,
-      },
-      jwt: { secret: process.env.JWT_SECRET },
-      rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
-      services: {},
-    };
-    return config;
-  }),
+  parse: vi.fn(yamlConfig),
+  load: vi.fn(yamlConfig),
 }));
 
 // Mock @coder/shared database
@@ -87,6 +87,7 @@ vi.mock('@coder/shared/database', () => ({
       create: vi.fn(),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
       })),
     },
     item: vi.fn(() => ({
@@ -113,14 +114,31 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared (getDatabaseClient, NotFoundError, ServiceClient)
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(() => ({
-    get: vi.fn().mockResolvedValue({ data: {} }),
-    post: vi.fn().mockResolvedValue({ data: {} }),
-    put: vi.fn().mockResolvedValue({ data: {} }),
-    delete: vi.fn().mockResolvedValue({ data: {} }),
-  })),
+  getDatabaseClient: vi.fn(function getDatabaseClient() {
+    return {
+      dashboard_dashboards: {
+        create: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([]),
+        findUnique: vi.fn().mockResolvedValue(null),
+        update: vi.fn(),
+        delete: vi.fn(),
+      },
+    };
+  }),
+  NotFoundError: class NotFoundError extends Error {
+    constructor(resource: string, id: string) {
+      super(`${resource} not found: ${id}`);
+      this.name = 'NotFoundError';
+    }
+  },
+  ServiceClient: class MockServiceClient {
+    get = vi.fn().mockResolvedValue({ data: {} });
+    post = vi.fn().mockResolvedValue({ data: {} });
+    put = vi.fn().mockResolvedValue({ data: {} });
+    delete = vi.fn().mockResolvedValue({ data: {} });
+  },
   authenticateRequest: vi.fn(() => vi.fn()),
   tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
   setupJWT: vi.fn(),

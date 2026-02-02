@@ -114,7 +114,7 @@ export class TemplateService {
     };
 
     try {
-      const container = getContainer(this.templateContainerName);
+      const container = (getContainer as (n: string) => any)(this.templateContainerName);
       const { resource } = await container.items.create(template, {
         partitionKey: input.tenantId,
       });
@@ -147,8 +147,8 @@ export class TemplateService {
     }
 
     try {
-      const container = getContainer(this.templateContainerName);
-      const { resource } = await container.item(templateId, tenantId).read<Template>();
+      const container = (getContainer as (n: string) => any)(this.templateContainerName);
+      const { resource } = await container.item(templateId, tenantId).read();
 
       if (!resource) {
         throw new NotFoundError(`Template ${templateId} not found`);
@@ -210,7 +210,7 @@ export class TemplateService {
     };
 
     try {
-      const container = getContainer(this.templateContainerName);
+      const container = (getContainer as (n: string) => any)(this.templateContainerName);
       const { resource } = await container.item(templateId, tenantId).replace(updated);
 
       if (!resource) {
@@ -232,7 +232,7 @@ export class TemplateService {
   async delete(templateId: string, tenantId: string): Promise<void> {
     await this.getById(templateId, tenantId);
 
-    const container = getContainer(this.templateContainerName);
+    const container = (getContainer as (n: string) => any)(this.templateContainerName);
     await container.item(templateId, tenantId).delete();
   }
 
@@ -335,7 +335,7 @@ export class TemplateService {
     userId: string,
     input: { content: string; variables?: TemplateVariable[]; changelog?: string }
   ): Promise<TemplateVersion> {
-    const template = await this.getById(templateId, tenantId);
+    await this.getById(templateId, tenantId);
     const versions = await this.getVersions(tenantId, templateId);
     const nextVersion = versions.length + 1;
 
@@ -352,7 +352,7 @@ export class TemplateService {
     };
 
     try {
-      const container = getContainer(this.versionContainerName);
+      const container = (getContainer as (n: string) => any)(this.versionContainerName);
       const { resource } = await container.items.create(version, {
         partitionKey: tenantId,
       });
@@ -371,10 +371,10 @@ export class TemplateService {
    * Get template version
    */
   async getVersion(tenantId: string, templateId: string, version: number): Promise<TemplateVersion> {
-    const container = getContainer(this.versionContainerName);
+const container = (getContainer as (n: string) => any)(this.versionContainerName);
     const { resources } = await container.items
-      .query<TemplateVersion>({
-        query: 'SELECT * FROM c WHERE c.tenantId = @tenantId AND c.templateId = @templateId AND c.version = @version',
+        .query({
+          query: 'SELECT * FROM c WHERE c.tenantId = @tenantId AND c.templateId = @templateId AND c.version = @version',
         parameters: [
           { name: '@tenantId', value: tenantId },
           { name: '@templateId', value: templateId },
@@ -394,16 +394,16 @@ export class TemplateService {
    * Get all versions for a template
    */
   async getVersions(tenantId: string, templateId: string): Promise<TemplateVersion[]> {
-    const container = getContainer(this.versionContainerName);
-    const { resources } = await container.items
-      .query<TemplateVersion>({
+    const container = getContainer(this.versionContainerName) as any;
+    const { resources } = await (container.items
+      .query({
         query: 'SELECT * FROM c WHERE c.tenantId = @tenantId AND c.templateId = @templateId ORDER BY c.version DESC',
         parameters: [
           { name: '@tenantId', value: tenantId },
           { name: '@templateId', value: templateId },
         ],
       })
-      .fetchNext();
+      .fetchNext());
 
     return resources;
   }

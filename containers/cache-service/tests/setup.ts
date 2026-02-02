@@ -61,23 +61,25 @@ rabbitmq:
   };
 });
 
-// Mock yaml parser
+// Mock yaml parser (config uses load(); some code may use parse())
+const yamlParse = (content: string) => {
+  const config: Record<string, unknown> = {
+    module: { name: 'cache-service', version: '1.0.0' },
+    server: { port: 3004, host: '0.0.0.0' },
+    cosmos_db: {
+      endpoint: process.env.COSMOS_DB_ENDPOINT,
+      key: process.env.COSMOS_DB_KEY,
+      database_id: process.env.COSMOS_DB_DATABASE_ID,
+    },
+    jwt: { secret: process.env.JWT_SECRET },
+    rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
+    services: {},
+  };
+  return config;
+};
 vi.mock('yaml', () => ({
-  parse: vi.fn((content: string) => {
-    const config: any = {
-      module: { name: 'cache-service', version: '1.0.0' },
-      server: { port: 3004, host: '0.0.0.0' },
-      cosmos_db: {
-        endpoint: process.env.COSMOS_DB_ENDPOINT,
-        key: process.env.COSMOS_DB_KEY,
-        database_id: process.env.COSMOS_DB_DATABASE_ID,
-      },
-      jwt: { secret: process.env.JWT_SECRET },
-      rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
-      services: {},
-    };
-    return config;
-  }),
+  parse: vi.fn(yamlParse),
+  load: vi.fn(yamlParse),
 }));
 
 // Mock @coder/shared database
@@ -87,6 +89,7 @@ vi.mock('@coder/shared/database', () => ({
       create: vi.fn(),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
       })),
     },
     item: vi.fn(() => ({
@@ -98,6 +101,23 @@ vi.mock('@coder/shared/database', () => ({
   initializeDatabase: vi.fn(),
   connectDatabase: vi.fn(),
   disconnectDatabase: vi.fn(),
+}));
+
+// Mock @coder/shared/cache (Redis)
+vi.mock('@coder/shared/cache', () => ({
+  getRedisClient: vi.fn(function getRedisClient() {
+    return {
+      getClient: vi.fn().mockResolvedValue({
+        set: vi.fn().mockResolvedValue(undefined),
+        setEx: vi.fn().mockResolvedValue(undefined),
+        get: vi.fn().mockResolvedValue(null),
+        del: vi.fn().mockResolvedValue(1),
+        keys: vi.fn().mockResolvedValue([]),
+        ping: vi.fn().mockResolvedValue('PONG'),
+        info: vi.fn().mockResolvedValue('used_memory:0\nmaxmemory:0'),
+      }),
+    };
+  }),
 }));
 
 // Mock @coder/shared events
@@ -113,14 +133,14 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared ServiceClient (must be constructor for new ServiceClient())
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(() => ({
-    get: vi.fn().mockResolvedValue({ data: {} }),
-    post: vi.fn().mockResolvedValue({ data: {} }),
-    put: vi.fn().mockResolvedValue({ data: {} }),
-    delete: vi.fn().mockResolvedValue({ data: {} }),
-  })),
+  ServiceClient: class MockServiceClient {
+    get = vi.fn().mockResolvedValue({ data: {} });
+    post = vi.fn().mockResolvedValue({ data: {} });
+    put = vi.fn().mockResolvedValue({ data: {} });
+    delete = vi.fn().mockResolvedValue({ data: {} });
+  },
   authenticateRequest: vi.fn(() => vi.fn()),
   tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
   setupJWT: vi.fn(),

@@ -70,7 +70,7 @@ export class ABTestService {
     };
 
     try {
-      const container = getContainer(this.containerName);
+      const container = getContainer(this.containerName) as any;
       const { resource } = await container.items.create(abTest, {
         partitionKey: input.tenantId,
       });
@@ -97,8 +97,8 @@ export class ABTestService {
     }
 
     try {
-      const container = getContainer(this.containerName);
-      const { resource } = await container.item(testId, tenantId).read<PromptABTest>();
+      const container = getContainer(this.containerName) as any;
+      const { resource } = await container.item(testId, tenantId).read();
 
       if (!resource) {
         throw new NotFoundError(`A/B test ${testId} not found`);
@@ -127,6 +127,7 @@ export class ABTestService {
       startDate?: Date;
       endDate?: Date;
       results?: PromptABTest['results'];
+      metrics?: Record<string, VariantMetrics>;
     }
   ): Promise<PromptABTest> {
     const existing = await this.getById(testId, tenantId);
@@ -138,7 +139,7 @@ export class ABTestService {
     };
 
     try {
-      const container = getContainer(this.containerName);
+      const container = getContainer(this.containerName) as any;
       const { resource } = await container.item(testId, tenantId).replace(updated);
 
       if (!resource) {

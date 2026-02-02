@@ -18,7 +18,7 @@ export async function registerRoutes(
 ): Promise<void> {
   // Register route mappings from config
   const routeMappings = [
-    { path: '/api/auth', service: 'auth', serviceUrl: config.services.auth.url, stripPrefix: true },
+    { path: '/api/auth', service: 'auth', serviceUrl: config.services.auth.url, stripPrefix: true, pathRewrite: '/api/v1/auth' },
     { path: '/api/users', service: 'user_management', serviceUrl: config.services.user_management.url, stripPrefix: true },
     { path: '/api/secrets', service: 'secret_management', serviceUrl: config.services.secret_management.url, stripPrefix: true },
     { path: '/api/logging', service: 'logging', serviceUrl: config.services.logging.url, stripPrefix: true },
@@ -35,7 +35,12 @@ export async function registerRoutes(
     routeMappings.push({ path: '/api/v1/action-catalog', service: 'risk_catalog', serviceUrl: config.services.risk_catalog.url, stripPrefix: false });
     routeMappings.push({ path: '/api/v1/risk-catalog', service: 'risk_catalog', serviceUrl: config.services.risk_catalog.url, stripPrefix: false });
   }
+  if (config.services.user_management?.url) {
+    routeMappings.push({ path: '/api/v1/admin/organizations', service: 'user_management', serviceUrl: config.services.user_management.url, stripPrefix: false });
+  }
   if (config.services.recommendations?.url) {
+    routeMappings.push({ path: '/api/v1/recommendations', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/admin/tenant-templates', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
     routeMappings.push({ path: '/api/v1/feedback', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
     routeMappings.push({ path: '/api/v1/admin/tenants', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
     routeMappings.push({ path: '/api/v1/admin/feedback-config', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
@@ -50,6 +55,9 @@ export async function registerRoutes(
   }
   if (config.services.integration_processors?.url) {
     routeMappings.push({ path: '/api/v1/admin/monitoring', service: 'integration_processors', serviceUrl: config.services.integration_processors.url, stripPrefix: false });
+  }
+  if (config.services.adaptive_learning?.url) {
+    routeMappings.push({ path: '/api/v1/adaptive-learning', service: 'adaptive_learning', serviceUrl: config.services.adaptive_learning.url, stripPrefix: false });
   }
   if (config.services.risk_analytics?.url) {
     routeMappings.push({ path: '/api/v1', service: 'risk_analytics', serviceUrl: config.services.risk_analytics.url, stripPrefix: false });

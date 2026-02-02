@@ -1,6 +1,8 @@
 /**
  * Training Service
  * Handles training job management (Plan W6 Layer 8 – Learning Loop).
+ * Creates training job records only; actual training is submitted to Azure ML
+ * (see BI_SALES_RISK_TRAINING_SCRIPTS_SPEC / deployment runbooks).
  */
 
 import { v4 as uuidv4 } from 'uuid';

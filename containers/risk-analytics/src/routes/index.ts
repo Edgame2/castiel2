@@ -61,8 +61,10 @@ import { ReactivationService } from '../services/ReactivationService';
  */
 export async function registerRoutes(fastify: FastifyInstance, config: ReturnType<typeof loadConfig>): Promise<void> {
   try {
-    const riskEvaluationService = new RiskEvaluationService(fastify, tenantMLConfigService);
+    const salesMethodologyService = new SalesMethodologyService();
+    const tenantMLConfigService = new TenantMLConfigService();
     const riskCatalogService = new RiskCatalogService(fastify);
+    const riskEvaluationService = new RiskEvaluationService(fastify, tenantMLConfigService, riskCatalogService);
     const revenueAtRiskService = new RevenueAtRiskService(fastify, riskEvaluationService);
     const quotaService = new QuotaService(fastify, revenueAtRiskService);
     const earlyWarningService = new EarlyWarningService(fastify, riskEvaluationService);
@@ -74,8 +76,6 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     const riskAIValidationService = new RiskAIValidationService(fastify);
     const riskExplainabilityService = new RiskExplainabilityService(fastify);
     const explainabilityService = new ExplainabilityService();
-    const salesMethodologyService = new SalesMethodologyService();
-    const tenantMLConfigService = new TenantMLConfigService();
     const mlServiceClientForMethodology = config.services?.ml_service?.url
       ? new ServiceClient({
           baseURL: config.services.ml_service.url,
@@ -151,7 +151,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to get risk evaluation', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'EVALUATION_RETRIEVAL_FAILED', message: msg || 'Failed to retrieve risk evaluation' },
           });
         }
@@ -192,7 +192,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to get latest evaluation', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'EVALUATION_RETRIEVAL_FAILED', message: msg || 'Failed to retrieve evaluation' },
           });
         }
@@ -274,7 +274,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           await publishMlExplanationFailed(tenantId, { requestId, opportunityId, error: msg, durationMs: Date.now() - t0 });
           log.error('Risk-explainability failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RISK_EXPLAINABILITY_FAILED', message: msg || 'Failed to get risk explainability' },
           });
         }
@@ -313,7 +313,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to get risk snapshots', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RISK_SNAPSHOTS_RETRIEVAL_FAILED', message: msg || 'Failed to retrieve risk snapshots' },
           });
         }
@@ -354,7 +354,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { response?: { status?: number } })?.response?.status ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Win-probability proxy failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'WIN_PROBABILITY_PROXY_FAILED', message: msg || 'Failed to get win probability from ml-service' },
           });
         }
@@ -412,7 +412,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { response?: { status?: number } })?.response?.status ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Win-probability explain proxy failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'WIN_PROBABILITY_EXPLAIN_PROXY_FAILED', message: msg || 'Failed to get win-probability explain from ml-service' },
           });
         }
@@ -523,7 +523,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Risk-predictions get failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RISK_PREDICTIONS_FAILED', message: msg || 'Failed to get risk predictions' },
           });
         }
@@ -580,7 +580,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Risk-predictions generate failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RISK_PREDICTIONS_GENERATE_FAILED', message: msg || 'Failed to generate risk predictions' },
           });
         }
@@ -619,7 +619,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Risk-velocity failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RISK_VELOCITY_FAILED', message: msg || 'Failed to calculate risk velocity' },
           });
         }
@@ -669,7 +669,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Stakeholder-graph failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'STAKEHOLDER_GRAPH_FAILED', message: msg || 'Failed to get stakeholder graph' },
           });
         }
@@ -716,7 +716,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Anomalies get failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'ANOMALIES_RETRIEVAL_FAILED', message: msg || 'Failed to get anomalies' },
           });
         }
@@ -797,7 +797,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Anomalies detect failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'ANOMALIES_DETECT_FAILED', message: msg || 'Failed to run anomaly detection' },
           });
         }
@@ -844,7 +844,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Sentiment trends get failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'SENTIMENT_TRENDS_RETRIEVAL_FAILED', message: msg || 'Failed to get sentiment trends' },
           });
         }
@@ -893,7 +893,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Leading-indicators get failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'LEADING_INDICATORS_FAILED', message: msg || 'Failed to get leading indicators' },
           });
         }
@@ -933,12 +933,12 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const tenantId = request.user!.tenantId;
           const userId = request.user!.id;
           const out = await executeQuickAction(opportunityId, tenantId, userId, { action: action as 'create_task' | 'log_activity' | 'start_remediation', payload });
-          return reply.status(202).send(out);
+          return (reply as { status: (code: number) => typeof reply }).status(202).send(out);
         } catch (error: unknown) {
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 400;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Quick-actions failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'QUICK_ACTIONS_FAILED', message: msg || 'Failed to execute quick action' },
           });
         }
@@ -979,7 +979,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Similar-won-deals failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'SIMILAR_WON_DEALS_FAILED', message: msg || 'Failed to get similar won deals' },
           });
         }
@@ -1011,7 +1011,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('industries benchmarks failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({ error: { code: 'INDUSTRY_BENCHMARKS_FAILED', message: msg || 'Failed to get benchmarks' } });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({ error: { code: 'INDUSTRY_BENCHMARKS_FAILED', message: msg || 'Failed to get benchmarks' } });
         }
       }
     );
@@ -1039,7 +1039,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('benchmark-comparison failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({ error: { code: 'BENCHMARK_COMPARISON_FAILED', message: msg || 'Failed to compare to benchmark' } });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({ error: { code: 'BENCHMARK_COMPARISON_FAILED', message: msg || 'Failed to compare to benchmark' } });
         }
       }
     );
@@ -1065,7 +1065,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('risk-clustering clusters failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({ error: { code: 'RISK_CLUSTERING_FAILED', message: msg || 'Failed to get clusters' } });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({ error: { code: 'RISK_CLUSTERING_FAILED', message: msg || 'Failed to get clusters' } });
         }
       }
     );
@@ -1090,7 +1090,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('risk-clustering association-rules failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({ error: { code: 'RISK_CLUSTERING_FAILED', message: msg || 'Failed to get association rules' } });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({ error: { code: 'RISK_CLUSTERING_FAILED', message: msg || 'Failed to get association rules' } });
         }
       }
     );
@@ -1110,12 +1110,12 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
         try {
           const tenantId = request.user!.tenantId;
           await publishJobTrigger('risk-clustering', { tenantId });
-          return reply.status(202).send({ ok: true, job: 'risk-clustering' });
+          return (reply as { status: (code: number) => typeof reply }).status(202).send({ ok: true, job: 'risk-clustering' });
         } catch (error: unknown) {
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('risk-clustering trigger failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({ error: { code: 'RISK_CLUSTERING_TRIGGER_FAILED', message: msg || 'Failed to trigger risk-clustering' } });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({ error: { code: 'RISK_CLUSTERING_TRIGGER_FAILED', message: msg || 'Failed to trigger risk-clustering' } });
         }
       }
     );
@@ -1147,7 +1147,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('accounts health failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({ error: { code: 'ACCOUNT_HEALTH_FAILED', message: msg || 'Failed to get account health' } });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({ error: { code: 'ACCOUNT_HEALTH_FAILED', message: msg || 'Failed to get account health' } });
         }
       }
     );
@@ -1186,7 +1186,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('risk-propagation failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({ error: { code: 'RISK_PROPAGATION_FAILED', message: msg || 'Failed to analyze risk propagation' } });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({ error: { code: 'RISK_PROPAGATION_FAILED', message: msg || 'Failed to analyze risk propagation' } });
         }
       }
     );
@@ -1230,7 +1230,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('List competitors failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'LIST_COMPETITORS_FAILED', message: msg || 'Failed to list competitors' },
           });
         }
@@ -1294,7 +1294,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Track competitor failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'TRACK_COMPETITOR_FAILED', message: msg || 'Failed to track competitor' },
           });
         }
@@ -1345,7 +1345,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Competitors for opportunity failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'COMPETITORS_RETRIEVAL_FAILED', message: msg || 'Failed to get competitors for opportunity' },
           });
         }
@@ -1383,7 +1383,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Record win-loss reasons failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'WIN_LOSS_REASONS_RECORD_FAILED', message: msg || 'Failed to record win-loss reasons' },
           });
         }
@@ -1413,7 +1413,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Get win-loss reasons failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'WIN_LOSS_REASONS_GET_FAILED', message: msg || 'Failed to get win-loss reasons' },
           });
         }
@@ -1469,7 +1469,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Competitive-intelligence dashboard failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'COMPETITIVE_DASHBOARD_FAILED', message: msg || 'Failed to get competitive intelligence dashboard' },
           });
         }
@@ -1519,7 +1519,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Competitive win-loss failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'COMPETITIVE_WIN_LOSS_FAILED', message: msg || 'Failed to get competitive win-loss' },
           });
         }
@@ -1551,7 +1551,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
             options,
           });
 
-          return reply.status(202).send({
+          return (reply as { status: (code: number) => typeof reply }).status(202).send({
             evaluationId: evaluation.evaluationId,
             status: 'completed',
             evaluation,
@@ -1560,7 +1560,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to trigger risk evaluation', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'EVALUATION_FAILED', message: msg || 'Failed to evaluate risk' },
           });
         }
@@ -1597,7 +1597,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to calculate revenue at risk for opportunity', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'REVENUE_CALCULATION_FAILED', message: msg || 'Failed to calculate revenue at risk' },
           });
         }
@@ -1632,7 +1632,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to calculate portfolio revenue at risk', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'REVENUE_CALCULATION_FAILED', message: msg || 'Failed to calculate portfolio revenue at risk' },
           });
         }
@@ -1664,7 +1664,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to calculate team revenue at risk', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'REVENUE_CALCULATION_FAILED', message: msg || 'Failed to calculate team revenue at risk' },
           });
         }
@@ -1695,7 +1695,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to calculate tenant revenue at risk', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'REVENUE_CALCULATION_FAILED', message: msg || 'Failed to calculate tenant revenue at risk' },
           });
         }
@@ -1744,7 +1744,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Prioritized-opportunities failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'PRIORITIZED_OPPORTUNITIES_FAILED', message: msg || 'Failed to get prioritized opportunities' },
           });
         }
@@ -1792,7 +1792,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Top-at-risk-reasons failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'TOP_AT_RISK_REASONS_FAILED', message: msg || 'Failed to get top at-risk reasons' },
           });
         }
@@ -1825,7 +1825,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to detect early warning signals', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'EARLY_WARNING_DETECTION_FAILED', message: msg || 'Failed to detect early warning signals' },
           });
         }
@@ -1855,7 +1855,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to get early warning signals', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'EARLY_WARNING_RETRIEVAL_FAILED', message: msg || 'Failed to get early warning signals' },
           });
         }
@@ -1886,7 +1886,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to acknowledge early warning', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'EARLY_WARNING_ACKNOWLEDGE_FAILED', message: msg || 'Failed to acknowledge early warning' },
           });
         }
@@ -1916,7 +1916,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to get catalog', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'CATALOG_RETRIEVAL_FAILED', message: msg || 'Failed to retrieve risk catalog' },
           });
         }
@@ -1947,7 +1947,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to create risk', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RISK_CREATION_FAILED', message: msg || 'Failed to create risk' },
           });
         }
@@ -1978,7 +1978,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to update risk', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RISK_UPDATE_FAILED', message: msg || 'Failed to update risk' },
           });
         }
@@ -2008,7 +2008,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to delete risk', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RISK_DELETION_FAILED', message: msg || 'Failed to delete risk' },
           });
         }
@@ -2049,7 +2049,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to duplicate risk', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RISK_DUPLICATION_FAILED', message: msg || 'Failed to duplicate risk' },
           });
         }
@@ -2080,7 +2080,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to enable risk', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RISK_ENABLE_FAILED', message: msg || 'Failed to enable risk' },
           });
         }
@@ -2111,7 +2111,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to disable risk', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RISK_DISABLE_FAILED', message: msg || 'Failed to disable risk' },
           });
         }
@@ -2141,7 +2141,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to get ponderation', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'PONDERATION_RETRIEVAL_FAILED', message: msg || 'Failed to retrieve risk ponderation' },
           });
         }
@@ -2172,7 +2172,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to set ponderation', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'PONDERATION_UPDATE_FAILED', message: msg || 'Failed to update risk ponderation' },
           });
         }
@@ -2202,7 +2202,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to create quota', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'QUOTA_CREATION_FAILED', message: msg || 'Failed to create quota' },
           });
         }
@@ -2233,7 +2233,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to get quota', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'QUOTA_RETRIEVAL_FAILED', message: msg || 'Failed to get quota' },
           });
         }
@@ -2262,7 +2262,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to update quota', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'QUOTA_UPDATE_FAILED', message: msg || 'Failed to update quota' },
           });
         }
@@ -2284,13 +2284,14 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
         try {
           const { quotaId } = request.params;
           const tenantId = request.user!.tenantId;
-          const performance = await quotaService.calculatePerformance(quotaId, tenantId);
+          const userId = request.user!.id;
+          const performance = await quotaService.calculatePerformance(quotaId, tenantId, userId);
           return reply.send(performance);
         } catch (error: unknown) {
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to calculate quota performance', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'QUOTA_PERFORMANCE_CALCULATION_FAILED', message: msg || 'Failed to calculate quota performance' },
           });
         }
@@ -2325,7 +2326,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to run simulation', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'SIMULATION_FAILED', message: msg || 'Failed to run simulation' },
           });
         }
@@ -2365,7 +2366,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to compare scenarios', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'SIMULATION_COMPARISON_FAILED', message: msg || 'Failed to compare scenarios' },
           });
         }
@@ -2393,7 +2394,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to get simulations', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'SIMULATION_RETRIEVAL_FAILED', message: msg || 'Failed to get simulations' },
           });
         }
@@ -2416,7 +2417,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const tenantId = request.user!.tenantId;
-          const { industryId, opportunityType } = request.query;
+          const { industryId } = request.query;
           const benchmarks = await benchmarkingService.calculateWinRates(tenantId, {
             industryId,
             scope: 'tenant',
@@ -2426,7 +2427,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to get win rate benchmarks', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'BENCHMARK_RETRIEVAL_FAILED', message: msg || 'Failed to get benchmarks' },
           });
         }
@@ -2447,7 +2448,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const tenantId = request.user!.tenantId;
-          const { industryId, opportunityType } = request.query;
+          const { industryId } = request.query;
           const benchmarks = await benchmarkingService.calculateClosingTimes(tenantId, {
             industryId,
             scope: 'tenant',
@@ -2457,7 +2458,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to get closing time benchmarks', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'BENCHMARK_RETRIEVAL_FAILED', message: msg || 'Failed to get benchmarks' },
           });
         }
@@ -2478,7 +2479,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const tenantId = request.user!.tenantId;
-          const { industryId, opportunityType } = request.query;
+          const { industryId } = request.query;
           const benchmarks = await benchmarkingService.calculateDealSizes(tenantId, {
             industryId,
             scope: 'tenant',
@@ -2488,7 +2489,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to get deal size benchmarks', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'BENCHMARK_RETRIEVAL_FAILED', message: msg || 'Failed to get benchmarks' },
           });
         }
@@ -2518,7 +2519,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to evaluate data quality', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'DATA_QUALITY_EVALUATION_FAILED', message: msg || 'Failed to evaluate data quality' },
           });
         }
@@ -2566,7 +2567,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to calculate trust level', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'TRUST_LEVEL_CALCULATION_FAILED', message: msg || 'Failed to calculate trust level' },
           });
         }
@@ -2606,7 +2607,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Failed to validate AI evaluation', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'AI_VALIDATION_FAILED', message: msg || 'Failed to validate AI evaluation' },
           });
         }
@@ -2653,7 +2654,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           await publishMlExplanationFailed(tenantId, { requestId, evaluationId, error: msg, durationMs: Date.now() - t0 });
           log.error('Failed to generate explainability', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'EXPLAINABILITY_GENERATION_FAILED', message: msg || 'Failed to generate explainability' },
           });
         }
@@ -2715,7 +2716,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           await publishMlExplanationFailed(tenantId, { requestId, opportunityId: body.opportunityId, evaluationId: body.evaluationId, error: msg, durationMs: Date.now() - t0 });
           log.error('Explain prediction failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'EXPLAIN_PREDICTION_FAILED', message: msg || 'Failed to explain prediction' },
           });
         }
@@ -2767,7 +2768,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Get feature importance failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'FEATURE_IMPORTANCE_FAILED', message: msg || 'Failed to get feature importance' },
           });
         }
@@ -2809,7 +2810,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Get factors failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'FACTORS_FAILED', message: msg || 'Failed to get factors' },
           });
         }
@@ -2851,7 +2852,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Explain batch failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'EXPLAIN_BATCH_FAILED', message: msg || 'Failed to run batch explain' },
           });
         }
@@ -2894,7 +2895,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Decision evaluate failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'DECISION_EVALUATE_FAILED', message: msg || 'Failed to evaluate decision' },
           });
         }
@@ -2965,7 +2966,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         const tenantId = (request as { user?: { tenantId: string } }).user?.tenantId;
         if (!tenantId) {
-          return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
+          return (reply as { status: (code: number) => typeof reply }).status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
         }
         const body = request.body as MakeMethodologyDecisionRequest;
         try {
@@ -2978,7 +2979,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('makeMethodologyDecisions failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'METHODOLOGY_DECISION_FAILED', message: msg || 'Failed to make methodology decision' },
           });
         }
@@ -3037,7 +3038,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Decision execute failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'DECISION_EXECUTE_FAILED', message: msg || 'Failed to execute decision' },
           });
         }
@@ -3153,7 +3154,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Get conflicts failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'CONFLICTS_GET_FAILED', message: msg || 'Failed to get conflicts' },
           });
         }
@@ -3184,7 +3185,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Get rules failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RULES_GET_FAILED', message: msg || 'Failed to get rules' },
           });
         }
@@ -3223,7 +3224,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Create rule failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RULE_CREATE_FAILED', message: msg || 'Failed to create rule' },
           });
         }
@@ -3263,7 +3264,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Update rule failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RULE_UPDATE_FAILED', message: msg || 'Failed to update rule' },
           });
         }
@@ -3299,7 +3300,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? (error as Error).message : String(error);
           log.error('Delete rule failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (err?.statusCode ?? 500) as number;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RULE_DELETE_FAILED', message: msg || 'Failed to delete rule' },
           });
         }
@@ -3337,7 +3338,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Test rule failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'RULE_TEST_FAILED', message: msg || 'Failed to test rule' },
           });
         }
@@ -3362,7 +3363,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         const tenantId = (request as { user?: { tenantId: string } }).user?.tenantId;
         if (!tenantId) {
-          return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
+          return (reply as { status: (code: number) => typeof reply }).status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
         }
         try {
           const doc = await salesMethodologyService.getByTenantId(tenantId);
@@ -3376,7 +3377,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Get sales methodology failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'SALES_METHODOLOGY_GET_FAILED', message: msg || 'Failed to get sales methodology' },
           });
         }
@@ -3421,7 +3422,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         const tenantId = (request as { user?: { tenantId: string } }).user?.tenantId;
         if (!tenantId) {
-          return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
+          return (reply as { status: (code: number) => typeof reply }).status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
         }
         const body = request.body as UpsertSalesMethodologyBody;
         try {
@@ -3431,7 +3432,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Upsert sales methodology failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'SALES_METHODOLOGY_UPSERT_FAILED', message: msg || 'Failed to upsert sales methodology' },
           });
         }
@@ -3488,7 +3489,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
         } catch (error: unknown) {
           const msg = error instanceof Error ? error.message : String(error);
           log.error('List methodology templates failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
-          return reply.status(500).send({
+          return (reply as { status: (code: number) => typeof reply }).status(500).send({
             error: { code: 'METHODOLOGY_TEMPLATES_FAILED', message: msg || 'Failed to list methodology templates' },
           });
         }
@@ -3513,7 +3514,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         const tenantId = (request as { user?: { tenantId: string } }).user?.tenantId;
         if (!tenantId) {
-          return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
+          return (reply as { status: (code: number) => typeof reply }).status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
         }
         try {
           const doc = await tenantMLConfigService.getByTenantId(tenantId);
@@ -3527,7 +3528,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Get tenant ML config failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'TENANT_ML_CONFIG_GET_FAILED', message: msg || 'Failed to get tenant ML config' },
           });
         }
@@ -3580,7 +3581,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         const tenantId = (request as { user?: { tenantId: string } }).user?.tenantId;
         if (!tenantId) {
-          return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
+          return (reply as { status: (code: number) => typeof reply }).status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
         }
         const body = request.body as UpsertTenantMLConfigBody;
         try {
@@ -3590,7 +3591,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Upsert tenant ML config failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'TENANT_ML_CONFIG_UPSERT_FAILED', message: msg || 'Failed to upsert tenant ML config' },
           });
         }
@@ -3642,7 +3643,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         const tenantId = (request as { user?: { tenantId: string } }).user?.tenantId;
         if (!tenantId) {
-          return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
+          return (reply as { status: (code: number) => typeof reply }).status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Tenant context required' } });
         }
         const body = request.body;
         try {
@@ -3656,7 +3657,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Reactivation evaluate failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
-          return reply.status(statusCode).send({
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
             error: { code: 'REACTIVATION_EVALUATE_FAILED', message: msg || 'Failed to evaluate reactivation opportunities' },
           });
         }

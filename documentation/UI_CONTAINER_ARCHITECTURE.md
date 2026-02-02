@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the architecture and implementation decisions for the UI container (Next.js web application) based on the existing codebase in `old_code/apps/web/`.
+This document describes the architecture and implementation decisions for the UI container (Next.js web application) based on the legacy web application.
 
 ## Project Structure
 
@@ -13,13 +13,13 @@ This document describes the architecture and implementation decisions for the UI
 
 ### Component Reuse Strategy
 
-**All UI components and pages from `old_code/apps/web/` are reused:**
+**UI components and pages are reused in the container:**
 
-1. **Components**: `old_code/apps/web/src/components/` → `containers/ui/src/components/`
-2. **Pages**: `old_code/apps/web/src/app/` → `containers/ui/src/app/`
-3. **Hooks**: `old_code/apps/web/src/hooks/` → `containers/ui/src/hooks/`
-4. **Lib/Utils**: `old_code/apps/web/src/lib/` → `containers/ui/src/lib/`
-5. **Types**: `old_code/apps/web/src/types/` → `containers/ui/src/types/`
+1. **Components** → `containers/ui/src/components/`
+2. **Pages** → `containers/ui/src/app/`
+3. **Hooks** → `containers/ui/src/hooks/`
+4. **Lib/Utils** → `containers/ui/src/lib/`
+5. **Types** → `containers/ui/src/types/`
 
 This approach:
 - ✅ Maintains existing UI patterns and functionality
@@ -31,7 +31,7 @@ This approach:
 
 ### Hybrid Approach
 
-Based on the `old_code` implementation, the recommended pattern is:
+The recommended pattern is:
 
 #### 1. Direct API Calls (90% of operations)
 
@@ -97,7 +97,7 @@ const profile = await fetch('/api/profile');
 ### Implementation Example
 
 ```typescript
-// lib/api/client.ts (from old_code)
+// lib/api/client.ts
 export const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001',
   timeout: 30000,
@@ -198,7 +198,7 @@ containers/ui/
 │   │       ├── auth/
 │   │       ├── profile/
 │   │       └── ...
-│   ├── components/           # React components (reused from old_code)
+│   ├── components/           # React components (reused from legacy)
 │   │   ├── ui/                # Shadcn UI components
 │   │   ├── layout/            # Layout components
 │   │   ├── auth/              # Auth components
@@ -229,21 +229,12 @@ containers/ui/
 └── tailwind.config.ts
 ```
 
-## Migration from old_code
+## Setting up the UI container
 
 ### Steps
 
 1. **Copy Structure**
-   ```bash
-   # Copy components
-   cp -r old_code/apps/web/src/components containers/ui/src/
-   cp -r old_code/apps/web/src/app containers/ui/src/
-   cp -r old_code/apps/web/src/hooks containers/ui/src/
-   cp -r old_code/apps/web/src/lib containers/ui/src/
-   cp -r old_code/apps/web/src/types containers/ui/src/
-   cp -r old_code/apps/web/src/contexts containers/ui/src/
-   cp -r old_code/apps/web/src/locales containers/ui/src/
-   ```
+   Copy components, app, hooks, lib, types, contexts, and locales from the source web application into `containers/ui/src/` as needed.
 
 2. **Update Imports**
    - Update import paths if needed
@@ -261,7 +252,7 @@ containers/ui/
    - Verify authentication flow
    - Test real-time features
 
-## Key Features from old_code
+## Key Features
 
 ### Authentication
 - OAuth 2.0 integration
@@ -292,20 +283,20 @@ containers/ui/
 ### ✅ Implemented Decisions
 
 1. **Project Structure**: `containers/ui/` (new container)
-2. **Component Reuse**: Yes - reuse from `old_code/apps/web/`
-3. **Page Reuse**: Yes - reuse from `old_code/apps/web/src/app/`
+2. **Component Reuse**: Yes - reuse from legacy web app
+3. **Page Reuse**: Yes - reuse from legacy web app
 4. **Monaco Editor**: No - not needed
 5. **Port**: 3000 for UI, 3001 for API Gateway
 
 ### 📋 Communication Pattern Recommendation
 
-**Hybrid Approach (based on old_code implementation):**
+**Hybrid Approach:**
 
 - **90% Direct API Calls**: Use Axios client for most operations
 - **10% BFF Pattern**: Use Next.js API routes for auth/sensitive operations
 
 This pattern:
-- ✅ Matches existing `old_code` implementation
+- ✅ Matches existing implementation
 - ✅ Provides best performance
 - ✅ Maintains security for sensitive operations
 - ✅ Simplifies most API calls

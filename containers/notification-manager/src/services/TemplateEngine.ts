@@ -17,7 +17,7 @@ export interface RenderedTemplate {
 }
 
 export class TemplateEngine {
-  private db = getDatabaseClient();
+  private db = getDatabaseClient() as any;
   private config = getConfig();
 
   /**

@@ -399,7 +399,7 @@ const results = await orchestrator.coordinate([
 
 ```typescript
 const pipeline = new AgentPipeline([
-  { agent: 'code-generation', task: generateTask },
+  { agent: 'planning', task: generateTask },
   { agent: 'code-review', task: reviewTask },
   { agent: 'test-generation', task: testTask },
 ]);
@@ -516,7 +516,7 @@ const result = await agent.execute({
 
 ```typescript
 const pipeline = new AgentPipeline([
-  { agent: 'code-generation', task: generateTask },
+  { agent: 'planning', task: generateTask },
   { agent: 'code-review', task: reviewTask },
 ]);
 

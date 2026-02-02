@@ -5,16 +5,14 @@
  * Per ModuleImplementationGuide Section 6
  */
 
-import { getDatabaseClient, getContainer } from '@coder/shared';
-import { loadConfig } from '../config';
+import { getDatabaseClient } from '@coder/shared';
 import { slugify, isValidSlug } from '../utils/stringUtils';
-
-const ORGANIZATIONS_CONTAINER_KEY = 'user_organizations';
 
 /** Prisma-like DB client shape used by this service (shared returns Cosmos Database) */
 type OrganizationDb = {
   organization: {
     findUnique: (args: unknown) => Promise<unknown>;
+    findMany: (args: unknown) => Promise<unknown[]>;
     create: (args: unknown) => Promise<unknown>;
     update: (args: unknown) => Promise<unknown>;
   };
@@ -398,24 +396,17 @@ export async function listAllOrganizationsForSuperAdmin(
   if (!hasSuperAdmin) {
     throw new Error('Permission denied. Super Admin role required to list all organizations.');
   }
-  const config = loadConfig();
-  const containerName = config.cosmos_db?.containers?.organizations ?? ORGANIZATIONS_CONTAINER_KEY;
-  const container = getContainer(containerName);
-  const { resources } = await container.items
-    .query(
-      {
-        query: 'SELECT c.id, c.name, c.slug, c.description, c.createdAt, c.isActive FROM c',
-        parameters: [],
-      },
-      { enableCrossPartitionQuery: true }
-    )
-    .fetchAll();
-  return (resources as Array<{ id: string; name: string; slug: string; description?: string | null; createdAt?: string; isActive?: boolean }>).map((r) => ({
+  const db = getDb();
+  const orgs = (await db.organization.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true, slug: true, description: true, createdAt: true, isActive: true },
+  })) as Array<{ id: string; name: string; slug: string; description?: string | null; createdAt?: Date | null; isActive?: boolean }>;
+  return orgs.map((r) => ({
     id: r.id,
     name: r.name,
     slug: r.slug,
     description: r.description ?? null,
-    createdAt: r.createdAt ?? null,
+    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : (r.createdAt ?? null),
     isActive: r.isActive,
   }));
 }

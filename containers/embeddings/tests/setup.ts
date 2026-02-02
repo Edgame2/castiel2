@@ -113,8 +113,19 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared (ServiceClient + getDatabaseClient for EmbeddingService)
 vi.mock('@coder/shared', () => ({
+  getDatabaseClient: vi.fn(function getDatabaseClient() {
+    return {
+      emb_documents: {
+        upsert: vi.fn(),
+        findUnique: vi.fn().mockResolvedValue(null),
+        findMany: vi.fn().mockResolvedValue([]),
+        delete: vi.fn(),
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+  }),
   ServiceClient: vi.fn(() => ({
     get: vi.fn().mockResolvedValue({ data: {} }),
     post: vi.fn().mockResolvedValue({ data: {} }),

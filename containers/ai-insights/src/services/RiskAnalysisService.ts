@@ -80,10 +80,10 @@ export class RiskAnalysisService {
     };
 
     try {
-      const container = getContainer(this.containerName);
+      const container = getContainer(this.containerName) as any;
       const { resource } = await container.items.create(analysis, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create risk analysis');
@@ -107,11 +107,13 @@ export class RiskAnalysisService {
     }
 
     try {
-      const container = getContainer(this.containerName);
-      const { resource } = await container.item(analysisId, tenantId).read<RiskAnalysis>();
+      const container = getContainer(this.containerName) as any;
+      const item = container.item(analysisId, tenantId);
+      const result = (await (item as any).read()) as any;
+      const resource = (result as any).resource as RiskAnalysis | undefined;
 
       if (!resource) {
-        throw new NotFoundError(`Risk analysis ${analysisId} not found`);
+        throw new NotFoundError('Risk analysis', analysisId);
       }
 
       return resource;
@@ -120,7 +122,7 @@ export class RiskAnalysisService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Risk analysis ${analysisId} not found`);
+        throw new NotFoundError('Risk analysis', analysisId);
       }
       throw error;
     }
@@ -158,8 +160,10 @@ export class RiskAnalysisService {
     };
 
     try {
-      const container = getContainer(this.containerName);
-      const { resource } = await container.item(analysisId, tenantId).replace(updated);
+      const container = getContainer(this.containerName) as any;
+      const item = container.item(analysisId, tenantId);
+      const result = (await (item as any).replace(updated)) as any;
+      const resource = (result as any).resource as RiskAnalysis | undefined;
 
       if (!resource) {
         throw new Error('Failed to update risk analysis');
@@ -168,7 +172,7 @@ export class RiskAnalysisService {
       return resource as RiskAnalysis;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Risk analysis ${analysisId} not found`);
+        throw new NotFoundError('Risk analysis', analysisId);
       }
       throw error;
     }
@@ -180,8 +184,8 @@ export class RiskAnalysisService {
   async delete(analysisId: string, tenantId: string): Promise<void> {
     await this.getById(analysisId, tenantId);
 
-    const container = getContainer(this.containerName);
-    await container.item(analysisId, tenantId).delete();
+    const container = getContainer(this.containerName) as any;
+    await (container.item(analysisId, tenantId) as any).delete();
   }
 
   /**
@@ -200,7 +204,7 @@ export class RiskAnalysisService {
       throw new BadRequestError('tenantId is required');
     }
 
-    const container = getContainer(this.containerName);
+    const container = getContainer(this.containerName) as any;
     let query = 'SELECT * FROM c WHERE c.tenantId = @tenantId';
     const parameters: any[] = [{ name: '@tenantId', value: tenantId }];
 
@@ -224,12 +228,11 @@ export class RiskAnalysisService {
     const limit = filters?.limit || 100;
 
     try {
-      const { resources } = await container.items
-        .query<RiskAnalysis>({
+      const { resources } = await (container.items
+        .query({
           query,
           parameters,
-        })
-        .fetchNext();
+        }) as any).fetchNext();
 
       return resources.slice(0, limit);
     } catch (error: any) {

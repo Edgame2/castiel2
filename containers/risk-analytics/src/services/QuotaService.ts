@@ -10,7 +10,6 @@ import { loadConfig } from '../config';
 import { log } from '../utils/logger';
 import { RevenueAtRiskService } from './RevenueAtRiskService';
 import { publishRiskAnalyticsEvent } from '../events/publishers/RiskAnalyticsEventPublisher';
-import { v4 as uuidv4 } from 'uuid';
 
 export type QuotaType = 'individual' | 'team' | 'tenant';
 export type QuotaPeriodType = 'monthly' | 'quarterly' | 'yearly';
@@ -155,17 +154,15 @@ export class QuotaService {
 
       // Store in database
       const container = getContainer('risk_quotas');
-      await container.items.create({
-        id: quota.id,
-        tenantId,
-        ...quota,
-      });
+      await container.items.create(
+        { ...quota, id: quota.id, tenantId },
+        { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]
+      );
 
       // Calculate initial performance
       await this.calculatePerformance(quota.id, tenantId, userId);
 
-      await publishRiskAnalyticsEvent('quota.created', {
-        tenantId,
+      await publishRiskAnalyticsEvent('quota.created', tenantId, {
         userId,
         quotaId: quota.id,
         quotaType: input.quotaType,
@@ -280,8 +277,7 @@ export class QuotaService {
       const container = getContainer('risk_quotas');
       await container.item(quotaId, tenantId).delete();
 
-      await publishRiskAnalyticsEvent('quota.deleted', {
-        tenantId,
+      await publishRiskAnalyticsEvent('quota.deleted', tenantId, {
         userId,
         quotaId,
       });

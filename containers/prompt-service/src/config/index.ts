@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { load } from 'yaml';
+import { parse as parseYaml } from 'yaml';
 
 export interface PromptServiceConfig {
   module: { name: string; version: string };
@@ -15,7 +15,7 @@ export interface PromptServiceConfig {
 
 export function loadConfig(): PromptServiceConfig {
   const configPath = join(__dirname, '../../config/default.yaml');
-  const config = load(readFileSync(configPath, 'utf-8')) as PromptServiceConfig;
+  const config = parseYaml(readFileSync(configPath, 'utf-8')) as PromptServiceConfig;
   if (process.env.PORT) config.server.port = parseInt(process.env.PORT, 10);
   if (process.env.HOST) config.server.host = process.env.HOST;
   if (process.env.COSMOS_DB_ENDPOINT) config.cosmos_db.endpoint = process.env.COSMOS_DB_ENDPOINT;

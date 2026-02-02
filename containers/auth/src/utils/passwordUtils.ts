@@ -5,14 +5,14 @@
  * HaveIBeenPwned (HIBP) breach checking.
  * 
  * Security:
- * - Uses bcrypt with cost factor 12 (industry standard)
+ * - Uses bcryptjs with cost factor 12 (industry standard, pure JS—no native build)
  * - Validates password strength (minimum 8 characters)
  * - Checks against common passwords
  * - Validates against personal information (email, name)
  * - Integrates with HaveIBeenPwned API (k-anonymity model)
  */
 
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { pwnedPassword } from 'hibp';
 import { log } from './logger';
 

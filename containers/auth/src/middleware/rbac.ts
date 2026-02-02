@@ -54,7 +54,7 @@ export async function checkPermission(
   const resourceId = check.resourceId || params?.id || params?.projectId || params?.teamId || params?.userId;
 
   try {
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
     
     // Check if user is Super Admin (bypass all permissions)
     const membership = await db.organizationMembership.findFirst({
@@ -85,7 +85,7 @@ export async function checkPermission(
       },
     });
 
-    const permissionCodes = rolePermissions.map(rp => rp.permission.code);
+    const permissionCodes = rolePermissions.map((rp: { permission: { code: string } }) => rp.permission.code);
 
     // Check for wildcard permission
     if (permissionCodes.includes('*')) {

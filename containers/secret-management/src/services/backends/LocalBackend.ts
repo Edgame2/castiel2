@@ -8,7 +8,6 @@ import { getDatabaseClient } from '@coder/shared';
 import {
   SecretStorageBackend,
   BackendConfig,
-  LocalBackendConfig,
   StoreSecretParams,
   StoreSecretResult,
   RetrieveSecretParams,
@@ -23,7 +22,6 @@ import {
 } from '../../types/backend.types';
 import { EncryptionService } from '../encryption/EncryptionService';
 import { KeyManager } from '../encryption/KeyManager';
-import { AnySecretValue } from '../../types';
 import { SecretNotFoundError } from '../../errors/SecretErrors';
 
 export class LocalBackend implements SecretStorageBackend {
@@ -55,7 +53,7 @@ export class LocalBackend implements SecretStorageBackend {
     
     try {
       // Check database connection
-      const db = getDatabaseClient();
+      const db = getDatabaseClient() as any;
       await db.$queryRaw`SELECT 1`;
       
       // Check encryption key availability
@@ -82,11 +80,9 @@ export class LocalBackend implements SecretStorageBackend {
       throw new Error('Backend not initialized');
     }
     
-    const db = getDatabaseClient();
-    
     // Encrypt secret value
-    const encryptedValue = await this.encryptionService.encryptSecretValue(params.value);
-    const activeKey = await this.keyManager.getActiveKey();
+    await this.encryptionService.encryptSecretValue(params.value);
+    await this.keyManager.getActiveKey();
     
     // Store in database (this is just the encrypted value - actual secret record is created by SecretService)
     // For local backend, we return a reference that points to the database record
@@ -110,7 +106,7 @@ export class LocalBackend implements SecretStorageBackend {
     }
     
     const secretName = match[1];
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
     
     // Find secret in database
     const secret = await db.secret_secrets.findFirst({
@@ -151,7 +147,7 @@ export class LocalBackend implements SecretStorageBackend {
     }
     
     const secretName = match[1];
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
     
     // Find secret
     const secret = await db.secret_secrets.findFirst({
@@ -166,8 +162,8 @@ export class LocalBackend implements SecretStorageBackend {
     }
     
     // Encrypt new value
-    const encryptedValue = await this.encryptionService.encryptSecretValue(params.value);
-    const activeKey = await this.keyManager.getActiveKey();
+    await this.encryptionService.encryptSecretValue(params.value);
+    await this.keyManager.getActiveKey();
     
     // Update in database (versioning handled by SecretService)
     // This backend just provides the encrypted value
@@ -177,7 +173,7 @@ export class LocalBackend implements SecretStorageBackend {
     };
   }
   
-  async deleteSecret(params: DeleteSecretParams): Promise<void> {
+  async deleteSecret(_params: DeleteSecretParams): Promise<void> {
     if (!this.initialized) {
       throw new Error('Backend not initialized');
     }
@@ -198,7 +194,7 @@ export class LocalBackend implements SecretStorageBackend {
     }
     
     const secretName = match[1];
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
     
     const secret = await db.secret_secrets.findFirst({
       where: {
@@ -218,7 +214,7 @@ export class LocalBackend implements SecretStorageBackend {
       throw new SecretNotFoundError(secretRef);
     }
     
-    return secret.versions.map(v => ({
+    return secret.versions.map((v: any) => ({
       version: v.version,
       createdAt: v.createdAt,
       isActive: v.isActive,
@@ -236,7 +232,7 @@ export class LocalBackend implements SecretStorageBackend {
     }
     
     const secretName = match[1];
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
     
     const secret = await db.secret_secrets.findFirst({
       where: {
@@ -280,7 +276,7 @@ export class LocalBackend implements SecretStorageBackend {
       throw new Error('Backend not initialized');
     }
     
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
     
     const where: any = {
       storageBackend: 'LOCAL_ENCRYPTED',

@@ -5,16 +5,28 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ConversationService } from '../../../src/services/ConversationService';
 import { getContainer } from '@coder/shared/database';
-import { ServiceClient } from '@coder/shared';
-import { generateServiceToken } from '@coder/shared';
 
 // Mock dependencies
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(),
 }));
 
+const { mockShardManagerClient, mockAiServiceClient, mockContextServiceClient, mockEmbeddingsClient } = vi.hoisted(
+  () => ({
+    mockShardManagerClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+    mockAiServiceClient: { post: vi.fn() },
+    mockContextServiceClient: { post: vi.fn() },
+    mockEmbeddingsClient: { post: vi.fn() },
+  })
+);
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(),
+  ServiceClient: vi.fn().mockImplementation(function (this: any, config: any) {
+    if (config?.baseURL?.includes('shard-manager')) return mockShardManagerClient;
+    if (config?.baseURL?.includes('ai-service')) return mockAiServiceClient;
+    if (config?.baseURL?.includes('context-service')) return mockContextServiceClient;
+    if (config?.baseURL?.includes('embeddings')) return mockEmbeddingsClient;
+    return { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() };
+  }),
   generateServiceToken: vi.fn(() => 'mock-token'),
 }));
 
@@ -48,61 +60,25 @@ vi.mock('../../../src/events/publishers/ConversationEventPublisher', () => ({
 
 describe('ConversationService', () => {
   let service: ConversationService;
-  let mockShardManagerClient: any;
-  let mockAiServiceClient: any;
-  let mockContextServiceClient: any;
-  let mockEmbeddingsClient: any;
   let mockContainer: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock container
     mockContainer = {
       items: {
         create: vi.fn(),
         query: vi.fn(() => ({
           fetchAll: vi.fn(),
+          fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
         })),
         read: vi.fn(),
         replace: vi.fn(),
         delete: vi.fn(),
       },
+      item: vi.fn(() => ({ read: vi.fn(), replace: vi.fn(), delete: vi.fn() })),
     };
     (getContainer as any).mockReturnValue(mockContainer);
-
-    // Mock ServiceClient instances
-    mockShardManagerClient = {
-      get: vi.fn(),
-      post: vi.fn(),
-      put: vi.fn(),
-      delete: vi.fn(),
-    };
-    mockAiServiceClient = {
-      post: vi.fn(),
-    };
-    mockContextServiceClient = {
-      post: vi.fn(),
-    };
-    mockEmbeddingsClient = {
-      post: vi.fn(),
-    };
-
-    (ServiceClient as any).mockImplementation((config: any) => {
-      if (config.baseURL?.includes('shard-manager')) {
-        return mockShardManagerClient;
-      }
-      if (config.baseURL?.includes('ai-service')) {
-        return mockAiServiceClient;
-      }
-      if (config.baseURL?.includes('context-service')) {
-        return mockContextServiceClient;
-      }
-      if (config.baseURL?.includes('embeddings')) {
-        return mockEmbeddingsClient;
-      }
-      return {};
-    });
 
     service = new ConversationService();
   });
@@ -121,40 +97,21 @@ describe('ConversationService', () => {
         { name: 'c_conversation', id: 'shard-type-123' },
       ]);
 
-      // Mock shard creation
+      // Mock shard creation (service uses shard.id, shard.tenantId, shard.createdAt, shard.updatedAt)
+      const now = new Date();
       mockShardManagerClient.post.mockResolvedValue({
         id: 'conversation-123',
         tenantId,
-        userId,
-        shardTypeName: 'c_conversation',
-        data: {
-          title: input.title,
-          status: 'active',
-          messages: [],
-          createdAt: new Date().toISOString(),
-        },
-      });
-
-      // Mock container create
-      mockContainer.items.create.mockResolvedValue({
-        resource: {
-          id: 'conversation-123',
-          tenantId,
-          userId,
-          title: input.title,
-          status: 'active',
-          messages: [],
-          createdAt: new Date(),
-        },
+        createdAt: now,
+        updatedAt: now,
       });
 
       const result = await service.createConversation(tenantId, userId, input);
 
       expect(result).toHaveProperty('id');
-      expect(result.title).toBe(input.title);
-      expect(result.status).toBe('active');
+      expect(result.structuredData?.title).toBe(input.title);
+      expect(result.structuredData?.status).toBe('active');
       expect(mockShardManagerClient.post).toHaveBeenCalled();
-      expect(mockContainer.items.create).toHaveBeenCalled();
     });
 
     it('should handle missing shard type and create it', async () => {
@@ -228,69 +185,47 @@ describe('ConversationService', () => {
         role: 'user' as const,
       };
 
-      // Mock existing conversation
-      mockContainer.items.read.mockResolvedValue({
-        resource: {
-          id: conversationId,
-          tenantId,
-          userId,
-          title: 'Test Conversation',
+      const mockShard = {
+        id: conversationId,
+        tenantId,
+        structuredData: {
+          title: 'Test',
           status: 'active',
           messages: [],
-          createdAt: new Date(),
+          stats: { messageCount: 0, userMessageCount: 0, assistantMessageCount: 0 },
+          lastActivityAt: new Date(),
         },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockShardManagerClient.get.mockResolvedValue(mockShard);
+      mockShardManagerClient.put.mockResolvedValue({
+        ...mockShard,
+        structuredData: { ...mockShard.structuredData, messages: [input] },
       });
-
-      // Mock AI service response
       mockAiServiceClient.post.mockResolvedValue({
-        content: 'I can help you with various tasks.',
+        content: 'I can help.',
         model: 'gpt-4',
         usage: { promptTokens: 10, completionTokens: 20 },
       });
 
-      // Mock container replace
-      mockContainer.items.replace.mockResolvedValue({
-        resource: {
-          id: conversationId,
-          tenantId,
-          messages: [
-            {
-              id: 'msg-1',
-              role: 'user',
-              content: input.content,
-              status: 'completed',
-            },
-            {
-              id: 'msg-2',
-              role: 'assistant',
-              content: 'I can help you with various tasks.',
-              status: 'completed',
-            },
-          ],
-        },
-      });
+      const result = await service.sendMessage(conversationId, tenantId, userId, input);
 
-      const result = await service.sendMessage(tenantId, userId, conversationId, input);
-
-      expect(result).toHaveProperty('messages');
-      expect(result.messages.length).toBeGreaterThan(0);
-      expect(mockAiServiceClient.post).toHaveBeenCalled();
-      expect(mockContainer.items.replace).toHaveBeenCalled();
+      expect(result).toHaveProperty('content');
+      expect(result.content).toBe(input.content);
+      expect(mockShardManagerClient.put).toHaveBeenCalled();
     });
 
     it('should handle conversation not found', async () => {
       const tenantId = 'tenant-123';
       const userId = 'user-123';
       const conversationId = 'non-existent';
-      const input = {
-        content: 'Hello',
-        role: 'user' as const,
-      };
+      const input = { content: 'Hello', role: 'user' as const };
 
-      mockContainer.items.read.mockRejectedValue(new Error('Not found'));
+      mockShardManagerClient.get.mockRejectedValue(new Error('Not found'));
 
       await expect(
-        service.sendMessage(tenantId, userId, conversationId, input)
+        service.sendMessage(conversationId, tenantId, userId, input)
       ).rejects.toThrow();
     });
   });
@@ -300,37 +235,30 @@ describe('ConversationService', () => {
       const tenantId = 'tenant-123';
       const conversationId = 'conversation-123';
 
-      const mockConversation = {
+      const mockShard = {
         id: conversationId,
         tenantId,
-        userId: 'user-123',
-        title: 'Test Conversation',
-        status: 'active',
-        messages: [],
+        structuredData: { title: 'Test Conversation', status: 'active', messages: [] },
         createdAt: new Date(),
+        updatedAt: new Date(),
       };
+      mockShardManagerClient.get.mockResolvedValue(mockShard);
 
-      mockContainer.items.read.mockResolvedValue({
-        resource: mockConversation,
-      });
+      const result = await service.getConversation(conversationId, tenantId);
 
-      const result = await service.getConversation(tenantId, conversationId);
-
-      expect(result).toEqual(mockConversation);
-      expect(mockContainer.items.read).toHaveBeenCalledWith(
-        conversationId,
-        { partitionKey: tenantId }
-      );
+      expect(result.id).toBe(conversationId);
+      expect(result.tenantId).toBe(tenantId);
+      expect(mockShardManagerClient.get).toHaveBeenCalled();
     });
 
     it('should handle conversation not found', async () => {
       const tenantId = 'tenant-123';
       const conversationId = 'non-existent';
 
-      mockContainer.items.read.mockRejectedValue(new Error('Not found'));
+      mockShardManagerClient.get.mockRejectedValue(new Error('Not found'));
 
       await expect(
-        service.getConversation(tenantId, conversationId)
+        service.getConversation(conversationId, tenantId)
       ).rejects.toThrow();
     });
   });
@@ -340,28 +268,23 @@ describe('ConversationService', () => {
       const tenantId = 'tenant-123';
       const userId = 'user-123';
 
-      const mockConversations = [
+      const mockShards = [
         {
           id: 'conv-1',
           tenantId,
-          userId,
-          title: 'Conversation 1',
-          status: 'active',
+          structuredData: { title: 'Conv 1', participants: [{ userId, isActive: true }] },
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
         {
           id: 'conv-2',
           tenantId,
-          userId,
-          title: 'Conversation 2',
-          status: 'active',
+          structuredData: { title: 'Conv 2', participants: [{ userId, isActive: true }] },
+          createdAt: new Date(),
+          updatedAt: new Date(),
         },
       ];
-
-      mockContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
-          resources: mockConversations,
-        }),
-      });
+      mockShardManagerClient.get.mockResolvedValue({ items: mockShards, total: 2 });
 
       const result = await service.listConversations(tenantId, userId, {});
 
@@ -373,16 +296,9 @@ describe('ConversationService', () => {
       const tenantId = 'tenant-123';
       const userId = 'user-123';
 
-      mockContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
-          resources: [],
-        }),
-      });
+      mockShardManagerClient.get.mockResolvedValue({ items: [], total: 0 });
 
-      const result = await service.listConversations(tenantId, userId, {
-        limit: 10,
-        offset: 0,
-      });
+      const result = await service.listConversations(tenantId, userId, { limit: 10 });
 
       expect(result).toHaveProperty('conversations');
       expect(result.conversations).toEqual([]);

@@ -132,8 +132,8 @@ export class FCMProvider implements IPushProvider {
       return {
         success: response.responses.some((r: any) => r.success),
         results,
-        totalSent: results.filter(r => r.success).length,
-        totalFailed: results.filter(r => !r.success).length,
+        totalSent: results.filter((r: { success: boolean }) => r.success).length,
+        totalFailed: results.filter((r: { success: boolean }) => !r.success).length,
       };
     } catch (error: any) {
       return {

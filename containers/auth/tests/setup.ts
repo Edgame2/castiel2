@@ -113,14 +113,13 @@ vi.mock('hibp', () => ({
   }),
 }));
 
-// Mock bcrypt - use actual bcrypt if available, otherwise provide mock
-vi.mock('bcrypt', async () => {
+// Mock bcryptjs - use actual bcryptjs if available, otherwise provide mock
+vi.mock('bcryptjs', async () => {
   try {
-    // Try to use actual bcrypt if available
-    const bcrypt = await import('bcrypt');
+    const bcrypt = await import('bcryptjs');
     return bcrypt;
   } catch {
-    // Fallback mock if bcrypt not available
+    // Fallback mock if bcryptjs not available
     const mockHash = vi.fn(async (password: string, rounds: number) => {
       // Return a mock bcrypt hash (starts with $2)
       const salt = Buffer.from(`${password}-${Date.now()}`).toString('base64').substring(0, 22);

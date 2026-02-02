@@ -63,8 +63,9 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
     };
   }
 
-  const userId = event.userId || eventData.userId;
-  const organizationId = event.organizationId || eventData.organizationId;
+  const ev = event as DomainEvent<any> & { userId?: string; organizationId?: string };
+  const userId = ev.userId ?? event.metadata?.userId ?? eventData.userId;
+  const organizationId = ev.organizationId ?? event.tenantId ?? eventData.organizationId;
 
   if (!userId || !organizationId) {
     return null; // Skip events without user/org context
@@ -301,7 +302,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
         organizationId,
         eventType: event.type,
         eventCategory: 'SYSTEM_ADMIN',
-        sourceModule: event.source || 'unknown',
+        sourceModule: (typeof event.source === 'object' && event.source?.service) ? event.source.service : 'unknown',
         recipientId: userId,
         title: 'System Event',
         body: `Event: ${event.type}`,

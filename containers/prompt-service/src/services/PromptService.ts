@@ -105,7 +105,7 @@ export class PromptService {
     };
 
     try {
-      const container = getContainer(this.promptContainerName);
+      const container = getContainer(this.promptContainerName) as any;
       const { resource } = await container.items.create(prompt, {
         partitionKey: input.tenantId,
       });
@@ -138,8 +138,8 @@ export class PromptService {
     }
 
     try {
-      const container = getContainer(this.promptContainerName);
-      const { resource } = await container.item(promptId, tenantId).read<PromptTemplate>();
+      const container = getContainer(this.promptContainerName) as any;
+      const { resource } = await container.item(promptId, tenantId).read();
 
       if (!resource) {
         throw new NotFoundError(`Prompt template ${promptId} not found`);
@@ -165,7 +165,7 @@ export class PromptService {
       throw new BadRequestError('tenantId and slug are required');
     }
 
-    const container = getContainer(this.promptContainerName);
+    const container = getContainer(this.promptContainerName) as any;
     let query = 'SELECT * FROM c WHERE c.tenantId = @tenantId AND c.slug = @slug';
     const parameters: any[] = [
       { name: '@tenantId', value: tenantId },
@@ -232,7 +232,7 @@ export class PromptService {
     };
 
     try {
-      const container = getContainer(this.promptContainerName);
+      const container = getContainer(this.promptContainerName) as any;
       const { resource } = await container.item(promptId, tenantId).replace(updated);
 
       if (!resource) {
@@ -254,7 +254,7 @@ export class PromptService {
   async delete(promptId: string, tenantId: string): Promise<void> {
     await this.getById(promptId, tenantId);
 
-    const container = getContainer(this.promptContainerName);
+    const container = getContainer(this.promptContainerName) as any;
     await container.item(promptId, tenantId).delete();
   }
 
@@ -351,7 +351,7 @@ export class PromptService {
     userId: string,
     input: { content: string; variables?: PromptVariable[]; changelog?: string }
   ): Promise<PromptVersion> {
-    const prompt = await this.getById(promptId, tenantId);
+    await this.getById(promptId, tenantId);
     const versions = await this.getVersions(tenantId, promptId);
     const nextVersion = versions.length + 1;
 
@@ -368,7 +368,7 @@ export class PromptService {
     };
 
     try {
-      const container = getContainer(this.versionContainerName);
+      const container = getContainer(this.versionContainerName) as any;
       const { resource } = await container.items.create(version, {
         partitionKey: tenantId,
       });
@@ -387,7 +387,7 @@ export class PromptService {
    * Get prompt version
    */
   async getVersion(tenantId: string, promptId: string, version: number): Promise<PromptVersion> {
-    const container = getContainer(this.versionContainerName);
+    const container = getContainer(this.versionContainerName) as any;
     const { resources } = await container.items
       .query<PromptVersion>({
         query: 'SELECT * FROM c WHERE c.tenantId = @tenantId AND c.promptId = @promptId AND c.version = @version',

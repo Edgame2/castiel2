@@ -39,6 +39,6 @@
       }
     }
   ],
-  "ignorePatterns": ["node_modules", "dist", "build", "coverage", "old_code"]
+  "ignorePatterns": ["node_modules", "dist", "build", "coverage"]
 }
 

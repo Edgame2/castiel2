@@ -23,15 +23,20 @@ export interface SAMLResponseData {
 }
 
 /**
- * Get SSO credentials from Secret Management Service
- * Uses service-to-service authentication
+ * Get SSO credentials from Secret Management Service.
+ * Uses service-to-service authentication. Secret management URL must be set via config or SECRET_MANAGEMENT_SERVICE_URL; no default URL in code per .cursorrules.
  */
 async function getSSOCredentials(
   organizationId: string,
   secretId: string
 ): Promise<{ certificate?: string; privateKey?: string }> {
   const config = loadConfig();
-  const secretManagementUrl = config.services?.secret_management?.url || 'http://localhost:3003';
+  const secretManagementUrl = config.services?.secret_management?.url || process.env.SECRET_MANAGEMENT_SERVICE_URL;
+  if (!secretManagementUrl || secretManagementUrl.trim() === '') {
+    throw new Error(
+      'Secret management URL required: set SECRET_MANAGEMENT_URL or config.services.secret_management.url (or SECRET_MANAGEMENT_SERVICE_URL env)'
+    );
+  }
   const serviceAuthToken = process.env.SERVICE_AUTH_TOKEN || '';
   
   if (!serviceAuthToken) {
@@ -105,7 +110,7 @@ export async function generateSAMLRequest(
   organizationId: string,
   relayState?: string
 ): Promise<{ samlRequest: string; redirectUrl: string; relayState: string }> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   const config = loadConfig();
 
   // Get SSO configuration
@@ -134,7 +139,10 @@ export async function generateSAMLRequest(
   const requestId = `_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
   const timestamp = new Date().toISOString();
   const entityId = ssoConfig.entityId || ssoConfig.organization.slug;
-  const acsUrl = `${config.server.base_url || 'http://localhost:3000'}/api/auth/sso/saml/callback`;
+  if (!config.server?.base_url?.trim()) {
+    throw new Error('SAML requires server.base_url to be set (config.server.base_url or BASE_URL env)');
+  }
+  const acsUrl = `${config.server.base_url}/api/v1/auth/sso/saml/callback`;
   
   // Generate basic SAML AuthnRequest XML
   // In production, this should be properly signed and use a SAML library
@@ -171,7 +179,7 @@ export async function processSAMLResponse(
   ipAddress?: string | null,
   userAgent?: string | null
 ): Promise<{ user: any; session: any }> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
 
   // Extract organization ID from relay state
   const orgMatch = relayState.match(/org:([^:]+)/);

@@ -26,7 +26,7 @@ export class AccountService {
     avatarUrl?: string,
     bio?: string
   ): Promise<any | null> {
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
     
     try {
       // Check if account already exists
@@ -63,7 +63,7 @@ export class AccountService {
       return account;
     } catch (error: any) {
       // Non-fatal - account creation failure shouldn't break user registration
-      log.warn('Failed to create account for user', error, { userId, username, service: 'auth' });
+      log.warn('Failed to create account for user', { error, userId, username, service: 'auth' });
       return null;
     }
   }

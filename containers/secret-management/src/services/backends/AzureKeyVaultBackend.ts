@@ -405,14 +405,4 @@ export class AzureKeyVaultBackend implements SecretStorageBackend {
     
     return normalized;
   }
-  
-  /**
-   * Denormalize secret name (reverse of normalize)
-   * Note: This is a best-effort approach as Azure Key Vault normalization is lossy
-   */
-  private denormalizeSecretName(azureName: string): string {
-    // Since normalization is lossy, we can't fully reverse it
-    // Return as-is for now - in production, you'd want to store a mapping
-    return azureName;
-  }
 }

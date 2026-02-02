@@ -35,7 +35,10 @@
             "skills": { "type": "string" },
             "assessments": { "type": "string" },
             "assessment_results": { "type": "string" },
-            "outcomes": { "type": "string" }
+            "outcomes": { "type": "string" },
+            "adaptive_weights": { "type": "string" },
+            "adaptive_model_selections": { "type": "string" },
+            "adaptive_tenant_config": { "type": "string" }
           }
         }
       }
@@ -70,7 +73,14 @@
         "url": { "type": "string", "format": "uri" },
         "exchange": { "type": "string" },
         "queue": { "type": "string" },
-        "bindings": { "type": "array", "items": { "type": "string" } }
+        "bindings": { "type": "array", "items": { "type": "string" } },
+        "batch_jobs": {
+          "type": "object",
+          "properties": {
+            "queue": { "type": "string" },
+            "routing_keys": { "type": "array", "items": { "type": "string" } }
+          }
+        }
       }
     }
   }

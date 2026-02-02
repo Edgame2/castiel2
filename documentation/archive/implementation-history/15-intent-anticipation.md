@@ -157,7 +157,7 @@ const engine = new IntentInferenceEngine();
 const intent = await engine.infer('Add user authentication to the app');
 
 // Intent includes:
-// - Type: 'code-generation'
+// - Type: 'planning'
 // - Confidence: 0.95
 // - Parameters: { feature: 'authentication', scope: 'user' }
 // - Context: {...}
@@ -417,7 +417,7 @@ const intent = await engine.infer(
   'Create a REST API endpoint for user registration'
 );
 
-console.log(intent.type); // 'code-generation'
+console.log(intent.type); // 'planning'
 console.log(intent.confidence); // 0.92
 console.log(intent.parameters); // { endpoint: 'user/register', method: 'POST' }
 ```

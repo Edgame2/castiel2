@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { load } from 'yaml';
+import { parse as parseYaml } from 'yaml';
 
 export interface EmbeddingsConfig {
   module: { name: string; version: string };
@@ -27,7 +27,7 @@ export interface EmbeddingsConfig {
 
 export function loadConfig(): EmbeddingsConfig {
   const configPath = join(__dirname, '../../config/default.yaml');
-  const config = load(readFileSync(configPath, 'utf-8')) as EmbeddingsConfig;
+  const config = parseYaml(readFileSync(configPath, 'utf-8')) as EmbeddingsConfig;
   
   // Override with environment variables if provided
   if (process.env.PORT) config.server.port = parseInt(process.env.PORT, 10);

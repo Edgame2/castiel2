@@ -261,7 +261,7 @@ flowchart TB
 - **Specs:** All under `documentation/specifications/feedbacks and recommendations/`.
 - **Decisions (extend vs new, patterns, timelines):** [ALL_IMPLEMENTATION_QUESTIONS_ANSWERED.md](documentation/specifications/feedbacks%20and%20recommendations/ALL_IMPLEMENTATION_QUESTIONS_ANSWERED.md) (and IMPLEMENTATION_QUESTIONS_COMPLETE_ANSWERS.md).
 - **Existing code:** `containers/risk-catalog/`, `containers/recommendations/`, `containers/ml-service/`, `containers/logging/` (DataLakeCollector), `containers/risk-analytics/`.
-- **Standards:** `.cursorrules`, ModuleImplementationGuide.md, SERVICE_MIGRATION_GUIDE.md; skills: create-event-handlers, setup-container-config, validate-tenant-isolation, add-datalake-consumer, transform-service-communication.
+- **Standards:** `.cursorrules`, ModuleImplementationGuide.md; skills: create-event-handlers, setup-container-config, validate-tenant-isolation, add-datalake-consumer, transform-service-communication.
 
 ---
 

@@ -85,7 +85,7 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       schema: {
         description: 'Record dashboard view',
         tags: ['Dashboard Analytics'],
-      },
+      } as any,
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
@@ -114,7 +114,7 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       schema: {
         description: 'Get widget cache',
         tags: ['Dashboard Analytics'],
-      },
+      } as any,
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {

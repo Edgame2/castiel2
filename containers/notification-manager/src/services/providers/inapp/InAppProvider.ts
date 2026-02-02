@@ -33,9 +33,11 @@ export class InAppProvider {
 
   constructor() {
     this.exchange = this.config.notification.providers.inapp?.exchange || 'notification.inapp.deliver';
-    this.publisher = new EventPublisher({
-      exchange: this.exchange,
-    });
+    const url = (this.config as any).rabbitmq?.url ?? '';
+    this.publisher = new EventPublisher(
+      { url, exchange: this.exchange },
+      'notification-manager'
+    );
   }
 
   /**
@@ -62,7 +64,11 @@ export class InAppProvider {
         },
       };
 
-      await this.publisher.publish('notification.inapp.delivered', event.data);
+      await this.publisher.publish(
+        'notification.inapp.delivered',
+        options.organizationId,
+        event.data
+      );
 
       return {
         success: true,

@@ -21,7 +21,7 @@ The platform is architected as a **Compound AI System (CAIS)** that orchestrates
 - **Communication Pattern**: Hybrid approach
   - **Direct API calls**: Most operations call microservices directly via API Gateway
   - **BFF (API Routes)**: Used for authentication, token management, and sensitive operations
-- **UI Reuse**: Components and pages from `old_code/apps/web/` are reused
+- **UI Reuse**: Components and pages from the legacy web app are reused
 - **Port**: 3000 (configurable via `PORT` environment variable)
 
 ```mermaid
@@ -29,7 +29,7 @@ graph TB
     subgraph Client["Client Layer - UI Container"]
         NextJS[Next.js App<br/>React 19 UI<br/>Port 3000]
         APIRoutes[API Routes<br/>BFF Layer]
-        Components[Reused Components<br/>from old_code]
+        Components[Reused Components<br/>from legacy web app]
     end
     
     subgraph Gateway["API Gateway"]

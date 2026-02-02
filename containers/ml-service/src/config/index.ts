@@ -12,7 +12,6 @@ export interface MLServiceConfig {
     ai_service?: { url: string };
     embeddings?: { url: string };
     logging?: { url: string };
-    code_generation?: { url: string };
     context_service?: { url: string };
     adaptive_learning?: { url: string };
     shard_manager?: { url: string };

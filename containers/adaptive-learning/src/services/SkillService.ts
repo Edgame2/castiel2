@@ -42,7 +42,7 @@ export class SkillService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(skill, {
         partitionKey: input.tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create skill');
@@ -70,7 +70,7 @@ export class SkillService {
       const { resource } = await container.item(skillId, tenantId).read<Skill>();
 
       if (!resource) {
-        throw new NotFoundError(`Skill ${skillId} not found`);
+        throw new NotFoundError('Skill', skillId);
       }
 
       return resource;
@@ -79,7 +79,7 @@ export class SkillService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Skill ${skillId} not found`);
+        throw new NotFoundError('Skill', skillId);
       }
       throw error;
     }
@@ -112,7 +112,7 @@ export class SkillService {
       return resource as Skill;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Skill ${skillId} not found`);
+        throw new NotFoundError('Skill', skillId);
       }
       throw error;
     }
@@ -174,10 +174,7 @@ export class SkillService {
 
     try {
       const { resources, continuationToken } = await container.items
-        .query<Skill>({
-          query,
-          parameters,
-        })
+        .query<Skill>({ query, parameters }, { partitionKey: tenantId } as Record<string, unknown>)
         .fetchNext();
 
       return {

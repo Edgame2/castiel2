@@ -4,16 +4,25 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { IntegrationSyncService } from '../../../src/services/IntegrationSyncService';
-import { ServiceClient } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 
-// Mock dependencies
+const mockClients = vi.hoisted(() => ({
+  integrationManager: { get: vi.fn(), post: vi.fn() },
+  shardManager: { get: vi.fn(), post: vi.fn(), put: vi.fn() },
+  secretManagement: { get: vi.fn() },
+}));
+
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(),
 }));
 
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(),
+  ServiceClient: vi.fn().mockImplementation(function (this: unknown, config: { baseURL?: string }) {
+    if (config?.baseURL?.includes('integration-manager')) return mockClients.integrationManager;
+    if (config?.baseURL?.includes('shard-manager')) return mockClients.shardManager;
+    if (config?.baseURL?.includes('secret-management')) return mockClients.secretManagement;
+    return { get: vi.fn(), post: vi.fn(), put: vi.fn() };
+  }),
   generateServiceToken: vi.fn(() => 'mock-token'),
 }));
 
@@ -46,54 +55,25 @@ vi.mock('../../../src/events/publishers/IntegrationSyncEventPublisher', () => ({
 
 describe('IntegrationSyncService', () => {
   let service: IntegrationSyncService;
-  let mockIntegrationManagerClient: any;
-  let mockShardManagerClient: any;
-  let mockSecretManagementClient: any;
-  let mockContainer: any;
+  let mockContainer: ReturnType<typeof createMockContainer>;
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-
-    // Mock container
-    mockContainer = {
+  function createMockContainer() {
+    return {
       items: {
         create: vi.fn(),
         query: vi.fn(() => ({
-          fetchAll: vi.fn(),
+          fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
+          fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
         })),
-        read: vi.fn(),
-        replace: vi.fn(),
       },
+      item: vi.fn(() => ({ read: vi.fn().mockResolvedValue({ resource: null }), replace: vi.fn().mockResolvedValue({}) })),
     };
-    (getContainer as any).mockReturnValue(mockContainer);
+  }
 
-    // Mock service clients
-    mockIntegrationManagerClient = {
-      get: vi.fn(),
-      post: vi.fn(),
-    };
-    mockShardManagerClient = {
-      get: vi.fn(),
-      post: vi.fn(),
-      put: vi.fn(),
-    };
-    mockSecretManagementClient = {
-      get: vi.fn(),
-    };
-
-    (ServiceClient as any).mockImplementation((config: any) => {
-      if (config.baseURL?.includes('integration-manager')) {
-        return mockIntegrationManagerClient;
-      }
-      if (config.baseURL?.includes('shard-manager')) {
-        return mockShardManagerClient;
-      }
-      if (config.baseURL?.includes('secret-management')) {
-        return mockSecretManagementClient;
-      }
-      return {};
-    });
-
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockContainer = createMockContainer();
+    (getContainer as ReturnType<typeof vi.fn>).mockReturnValue(mockContainer);
     service = new IntegrationSyncService();
   });
 
@@ -141,59 +121,57 @@ describe('IntegrationSyncService', () => {
     it('should execute a sync task successfully', async () => {
       const tenantId = 'tenant-123';
       const taskId = 'task-123';
+      const mockTask = {
+        taskId,
+        tenantId,
+        integrationId: 'integration-123',
+        direction: 'bidirectional' as const,
+        status: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-      // Mock existing task
-      mockContainer.items.read.mockResolvedValue({
-        resource: {
-          id: taskId,
-          tenantId,
-          integrationId: 'integration-123',
-          direction: 'bidirectional',
-          status: 'pending',
-        },
-      });
+      const readMock = vi.fn().mockResolvedValue({ resource: mockTask });
+      const replaceMock = vi.fn().mockResolvedValue({});
+      mockContainer.item.mockReturnValue({ read: readMock, replace: replaceMock });
 
-      // Mock integration
-      mockIntegrationManagerClient.get.mockResolvedValue({
+      mockClients.integrationManager.get.mockResolvedValue({
         id: 'integration-123',
         type: 'salesforce',
         credentials: {},
       });
 
-      // Mock sync execution
-      const mockExecution = {
-        executionId: 'exec-123',
-        taskId,
-        status: 'completed',
-        syncedCount: 10,
-        conflicts: [],
-      };
-
-      // Mock task update
-      mockContainer.items.replace.mockResolvedValue({
-        resource: {
-          id: taskId,
-          status: 'completed',
-        },
+      (getContainer as ReturnType<typeof vi.fn>).mockImplementation((name: string) => {
+        if (name === 'integration_executions') {
+          return {
+            items: {
+              create: vi.fn().mockResolvedValue({}),
+              query: vi.fn().mockReturnValue({
+                fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+              }),
+            },
+            item: vi.fn(() => ({ read: vi.fn().mockResolvedValue({ resource: null }), replace: vi.fn().mockResolvedValue({}) })),
+          };
+        }
+        return mockContainer;
       });
 
       const result = await service.executeSyncTask(taskId, tenantId);
 
       expect(result).toHaveProperty('executionId');
-      expect(mockContainer.items.replace).toHaveBeenCalled();
+      expect(replaceMock).toHaveBeenCalled();
     });
 
     it('should handle task not found', async () => {
       const tenantId = 'tenant-123';
       const taskId = 'non-existent';
 
-      mockContainer.items.read.mockResolvedValue({
-        resource: null,
+      mockContainer.item.mockReturnValue({
+        read: vi.fn().mockResolvedValue({ resource: null }),
+        replace: vi.fn(),
       });
 
-      await expect(
-        service.executeSyncTask(taskId, tenantId)
-      ).rejects.toThrow();
+      await expect(service.executeSyncTask(taskId, tenantId)).rejects.toThrow();
     });
   });
 
@@ -201,38 +179,38 @@ describe('IntegrationSyncService', () => {
     it('should resolve a conflict successfully', async () => {
       const tenantId = 'tenant-123';
       const conflictId = 'conflict-123';
-      const resolution = {
-        strategy: 'use_local' as const,
-        resolvedData: { field: 'value' },
-      };
+      const resolvedBy = 'user-123';
+      const resolution = { strategy: 'use_local' as const, resolvedData: { field: 'value' } };
 
-      // Mock conflict
       const mockConflict = {
         id: conflictId,
         tenantId,
         localData: { field: 'local' },
         remoteData: { field: 'remote' },
         status: 'pending',
+        resolutionStrategy: undefined as any,
+        resolved: false,
+        resolvedAt: undefined as any,
+        resolvedBy: undefined as any,
+        updatedAt: new Date(),
       };
 
-      mockContainer.items.read.mockResolvedValue({
-        resource: mockConflict,
+      (getContainer as ReturnType<typeof vi.fn>).mockImplementation((name: string) => {
+        if (name === 'integration_conflicts') {
+          return {
+            item: vi.fn(() => ({
+              read: vi.fn().mockResolvedValue({ resource: { ...mockConflict } }),
+              replace: vi.fn().mockResolvedValue({}),
+            })),
+          };
+        }
+        return mockContainer;
       });
 
-      // Mock resolution
-      mockContainer.items.replace.mockResolvedValue({
-        resource: {
-          ...mockConflict,
-          ...resolution,
-          status: 'resolved',
-        },
-      });
-
-      const result = await service.resolveConflict(tenantId, conflictId, resolution);
+      const result = await service.resolveConflict(conflictId, tenantId, resolution, resolvedBy);
 
       expect(result).toHaveProperty('id');
-      expect(result.status).toBe('resolved');
-      expect(mockContainer.items.replace).toHaveBeenCalled();
+      expect(result.resolved).toBe(true);
     });
   });
 });

@@ -6,7 +6,6 @@
 
 import { SecretService } from '../SecretService';
 import { ListSecretsParams, SecretContext, AnySecretValue } from '../../types';
-import { ExportError } from '../../errors/SecretErrors';
 import { publishSecretEvent, SecretEvents } from '../events/SecretEventPublisher';
 import { getLoggingClient } from '../logging/LoggingClient';
 import { AuditService } from '../AuditService';

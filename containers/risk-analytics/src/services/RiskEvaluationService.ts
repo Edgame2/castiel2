@@ -15,14 +15,12 @@ import {
   RiskEvaluationResult,
   RiskEvaluationAssumptions,
   EvaluationDataQuality,
-  RiskScoringRequest,
   RiskScoringResult,
   LearnedWeights,
   ModelSelection,
   RevenueAtRiskCalculation,
 } from '../types/risk-analytics.types';
 import { RiskCatalog, DetectedRisk } from '../types/risk-catalog.types';
-import { RiskCatalogService } from './RiskCatalogService';
 import { TenantMLConfigService } from './TenantMLConfigService';
 import { trace } from '@opentelemetry/api';
 import { publishRiskAnalyticsEvent, publishHitlApprovalRequested } from '../events/publishers/RiskAnalyticsEventPublisher';
@@ -39,7 +37,8 @@ const DEFAULT_WEIGHTS: LearnedWeights = {
 
 export class RiskEvaluationService {
   private config: ReturnType<typeof loadConfig>;
-  private riskCatalogClient: ServiceClient;
+  private _riskCatalogClient: ServiceClient;
+  private riskCatalogService?: import('./RiskCatalogService').RiskCatalogService;
   private adaptiveLearningClient: ServiceClient;
   private mlServiceClient: ServiceClient;
   private aiInsightsClient: ServiceClient;
@@ -51,13 +50,18 @@ export class RiskEvaluationService {
   private app: FastifyInstance | null = null;
   private tenantMLConfigService: TenantMLConfigService;
 
-  constructor(app?: FastifyInstance, tenantMLConfigService?: TenantMLConfigService) {
+  constructor(
+    app?: FastifyInstance,
+    tenantMLConfigService?: TenantMLConfigService,
+    riskCatalogService?: import('./RiskCatalogService').RiskCatalogService
+  ) {
     this.app = app || null;
+    this.riskCatalogService = riskCatalogService;
     this.tenantMLConfigService = tenantMLConfigService ?? new TenantMLConfigService();
     this.config = loadConfig();
     
     // Initialize service clients
-    this.riskCatalogClient = new ServiceClient({
+    this._riskCatalogClient = new ServiceClient({
       baseURL: this.config.services.risk_catalog?.url || '',
       timeout: 30000,
       retries: 3,
@@ -179,8 +183,12 @@ export class RiskEvaluationService {
    */
   private async getRiskCatalog(tenantId: string, industryId?: string): Promise<RiskCatalog[]> {
     try {
-      const catalog = await this.riskCatalogService.getCatalog(tenantId, industryId);
-      return Array.isArray(catalog) ? catalog : [];
+      void this._riskCatalogClient;
+      if (this.riskCatalogService) {
+        const catalog = await this.riskCatalogService.getCatalog(tenantId, industryId);
+        return Array.isArray(catalog) ? catalog : [];
+      }
+      return [];
     } catch (error: unknown) {
       log.error('Failed to get risk catalog', error instanceof Error ? error : new Error(String(error)), {
         tenantId,
@@ -305,7 +313,7 @@ export class RiskEvaluationService {
 
       // Step 6: Calculate revenue at risk (after riskScore is finalized, including ML when applied)
       const opportunityValue = opportunityShard?.structuredData?.amount || 0;
-      const revenueAtRisk = this.calculateRevenueAtRisk(riskScore, opportunityValue);
+      const revenueAtRisk = this.revenueAtRiskFromScore(riskScore, opportunityValue);
 
       // Step 7: Build evaluation result (assumptions: data quality, staleness, missing data – MISSING_FEATURES 4.3; dataQuality Plan §11.6)
       const assumptions = this.buildAssumptions(opportunityShard);
@@ -695,21 +703,29 @@ export class RiskEvaluationService {
         for (const historicalRisk of historicalEvaluation.detectedRisks) {
           const catalogRisk = catalog.find((r) => r.riskId === historicalRisk.riskId);
           if (!catalogRisk?.isActive) continue;
+          const prevExplain = historicalRisk.explainability;
+          const evidenceBase: { sourceShards?: string[]; [k: string]: unknown } =
+            typeof prevExplain === 'object' && prevExplain !== null && 'evidence' in prevExplain
+              ? { ...(prevExplain as { evidence: Record<string, unknown> }).evidence }
+              : {};
           risks.push({
             ...historicalRisk,
             confidence: historicalRisk.confidence * 0.7,
             explainability: {
-              ...historicalRisk.explainability,
               detectionMethod: 'historical',
+              confidence: historicalRisk.confidence * 0.7,
               evidence: {
-                ...historicalRisk.explainability?.evidence,
+                ...evidenceBase,
+                sourceShards: evidenceBase.sourceShards ?? historicalRisk.sourceShards,
                 similarOpportunityId: similarOpp.id,
                 historicalOutcome: outcome,
-              },
+              } as { sourceShards: string[]; [k: string]: unknown },
               reasoning: {
                 summary: `Risk detected based on historical pattern: similar opportunity ${outcome}`,
                 standard: `A similar opportunity (${similarOpp.id}) had outcome "${outcome}" and was associated with risk: ${historicalRisk.riskName}`,
               },
+              assumptions: [],
+              confidenceContributors: [],
             },
           });
         }
@@ -826,7 +842,7 @@ export class RiskEvaluationService {
                     confidence: 0.6,
                     evidence: {
                       sourceShards: [opportunityShard.id],
-                      semanticMatch: true,
+                      semanticMatches: [{ shardId: opportunityShard.id, shardType: 'c_opportunity', similarityScore: 0.6 }],
                     },
                     reasoning: {
                       summary: `Risk detected via semantic similarity: ${catalogRisk.name}`,
@@ -948,7 +964,7 @@ export class RiskEvaluationService {
   /**
    * Calculate overall risk score
    */
-  private calculateRiskScore(risks: DetectedRisk[], weights: LearnedWeights): number {
+  private calculateRiskScore(risks: DetectedRisk[], _weights: LearnedWeights): number {
     if (risks.length === 0) return 0;
 
     let totalContribution = 0;
@@ -989,9 +1005,9 @@ export class RiskEvaluationService {
   }
 
   /**
-   * Calculate revenue at risk
+   * Calculate revenue at risk from score and value (private helper)
    */
-  private calculateRevenueAtRisk(riskScore: number, opportunityValue: number): number {
+  private revenueAtRiskFromScore(riskScore: number, opportunityValue: number): number {
     return riskScore * opportunityValue;
   }
 
@@ -1001,7 +1017,6 @@ export class RiskEvaluationService {
   private calculateTrustLevel(risks: DetectedRisk[], opportunityShard: any): 'high' | 'medium' | 'low' | 'unreliable' {
     if (risks.length === 0) return 'high';
     
-    const data = opportunityShard?.structuredData || {};
     const dataQuality = this.calculateQualityScore(opportunityShard);
     
     // Calculate average confidence
@@ -1241,7 +1256,7 @@ export class RiskEvaluationService {
           createdAt: new Date(),
           updatedAt: new Date(),
         },
-        { partitionKey: tenantId }
+        { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]
       );
     } catch (error: unknown) {
       log.error('Failed to store evaluation', error instanceof Error ? error : new Error(String(error)), {
@@ -1263,7 +1278,7 @@ export class RiskEvaluationService {
     try {
       const opportunityShard = await this.getOpportunityShard(opportunityId, tenantId);
       const opportunityValue = opportunityShard?.structuredData?.amount || 0;
-      const revenueAtRisk = this.calculateRevenueAtRisk(riskScore, opportunityValue);
+      const revenueAtRisk = this.revenueAtRiskFromScore(riskScore, opportunityValue);
 
       const calculation: RevenueAtRiskCalculation = {
         opportunityId,
@@ -1282,7 +1297,7 @@ export class RiskEvaluationService {
           ...calculation,
           createdAt: new Date(),
         },
-        { partitionKey: tenantId }
+        { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]
       );
 
       // Publish event

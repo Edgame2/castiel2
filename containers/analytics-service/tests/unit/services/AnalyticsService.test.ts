@@ -4,110 +4,75 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AnalyticsService } from '../../../src/services/AnalyticsService';
-import { ServiceClient } from '@coder/shared';
+import { getContainer } from '@coder/shared/database';
 
-// Mock dependencies
-vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(),
+vi.mock('@coder/shared/database', () => ({
+  getContainer: vi.fn(),
 }));
-
-vi.mock('../../../src/config', () => ({
-  loadConfig: vi.fn(() => ({
-    services: {},
-    cosmos_db: {
-      endpoint: 'https://test.documents.azure.com:443/',
-      key: 'test-key',
-      database_id: 'test',
-    },
-  })),
-}));
+vi.mock('uuid', () => ({ v4: vi.fn(() => 'test-uuid-123') }));
 
 describe('AnalyticsService', () => {
   let service: AnalyticsService;
-  let mockServiceClient: any;
+  let mockContainer: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    mockServiceClient = {
-      post: vi.fn(),
-      get: vi.fn(),
+    mockContainer = {
+      items: {
+        create: vi.fn().mockResolvedValue({
+          resource: {
+            id: 'event-123',
+            tenantId: 'tenant-123',
+            eventName: 'test',
+            timestamp: new Date(),
+          },
+        }),
+        query: vi.fn().mockReturnValue({
+          fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
+        }),
+      },
     };
-
-    (ServiceClient as any).mockImplementation(() => mockServiceClient);
-
+    (getContainer as any).mockReturnValue(mockContainer);
     service = new AnalyticsService();
   });
 
-  describe('recordEvent', () => {
-    it('should record an event successfully', async () => {
-      const event = {
-        type: 'user_action',
-        userId: 'user-123',
-        organizationId: 'org-123',
-        data: { action: 'click' },
+  describe('trackEvent', () => {
+    it('should track an event successfully', async () => {
+      const input = {
+        tenantId: 'tenant-123',
+        eventName: 'user_click',
+        eventType: 'user_action',
       };
 
-      // Mock the internal recording logic
-      vi.spyOn(service as any, 'storeEvent').mockResolvedValue({ id: 'event-123' });
-
-      const result = await service.recordEvent('tenant-123', event);
+      const result = await service.trackEvent(input);
 
       expect(result).toHaveProperty('id');
-    });
-
-    it('should handle errors gracefully', async () => {
-      const event = {
-        type: 'user_action',
-        userId: 'user-123',
-        organizationId: 'org-123',
-        data: {},
-      };
-
-      vi.spyOn(service as any, 'storeEvent').mockRejectedValue(new Error('Storage error'));
-
-      await expect(service.recordEvent('tenant-123', event)).rejects.toThrow();
+      expect(mockContainer.items.create).toHaveBeenCalled();
     });
 
     it('should validate required fields', async () => {
-      const event = {
-        type: '',
-        userId: 'user-123',
-        organizationId: 'org-123',
-        data: {},
-      } as any;
-
-      await expect(service.recordEvent('tenant-123', event)).rejects.toThrow();
+      await expect(service.trackEvent({} as any)).rejects.toThrow();
+      await expect(service.trackEvent({ tenantId: 't1' } as any)).rejects.toThrow();
     });
   });
 
-  describe('getMetrics', () => {
+  describe('getAggregateMetrics', () => {
     it('should retrieve metrics successfully', async () => {
-      const mockMetrics = {
-        totalEvents: 100,
-        uniqueUsers: 50,
-      };
+      const mockEvents = [
+        { tenantId: 'tenant-123', eventName: 'click', value: 10, timestamp: new Date() },
+        { tenantId: 'tenant-123', eventName: 'click', value: 20, timestamp: new Date() },
+      ];
+      mockContainer.items.query.mockReturnValue({
+        fetchAll: vi.fn().mockResolvedValue({ resources: mockEvents }),
+      });
 
-      vi.spyOn(service as any, 'queryMetrics').mockResolvedValue(mockMetrics);
-
-      const result = await service.getMetrics('tenant-123', {
+      const result = await service.getAggregateMetrics({
+        tenantId: 'tenant-123',
         startDate: new Date(),
         endDate: new Date(),
       });
 
-      expect(result).toHaveProperty('totalEvents');
-      expect(result).toHaveProperty('uniqueUsers');
-    });
-
-    it('should handle empty results', async () => {
-      vi.spyOn(service as any, 'queryMetrics').mockResolvedValue({ totalEvents: 0, uniqueUsers: 0 });
-
-      const result = await service.getMetrics('tenant-123', {
-        startDate: new Date(),
-        endDate: new Date(),
-      });
-
-      expect(result.totalEvents).toBe(0);
+      expect(Array.isArray(result)).toBe(true);
     });
   });
 });

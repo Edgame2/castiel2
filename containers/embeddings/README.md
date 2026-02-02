@@ -1,6 +1,6 @@
 # Embeddings Service
 
-Vector embeddings service for Castiel. Stores and searches code embeddings using pgvector.
+Vector embeddings service for Castiel. Stores and searches code embeddings using pgvector. This service stores code/document-style embeddings (project, file, content). For template-based shard embeddings (field weights, per-shard-type models), use **data-enrichment** (ShardEmbeddingService).
 
 ## Features
 

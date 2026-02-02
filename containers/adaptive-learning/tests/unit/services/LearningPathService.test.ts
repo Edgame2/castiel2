@@ -28,7 +28,7 @@ describe('LearningPathService', () => {
       items: {
         create: vi.fn(),
         query: vi.fn(() => ({
-          fetchAll: vi.fn(),
+          fetchNext: vi.fn(),
         })),
       },
       item: vi.fn(() => ({
@@ -124,9 +124,9 @@ describe('LearningPathService', () => {
         ],
       };
 
-      mockContainer.items.create.mockResolvedValue({
-        resource: { id: 'test-uuid-123', ...input },
-      });
+      mockContainer.items.create.mockImplementation((lp: any) =>
+        Promise.resolve({ resource: lp })
+      );
 
       const result = await service.create(input);
 
@@ -154,10 +154,10 @@ describe('LearningPathService', () => {
         }),
       });
 
-      const result = await service.getById(tenantId, pathId);
+      const result = await service.getById(pathId, tenantId);
 
       expect(result).toEqual(mockLearningPath);
-      expect(mockContainer.item).toHaveBeenCalledWith(pathId);
+      expect(mockContainer.item).toHaveBeenCalledWith(pathId, tenantId);
     });
 
     it('should throw NotFoundError if learning path does not exist', async () => {
@@ -184,14 +184,15 @@ describe('LearningPathService', () => {
       ];
 
       mockContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
+        fetchNext: vi.fn().mockResolvedValue({
           resources: mockPaths,
+          continuationToken: undefined,
         }),
       });
 
       const result = await service.list(tenantId);
 
-      expect(result).toEqual(mockPaths);
+      expect(result.items).toEqual(mockPaths);
       expect(mockContainer.items.query).toHaveBeenCalled();
     });
 
@@ -200,8 +201,9 @@ describe('LearningPathService', () => {
       const status = LearningPathStatus.ACTIVE;
 
       mockContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
+        fetchNext: vi.fn().mockResolvedValue({
           resources: [],
+          continuationToken: undefined,
         }),
       });
 
@@ -237,10 +239,10 @@ describe('LearningPathService', () => {
         }),
       });
 
-      const result = await service.update(tenantId, pathId, updateInput);
+      const result = await service.update(pathId, tenantId, updateInput);
 
       expect(result.name).toBe(updateInput.name);
-      expect(mockContainer.item().replace).toHaveBeenCalled();
+      expect(mockContainer.item(pathId, tenantId).replace).toHaveBeenCalled();
     });
 
     it('should throw NotFoundError if learning path does not exist', async () => {
@@ -253,7 +255,7 @@ describe('LearningPathService', () => {
         }),
       });
 
-      await expect(service.update(tenantId, pathId, { name: 'New Name' })).rejects.toThrow(NotFoundError);
+      await expect(service.update(pathId, tenantId, { name: 'New Name' })).rejects.toThrow(NotFoundError);
     });
   });
 
@@ -275,9 +277,9 @@ describe('LearningPathService', () => {
         delete: vi.fn().mockResolvedValue(undefined),
       });
 
-      await service.delete(tenantId, pathId);
+      await service.delete(pathId, tenantId);
 
-      expect(mockContainer.item().delete).toHaveBeenCalled();
+      expect(mockContainer.item(pathId, tenantId).delete).toHaveBeenCalled();
     });
 
     it('should throw NotFoundError if learning path does not exist', async () => {
@@ -290,7 +292,7 @@ describe('LearningPathService', () => {
         }),
       });
 
-      await expect(service.delete(tenantId, pathId)).rejects.toThrow(NotFoundError);
+      await expect(service.delete(pathId, tenantId)).rejects.toThrow(NotFoundError);
     });
   });
 });

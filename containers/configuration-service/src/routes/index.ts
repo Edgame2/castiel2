@@ -21,6 +21,18 @@ import {
   DEFAULT_PERFORMANCE_CONFIG,
   normalizePerformanceConfig,
   PerformanceTargetsConfig,
+  DataLakeConfig,
+  DEFAULT_DATA_LAKE_CONFIG,
+  normalizeDataLakeConfig,
+  LoggingConfig,
+  DEFAULT_LOGGING_CONFIG,
+  normalizeLoggingConfig,
+  ApiSecurityConfig,
+  DEFAULT_API_SECURITY_CONFIG,
+  normalizeApiSecurityConfig,
+  AnalyticsConfig,
+  DEFAULT_ANALYTICS_CONFIG,
+  normalizeAnalyticsConfig,
 } from '../types/system-config.types';
 import {
   CreateMigrationInput,
@@ -148,6 +160,205 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       }
     }
   );
+
+  // ===== SYSTEM CONFIGURATION §8.2 Data Lake =====
+  const SYSTEM_DATALAKE_KEY = 'system.datalake';
+  app.get('/api/v1/system/datalake', {
+    preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+    schema: { description: 'Get Data Lake config (Super Admin §8.2)', tags: ['System'], response: { 200: { type: 'object' } } },
+  }, async (request, reply) => {
+    const tenantId = request.user!.tenantId;
+    try {
+      const setting = await configurationService.getByKey(tenantId, SYSTEM_DATALAKE_KEY, ConfigurationScope.GLOBAL);
+      reply.send(normalizeDataLakeConfig(setting.value));
+    } catch (err: any) {
+      if (err.name === 'NotFoundError' || err.code === 404) {
+        reply.send(DEFAULT_DATA_LAKE_CONFIG);
+        return;
+      }
+      throw err;
+    }
+  });
+  app.put<{ Body: Partial<DataLakeConfig> }>('/api/v1/system/datalake', {
+    preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+    schema: { description: 'Update Data Lake config (Super Admin §8.2)', tags: ['System'], body: { type: 'object' }, response: { 200: { type: 'object' } } },
+  }, async (request, reply) => {
+    const tenantId = request.user!.tenantId;
+    const userId = request.user!.id;
+    const merged = normalizeDataLakeConfig(request.body);
+    try {
+      const existing = await configurationService.getByKey(tenantId, SYSTEM_DATALAKE_KEY, ConfigurationScope.GLOBAL);
+      const updated = await configurationService.update(existing.id, tenantId, userId, { value: merged });
+      reply.send(normalizeDataLakeConfig(updated.value));
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        const created = await configurationService.create({
+          tenantId,
+          userId,
+          key: SYSTEM_DATALAKE_KEY,
+          value: merged,
+          scope: ConfigurationScope.GLOBAL,
+          category: 'system',
+        });
+        reply.send(normalizeDataLakeConfig(created.value));
+        return;
+      }
+      throw err;
+    }
+  });
+
+  // ===== SYSTEM CONFIGURATION §8.3 Logging =====
+  const SYSTEM_LOGGING_KEY = 'system.logging';
+  app.get('/api/v1/system/logging', {
+    preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+    schema: { description: 'Get logging config (Super Admin §8.3)', tags: ['System'], response: { 200: { type: 'object' } } },
+  }, async (request, reply) => {
+    const tenantId = request.user!.tenantId;
+    try {
+      const setting = await configurationService.getByKey(tenantId, SYSTEM_LOGGING_KEY, ConfigurationScope.GLOBAL);
+      reply.send(normalizeLoggingConfig(setting.value));
+    } catch (err: any) {
+      if (err.name === 'NotFoundError' || err.code === 404) {
+        reply.send(DEFAULT_LOGGING_CONFIG);
+        return;
+      }
+      throw err;
+    }
+  });
+  app.put<{ Body: Partial<LoggingConfig> }>('/api/v1/system/logging', {
+    preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+    schema: { description: 'Update logging config (Super Admin §8.3)', tags: ['System'], body: { type: 'object' }, response: { 200: { type: 'object' } } },
+  }, async (request, reply) => {
+    const tenantId = request.user!.tenantId;
+    const userId = request.user!.id;
+    const merged = normalizeLoggingConfig(request.body);
+    try {
+      const existing = await configurationService.getByKey(tenantId, SYSTEM_LOGGING_KEY, ConfigurationScope.GLOBAL);
+      const updated = await configurationService.update(existing.id, tenantId, userId, { value: merged });
+      reply.send(normalizeLoggingConfig(updated.value));
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        const created = await configurationService.create({
+          tenantId,
+          userId,
+          key: SYSTEM_LOGGING_KEY,
+          value: merged,
+          scope: ConfigurationScope.GLOBAL,
+          category: 'system',
+        });
+        reply.send(normalizeLoggingConfig(created.value));
+        return;
+      }
+      throw err;
+    }
+  });
+
+  // ===== SYSTEM CONFIGURATION §8.4 API Security =====
+  const SYSTEM_API_SECURITY_KEY = 'system.api_security';
+  app.get('/api/v1/system/api-security', {
+    preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+    schema: { description: 'Get API security config (Super Admin §8.4)', tags: ['System'], response: { 200: { type: 'object' } } },
+  }, async (request, reply) => {
+    const tenantId = request.user!.tenantId;
+    try {
+      const setting = await configurationService.getByKey(tenantId, SYSTEM_API_SECURITY_KEY, ConfigurationScope.GLOBAL);
+      reply.send(normalizeApiSecurityConfig(setting.value));
+    } catch (err: any) {
+      if (err.name === 'NotFoundError' || err.code === 404) {
+        reply.send(DEFAULT_API_SECURITY_CONFIG);
+        return;
+      }
+      throw err;
+    }
+  });
+  app.put<{ Body: Partial<ApiSecurityConfig> }>('/api/v1/system/api-security', {
+    preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+    schema: { description: 'Update API security config (Super Admin §8.4)', tags: ['System'], body: { type: 'object' }, response: { 200: { type: 'object' } } },
+  }, async (request, reply) => {
+    const tenantId = request.user!.tenantId;
+    const userId = request.user!.id;
+    const merged = normalizeApiSecurityConfig(request.body);
+    try {
+      const existing = await configurationService.getByKey(tenantId, SYSTEM_API_SECURITY_KEY, ConfigurationScope.GLOBAL);
+      const updated = await configurationService.update(existing.id, tenantId, userId, { value: merged });
+      reply.send(normalizeApiSecurityConfig(updated.value));
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        const created = await configurationService.create({
+          tenantId,
+          userId,
+          key: SYSTEM_API_SECURITY_KEY,
+          value: merged,
+          scope: ConfigurationScope.GLOBAL,
+          category: 'system',
+        });
+        reply.send(normalizeApiSecurityConfig(created.value));
+        return;
+      }
+      throw err;
+    }
+  });
+
+  // ===== SYSTEM CONFIGURATION §9 Analytics & Reporting =====
+  const SYSTEM_ANALYTICS_KEY = 'system.analytics';
+  app.get('/api/v1/system/analytics', {
+    preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+    schema: { description: 'Get analytics config: dashboards, reports, export (Super Admin §9)', tags: ['System'], response: { 200: { type: 'object' } } },
+  }, async (request, reply) => {
+    const tenantId = request.user!.tenantId;
+    try {
+      const setting = await configurationService.getByKey(tenantId, SYSTEM_ANALYTICS_KEY, ConfigurationScope.GLOBAL);
+      reply.send(normalizeAnalyticsConfig(setting.value));
+    } catch (err: any) {
+      if (err.name === 'NotFoundError' || err.code === 404) {
+        reply.send(DEFAULT_ANALYTICS_CONFIG);
+        return;
+      }
+      throw err;
+    }
+  });
+  app.put<{ Body: Partial<AnalyticsConfig> }>('/api/v1/system/analytics', {
+    preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+    schema: { description: 'Update analytics config: dashboards, reports, export (Super Admin §9)', tags: ['System'], body: { type: 'object' }, response: { 200: { type: 'object' } } },
+  }, async (request, reply) => {
+    const tenantId = request.user!.tenantId;
+    const userId = request.user!.id;
+    let current: AnalyticsConfig;
+    try {
+      const existing = await configurationService.getByKey(tenantId, SYSTEM_ANALYTICS_KEY, ConfigurationScope.GLOBAL);
+      current = normalizeAnalyticsConfig(existing.value);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        current = DEFAULT_ANALYTICS_CONFIG;
+      } else {
+        throw err;
+      }
+    }
+    const merged: AnalyticsConfig = {
+      dashboards: request.body.dashboards ?? current.dashboards,
+      reports: request.body.reports ?? current.reports,
+      exportConfig: request.body.exportConfig ? { ...current.exportConfig, ...request.body.exportConfig } : current.exportConfig,
+    };
+    try {
+      const existing = await configurationService.getByKey(tenantId, SYSTEM_ANALYTICS_KEY, ConfigurationScope.GLOBAL);
+      const updated = await configurationService.update(existing.id, tenantId, userId, { value: merged });
+      reply.send(normalizeAnalyticsConfig(updated.value));
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        const created = await configurationService.create({
+          tenantId,
+          userId,
+          key: SYSTEM_ANALYTICS_KEY,
+          value: merged,
+          scope: ConfigurationScope.GLOBAL,
+          category: 'system',
+        });
+        reply.send(normalizeAnalyticsConfig(created.value));
+        return;
+      }
+      throw err;
+    }
+  });
 
   // ===== CONFIGURATION SETTING ROUTES =====
 

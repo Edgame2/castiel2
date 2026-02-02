@@ -7,21 +7,30 @@ import { AccessController } from '../../../../src/services/access/AccessControll
 import { SecretContext } from '../../../../src/types';
 
 // Mock dependencies
-vi.mock('@coder/shared', () => {
-  return {
-    getDatabaseClient: vi.fn(() => ({
-      secret_secrets: {
-        findUnique: vi.fn(),
-      },
-      secret_access_grants: {
-        findMany: vi.fn(),
-      },
-    })),
-  };
-});
+vi.mock('@coder/shared', () => ({
+  getDatabaseClient: vi.fn(() => ({
+    secret_secrets: { findUnique: vi.fn() },
+    secret_access_grants: { findMany: vi.fn(), findFirst: vi.fn() },
+  })),
+}));
 
-vi.mock('../../../../src/services/access/RoleService');
-vi.mock('../../../../src/services/access/ScopeValidator');
+vi.mock('../../../../src/services/access/RoleService', () => ({
+  getUserRoles: vi.fn(),
+  isSuperAdmin: vi.fn().mockResolvedValue(false),
+}));
+vi.mock('../../../../src/services/access/ScopeValidator', () => ({
+  ScopeValidator: {
+    canAccessScope: vi.fn().mockReturnValue(true),
+  },
+}));
+vi.mock('../../../../src/services/logging/LoggingClient', () => ({
+  getLoggingClient: vi.fn(() => ({ sendLog: vi.fn().mockResolvedValue(undefined) })),
+}));
+vi.mock('../../../../src/services/AuditService', () => ({
+  AuditService: vi.fn().mockImplementation(() => ({
+    log: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
 
 describe('AccessController', () => {
   let accessController: AccessController;
@@ -49,22 +58,25 @@ describe('AccessController', () => {
         id: 'secret-1',
         scope: 'ORGANIZATION',
         organizationId: 'org-123',
+        createdById: 'user-123',
+        deletedAt: null,
+        expiresAt: null,
+        name: 's1',
       };
-      
       mockDb.secret_secrets.findUnique.mockResolvedValue(mockSecret);
-      
-      // Mock role service
+      mockDb.secret_access_grants.findFirst.mockResolvedValue(null);
+
       const { getUserRoles } = await import('../../../../src/services/access/RoleService');
       (getUserRoles as any).mockResolvedValue([
         {
           id: 'role-1',
           name: 'Admin',
-          permissions: ['SECRET_READ', 'SECRET_WRITE'],
+          permissions: ['secrets.secret.read', 'secrets.secret.read.organization'],
         },
       ]);
-      
+
       const result = await accessController.checkAccess('secret-1', 'READ', context);
-      
+
       expect(result.allowed).toBe(true);
     });
 
@@ -73,38 +85,35 @@ describe('AccessController', () => {
         id: 'secret-1',
         scope: 'ORGANIZATION',
         organizationId: 'org-123',
+        createdById: 'other-user',
+        deletedAt: null,
+        expiresAt: null,
+        name: 's1',
       };
-      
       mockDb.secret_secrets.findUnique.mockResolvedValue(mockSecret);
-      
+      mockDb.secret_access_grants.findFirst.mockResolvedValue(null);
+
       const { getUserRoles } = await import('../../../../src/services/access/RoleService');
       (getUserRoles as any).mockResolvedValue([
-        {
-          id: 'role-1',
-          name: 'Viewer',
-          permissions: [], // No permissions
-        },
+        { id: 'role-1', name: 'Viewer', permissions: [] },
       ]);
-      
+
       const result = await accessController.checkAccess('secret-1', 'READ', context);
-      
+
       expect(result.allowed).toBe(false);
     });
   });
 
   describe('canCreateSecret', () => {
     it('should allow creation if user has permission', async () => {
-      const { getUserRoles } = await import('../../../../src/services/access/RoleService');
+      const { getUserRoles, isSuperAdmin } = await import('../../../../src/services/access/RoleService');
       (getUserRoles as any).mockResolvedValue([
-        {
-          id: 'role-1',
-          name: 'Admin',
-          permissions: ['SECRET_CREATE'],
-        },
+        { id: 'role-1', name: 'Admin', permissions: ['secrets.secret.create.organization'] },
       ]);
-      
+      (isSuperAdmin as any).mockResolvedValue(false);
+
       const result = await accessController.canCreateSecret('ORGANIZATION', context);
-      
+
       expect(result.allowed).toBe(true);
     });
   });

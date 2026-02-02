@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Tenant match middleware:** `requireTenantMatch` ensures X-Tenant-ID (when present from gateway) matches the resource org (`params.orgId` or `request.organizationId`); returns 403 otherwise. Applied to all org-scoped routes (`/api/v1/organizations/:orgId/*`).
+- **Unit tests:** UserService (getUserProfile), TeamService (getTeam, createTeam), RoleService (listRoles, getRole), InvitationService (listInvitations), ApiKeyService (listApiKeys, createApiKey).
 - **API Keys (Super Admin §10.3):** Cosmos container `user_api_keys` (config `cosmos_db.containers.api_keys`); partition key `/tenantId` with value `organizationId`. `ApiKeyService`: list (no raw keys), create (SHA-256 hash stored; raw key returned once), revoke (delete), rotate (new key returned once). `GET /api/v1/organizations/:orgId/api-keys` returns `{ items: ApiKeySummary[] }`. `POST /api/v1/organizations/:orgId/api-keys` (body: name, scope?, expiresAt?) creates key; 201 with created object including `key` (raw, once). `DELETE /api/v1/organizations/:orgId/api-keys/:keyId` revokes; 204. `POST /api/v1/organizations/:orgId/api-keys/:keyId/rotate` rotates; 200 with `{ key, expiresAt?, createdAt }` (raw key once). All require auth and org membership; 404 when key not found for revoke/rotate.
 
 ## [1.1.0] - 2025-01-22

@@ -61,24 +61,35 @@ rabbitmq:
   };
 });
 
-// Mock yaml parser
-vi.mock('yaml', () => ({
-  parse: vi.fn((content: string) => {
-    const config: any = {
-      module: { name: 'api-gateway', version: '1.0.0' },
-      server: { port: 3000, host: '0.0.0.0' },
-      cosmos_db: {
-        endpoint: process.env.COSMOS_DB_ENDPOINT,
-        key: process.env.COSMOS_DB_KEY,
-        database_id: process.env.COSMOS_DB_DATABASE_ID,
-      },
-      jwt: { secret: process.env.JWT_SECRET },
-      rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
-      services: {},
-    };
-    return config;
-  }),
-}));
+// Mock yaml parser (config uses load(), not parse())
+vi.mock('yaml', () => {
+  const getConfig = () => ({
+    module: { name: 'api-gateway', version: '1.0.0' },
+    server: { port: 3000, host: '0.0.0.0' },
+    cosmos_db: {
+      endpoint: process.env.COSMOS_DB_ENDPOINT,
+      key: process.env.COSMOS_DB_KEY,
+      database_id: process.env.COSMOS_DB_DATABASE_ID,
+    },
+    jwt: { secret: process.env.JWT_SECRET },
+    rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
+    services: {
+      auth: { url: 'http://localhost:3021' },
+      user_management: { url: 'http://localhost:3022' },
+      secret_management: { url: 'http://localhost:3003' },
+      logging: { url: 'http://localhost:3014' },
+      notification: { url: 'http://localhost:3001' },
+      ai_service: { url: 'http://localhost:3006' },
+      embeddings: { url: 'http://localhost:3005' },
+      dashboard: { url: 'http://localhost:3011' },
+    },
+    rate_limit: { max: 100, timeWindow: 60000 },
+  });
+  return {
+    parse: vi.fn((_content: string) => getConfig()),
+    load: vi.fn((_content: string) => getConfig()),
+  };
+});
 
 // Mock @coder/shared database
 vi.mock('@coder/shared/database', () => ({
@@ -113,14 +124,17 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared ServiceClient (must be a constructor for `new ServiceClient()`)
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(() => ({
-    get: vi.fn().mockResolvedValue({ data: {} }),
-    post: vi.fn().mockResolvedValue({ data: {} }),
-    put: vi.fn().mockResolvedValue({ data: {} }),
-    delete: vi.fn().mockResolvedValue({ data: {} }),
-  })),
+  ServiceClient: vi.fn().mockImplementation(function () {
+    return {
+      get: vi.fn().mockResolvedValue({ data: {}, statusCode: 200 }),
+      post: vi.fn().mockResolvedValue({ data: {}, statusCode: 200 }),
+      put: vi.fn().mockResolvedValue({ data: {}, statusCode: 200 }),
+      delete: vi.fn().mockResolvedValue({ data: {}, statusCode: 200 }),
+      patch: vi.fn().mockResolvedValue({ data: {}, statusCode: 200 }),
+    };
+  }),
   authenticateRequest: vi.fn(() => vi.fn()),
   tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
   setupJWT: vi.fn(),

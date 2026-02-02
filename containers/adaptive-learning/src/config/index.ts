@@ -18,7 +18,13 @@ export interface AdaptiveLearningConfig {
     ml_service: { url: string };
     logging: { url: string };
   };
-  rabbitmq: { url: string; exchange: string; queue: string; bindings?: string[] };
+  rabbitmq: {
+    url: string;
+    exchange: string;
+    queue: string;
+    bindings?: string[];
+    batch_jobs?: { queue: string; routing_keys: string[] };
+  };
 }
 
 let cachedConfig: AdaptiveLearningConfig | null = null;

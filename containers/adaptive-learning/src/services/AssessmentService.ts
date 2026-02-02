@@ -27,7 +27,7 @@ export class AssessmentService {
       description?: string;
       skillId?: string;
       learningPathId?: string;
-      questions: AssessmentQuestion[];
+      questions: Array<Omit<AssessmentQuestion, 'id'> & { id?: string }>;
       passingScore: number;
       timeLimit?: number;
       attemptsAllowed?: number;
@@ -48,10 +48,7 @@ export class AssessmentService {
       description: input.description,
       skillId: input.skillId,
       learningPathId: input.learningPathId,
-      questions: input.questions.map((q) => ({
-        id: uuidv4(),
-        ...q,
-      })),
+      questions: input.questions.map((q) => ({ ...q, id: uuidv4() } as AssessmentQuestion)),
       passingScore: input.passingScore,
       timeLimit: input.timeLimit,
       attemptsAllowed: input.attemptsAllowed,
@@ -64,7 +61,7 @@ export class AssessmentService {
       const container = getContainer(this.assessmentContainerName);
       const { resource } = await container.items.create(assessment, {
         partitionKey: tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create assessment');
@@ -89,10 +86,11 @@ export class AssessmentService {
 
     try {
       const container = getContainer(this.assessmentContainerName);
-      const { resource } = await container.item(assessmentId, tenantId).read<Assessment>();
+      const item = (container as { item: (id: string, pk: string) => { read: () => Promise<{ resource: Assessment | undefined }> } }).item(assessmentId, tenantId);
+      const { resource } = await item.read();
 
       if (!resource) {
-        throw new NotFoundError(`Assessment ${assessmentId} not found`);
+        throw new NotFoundError('Assessment', assessmentId);
       }
 
       return resource;
@@ -101,7 +99,7 @@ export class AssessmentService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Assessment ${assessmentId} not found`);
+        throw new NotFoundError('Assessment', assessmentId);
       }
       throw error;
     }
@@ -168,7 +166,7 @@ export class AssessmentService {
       const container = getContainer(this.resultContainerName);
       const { resource } = await container.items.create(result, {
         partitionKey: tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create assessment result');
@@ -204,10 +202,7 @@ export class AssessmentService {
 
     try {
       const { resources } = await container.items
-        .query<AssessmentResult>({
-          query,
-          parameters,
-        })
+        .query<AssessmentResult>({ query, parameters }, { partitionKey: tenantId } as Record<string, unknown>)
         .fetchNext();
 
       return resources;
@@ -252,10 +247,7 @@ export class AssessmentService {
 
     try {
       const { resources, continuationToken } = await container.items
-        .query<Assessment>({
-          query,
-          parameters,
-        })
+        .query<Assessment>({ query, parameters }, { partitionKey: tenantId } as Record<string, unknown>)
         .fetchNext();
 
       return {

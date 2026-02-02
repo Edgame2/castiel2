@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **README:** Prerequisites and Dependencies now describe API base URL via `NEXT_PUBLIC_API_BASE_URL` instead of hardcoded port.
+
 ### Added
 
 - **W11 – Super Admin: Tenant ML Config and Sales Methodology (Plan W11, Feedbacks and Recommendations):** Admin dashboard links for "Tenant ML Config" and "Sales Methodology". `/admin/tenant-ml-config`: GET/PUT `/api/v1/tenant-ml-config` via gateway (risk-analytics); form for risk tolerance (overall, auto-escalation threshold), decision preferences (autoMarkHot, autoCreateTasks, requireApprovalForActions), model preferences (preferIndustryModels, abTestingEnabled, minConfidenceThreshold). `/admin/sales-methodology`: GET/PUT `/api/v1/sales-methodology` via gateway; form for methodology type (MEDDIC, MEDDPICC, etc.) and JSON editors for stages, requiredFields, risks. Uses `NEXT_PUBLIC_API_BASE_URL` (no hardcoded ports).

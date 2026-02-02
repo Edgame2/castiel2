@@ -50,7 +50,7 @@ export class ContentTemplateService {
     };
 
     try {
-      const container = getContainer(this.containerName);
+      const container = getContainer(this.containerName) as any;
       const { resource } = await container.items.create(template, {
         partitionKey: input.tenantId,
       });
@@ -77,11 +77,12 @@ export class ContentTemplateService {
     }
 
     try {
-      const container = getContainer(this.containerName);
-      const { resource } = await container.item(templateId, tenantId).read<ContentTemplate>();
+      const container = getContainer(this.containerName) as any;
+      const result = (await (container.item(templateId, tenantId) as any).read()) as any;
+      const resource = result.resource;
 
       if (!resource) {
-        throw new NotFoundError(`Content template ${templateId} not found`);
+        throw new NotFoundError('Content template', templateId);
       }
 
       return resource;
@@ -90,7 +91,7 @@ export class ContentTemplateService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Content template ${templateId} not found`);
+        throw new NotFoundError('Content template', templateId);
       }
       throw error;
     }
@@ -125,8 +126,9 @@ export class ContentTemplateService {
     };
 
     try {
-      const container = getContainer(this.containerName);
-      const { resource } = await container.item(templateId, tenantId).replace(updated);
+      const container = getContainer(this.containerName) as any;
+      const result = (await (container.item(templateId, tenantId) as any).replace(updated)) as any;
+      const resource = result.resource;
 
       if (!resource) {
         throw new Error('Failed to update content template');
@@ -135,7 +137,7 @@ export class ContentTemplateService {
       return resource as ContentTemplate;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Content template ${templateId} not found`);
+        throw new NotFoundError('Content template', templateId);
       }
       throw error;
     }
@@ -151,8 +153,8 @@ export class ContentTemplateService {
       throw new BadRequestError('Cannot delete system template');
     }
 
-    const container = getContainer(this.containerName);
-    await container.item(templateId, tenantId).delete();
+    const container = getContainer(this.containerName) as any;
+    await (container.item(templateId, tenantId) as any).delete();
   }
 
   /**
@@ -171,7 +173,7 @@ export class ContentTemplateService {
       throw new BadRequestError('tenantId is required');
     }
 
-    const container = getContainer(this.containerName);
+    const container = getContainer(this.containerName) as any;
     let query = 'SELECT * FROM c WHERE c.tenantId = @tenantId';
     const parameters: any[] = [{ name: '@tenantId', value: tenantId }];
 
@@ -197,14 +199,11 @@ export class ContentTemplateService {
     const limit = filters?.limit || 100;
 
     try {
-      const { resources } = await container.items
-        .query<ContentTemplate>({
-          query,
-          parameters,
-        })
+      const { resources } = await (container.items as any)
+        .query({ query, parameters })
         .fetchNext();
 
-      return resources.slice(0, limit);
+      return (resources as ContentTemplate[]).slice(0, limit);
     } catch (error: any) {
       throw new Error(`Failed to list content templates: ${error.message}`);
     }

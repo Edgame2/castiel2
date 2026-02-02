@@ -14,6 +14,7 @@ import { LinkCompetitorCard } from '@/components/competitive/LinkCompetitorCard'
 import { SentimentTrendChart } from '@/components/analytics/SentimentTrendChart';
 import { StakeholderGraph } from '@/components/analytics/StakeholderGraph';
 import { WinProbabilityTrendChart } from '@/components/forecast/WinProbabilityTrendChart';
+import { RecommendationsCard } from '@/components/recommendations/RecommendationsCard';
 
 const sampleAnomalies = [
   { id: 'a1', anomalyType: 'revenue_spike', severity: 'medium' as const, description: 'Revenue 2σ above trend', detectedAt: '2026-01-20' },
@@ -71,6 +72,9 @@ export default async function OpportunityDetailPage({ params }: Props) {
         </div>
         <div className="max-w-sm">
           <LinkCompetitorCard opportunityId={id} title="Competitors" />
+        </div>
+        <div className="max-w-sm">
+          <RecommendationsCard opportunityId={id} title="Recommendations" />
         </div>
       </div>
       <p className="text-sm text-muted-foreground">

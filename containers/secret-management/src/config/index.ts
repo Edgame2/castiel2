@@ -95,7 +95,7 @@ function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>)
         if (!(key in target)) {
           Object.assign(output, { [key]: source[key] });
         } else {
-          output[key] = deepMerge(target[key], source[key]);
+          (output as Record<string, any>)[key] = deepMerge(target[key], source[key]);
         }
       } else {
         Object.assign(output, { [key]: source[key] });
@@ -176,7 +176,7 @@ export function loadConfig(): Config {
   const merged = deepMerge(defaultConfig, envConfig);
   
   // 4. Resolve environment variables
-  const resolved = resolveEnvVars(merged);
+  const resolved = resolveEnvVars(merged) as Record<string, any>;
   
   // 5. Validate against schema
   const schemaPath = join(configDir, 'schema.json');

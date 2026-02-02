@@ -4,11 +4,14 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SyncSchedulerService } from '../../../src/services/SyncSchedulerService';
-import { ServiceClient } from '@coder/shared';
 import { publishIntegrationSyncEvent } from '../../../src/events/publishers/IntegrationSyncEventPublisher';
 
+const mockIntegrationManagerClient = vi.hoisted(() => ({ put: vi.fn() }));
+
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(),
+  ServiceClient: vi.fn().mockImplementation(function (this: unknown, _config: { baseURL?: string }) {
+    return mockIntegrationManagerClient;
+  }),
   generateServiceToken: vi.fn(() => 'mock-token'),
 }));
 
@@ -29,17 +32,14 @@ vi.mock('../../../src/events/publishers/IntegrationSyncEventPublisher', () => ({
 
 describe('SyncSchedulerService', () => {
   let service: SyncSchedulerService;
-  let mockIntegrationManagerClient: { put: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockIntegrationManagerClient = { put: vi.fn() };
-    (ServiceClient as any).mockImplementation(() => mockIntegrationManagerClient);
     service = new SyncSchedulerService();
   });
 
   afterEach(async () => {
-    await service.stop();
+    if (service) await service.stop();
   });
 
   describe('start', () => {

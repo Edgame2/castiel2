@@ -10,22 +10,281 @@ import { SkillService } from '../services/SkillService';
 import { ProgressService } from '../services/ProgressService';
 import { AssessmentService } from '../services/AssessmentService';
 import { OutcomeCollectorService } from '../services/OutcomeCollectorService';
+import { AdaptiveWeightsService } from '../services/AdaptiveWeightsService';
 import {
   CreateLearningPathInput,
   UpdateLearningPathInput,
   CreateSkillInput,
   UpdateProgressInput,
-  LearningPathStatus,
-  SkillLevel,
-  ProgressStatus,
 } from '../types/learning.types';
 
-export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
+export async function registerRoutes(app: FastifyInstance, _config?: unknown): Promise<void> {
   const learningPathService = new LearningPathService();
   const skillService = new SkillService();
   const progressService = new ProgressService();
   const assessmentService = new AssessmentService();
   const outcomeCollectorService = new OutcomeCollectorService();
+  const adaptiveWeightsService = new AdaptiveWeightsService();
+
+  // ===== CAIS WEIGHTS AND MODEL SELECTION (Phase 1) =====
+
+  app.get<{ Params: { tenantId: string }; Querystring: { component?: string } }>(
+    '/api/v1/adaptive-learning/weights/:tenantId',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get learned weights for a tenant and component (CAIS). Returns defaults when none stored.',
+        tags: ['CAIS'],
+        params: {
+          type: 'object',
+          required: ['tenantId'],
+          properties: { tenantId: { type: 'string' } },
+        },
+        querystring: {
+          type: 'object',
+          properties: { component: { type: 'string', default: 'risk-evaluation' } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            description: 'Learned weights (ruleBased, ml, ai, historical, etc.)',
+            additionalProperties: { type: 'number' },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.params.tenantId;
+      if (tenantId !== request.user!.tenantId) {
+        return reply.code(403).send({ error: 'Forbidden: tenant mismatch' });
+      }
+      const component = request.query.component ?? 'risk-evaluation';
+      const weights = await adaptiveWeightsService.getWeights(tenantId, component);
+      return reply.send(weights);
+    }
+  );
+
+  app.get<{ Params: { tenantId: string }; Querystring: { context?: string } }>(
+    '/api/v1/adaptive-learning/model-selection/:tenantId',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get model selection for a tenant and context (CAIS). Returns default when none stored.',
+        tags: ['CAIS'],
+        params: {
+          type: 'object',
+          required: ['tenantId'],
+          properties: { tenantId: { type: 'string' } },
+        },
+        querystring: {
+          type: 'object',
+          properties: { context: { type: 'string', default: 'risk-scoring' } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            required: ['modelId', 'confidence'],
+            properties: {
+              modelId: { type: 'string' },
+              confidence: { type: 'number' },
+              version: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.params.tenantId;
+      if (tenantId !== request.user!.tenantId) {
+        return reply.code(403).send({ error: 'Forbidden: tenant mismatch' });
+      }
+      const context = request.query.context ?? 'risk-scoring';
+      const selection = await adaptiveWeightsService.getModelSelection(tenantId, context);
+      return reply.send(selection);
+    }
+  );
+
+  app.put<{
+    Params: { tenantId: string };
+    Querystring: { component?: string };
+    Body: Record<string, number | undefined>;
+  }>(
+    '/api/v1/adaptive-learning/weights/:tenantId',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Upsert learned weights for a tenant and component (Super Admin override).',
+        tags: ['CAIS'],
+        params: {
+          type: 'object',
+          required: ['tenantId'],
+          properties: { tenantId: { type: 'string' } },
+        },
+        querystring: {
+          type: 'object',
+          properties: { component: { type: 'string', default: 'risk-evaluation' } },
+        },
+        body: {
+          type: 'object',
+          additionalProperties: { type: 'number' },
+        },
+        response: {
+          200: {
+            type: 'object',
+            description: 'Updated weights',
+            additionalProperties: { type: 'number' },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.params.tenantId;
+      if (tenantId !== request.user!.tenantId) {
+        return reply.code(403).send({ error: 'Forbidden: tenant mismatch' });
+      }
+      const component = request.query.component ?? 'risk-evaluation';
+      const weights = await adaptiveWeightsService.upsertWeights(tenantId, component, request.body ?? {});
+      return reply.send(weights);
+    }
+  );
+
+  app.put<{
+    Params: { tenantId: string };
+    Querystring: { context?: string };
+    Body: { modelId: string; confidence: number; version?: string };
+  }>(
+    '/api/v1/adaptive-learning/model-selection/:tenantId',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Upsert model selection for a tenant and context (Super Admin override).',
+        tags: ['CAIS'],
+        params: {
+          type: 'object',
+          required: ['tenantId'],
+          properties: { tenantId: { type: 'string' } },
+        },
+        querystring: {
+          type: 'object',
+          properties: { context: { type: 'string', default: 'risk-scoring' } },
+        },
+        body: {
+          type: 'object',
+          required: ['modelId', 'confidence'],
+          properties: {
+            modelId: { type: 'string' },
+            confidence: { type: 'number' },
+            version: { type: 'string' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            required: ['modelId', 'confidence'],
+            properties: {
+              modelId: { type: 'string' },
+              confidence: { type: 'number' },
+              version: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.params.tenantId;
+      if (tenantId !== request.user!.tenantId) {
+        return reply.code(403).send({ error: 'Forbidden: tenant mismatch' });
+      }
+      const context = request.query.context ?? 'risk-scoring';
+      const selection = await adaptiveWeightsService.upsertModelSelection(tenantId, context, request.body ?? { modelId: '', confidence: 0.8 });
+      return reply.send(selection);
+    }
+  );
+
+  app.get<{ Params: { tenantId: string } }>(
+    '/api/v1/adaptive-learning/tenant-config/:tenantId',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get per-tenant CAIS config (outcomeSyncToCais, automaticLearningEnabled). Defaults: both false when absent.',
+        tags: ['CAIS'],
+        params: {
+          type: 'object',
+          required: ['tenantId'],
+          properties: { tenantId: { type: 'string' } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            required: ['tenantId'],
+            properties: {
+              tenantId: { type: 'string' },
+              outcomeSyncToCais: { type: 'boolean' },
+              automaticLearningEnabled: { type: 'boolean' },
+              updatedAt: { type: 'string' },
+              updatedBy: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.params.tenantId;
+      if (tenantId !== request.user!.tenantId) {
+        return reply.code(403).send({ error: 'Forbidden: tenant mismatch' });
+      }
+      const config = await adaptiveWeightsService.getTenantConfig(tenantId);
+      return reply.send(config);
+    }
+  );
+
+  app.put<{
+    Params: { tenantId: string };
+    Body: { outcomeSyncToCais?: boolean; automaticLearningEnabled?: boolean };
+  }>(
+    '/api/v1/adaptive-learning/tenant-config/:tenantId',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Upsert per-tenant CAIS config (Super Admin toggles).',
+        tags: ['CAIS'],
+        params: {
+          type: 'object',
+          required: ['tenantId'],
+          properties: { tenantId: { type: 'string' } },
+        },
+        body: {
+          type: 'object',
+          properties: {
+            outcomeSyncToCais: { type: 'boolean' },
+            automaticLearningEnabled: { type: 'boolean' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            required: ['tenantId'],
+            properties: {
+              tenantId: { type: 'string' },
+              outcomeSyncToCais: { type: 'boolean' },
+              automaticLearningEnabled: { type: 'boolean' },
+              updatedAt: { type: 'string' },
+              updatedBy: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.params.tenantId;
+      if (tenantId !== request.user!.tenantId) {
+        return reply.code(403).send({ error: 'Forbidden: tenant mismatch' });
+      }
+      const updatedBy = request.user!.id;
+      const config = await adaptiveWeightsService.upsertTenantConfig(tenantId, request.body ?? {}, updatedBy);
+      return reply.send(config);
+    }
+  );
 
   // ===== OUTCOME COLLECTION (CAIS 3.2) =====
 
@@ -732,7 +991,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const tenantId = request.user!.tenantId;
       const userId = request.user!.id;
 
-      const assessment = await assessmentService.create(tenantId, userId, request.body);
+      const assessment = await assessmentService.create(tenantId, userId, request.body as Parameters<AssessmentService['create']>[2]);
       reply.code(201).send(assessment);
     }
   );

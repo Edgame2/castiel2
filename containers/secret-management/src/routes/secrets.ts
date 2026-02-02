@@ -15,7 +15,7 @@ import { RecoveryPeriodExpiredError } from '../errors/SecretErrors';
 import { getLoggingClient } from '../services/logging/LoggingClient';
 import { z } from 'zod';
 import { SecretContext, AnySecretValue } from '../types';
-import { getSecretContext, getRequestMetadata } from '../utils/requestContext';
+import { getSecretContext } from '../utils/requestContext';
 import { verifyServiceAuth, verifyServiceAuthorized } from '../utils/auth';
 import { VaultService } from '../services/VaultService';
 import { BackendFactory } from '../services/backends/BackendFactory';
@@ -150,9 +150,10 @@ export async function secretRoutes(fastify: FastifyInstance) {
       // Convert expiresAt string to Date if provided
       const createParams = {
         ...body,
+        value: body.value ?? '',
         expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
       };
-      const secret = await secretService.createSecret(createParams, context);
+      const secret = await secretService.createSecret(createParams as import('../types').CreateSecretParams, context);
       reply.code(201).send(secret);
     } catch (error: any) {
       // Error handler middleware will handle this
@@ -362,7 +363,7 @@ export async function secretRoutes(fastify: FastifyInstance) {
       }
       
       // Get full secret record to check storage backend
-      const db = getDatabaseClient();
+      const db = getDatabaseClient() as any;
       const secretRecord = await db.secret_secrets.findUnique({
         where: { id },
         select: {
@@ -615,7 +616,7 @@ export async function secretRoutes(fastify: FastifyInstance) {
   fastify.post('/sso', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       // Verify service-to-service authentication
-      const { requestingService, organizationId } = verifyServiceAuth(request);
+      const { requestingService } = verifyServiceAuth(request);
       verifyServiceAuthorized(requestingService, ['organization-service', 'auth-service']);
 
       const body = request.body as {

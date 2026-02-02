@@ -59,10 +59,11 @@ export async function buildApp(): Promise<FastifyInstance> {
   await registerRoutes(fastify, proxyService, config);
 
   // Error handler
-  fastify.setErrorHandler((error, request, reply) => {
+  fastify.setErrorHandler((error: unknown, request, reply) => {
     fastify.log.error(error);
-    reply.code(error.statusCode || 500).send({
-      error: error.message || 'Internal server error',
+    const err = error as { statusCode?: number; message?: string };
+    reply.code(err.statusCode || 500).send({
+      error: err.message || 'Internal server error',
     });
   });
 

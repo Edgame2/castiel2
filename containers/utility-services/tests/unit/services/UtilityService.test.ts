@@ -47,6 +47,7 @@ describe('UtilityService', () => {
           fetchAll: vi.fn(),
         })),
       },
+      item: vi.fn().mockReturnValue({ read: vi.fn() }),
     };
 
     mockExportContainer = {
@@ -55,6 +56,7 @@ describe('UtilityService', () => {
         read: vi.fn(),
         replace: vi.fn(),
       },
+      item: vi.fn().mockReturnValue({ read: vi.fn() }),
     };
 
     (getContainer as any).mockImplementation((name: string) => {
@@ -125,7 +127,7 @@ describe('UtilityService', () => {
     });
   });
 
-  describe('getImportJob', () => {
+  describe('getJobStatus', () => {
     it('should retrieve an import job successfully', async () => {
       const tenantId = 'tenant-123';
       const jobId = 'job-123';
@@ -140,21 +142,16 @@ describe('UtilityService', () => {
         errors: [],
       };
 
-      mockImportContainer.items.read.mockResolvedValue({
-        resource: mockJob,
+      mockImportContainer.item.mockReturnValue({
+        read: vi.fn().mockResolvedValue({ resource: mockJob }),
       });
 
-      const result = await service.getImportJob(tenantId, jobId);
+      const result = await service.getJobStatus(jobId, tenantId, 'import');
 
       expect(result).toEqual(mockJob);
-      expect(mockImportContainer.items.read).toHaveBeenCalledWith(
-        jobId,
-        { partitionKey: tenantId }
-      );
+      expect(mockImportContainer.item).toHaveBeenCalledWith(jobId, tenantId);
     });
-  });
 
-  describe('getExportJob', () => {
     it('should retrieve an export job successfully', async () => {
       const tenantId = 'tenant-123';
       const jobId = 'job-123';
@@ -167,17 +164,14 @@ describe('UtilityService', () => {
         fileUrl: 'https://example.com/export.csv',
       };
 
-      mockExportContainer.items.read.mockResolvedValue({
-        resource: mockJob,
+      mockExportContainer.item.mockReturnValue({
+        read: vi.fn().mockResolvedValue({ resource: mockJob }),
       });
 
-      const result = await service.getExportJob(tenantId, jobId);
+      const result = await service.getJobStatus(jobId, tenantId, 'export');
 
       expect(result).toEqual(mockJob);
-      expect(mockExportContainer.items.read).toHaveBeenCalledWith(
-        jobId,
-        { partitionKey: tenantId }
-      );
+      expect(mockExportContainer.item).toHaveBeenCalledWith(jobId, tenantId);
     });
   });
 });

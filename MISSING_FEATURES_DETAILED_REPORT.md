@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-This report identifies missing features in six critical areas based on documentation in `old_code/docs` vs implementations in `containers/`. The analysis reveals architectural differences, partially implemented features, and completely missing capabilities.
+This report identifies missing features in six critical areas based on documented features vs implementations in `containers/`. The analysis reveals architectural differences, partially implemented features, and completely missing capabilities.
 
 ---
 

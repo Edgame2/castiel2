@@ -21,7 +21,7 @@ import { redis } from '../utils/redis';
 import { cacheKeys } from '../utils/cacheKeys';
 import { log } from '../utils/logger';
 import { getDeviceInfo } from '../utils/deviceUtils';
-import { getLocationFromIP } from '../utils/geolocationUtils';
+import { getLocationFromIP, LocationInfo } from '../utils/geolocationUtils';
 
 /**
  * Configuration constants
@@ -125,7 +125,7 @@ export async function createSession(
   acceptLanguage: string | null | undefined,
   fastify: FastifyInstance
 ): Promise<{ accessToken: string; refreshToken: string; sessionId: string }> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   // Get user's role in organization if provided
   let roleId: string | undefined;
@@ -208,7 +208,7 @@ export async function createSession(
   const deviceInfo = getDeviceInfo(userAgent);
   
   // Get location from IP (async, but don't block on it)
-  const locationInfo = await getLocationFromIP(ipAddress).catch(() => ({}));
+  const locationInfo: LocationInfo = await getLocationFromIP(ipAddress).catch((): LocationInfo => ({}));
   
   // Create session data for JWT claims
   const sessionData: SessionData = {
@@ -221,7 +221,7 @@ export async function createSession(
   };
   
   // Generate access token (short-lived)
-  const accessToken = fastify.jwt.sign(sessionData, {
+  const accessToken = (fastify as any).jwt.sign(sessionData, {
     expiresIn: accessTokenExpiresIn,
   });
   
@@ -233,7 +233,7 @@ export async function createSession(
     secretId: currentSecret.id,
   };
   
-  const refreshToken = fastify.jwt.sign(refreshTokenData, {
+  const refreshToken = (fastify as any).jwt.sign(refreshTokenData, {
     expiresIn: refreshTokenExpiresIn,
   });
   
@@ -289,7 +289,7 @@ export async function refreshSession(
   userAgent: string | null,
   fastify: FastifyInstance
 ): Promise<{ accessToken: string; sessionData: SessionData } | null> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   let sessionId: string | undefined;
   
   try {
@@ -298,7 +298,7 @@ export async function refreshSession(
     const secrets = getJWTSecrets();
     
     try {
-      decoded = fastify.jwt.verify(refreshToken);
+      decoded = (fastify as any).jwt.verify(refreshToken);
     } catch (error) {
       // Token invalid or expired
       return null;
@@ -312,6 +312,7 @@ export async function refreshSession(
     const userId = decoded.userId;
     
     // Check session in Redis first
+    if (!sessionId) return null;
     const redisKey = cacheKeys.sessionData(sessionId);
     const cached = await redis.get(redisKey);
     
@@ -357,7 +358,7 @@ export async function refreshSession(
       // Get current organization membership
       const membership = session.organizationId
         ? session.user.organizationMemberships.find(
-            (m) => m.organizationId === session.organizationId
+            (m: { organizationId: string }) => m.organizationId === session.organizationId
           )
         : null;
       
@@ -396,7 +397,7 @@ export async function refreshSession(
     }
     
     // Update last activity (throttled)
-    await updateSessionActivity(sessionId);
+    await updateSessionActivity(sessionId!);
     
     // Generate new access token
     const currentSecret = secrets.find(s => s.isActive);
@@ -404,7 +405,7 @@ export async function refreshSession(
       throw new Error('JWT_SECRET is not configured');
     }
     
-    const newAccessToken = fastify.jwt.sign(
+    const newAccessToken = (fastify as any).jwt.sign(
       {
         ...sessionData,
         secretId: currentSecret.id,
@@ -440,7 +441,7 @@ export async function validateSession(
   let sessionId: string | undefined;
   try {
     // Verify token
-    const decoded = fastify.jwt.verify(accessToken) as SessionData & { type?: string };
+    const decoded = (fastify as any).jwt.verify(accessToken) as SessionData & { type?: string };
     
     if (!decoded || decoded.type === 'refresh' || !decoded.sessionId) {
       return null;
@@ -449,6 +450,7 @@ export async function validateSession(
     sessionId = decoded.sessionId;
     
     // Check blacklist
+    if (!sessionId) return null;
     const blacklisted = await redis.get(cacheKeys.sessionBlacklist(sessionId));
     if (blacklisted) {
       return null;
@@ -471,8 +473,8 @@ export async function validateSession(
         }
         
         // Update activity (throttled)
-        updateSessionActivity(sessionId).catch((error) => {
-          log.error('Error updating session activity', error, { sessionId, service: 'auth' });
+        updateSessionActivity(sessionId).catch((error: unknown) => {
+          log.error('Error updating session activity', error as Error, { sessionId, service: 'auth' });
         });
         
         return {
@@ -490,7 +492,8 @@ export async function validateSession(
     }
     
     // Fallback to database
-    const db = getDatabaseClient();
+    if (!sessionId) return null;
+    const db = getDatabaseClient() as any;
     const session = await db.session.findUnique({
       where: { id: sessionId },
       include: {
@@ -511,7 +514,7 @@ export async function validateSession(
     
     const membership = session.organizationId
       ? session.user.organizationMemberships.find(
-          (m) => m.organizationId === session.organizationId
+          (m: { organizationId: string; roleId?: string; role?: { isSuperAdmin?: boolean } }) => m.organizationId === session.organizationId
         )
       : null;
     
@@ -537,7 +540,7 @@ export async function validateSession(
  * @param db - Optional database client (for transaction support)
  */
 export async function revokeSession(sessionId: string, db?: any): Promise<void> {
-  const database = db || getDatabaseClient();
+  const database = (db || getDatabaseClient()) as any;
   
   try {
     // Add to blacklist in Redis
@@ -565,7 +568,7 @@ export async function revokeSession(sessionId: string, db?: any): Promise<void> 
  * @param userId - User ID
  */
 export async function revokeAllUserSessions(userId: string): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   const sessions = await db.session.findMany({
     where: {
@@ -575,7 +578,7 @@ export async function revokeAllUserSessions(userId: string): Promise<void> {
     },
   });
   
-  await Promise.all(sessions.map(session => revokeSession(session.id, db)));
+  await Promise.all(sessions.map((session: { id: string }) => revokeSession(session.id, db)));
 }
 
 /**
@@ -599,12 +602,12 @@ async function updateSessionActivity(sessionId: string): Promise<void> {
   await redis.setex(activityKey, 10 * 60, now.toString()); // 10 minute TTL
   
   // Update database (async, don't wait)
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   db.session.update({
     where: { id: sessionId },
     data: { lastActivityAt: new Date() },
-  }).catch((error) => {
-    log.error('Error updating session activity', error, { sessionId, service: 'auth' });
+  }).catch((error: unknown) => {
+    log.error('Error updating session activity', error as Error, { sessionId, service: 'auth' });
   });
 }
 
@@ -618,7 +621,7 @@ export async function switchSessionOrganization(
   sessionId: string,
   organizationId: string
 ): Promise<SessionData | null> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   // Get session
   const session = await db.session.findUnique({

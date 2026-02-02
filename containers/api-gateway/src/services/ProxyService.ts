@@ -14,6 +14,8 @@ export interface RouteMapping {
   service: string;
   serviceUrl: string;
   stripPrefix?: boolean;
+  /** When set, replace this path prefix with pathRewrite when forwarding (e.g. /api/auth -> /api/v1/auth) */
+  pathRewrite?: string;
 }
 
 /**
@@ -78,13 +80,20 @@ export class ProxyService {
 
     try {
       // Build target URL
-      let targetPath = request.url;
-      if (mapping.stripPrefix) {
-        targetPath = request.url.replace(mapping.path, '');
+      let targetPath = request.url.split('?')[0];
+      const query = request.url.includes('?') ? '?' + request.url.split('?').slice(1).join('?') : '';
+      if (mapping.pathRewrite !== undefined) {
+        // Replace path prefix with pathRewrite (e.g. /api/auth -> /api/v1/auth)
+        targetPath = request.url.startsWith(mapping.path)
+          ? mapping.pathRewrite + targetPath.slice(mapping.path.length)
+          : targetPath;
+      } else if (mapping.stripPrefix) {
+        targetPath = targetPath.replace(mapping.path, '');
         if (!targetPath.startsWith('/')) {
           targetPath = '/' + targetPath;
         }
       }
+      targetPath = targetPath + query;
 
       // Prepare headers (forward important headers, add X-Tenant-ID)
       const headers: Record<string, string> = {

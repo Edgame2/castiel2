@@ -10,10 +10,10 @@ import {
   AuditLog,
   AuditLogsParams,
 } from '../types/audit.types';
-import { SecretAuditEventType, AuditCategory, ActorType, AuditOutcome } from '../types/audit.types';
+import { SecretAuditEventType, AuditCategory } from '../types/audit.types';
 
 export class AuditService {
-  private db = getDatabaseClient();
+  private db = getDatabaseClient() as any;
   
   /**
    * Map event type to category
@@ -113,7 +113,7 @@ export class AuditService {
       skip: params.page ? (params.page - 1) * (params.limit || 50) : 0,
     });
     
-    return logs.map(l => this.mapToAuditLog(l));
+    return logs.map((l: any) => this.mapToAuditLog(l));
   }
   
   /**

@@ -27,6 +27,7 @@ export async function appendOutcomeRow(
   event: {
     tenantId: string;
     data?: {
+      tenantId?: string;
       opportunityId?: string;
       outcome?: string;
       competitorId?: string | null;

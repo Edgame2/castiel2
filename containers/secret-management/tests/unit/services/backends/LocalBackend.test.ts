@@ -133,7 +133,7 @@ describe('LocalBackend', () => {
       
       await expect(
         backend.retrieveSecret({ secretRef: 'local:non-existent' })
-      ).rejects.toThrow(SecretNotFoundError);
+      ).rejects.toMatchObject({ name: 'SecretNotFoundError' });
     });
   });
 

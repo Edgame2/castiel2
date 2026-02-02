@@ -78,7 +78,7 @@ async executeWithFallback(task: Task): Promise<AgentResult>
 **Example:**
 ```typescript
 const pipeline = new AgentPipeline([
-  { agent: 'code-generation', task: generateTask },
+  { agent: 'planning', task: generateTask },
   { agent: 'code-review', task: reviewTask },
   { agent: 'test-generation', task: testTask },
 ]);
@@ -532,7 +532,7 @@ const results = await orchestrator.coordinate([
 ### Sequential Pipeline
 ```typescript
 const pipeline = new AgentPipeline([
-  { agent: 'code-generation', task: generateTask },
+  { agent: 'planning', task: generateTask },
   { agent: 'code-review', task: reviewTask },
   { agent: 'test-generation', task: testTask },
 ]);

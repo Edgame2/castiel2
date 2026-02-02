@@ -80,19 +80,20 @@ vi.mock('yaml', () => ({
   }),
 }));
 
-// Mock @coder/shared database
+// Mock @coder/shared database (fetchNext for list/getModelAnalytics, fetchAll for QualityMonitoring)
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(() => ({
     items: {
-      create: vi.fn(),
+      create: vi.fn().mockImplementation((doc: any) => Promise.resolve({ resource: { ...doc, id: doc?.id || 'id' } })),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
       })),
     },
     item: vi.fn(() => ({
       read: vi.fn().mockResolvedValue({ resource: null }),
-      replace: vi.fn(),
-      delete: vi.fn(),
+      replace: vi.fn().mockImplementation((doc: any) => Promise.resolve({ resource: doc })),
+      delete: vi.fn().mockResolvedValue(undefined),
     })),
   })),
   initializeDatabase: vi.fn(),
@@ -113,14 +114,15 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared ServiceClient (constructor for AIAnalyticsService, etc.)
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(() => ({
-    get: vi.fn().mockResolvedValue({ data: {} }),
-    post: vi.fn().mockResolvedValue({ data: {} }),
-    put: vi.fn().mockResolvedValue({ data: {} }),
-    delete: vi.fn().mockResolvedValue({ data: {} }),
-  })),
+  ServiceClient: vi.fn().mockImplementation(function (this: { get: ReturnType<typeof vi.fn>; post: ReturnType<typeof vi.fn>; put: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> }) {
+    this.get = vi.fn().mockResolvedValue({ data: {} });
+    this.post = vi.fn().mockResolvedValue({ data: {} });
+    this.put = vi.fn().mockResolvedValue({ data: {} });
+    this.delete = vi.fn().mockResolvedValue({ data: {} });
+    return this;
+  }),
   authenticateRequest: vi.fn(() => vi.fn()),
   tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
   setupJWT: vi.fn(),

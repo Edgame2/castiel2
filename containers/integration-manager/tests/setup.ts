@@ -100,20 +100,22 @@ vi.mock('@coder/shared/database', () => ({
   disconnectDatabase: vi.fn(),
 }));
 
-// Mock @coder/shared events
-vi.mock('@coder/shared/events', () => ({
-  EventPublisher: vi.fn(() => ({
-    publish: vi.fn().mockResolvedValue(undefined),
-    close: vi.fn(),
+// Mock container for getContainer
+const mockContainer = {
+  items: {
+    create: vi.fn().mockResolvedValue({ resource: {} }),
+    query: vi.fn(() => ({
+      fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
+    })),
+  },
+  item: vi.fn(() => ({
+    read: vi.fn().mockResolvedValue({ resource: null }),
+    replace: vi.fn().mockResolvedValue({ resource: {} }),
+    delete: vi.fn().mockResolvedValue(undefined),
   })),
-  EventConsumer: vi.fn(() => ({
-    on: vi.fn(),
-    start: vi.fn(),
-    close: vi.fn(),
-  })),
-}));
+};
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared ServiceClient and database/errors for service tests
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn(() => ({
     get: vi.fn().mockResolvedValue({ data: {} }),
@@ -121,8 +123,31 @@ vi.mock('@coder/shared', () => ({
     put: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   })),
+  getContainer: vi.fn((_name: string) => mockContainer),
+  BadRequestError: class BadRequestError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'BadRequestError';
+    }
+  },
+  NotFoundError: class NotFoundError extends Error {
+    constructor(_entity: string, _id: string) {
+      super('Not found');
+      this.name = 'NotFoundError';
+    }
+  },
+  EventPublisher: vi.fn().mockImplementation(function (this: any) {
+    this.publish = vi.fn().mockResolvedValue(undefined);
+    this.close = vi.fn();
+  }),
+  EventConsumer: vi.fn().mockImplementation(function (this: any) {
+    this.on = vi.fn();
+    this.start = vi.fn().mockResolvedValue(undefined);
+    this.close = vi.fn();
+  }),
   authenticateRequest: vi.fn(() => vi.fn()),
   tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
+  generateServiceToken: vi.fn(() => 'mock-token'),
   setupJWT: vi.fn(),
   setupHealthCheck: vi.fn(),
 }));

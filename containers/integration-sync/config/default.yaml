@@ -48,6 +48,7 @@ rabbitmq:
     - "shard.updated"
     - "integration.sync.scheduled"
     - "integration.webhook.received"
+    - "integration.token.refresh-requested"
 
 # Sync Scheduler Configuration
 sync_scheduler:

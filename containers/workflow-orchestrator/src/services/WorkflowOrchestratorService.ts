@@ -5,26 +5,19 @@
  */
 
 import { getContainer } from '@coder/shared/database';
-import { loadConfig } from '../config';
 import { log } from '../utils/logger';
 import {
   Workflow,
-  WorkflowStep,
   WorkflowResults,
-  WorkflowStatus,
   WorkflowStepType,
-  WorkflowStepStatus,
 } from '../types/workflow.types';
 import { publishWorkflowEvent } from '../events/publishers/WorkflowOrchestratorEventPublisher';
 import { v4 as uuidv4 } from 'uuid';
 
 export class WorkflowOrchestratorService {
-  private config: ReturnType<typeof loadConfig>;
   private activeWorkflows = new Map<string, Workflow>();
 
-  constructor() {
-    this.config = loadConfig();
-  }
+  constructor() {}
 
   /**
    * Start opportunity analysis workflow
@@ -446,13 +439,13 @@ export class WorkflowOrchestratorService {
       const container = getContainer('workflow_workflows');
       await container.items.create(
         {
+          ...workflow,
           id: workflow.workflowId,
           tenantId,
-          ...workflow,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
-        { partitionKey: tenantId }
+        { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]
       );
 
       // Store steps
@@ -460,13 +453,13 @@ export class WorkflowOrchestratorService {
       for (const step of workflow.steps) {
         await stepsContainer.items.create(
           {
+            ...step,
             id: step.stepId,
             tenantId,
-            ...step,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
-          { partitionKey: tenantId }
+          { partitionKey: tenantId } as Parameters<typeof stepsContainer.items.create>[1]
         );
       }
     } catch (error: any) {
@@ -490,9 +483,9 @@ export class WorkflowOrchestratorService {
       // Update in database
       const container = getContainer('workflow_workflows');
       await container.item(workflow.workflowId, tenantId).replace({
+        ...workflow,
         id: workflow.workflowId,
         tenantId,
-        ...workflow,
         updatedAt: new Date(),
       });
 
@@ -500,9 +493,9 @@ export class WorkflowOrchestratorService {
       const stepsContainer = getContainer('workflow_steps');
       for (const step of workflow.steps) {
         await stepsContainer.item(step.stepId, tenantId).replace({
+          ...step,
           id: step.stepId,
           tenantId,
-          ...step,
           updatedAt: new Date(),
         });
       }

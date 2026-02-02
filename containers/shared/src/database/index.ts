@@ -138,8 +138,10 @@ export function getDatabaseClient(): Database {
 
 /**
  * Get container by name
+ * @param containerName - Logical container name
+ * @param _ - Optional (ignored; for type compatibility with some Cosmos SDK typings)
  */
-export function getContainer(containerName: string): Container {
+export function getContainer(containerName: string, _?: unknown): Container {
   if (!dbClient) {
     throw new Error('Database not connected. Call connectDatabase() first.');
   }

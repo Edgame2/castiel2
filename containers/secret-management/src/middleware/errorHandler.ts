@@ -7,7 +7,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { SecretError } from '../errors/SecretErrors';
 import { getLoggingClient } from '../services/logging/LoggingClient';
-import { AuditService } from '../services/AuditService';
 
 export async function errorHandler(
   error: Error,

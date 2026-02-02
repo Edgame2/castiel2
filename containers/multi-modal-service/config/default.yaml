@@ -18,8 +18,6 @@ cosmos_db:
 services:
   ai_service:
     url: ${AI_SERVICE_URL:-http://localhost:3006}
-  code_generation:
-    url: ${CODE_GENERATION_URL:-http://localhost:3040}
   context_service:
     url: ${CONTEXT_SERVICE_URL:-http://localhost:3034}
   logging:

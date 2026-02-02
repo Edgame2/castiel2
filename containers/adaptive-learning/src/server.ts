@@ -65,10 +65,17 @@ export async function buildApp(): Promise<FastifyInstance> {
   }
 
   try {
-    const { initializeEventConsumer } = await import('./events/consumers/OutcomeEventConsumer');
+    const { initializeEventConsumer } = await import('./events/consumers/OutcomeEventConsumer.js');
     await initializeEventConsumer();
   } catch (e) {
     console.warn('Outcome event consumer init failed:', (e as Error).message);
+  }
+
+  try {
+    const { initializeCaisLearningJobConsumer } = await import('./events/consumers/CaisLearningJobConsumer.js');
+    await initializeCaisLearningJobConsumer();
+  } catch (e) {
+    console.warn('CaisLearningJobConsumer init failed:', (e as Error).message);
   }
 
   // Register routes
@@ -93,7 +100,11 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   console.log(`${signal} received, shutting down gracefully`);
   try {
-    const { closeEventConsumer } = await import('./events/consumers/OutcomeEventConsumer');
+    const { closeCaisLearningJobConsumer } = await import('./events/consumers/CaisLearningJobConsumer.js');
+    await closeCaisLearningJobConsumer();
+  } catch (_) { /* ignore */ }
+  try {
+    const { closeEventConsumer } = await import('./events/consumers/OutcomeEventConsumer.js');
     await closeEventConsumer();
   } catch (_) { /* ignore */ }
   if (app) await app.close();

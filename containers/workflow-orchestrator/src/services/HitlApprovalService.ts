@@ -63,7 +63,7 @@ export async function createFromEvent(tenantId: string, data: HitlApprovalReques
     correlationId: data.correlationId,
   };
 
-  await container.items.create(doc, { partitionKey: tenantId });
+  await container.items.create(doc, { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]);
   log.info('HITL approval created', { approvalId: id, opportunityId: data.opportunityId, tenantId, service: 'workflow-orchestrator' });
   return doc;
 }

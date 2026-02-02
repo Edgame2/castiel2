@@ -34,7 +34,7 @@ export async function recordLoginAttempt(
   success: boolean,
   failureReason?: string | null
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
 
   await db.userLoginHistory.create({
     data: {
@@ -67,7 +67,7 @@ export async function getUserLoginHistory(
   loginHistory: LoginHistoryEntry[];
   total: number;
 }> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
 
   const page = options?.page || 1;
   const limit = Math.min(options?.limit || 50, 100); // Max 100 per page

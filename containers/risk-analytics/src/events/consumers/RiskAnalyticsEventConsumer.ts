@@ -7,7 +7,8 @@ import { EventConsumer } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { loadConfig } from '../../config';
 import { log } from '../../utils/logger';
-import { publishRiskAnalyticsEvent, publishOpportunityOutcomeRecorded } from '../publishers/RiskAnalyticsEventPublisher';
+import { generateServiceTokenForConsumer } from '../../utils/serviceToken';
+import { publishOpportunityOutcomeRecorded } from '../publishers/RiskAnalyticsEventPublisher';
 import { RiskEvaluationService } from '../../services/RiskEvaluationService';
 
 let consumer: EventConsumer | null = null;
@@ -15,8 +16,95 @@ let riskEvaluationService: RiskEvaluationService | null = null;
 // Note: Event consumer creates service without Fastify app - service will handle gracefully
 
 /**
+ * Phase 11: When tenant has outcomeSyncToCais enabled, sync opportunity outcome to CAIS (record-outcome).
+ * Non-blocking: log and return on any failure; opportunity.outcome.recorded is already published.
+ */
+async function trySyncOutcomeToCais(
+  tenantId: string,
+  opportunityId: string,
+  outcome: 'won' | 'lost',
+  closeDate: string,
+  amount: number
+): Promise<void> {
+  const config = loadConfig();
+  if (!config.services?.adaptive_learning?.url) return;
+  const base = (config.services.adaptive_learning.url as string).replace(/\/$/, '');
+  const token = generateServiceTokenForConsumer(tenantId);
+  if (!token) {
+    log.debug('trySyncOutcomeToCais: no service token (jwt.secret?)', { opportunityId, tenantId, service: 'risk-analytics' });
+    return;
+  }
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+    'X-Tenant-ID': tenantId,
+  };
+  try {
+    const configRes = await fetch(`${base}/api/v1/adaptive-learning/tenant-config/${encodeURIComponent(tenantId)}`, { headers });
+    if (!configRes.ok) {
+      log.debug('trySyncOutcomeToCais: tenant-config failed', { opportunityId, tenantId, status: configRes.status, service: 'risk-analytics' });
+      return;
+    }
+    const tenantConfig = (await configRes.json()) as { outcomeSyncToCais?: boolean };
+    if (tenantConfig.outcomeSyncToCais !== true) return;
+    const container = getContainer('risk_evaluations');
+    const { resources } = await container.items
+      .query<{ id: string }>(
+        {
+          query: 'SELECT c.id FROM c WHERE c.opportunityId = @opportunityId ORDER BY c.calculatedAt DESC OFFSET 0 LIMIT 1',
+          parameters: [{ name: '@opportunityId', value: opportunityId }],
+        },
+        { partitionKey: tenantId }
+      )
+      .fetchAll();
+    const evaluationId = resources?.[0]?.id;
+    if (!evaluationId) {
+      log.debug('trySyncOutcomeToCais: no evaluation for opportunity', { opportunityId, tenantId, service: 'risk-analytics' });
+      return;
+    }
+    const outcomeValue = outcome === 'won' ? 1 : 0;
+    const outcomeType = outcome === 'won' ? 'success' : 'failure';
+    const recordRes = await fetch(`${base}/api/v1/adaptive-learning/outcomes/record-outcome`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        predictionId: evaluationId,
+        outcomeValue,
+        outcomeType,
+        context: { opportunityId, closeDate, amount },
+      }),
+    });
+    if (!recordRes.ok) {
+      log.warn('trySyncOutcomeToCais: record-outcome failed', {
+        opportunityId,
+        tenantId,
+        evaluationId,
+        status: recordRes.status,
+        service: 'risk-analytics',
+      });
+      return;
+    }
+    log.info('trySyncOutcomeToCais: record-outcome sent (Phase 11)', {
+      opportunityId,
+      tenantId,
+      evaluationId,
+      outcome,
+      service: 'risk-analytics',
+    });
+  } catch (e) {
+    log.debug('trySyncOutcomeToCais: error', {
+      opportunityId,
+      tenantId,
+      err: e instanceof Error ? e.message : String(e),
+      service: 'risk-analytics',
+    });
+  }
+}
+
+/**
  * If outcome_feedback.publish_on_shard_update (Plan §904): fetch shard from shard-manager,
  * when IsClosed and CloseDate in last 24h, publish opportunity.outcome.recorded.
+ * Phase 11: then try sync outcome to CAIS when tenant has outcomeSyncToCais enabled.
  */
 async function tryPublishOutcomeOnShardUpdate(opportunityId: string, tenantId: string): Promise<void> {
   const config = loadConfig();
@@ -43,15 +131,22 @@ async function tryPublishOutcomeOnShardUpdate(opportunityId: string, tenantId: s
   if (closeDt < since) return;
   const outcome: 'won' | 'lost' = sd.IsWon ? 'won' : 'lost';
   const competitorId = outcome === 'lost' && Array.isArray(sd.CompetitorIds) && sd.CompetitorIds[0] ? sd.CompetitorIds[0] : null;
+  const closeDateStr = closeDt.toISOString().slice(0, 10);
+  const amountNum = Number(sd.Amount ?? 0);
   await publishOpportunityOutcomeRecorded({
     tenantId,
     opportunityId,
     outcome,
     competitorId,
-    closeDate: closeDt.toISOString().slice(0, 10),
-    amount: Number(sd.Amount ?? 0),
+    closeDate: closeDateStr,
+    amount: amountNum,
   });
   log.info('opportunity.outcome.recorded published on shard update (Plan §904)', { opportunityId, tenantId, outcome, service: 'risk-analytics' });
+  try {
+    await trySyncOutcomeToCais(tenantId, opportunityId, outcome, closeDateStr, amountNum);
+  } catch (e) {
+    log.debug('trySyncOutcomeToCais failed after publish', { opportunityId, tenantId, err: e instanceof Error ? e.message : String(e), service: 'risk-analytics' });
+  }
 }
 
 /**
@@ -73,7 +168,7 @@ export async function initializeEventConsumer(): Promise<void> {
       url: config.rabbitmq.url,
       exchange: config.rabbitmq.exchange || 'coder_events',
       queue: config.rabbitmq.queue,
-      bindings: config.rabbitmq.bindings,
+      routingKeys: config.rabbitmq.bindings ?? [],
     });
 
     const ae = config.auto_evaluation;
@@ -110,7 +205,7 @@ export async function initializeEventConsumer(): Promise<void> {
             ],
           }, { partitionKey: tenantId })
           .fetchAll();
-        const opportunityIds = [...new Set((resources || []).map((r) => r.opportunityId).filter(Boolean))].slice(0, maxReevals);
+        const opportunityIds = [...new Set((resources || []).map((r: { opportunityId: string }) => r.opportunityId).filter(Boolean))].slice(0, maxReevals);
         log.info('Risk catalog change: re-evaluating affected opportunities', {
           eventType, riskId, tenantId, count: opportunityIds.length, service: 'risk-analytics',
         });
@@ -129,7 +224,8 @@ export async function initializeEventConsumer(): Promise<void> {
           }
         }
       } catch (err: unknown) {
-        log.error(`Failed to re-evaluate from ${eventType}`, err instanceof Error ? err : new Error(String(err)), { riskId, tenantId, service: 'risk-analytics' });
+        const error = err instanceof Error ? err : new Error(String(err));
+        log.error(`Failed to re-evaluate from ${eventType}`, error, { riskId, tenantId, service: 'risk-analytics' });
       }
     };
 
@@ -246,13 +342,18 @@ export async function initializeEventConsumer(): Promise<void> {
       let successCount = 0;
       let failureCount = 0;
 
+      const svc = riskEvaluationService;
+      if (!svc) {
+        log.error('Risk evaluation service not initialized', { service: 'risk-analytics' });
+        return;
+      }
       for (let i = 0; i < opportunityIds.length; i += concurrency) {
         const batch = opportunityIds.slice(i, i + concurrency);
         
         const results = await Promise.allSettled(
           batch.map(async (opportunityId: string) => {
             try {
-              await riskEvaluationService.evaluateRisk({
+              await svc.evaluateRisk({
                 opportunityId,
                 tenantId,
                 trigger: 'opportunity_updated',

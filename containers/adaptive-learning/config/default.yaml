@@ -19,6 +19,9 @@ cosmos_db:
     assessments: adaptive_assessments
     assessment_results: adaptive_assessment_results
     outcomes: adaptive_outcomes
+    adaptive_weights: adaptive_weights
+    adaptive_model_selections: adaptive_model_selections
+    adaptive_tenant_config: adaptive_tenant_config
 
 services:
   ai_service:
@@ -34,3 +37,8 @@ rabbitmq:
   queue: adaptive_learning
   bindings:
     - "adaptive.learning.outcome.recorded"
+  # Phase 12: batch job consumer for cais-learning (workflow.job.trigger)
+  batch_jobs:
+    queue: ${RABBITMQ_BATCH_JOBS_QUEUE:-cais_batch_jobs}
+    routing_keys:
+      - "workflow.job.trigger"

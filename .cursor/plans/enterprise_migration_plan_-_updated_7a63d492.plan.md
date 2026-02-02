@@ -6,11 +6,11 @@ todos: []
 
 # Enterprise Migration P
 
-lan: old_code → containers/ (Updated with Recommendations)
+lan: legacy → containers/ (Updated with Recommendations)
 
 ## Overview
 
-Migrate all code from `old_code/` to `containers/` following ModuleImplementationGuide.md standards, creating enterprise-grade microservices with **defense-in-depth security**, **high performance**, and **strict tenant isolation**.
+Migrate all code from legacy codebase to `containers/` following ModuleImplementationGuide.md standards, creating enterprise-grade microservices with **defense-in-depth security**, **high performance**, and **strict tenant isolation**.
 
 **Important**: The 5 core containers (Auth, User Management, Logging, Notification Manager, Secret Management) are **already complete and production-ready**. They only need `openapi.yaml` files to complete ModuleImplementationGuide.md compliance. No migration needed for these containers.
 
@@ -289,12 +289,12 @@ containers/shared/
 
    - `setupHealthCheck(fastify)` - Add to utils or create health module
 
-**Migration Sources** (from old_code):
+**Migration Sources** (legacy):
 
-- Cosmos DB client patterns from `old_code/apps/api/src/`
-- Redis client from `old_code/packages/redis-utils/`
-- JWT setup from `old_code/apps/api/src/middleware/authenticate.ts`
-- Event patterns from `old_code/packages/queue/`
+- Cosmos DB client patterns from legacy apps/api
+- Redis client from legacy packages
+- JWT setup from legacy auth middleware
+- Event patterns from legacy queue package
 
 #### 0.2 Update Shared Package Exports
 
@@ -374,11 +374,11 @@ export * from './services';
 
 **Assessment Results**:
 
-- ✅ **Auth** (`containers/auth/`): Complete, uses `@coder/shared`, Cosmos DB, no old_code dependencies
-- ✅ **User Management** (`containers/user-management/`): Complete, uses `@coder/shared`, Cosmos DB, no old_code dependencies
+- ✅ **Auth** (`containers/auth/`): Complete, uses `@coder/shared`, Cosmos DB, no legacy dependencies
+- ✅ **User Management** (`containers/user-management/`): Complete, uses `@coder/shared`, Cosmos DB, no legacy dependencies
 - ✅ **Logging** (`containers/logging/`): Complete, uses `@coder/shared`, Cosmos DB, has openapi.yaml
-- ✅ **Notification Manager** (`containers/notification-manager/`): Complete, uses `@coder/shared`, no old_code dependencies
-- ✅ **Secret Management** (`containers/secret-management/`): Complete, uses `@coder/shared`, multiple backend providers, no old_code dependencies
+- ✅ **Notification Manager** (`containers/notification-manager/`): Complete, uses `@coder/shared`, no legacy dependencies
+- ✅ **Secret Management** (`containers/secret-management/`): Complete, uses `@coder/shared`, multiple backend providers, no legacy dependencies
 
 **Action Required**: Add missing `openapi.yaml` files to complete ModuleImplementationGuide.md compliance
 
@@ -503,7 +503,7 @@ export * from './services';
 ## Success Criteria
 
 - ✅ All code in `containers/`
-- ✅ No imports from `old_code/`
+- ✅ No imports from legacy codebase
 - ✅ All containers follow ModuleImplementationGuide.md
 - ✅ **Tenant isolation enforced at all layers**
 - ✅ **Service-to-service authentication implemented**

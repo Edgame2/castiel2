@@ -1,6 +1,6 @@
 # Cursor Skills for Container Development
 
-This directory contains Cursor Skills that guide developers through container module development, migration, and compliance following ModuleImplementationGuide.md and SERVICE_MIGRATION_GUIDE.md standards.
+This directory contains Cursor Skills that guide developers through container module development, migration, and compliance following ModuleImplementationGuide.md standards.
 
 ## Available Skills
 
@@ -10,7 +10,7 @@ Scaffolds new container modules following ModuleImplementationGuide.md Section 3
 **Use when**: Creating a new microservice container, scaffolding module structure, or setting up a new service.
 
 ### 2. migrate-service-to-container
-Guides migration from old_code/ to containers/ following SERVICE_MIGRATION_GUIDE.md. Transforms imports, adds tenantId to queries, replaces hardcoded URLs, updates routes with auth/tenant enforcement.
+Guides migration of existing services to containers/ following ModuleImplementationGuide.md. Transforms imports, adds tenantId to queries, replaces hardcoded URLs, updates routes with auth/tenant enforcement.
 
 **Use when**: Migrating existing services, transforming old code patterns, or refactoring legacy code.
 
@@ -67,7 +67,6 @@ You can also explicitly reference skills in your requests:
 
 All skills reference:
 - **ModuleImplementationGuide.md** - Complete module implementation standards
-- **SERVICE_MIGRATION_GUIDE.md** - Service migration patterns and transformations
 - **.cursorrules** - Project coding standards and rules
 - **containers/auth/** - Reference implementation
 

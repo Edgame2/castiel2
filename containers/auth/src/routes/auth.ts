@@ -17,13 +17,14 @@ import { createSession, switchSessionOrganization, generateDeviceFingerprint } f
 import { getGeolocationFromIp } from '../utils/geolocationUtils';
 import { changePasswordWithHistory, setPassword } from '../services/PasswordHistoryService';
 import { requestPasswordReset, resetPasswordWithToken } from '../services/PasswordResetService';
-import { linkGoogleProvider, unlinkProvider, getLinkedProviders } from '../services/AuthProviderService';
+import { linkGoogleProvider, unlinkProvider, getLinkedProviders, type AuthProvider } from '../services/AuthProviderService';
 import { sendVerificationEmail, verifyEmailWithToken } from '../services/EmailVerificationService';
 import { generateUsername } from '../utils/stringUtils';
 import { log } from '../utils/logger';
 import { publishEventSafely, extractEventMetadata, createBaseEvent } from '../events/publishers/AuthEventPublisher';
-import { AuthEvent } from '../types/events';
+import type { AuthEvent } from '../types/events';
 import { loadConfig } from '../config';
+import type { AuthConfig } from '../types/config.types';
 import { getLoggingService } from '../services/LoggingService';
 import { getAccountService } from '../services/AccountService';
 import { generateSAMLRequest, processSAMLResponse } from '../services/SAMLHandler';
@@ -114,7 +115,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         }
 
         // Find or create user
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as any;
         let user = await db.user.findUnique({
           where: { googleId: googleUser.id },
         });
@@ -218,21 +219,23 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         }
 
         // Create session
-        const ipAddress = request.ip || request.headers['x-forwarded-for'] || 'unknown';
-        const userAgent = request.headers['user-agent'] || 'unknown';
+        const ipRaw = request.ip || request.headers['x-forwarded-for'] || 'unknown';
+        const userAgentRaw = request.headers['user-agent'] || 'unknown';
+        const ipAddress = Array.isArray(ipRaw) ? ipRaw[0] ?? null : (ipRaw ?? null);
+        const userAgent = Array.isArray(userAgentRaw) ? userAgentRaw[0] ?? null : (userAgentRaw ?? null);
         const { accessToken, refreshToken, sessionId } = await createSession(
           user.id,
-          null, // organizationId - can be set later
-          false, // isRememberMe
+          null,
+          false,
           ipAddress,
           userAgent,
-          request.headers['accept-language'] || undefined,
+          Array.isArray(request.headers['accept-language']) ? request.headers['accept-language'][0] : request.headers['accept-language'] || undefined,
           fastify
         );
 
         // Record login history
         const geo = await getGeolocationFromIp(ipAddress || '');
-        const deviceFingerprint = generateDeviceFingerprint(userAgent || '', request.headers['accept-language'] || null);
+        const deviceFingerprint = generateDeviceFingerprint(userAgent || '', Array.isArray(request.headers['accept-language']) ? request.headers['accept-language'][0] ?? null : request.headers['accept-language'] || null);
         await recordLoginHistory(user.id, sessionId, 'google', ipAddress, userAgent, deviceFingerprint, geo.country || null, geo.city || null, true);
 
         // Log OAuth login
@@ -306,11 +309,13 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         });
 
         // Redirect to frontend with token
-        const frontendUrl = config.frontend_url || 'http://localhost:3000';
+        const frontendUrl = routeConfig.services?.main_app?.url ?? routeConfig.frontend_url ?? (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000');
         if (process.env.FRONTEND_PROTOCOL) {
           reply.redirect(`${process.env.FRONTEND_PROTOCOL}://auth/callback?token=${accessToken}`);
-        } else {
+        } else if (frontendUrl) {
           reply.redirect(`${frontendUrl}?token=${accessToken}`);
+        } else {
+          reply.code(500).send({ error: 'Frontend URL not configured. Set MAIN_APP_URL or config.services.main_app.url (or frontend_url).' });
         }
       } catch (error: any) {
         log.error('OAuth callback error', error, { route: '/api/v1/auth/google/callback', service: 'auth' });
@@ -356,7 +361,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         }
 
         // Find or create user
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as any;
         const githubIdString = githubUser.id.toString();
         
         // First check by GitHub ID in UserAuthProvider
@@ -518,21 +523,23 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         }
 
         // Create session
-        const ipAddress = request.ip || request.headers['x-forwarded-for'] || 'unknown';
-        const userAgent = request.headers['user-agent'] || 'unknown';
+        const ipRaw = request.ip || request.headers['x-forwarded-for'] || 'unknown';
+        const userAgentRaw = request.headers['user-agent'] || 'unknown';
+        const ipAddress = Array.isArray(ipRaw) ? ipRaw[0] ?? null : (ipRaw ?? null);
+        const userAgent = Array.isArray(userAgentRaw) ? userAgentRaw[0] ?? null : (userAgentRaw ?? null);
         const { accessToken, refreshToken, sessionId } = await createSession(
           user.id,
-          null, // organizationId - can be set later
-          false, // isRememberMe
+          null,
+          false,
           ipAddress,
           userAgent,
-          request.headers['accept-language'] || undefined,
+          Array.isArray(request.headers['accept-language']) ? request.headers['accept-language'][0] : request.headers['accept-language'] || undefined,
           fastify
         );
 
         // Record login history
         const geo = await getGeolocationFromIp(ipAddress || '');
-        const deviceFingerprint = generateDeviceFingerprint(userAgent || '', request.headers['accept-language'] || null);
+        const deviceFingerprint = generateDeviceFingerprint(userAgent || '', Array.isArray(request.headers['accept-language']) ? request.headers['accept-language'][0] ?? null : request.headers['accept-language'] || null);
         await recordLoginHistory(user.id, sessionId, 'github', ipAddress, userAgent, deviceFingerprint, geo.country || null, geo.city || null, true);
 
         // Log OAuth login
@@ -599,11 +606,13 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         });
 
         // Redirect to frontend with token
-        const frontendUrl = config.frontend_url || 'http://localhost:3000';
+        const frontendUrl = routeConfig.services?.main_app?.url ?? routeConfig.frontend_url ?? (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000');
         if (process.env.FRONTEND_PROTOCOL) {
           reply.redirect(`${process.env.FRONTEND_PROTOCOL}://auth/callback?token=${accessToken}`);
-        } else {
+        } else if (frontendUrl) {
           reply.redirect(`${frontendUrl}?token=${accessToken}`);
+        } else {
+          reply.code(500).send({ error: 'Frontend URL not configured. Set MAIN_APP_URL or config.services.main_app.url (or frontend_url).' });
         }
       } catch (error: any) {
         log.error('GitHub OAuth callback error', error, { route: '/api/v1/auth/oauth/github/callback', service: 'auth' });
@@ -627,7 +636,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         return;
       }
       log.debug('Fetching user from database', { route: '/api/v1/auth/me', userId: requestUser.id, service: 'auth' });
-      const db = getDatabaseClient();
+      const db = getDatabaseClient() as any;
       const user = await db.user.findUnique({
         where: { id: requestUser.id },
         include: {
@@ -654,7 +663,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         timezone: user.timezone,
         language: user.language,
         profile: user.profile,
-        competencies: user.competencies.map((uc) => ({
+        competencies: user.competencies.map((uc: { id: string; competency?: string; proficiency?: string }) => ({
           id: uc.id,
           competency: uc.competency,
           proficiency: uc.proficiency,
@@ -802,7 +811,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           return;
         }
 
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as any;
 
         // Check if user already exists
         const existingUser = await db.user.findUnique({
@@ -925,8 +934,8 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
 
         const { accessToken, refreshToken, sessionId } = await createSession(
           user.id,
-          defaultOrgId,
-          false, // Don't remember me on registration
+          defaultOrgId ?? null,
+          false,
           ipAddress,
           userAgent,
           acceptLanguage,
@@ -1045,7 +1054,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           return;
         }
 
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as any;
 
         // Find user
         const user = await db.user.findUnique({
@@ -1318,7 +1327,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
   fastify.post(
     '/api/v1/auth/change-password',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Body: {
           oldPassword: string;
@@ -1342,7 +1351,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         }
 
         // Get user info for validation
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as any;
         const user = await db.user.findUnique({
           where: { id: requestUser.id },
           select: {
@@ -1421,7 +1430,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // Forgot password (request reset)
@@ -1457,7 +1466,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         // If user exists and token was generated, send email
         if (resetToken) {
           // Get user ID for email tracking
-          const db = getDatabaseClient();
+          const db = getDatabaseClient() as any;
           const user = await db.user.findUnique({
             where: { email },
             select: { id: true },
@@ -1602,7 +1611,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
   fastify.get(
     '/api/v1/auth/providers',
     { preHandler: authenticateRequest },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    (async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -1619,14 +1628,14 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // Link Google OAuth provider
   fastify.post(
     '/api/v1/auth/link-google',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Body: {
           accessToken: string;
@@ -1710,14 +1719,14 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // Unlink authentication provider
   fastify.post(
     '/api/v1/auth/unlink-provider',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Body: {
           provider: 'google' | 'email' | 'password';
@@ -1740,7 +1749,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         }
 
         // Unlink provider
-        await unlinkProvider(requestUser.id, provider);
+        await unlinkProvider(requestUser.id, provider as AuthProvider);
 
         // Log provider unlinking
         const loggingService = getLoggingService();
@@ -1796,14 +1805,14 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // Switch organization
   fastify.post(
     '/api/v1/auth/switch-organization',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Body: {
           organizationId: string;
@@ -1858,14 +1867,14 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // Email verification
   fastify.post(
     '/api/v1/auth/verify-email',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Body: {
           token: string;
@@ -1929,7 +1938,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // Resend verification email
@@ -1970,7 +1979,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
   fastify.post(
     '/api/v1/auth/sso/saml/initiate',
     { preHandler: authenticateRequest },
-    async (
+    (async (
       request: FastifyRequest<{
         Body: {
           organizationId: string;
@@ -2015,13 +2024,13 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // SAML SSO callback
   fastify.post(
     '/api/v1/auth/sso/saml/callback',
-    async (
+    (async (
       request: FastifyRequest<{
         Body: {
           SAMLResponse: string;
@@ -2115,7 +2124,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // SSO CONFIGURATION ROUTES
@@ -2125,7 +2134,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
   fastify.get(
     '/api/v1/auth/organizations/:orgId/sso/config',
     { preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')] },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -2147,7 +2156,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const { provider } = request.query;
 
         // Validate organization exists
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as any;
         const organization = await db.organization.findUnique({
           where: { id: orgId },
           select: { id: true },
@@ -2174,14 +2183,14 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // Configure SSO (PUT for update)
   fastify.put(
     '/api/v1/auth/organizations/:orgId/sso/config',
     { preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')] },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -2221,7 +2230,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const { enabled, provider, enforce, config, credentials } = request.body;
 
         // Validate organization exists
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as any;
         const organization = await db.organization.findUnique({
           where: { id: orgId },
           select: { id: true },
@@ -2318,14 +2327,14 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // Configure SSO (POST for create)
   fastify.post(
     '/api/v1/auth/organizations/:orgId/sso/config',
     { preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')] },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -2365,7 +2374,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const { enabled, provider, enforce, config, credentials } = request.body;
 
         // Validate organization exists
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as any;
         const organization = await db.organization.findUnique({
           where: { id: orgId },
           select: { id: true },
@@ -2462,14 +2471,14 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // Test SSO connection
   fastify.post(
     '/api/v1/auth/organizations/:orgId/sso/test',
     { preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')] },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: { orgId: string };
       }>,
@@ -2485,7 +2494,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const { orgId } = request.params;
 
         // Validate organization exists
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as any;
         const organization = await db.organization.findUnique({
           where: { id: orgId },
           select: { id: true },
@@ -2535,14 +2544,14 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // Disable SSO
   fastify.post(
     '/api/v1/auth/organizations/:orgId/sso/disable',
     { preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')] },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -2560,7 +2569,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const { orgId } = request.params;
 
         // Validate organization exists
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as any;
         const organization = await db.organization.findUnique({
           where: { id: orgId },
           select: { id: true },
@@ -2607,13 +2616,13 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // Get SSO credentials (service-to-service only)
   fastify.get(
     '/api/v1/auth/organizations/:orgId/sso/credentials',
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -2639,7 +2648,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const { orgId } = request.params;
 
         // Validate organization exists (for service-to-service calls)
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as any;
         const organization = await db.organization.findUnique({
           where: { id: orgId },
           select: { id: true },
@@ -2665,14 +2674,14 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // Rotate SSO certificate
   fastify.post(
     '/api/v1/auth/organizations/:orgId/sso/certificate/rotate',
     { preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')] },
-    async (
+    (async (
       request: FastifyRequest<{
         Params: {
           orgId: string;
@@ -2751,7 +2760,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
-    }
+    }) as any
   );
 
   // Health check

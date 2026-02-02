@@ -13,7 +13,7 @@ import { getLoggingClient } from '../logging/LoggingClient';
 import { AuditService } from '../AuditService';
 
 export class VersionManager {
-  private db = getDatabaseClient();
+  private db = getDatabaseClient() as any;
   private encryptionService: EncryptionService;
   private keyManager: KeyManager;
   private auditService: AuditService;
@@ -46,7 +46,7 @@ export class VersionManager {
       },
     });
     
-    return versions.map(v => ({
+    return versions.map((v: any) => ({
       version: v.version,
       isActive: v.isActive,
       changeReason: v.changeReason || undefined,
@@ -151,14 +151,8 @@ export class VersionManager {
         updatedById: context.userId,
       },
     });
-    
-    // Get secret for audit
-    const secret = await this.db.secret_secrets.findUnique({
-      where: { id: secretId },
-      select: { name: true, organizationId: true, scope: true, currentVersion: true },
-    });
-    
-    // Log rollback
+
+    // Log rollback (use existing secret for audit metadata)
     await getLoggingClient().sendLog({
       level: 'info',
       message: 'Secret rolled back to previous version',

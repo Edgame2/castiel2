@@ -30,7 +30,7 @@ export class GCPSecretBackend implements SecretStorageBackend {
   
   private client: SecretManagerServiceClient | null = null;
   private config: GCPSecretConfig | null = null;
-  private projectId: string;
+  private projectId!: string;
   
   /**
    * Initialize GCP Secret Manager backend
@@ -61,7 +61,7 @@ export class GCPSecretBackend implements SecretStorageBackend {
       
       // Test connection by attempting to list secrets (with limit)
       try {
-        const [secrets] = await this.client.listSecrets({
+        await this.client.listSecrets({
           parent: `projects/${gcpConfig.projectId}`,
           pageSize: 1,
         });
@@ -161,15 +161,14 @@ export class GCPSecretBackend implements SecretStorageBackend {
       }
       
       // Decode secret data
-      const secretString = version.payload.data.toString('utf8');
+      const secretString = (version.payload.data as any).toString('utf8');
       
       // Parse JSON string back to AnySecretValue
       let value: AnySecretValue;
       try {
-        value = JSON.parse(secretString);
+        value = JSON.parse(secretString) as AnySecretValue;
       } catch (parseError) {
-        // If not JSON, treat as plain string
-        value = secretString;
+        value = secretString as unknown as AnySecretValue;
       }
       
       // Extract version number
@@ -180,7 +179,7 @@ export class GCPSecretBackend implements SecretStorageBackend {
       const secretMatch = version.name?.match(/^(projects\/[^\/]+\/secrets\/[^\/]+)/);
       const secretPath = secretMatch ? secretMatch[1] : params.secretRef;
       
-      const [secret] = await this.client.getSecret({
+      const [secret] = await (this.client as any).getSecret({
         name: secretPath,
       });
       
@@ -188,12 +187,12 @@ export class GCPSecretBackend implements SecretStorageBackend {
         value,
         version: versionNumber,
         metadata: {
-          name: secret.name,
-          createTime: secret.createTime?.toString(),
-          labels: secret.labels ? JSON.stringify(secret.labels) : undefined,
+          name: secret.name ?? '',
+          createTime: secret.createTime?.toString() ?? '',
+          labels: (secret.labels ? JSON.stringify(secret.labels) : undefined) ?? '',
         },
         createdAt: secret.createTime 
-          ? new Date(secret.createTime.seconds * 1000)
+          ? new Date(Number(secret.createTime?.seconds ?? 0) * 1000)
           : new Date(),
         expiresAt: undefined, // GCP Secret Manager doesn't have built-in expiration
       };
@@ -320,15 +319,15 @@ export class GCPSecretBackend implements SecretStorageBackend {
           
           secrets.push({
             name: secretName,
-            secretRef: secret.name || secretName,
+            secretRef: secret.name ?? secretName,
             version: versionNumber,
             createdAt: secret.createTime 
-              ? new Date(secret.createTime.seconds * 1000)
+              ? new Date(Number(secret.createTime?.seconds ?? 0) * 1000)
               : new Date(),
             expiresAt: undefined,
             metadata: {
-              name: secret.name,
-              labels: secret.labels ? JSON.stringify(secret.labels) : undefined,
+              name: secret.name ?? '',
+              labels: (secret.labels ? JSON.stringify(secret.labels) : undefined) ?? '',
             },
           });
         } catch (versionError) {
@@ -338,10 +337,10 @@ export class GCPSecretBackend implements SecretStorageBackend {
           
           secrets.push({
             name: secretName,
-            secretRef: secret.name || secretName,
+            secretRef: secret.name ?? secretName,
             version: 1,
             createdAt: secret.createTime 
-              ? new Date(secret.createTime.seconds * 1000)
+              ? new Date(Number(secret.createTime?.seconds ?? 0) * 1000)
               : new Date(),
             expiresAt: undefined,
           });
@@ -375,9 +374,7 @@ export class GCPSecretBackend implements SecretStorageBackend {
       
       const parent = `projects/${this.projectId}/secrets/${secretName}`;
       
-      const [versions] = await this.client.listSecretVersions({
-        parent,
-      });
+      const [versions] = await (this.client as any).listSecretVersions({ parent });
       
       const versionInfos: SecretVersionInfo[] = [];
       
@@ -388,7 +385,7 @@ export class GCPSecretBackend implements SecretStorageBackend {
         versionInfos.push({
           version: versionNumber,
           createdAt: version.createTime 
-            ? new Date(version.createTime.seconds * 1000)
+            ? new Date(Number(version.createTime?.seconds ?? 0) * 1000)
             : new Date(),
           isActive: version.state === 'ENABLED',
         });
@@ -430,7 +427,7 @@ export class GCPSecretBackend implements SecretStorageBackend {
       
       const versionName = `projects/${this.projectId}/secrets/${secretName}/versions/${version}`;
       
-      const [versionResponse] = await this.client.accessSecretVersion({
+      const [versionResponse] = await (this.client as any).accessSecretVersion({
         name: versionName,
       });
       
@@ -444,17 +441,17 @@ export class GCPSecretBackend implements SecretStorageBackend {
       // Parse JSON string back to AnySecretValue
       let value: AnySecretValue;
       try {
-        value = JSON.parse(secretString);
+        value = JSON.parse(secretString) as AnySecretValue;
       } catch (parseError) {
-        // If not JSON, treat as plain string
-        value = secretString;
+        value = secretString as unknown as AnySecretValue;
       }
       
+      const createTime = (versionResponse as any).createTime;
       return {
         value,
         version,
-        createdAt: versionResponse.createTime 
-          ? new Date(versionResponse.createTime.seconds * 1000)
+        createdAt: createTime 
+          ? new Date((createTime.seconds ?? 0) * 1000)
           : new Date(),
         expiresAt: undefined,
       };

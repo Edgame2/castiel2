@@ -4,7 +4,16 @@
 
 import { describe, it, expect } from 'vitest';
 import { validateSecretValue, validateSecretName } from '../../../src/utils/validation';
-import { InvalidSecretValueError } from '../../../src/errors/SecretErrors';
+
+/** Assert that fn throws an error with name InvalidSecretValueError (avoids instanceof across module boundaries). */
+function expectInvalidSecretValueError(fn: () => void): void {
+  try {
+    fn();
+    expect.fail('Expected InvalidSecretValueError');
+  } catch (e: unknown) {
+    expect((e as Error).name).toBe('InvalidSecretValueError');
+  }
+}
 
 describe('validateSecretValue', () => {
   describe('API_KEY', () => {
@@ -15,21 +24,21 @@ describe('validateSecretValue', () => {
     });
 
     it('should reject API_KEY with missing key', () => {
-      expect(() => {
+      expectInvalidSecretValueError(() => {
         validateSecretValue('API_KEY', { type: 'API_KEY' } as any);
-      }).toThrow(InvalidSecretValueError);
+      });
     });
 
     it('should reject API_KEY with empty key', () => {
-      expect(() => {
+      expectInvalidSecretValueError(() => {
         validateSecretValue('API_KEY', { type: 'API_KEY', key: '' });
-      }).toThrow(InvalidSecretValueError);
+      });
     });
 
     it('should reject API_KEY with wrong type', () => {
-      expect(() => {
+      expectInvalidSecretValueError(() => {
         validateSecretValue('API_KEY', { type: 'GENERIC', value: 'test' });
-      }).toThrow(InvalidSecretValueError);
+      });
     });
   });
 
@@ -45,22 +54,22 @@ describe('validateSecretValue', () => {
     });
 
     it('should reject USERNAME_PASSWORD with missing username', () => {
-      expect(() => {
+      expectInvalidSecretValueError(() => {
         validateSecretValue('USERNAME_PASSWORD', {
           type: 'USERNAME_PASSWORD',
           password: 'pass',
         } as any);
-      }).toThrow(InvalidSecretValueError);
+      });
     });
 
     it('should reject USERNAME_PASSWORD with empty username', () => {
-      expect(() => {
+      expectInvalidSecretValueError(() => {
         validateSecretValue('USERNAME_PASSWORD', {
           type: 'USERNAME_PASSWORD',
           username: '',
           password: 'pass',
         });
-      }).toThrow(InvalidSecretValueError);
+      });
     });
   });
 
@@ -75,9 +84,9 @@ describe('validateSecretValue', () => {
     });
 
     it('should reject OAUTH2_TOKEN with missing accessToken', () => {
-      expect(() => {
+      expectInvalidSecretValueError(() => {
         validateSecretValue('OAUTH2_TOKEN', { type: 'OAUTH2_TOKEN' } as any);
-      }).toThrow(InvalidSecretValueError);
+      });
     });
   });
 
@@ -89,9 +98,9 @@ describe('validateSecretValue', () => {
     });
 
     it('should reject GENERIC with missing value', () => {
-      expect(() => {
+      expectInvalidSecretValueError(() => {
         validateSecretValue('GENERIC', { type: 'GENERIC' } as any);
-      }).toThrow(InvalidSecretValueError);
+      });
     });
   });
 });
@@ -110,27 +119,19 @@ describe('validateSecretName', () => {
   });
 
   it('should reject empty name', () => {
-    expect(() => {
-      validateSecretName('');
-    }).toThrow(InvalidSecretValueError);
+    expectInvalidSecretValueError(() => validateSecretName(''));
   });
 
   it('should reject name with spaces', () => {
-    expect(() => {
-      validateSecretName('my secret');
-    }).toThrow(InvalidSecretValueError);
+    expectInvalidSecretValueError(() => validateSecretName('my secret'));
   });
 
   it('should reject name with special characters', () => {
-    expect(() => {
-      validateSecretName('my@secret');
-    }).toThrow(InvalidSecretValueError);
+    expectInvalidSecretValueError(() => validateSecretName('my@secret'));
   });
 
   it('should reject name longer than 255 characters', () => {
-    expect(() => {
-      validateSecretName('a'.repeat(256));
-    }).toThrow(InvalidSecretValueError);
+    expectInvalidSecretValueError(() => validateSecretName('a'.repeat(256)));
   });
 
   it('should accept name exactly 255 characters', () => {

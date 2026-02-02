@@ -9,6 +9,7 @@ servers:
 tags:
   - name: Learning
   - name: Health
+  - name: CAIS
 components:
   securitySchemes:
     bearerAuth:
@@ -37,3 +38,120 @@ paths:
         '503':
           description: Service is not ready
 
+  /adaptive-learning/weights/{tenantId}:
+    get:
+      tags: [CAIS]
+      summary: Get learned weights
+      description: Get learned weights for a tenant and component. Returns defaults when none stored.
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: component
+          in: query
+          schema: { type: string, default: 'risk-evaluation' }
+      responses:
+        '200':
+          description: Learned weights (ruleBased, ml, ai, historical, etc.)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: { type: number }
+        '403':
+          description: Forbidden (tenant mismatch)
+    put:
+      tags: [CAIS]
+      summary: Upsert learned weights
+      description: Upsert learned weights for a tenant and component (Super Admin override).
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: component
+          in: query
+          schema: { type: string, default: 'risk-evaluation' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: { type: number }
+      responses:
+        '200':
+          description: Updated weights
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: { type: number }
+        '403':
+          description: Forbidden (tenant mismatch)
+
+  /adaptive-learning/model-selection/{tenantId}:
+    get:
+      tags: [CAIS]
+      summary: Get model selection
+      description: Get model selection for a tenant and context. Returns default when none stored.
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: context
+          in: query
+          schema: { type: string, default: 'risk-scoring' }
+      responses:
+        '200':
+          description: Model selection (modelId, confidence, version)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [modelId, confidence]
+                properties:
+                  modelId: { type: string }
+                  confidence: { type: number }
+                  version: { type: string }
+        '403':
+          description: Forbidden (tenant mismatch)
+    put:
+      tags: [CAIS]
+      summary: Upsert model selection
+      description: Upsert model selection for a tenant and context (Super Admin override).
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: context
+          in: query
+          schema: { type: string, default: 'risk-scoring' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [modelId, confidence]
+              properties:
+                modelId: { type: string }
+                confidence: { type: number }
+                version: { type: string }
+      responses:
+        '200':
+          description: Updated model selection
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [modelId, confidence]
+                properties:
+                  modelId: { type: string }
+                  confidence: { type: number }
+                  version: { type: string }
+        '403':
+          description: Forbidden (tenant mismatch)

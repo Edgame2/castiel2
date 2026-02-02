@@ -5,6 +5,9 @@ All notable changes to the API Gateway module will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Public auth paths:** Tenant validation skips login, register, OAuth/SAML callbacks, forgot/reset-password, verify-email, and auth health so unauthenticated auth flows work through the gateway.
+- **Auth path rewrite:** Route `/api/auth` uses `pathRewrite: '/api/v1/auth'` so the auth service receives `/api/v1/auth/...` paths.
+- **Tests:** Unit tests for tenantValidation (isPublicAuthPath, middleware), ProxyService (findRoute, targetPath with pathRewrite/stripPrefix), rateLimit; integration tests for gateway routes (public auth allowed, protected 401).
 - **W11 – risk-analytics proxy:** Config `services.risk_analytics.url` (env `RISK_ANALYTICS_URL`, default http://localhost:3048). Route `/api/v1` → risk_analytics when URL is configured. Enables Super Admin UI to call GET/PUT `/api/v1/tenant-ml-config` and GET/PUT `/api/v1/sales-methodology` via gateway.
 - **W11 – risk-catalog proxy:** Config `services.risk_catalog.url` (env `RISK_CATALOG_URL`, default http://localhost:3047). Routes `/api/v1/action-catalog` and `/api/v1/risk-catalog` → risk_catalog when URL is configured (longer path so they take precedence over `/api/v1`). Enables Super Admin UI to call GET `/api/v1/action-catalog/entries` and GET `/api/v1/risk-catalog/tenant-catalog` via gateway.
 - **W11 – recommendations proxy (Feedback System):** Config `services.recommendations.url` (env `RECOMMENDATIONS_URL`, default http://localhost:3049). Routes `/api/v1/feedback` (feedback aggregation), `/api/v1/admin/feedback-types`, `/api/v1/admin/feedback-config`, `/api/v1/admin/tenants` → recommendations when URL is configured. Enables Super Admin UI to call feedback-types, global and tenant feedback config and GET `/api/v1/feedback/aggregation` via gateway.

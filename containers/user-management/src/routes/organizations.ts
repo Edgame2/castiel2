@@ -23,6 +23,7 @@
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authenticateRequest } from '../middleware/auth';
+import { requireTenantMatch } from '../middleware/tenantMatch';
 import { requirePermission as _requirePermission } from '../middleware/rbac';
 import * as organizationService from '../services/OrganizationService';
 import * as organizationSettingsService from '../services/OrganizationSettingsService';
@@ -143,18 +144,73 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
     }) as any
   );
 
-  // Get organization details
+  // ——— Admin: List all organizations (Super Admin only). Plan: Feedbacks Plan Remaining Work §1 ———
   fastify.get(
-    '/api/v1/organizations/:orgId',
+    '/api/v1/admin/organizations',
     { preHandler: authenticateRequest },
-    (async (
-      request: FastifyRequest<{
-        Params: {
-          orgId: string;
-        };
-      }>,
-      reply: FastifyReply
-    ) => {
+    (async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser || !requestUser.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const items = await organizationService.listAllOrganizationsForSuperAdmin(requestUser.id);
+        return reply.send({ items });
+      } catch (error: any) {
+        if (error.message?.includes('Permission denied')) {
+          reply.code(403).send({ error: error.message });
+          return;
+        }
+        log.error('List admin organizations error', error, { route: '/api/v1/admin/organizations', userId: (request as any).user?.id, service: 'user-management' });
+        reply.code(500).send({
+          error: 'Failed to list organizations',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
+        return;
+      }
+    }) as any
+  );
+
+  // ——— Admin: Get organization by id (Super Admin only). Plan: Feedbacks Plan Remaining Work §1 ———
+  fastify.get<{ Params: { orgId: string } }>(
+    '/api/v1/admin/organizations/:orgId',
+    { preHandler: [authenticateRequest, requireTenantMatch] },
+    async (request, reply) => {
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser || !requestUser.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const { orgId } = request.params;
+        const org = await organizationService.getOrganizationForSuperAdmin(orgId, requestUser.id);
+        if (!org) {
+          reply.code(404).send({ error: 'Organization not found' });
+          return;
+        }
+        return reply.send(org);
+      } catch (error: any) {
+        if (error.message?.includes('Permission denied')) {
+          reply.code(403).send({ error: error.message });
+          return;
+        }
+        const params = request.params as { orgId?: string };
+        log.error('Get admin organization error', error, { route: '/api/v1/admin/organizations/:orgId', userId: (request as any).user?.id, orgId: params?.orgId, service: 'user-management' });
+        reply.code(500).send({
+          error: 'Failed to get organization',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
+        return;
+      }
+    }
+  );
+
+  // Get organization details
+  fastify.get<{ Params: { orgId: string } }>(
+    '/api/v1/organizations/:orgId',
+    { preHandler: [authenticateRequest, requireTenantMatch] },
+    async (request, reply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -187,28 +243,14 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
         });
         return;
       }
-    }) as any
+    }
   );
 
   // Update organization
-  fastify.put(
+  fastify.put<{ Params: { orgId: string }; Body: { name?: string; slug?: string; description?: string; logoUrl?: string; settings?: Record<string, any> } }>(
     '/api/v1/organizations/:orgId',
-    { preHandler: authenticateRequest },
-    (async (
-      request: FastifyRequest<{
-        Params: {
-          orgId: string;
-        };
-        Body: {
-          name?: string;
-          slug?: string;
-          description?: string;
-          logoUrl?: string;
-          settings?: Record<string, any>;
-        };
-      }>,
-      reply: FastifyReply
-    ) => {
+    { preHandler: [authenticateRequest, requireTenantMatch] },
+    async (request, reply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -288,21 +330,14 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
         });
         return;
       }
-    }) as any
+    }
   );
 
   // Deactivate organization
-  fastify.delete(
+  fastify.delete<{ Params: { orgId: string } }>(
     '/api/v1/organizations/:orgId',
-    { preHandler: authenticateRequest },
-    (async (
-      request: FastifyRequest<{
-        Params: {
-          orgId: string;
-        };
-      }>,
-      reply: FastifyReply
-    ) => {
+    { preHandler: [authenticateRequest, requireTenantMatch] },
+    async (request, reply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -359,19 +394,14 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
         });
         return;
       }
-    }) as any
+    }
   );
 
   // List organization members (Super Admin / org members)
-  fastify.get(
+  fastify.get<{ Params: { orgId: string } }>(
     '/api/v1/organizations/:orgId/members',
-    { preHandler: authenticateRequest },
-    (async (
-      request: FastifyRequest<{
-        Params: { orgId: string };
-      }>,
-      reply: FastifyReply
-    ) => {
+    { preHandler: [authenticateRequest, requireTenantMatch] },
+    async (request, reply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -394,21 +424,14 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
         });
         return;
       }
-    }) as any
+    }
   );
 
   // Get organization member count
-  fastify.get(
+  fastify.get<{ Params: { orgId: string } }>(
     '/api/v1/organizations/:orgId/member-count',
-    { preHandler: authenticateRequest },
-    (async (
-      request: FastifyRequest<{
-        Params: {
-          orgId: string;
-        };
-      }>,
-      reply: FastifyReply
-    ) => {
+    { preHandler: [authenticateRequest, requireTenantMatch] },
+    async (request, reply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -437,21 +460,14 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
         });
         return;
       }
-    }) as any
+    }
   );
 
   // Check if organization is at member limit
-  fastify.get(
+  fastify.get<{ Params: { orgId: string } }>(
     '/api/v1/organizations/:orgId/member-limit',
-    { preHandler: authenticateRequest },
-    (async (
-      request: FastifyRequest<{
-        Params: {
-          orgId: string;
-        };
-      }>,
-      reply: FastifyReply
-    ) => {
+    { preHandler: [authenticateRequest, requireTenantMatch] },
+    async (request, reply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -491,19 +507,14 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
         });
         return;
       }
-    }) as any
+    }
   );
 
   // List API keys for organization (Super Admin §10.3)
-  fastify.get(
+  fastify.get<{ Params: { orgId: string } }>(
     '/api/v1/organizations/:orgId/api-keys',
-    { preHandler: authenticateRequest },
-    (async (
-      request: FastifyRequest<{
-        Params: { orgId: string };
-      }>,
-      reply: FastifyReply
-    ) => {
+    { preHandler: [authenticateRequest, requireTenantMatch] },
+    async (request, reply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -527,7 +538,7 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
         });
         return;
       }
-    }) as any
+    }
   );
 
   // Create API key for organization (Super Admin §10.3; raw key returned only once)
@@ -536,7 +547,7 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
     Body: { name: string; scope?: string; expiresAt?: string };
   }>(
     '/api/v1/organizations/:orgId/api-keys',
-    { preHandler: authenticateRequest },
+    { preHandler: [authenticateRequest, requireTenantMatch] },
     async (request, reply) => {
       try {
         const requestUser = (request as any).user;
@@ -575,7 +586,7 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
   // Revoke (delete) API key (Super Admin §10.3)
   fastify.delete<{ Params: { orgId: string; keyId: string } }>(
     '/api/v1/organizations/:orgId/api-keys/:keyId',
-    { preHandler: authenticateRequest },
+    { preHandler: [authenticateRequest, requireTenantMatch] },
     async (request, reply) => {
       try {
         const requestUser = (request as any).user;
@@ -609,7 +620,7 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
   // Rotate API key (Super Admin §10.3; new raw key returned only once)
   fastify.post<{ Params: { orgId: string; keyId: string } }>(
     '/api/v1/organizations/:orgId/api-keys/:keyId/rotate',
-    { preHandler: authenticateRequest },
+    { preHandler: [authenticateRequest, requireTenantMatch] },
     async (request, reply) => {
       try {
         const requestUser = (request as any).user;
@@ -642,17 +653,10 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
   );
 
   // Get organization settings
-  fastify.get(
+  fastify.get<{ Params: { orgId: string } }>(
     '/api/v1/organizations/:orgId/settings',
-    { preHandler: authenticateRequest },
-    (async (
-      request: FastifyRequest<{
-        Params: {
-          orgId: string;
-        };
-      }>,
-      reply: FastifyReply
-    ) => {
+    { preHandler: [authenticateRequest, requireTenantMatch] },
+    async (request, reply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -688,22 +692,14 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
         });
         return;
       }
-    }) as any
+    }
   );
 
   // Update organization settings
-  fastify.put(
+  fastify.put<{ Params: { orgId: string }; Body: organizationSettingsService.OrganizationSettings }>(
     '/api/v1/organizations/:orgId/settings',
-    { preHandler: authenticateRequest },
-    (async (
-      request: FastifyRequest<{
-        Params: {
-          orgId: string;
-        };
-        Body: organizationSettingsService.OrganizationSettings;
-      }>,
-      reply: FastifyReply
-    ) => {
+    { preHandler: [authenticateRequest, requireTenantMatch] },
+    async (request, reply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -767,19 +763,14 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
         });
         return;
       }
-    }) as any
+    }
   );
 
   // Get organization security settings
-  fastify.get(
+  fastify.get<{ Params: { orgId: string } }>(
     '/api/v1/organizations/:orgId/security-settings',
-    { preHandler: authenticateRequest },
-    (async (
-      request: FastifyRequest<{
-        Params: { orgId: string };
-      }>,
-      reply: FastifyReply
-    ) => {
+    { preHandler: [authenticateRequest, requireTenantMatch] },
+    async (request, reply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -870,38 +861,19 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
         });
         return;
       }
-    }) as any
+    }
   );
 
   // Update organization security settings
-  fastify.put(
+  type SecuritySettingsBody = {
+    session?: { maxSessionsPerUser?: number; sessionTimeoutHours?: number; sessionIdleTimeoutHours?: number };
+    mfa?: { requireMfa?: boolean };
+    password?: { minLength?: number; requireUppercase?: boolean; requireLowercase?: boolean; requireNumbers?: boolean; requireSpecial?: boolean; expiryDays?: number | null; historyCount?: number };
+  };
+  fastify.put<{ Params: { orgId: string }; Body: SecuritySettingsBody }>(
     '/api/v1/organizations/:orgId/security-settings',
-    { preHandler: authenticateRequest },
-    (async (
-      request: FastifyRequest<{
-        Params: { orgId: string };
-        Body: {
-          session?: {
-            maxSessionsPerUser?: number;
-            sessionTimeoutHours?: number;
-            sessionIdleTimeoutHours?: number;
-          };
-          mfa?: {
-            requireMfa?: boolean;
-          };
-          password?: {
-            minLength?: number;
-            requireUppercase?: boolean;
-            requireLowercase?: boolean;
-            requireNumbers?: boolean;
-            requireSpecial?: boolean;
-            expiryDays?: number | null;
-            historyCount?: number;
-          };
-        };
-      }>,
-      reply: FastifyReply
-    ) => {
+    { preHandler: [authenticateRequest, requireTenantMatch] },
+    async (request, reply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -1101,7 +1073,7 @@ export async function setupOrganizationRoutes(fastify: FastifyInstance): Promise
         });
         return;
       }
-    }) as any
+    }
   );
 }
 

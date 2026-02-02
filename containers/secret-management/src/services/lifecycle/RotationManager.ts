@@ -6,8 +6,6 @@
 
 import { getDatabaseClient } from '@coder/shared';
 import { SecretService } from '../SecretService';
-import { EncryptionService } from '../encryption/EncryptionService';
-import { KeyManager } from '../encryption/KeyManager';
 import { RotationError } from '../../errors/SecretErrors';
 import { AnySecretValue, SecretContext } from '../../types';
 import { publishSecretEvent, SecretEvents } from '../events/SecretEventPublisher';
@@ -21,15 +19,11 @@ export interface RotationResult {
 }
 
 export class RotationManager {
-  private db = getDatabaseClient();
-  private encryptionService: EncryptionService;
-  private keyManager: KeyManager;
+  private db = getDatabaseClient() as any;
   private secretService: SecretService;
   private auditService: AuditService;
   
   constructor() {
-    this.keyManager = new KeyManager();
-    this.encryptionService = new EncryptionService(this.keyManager);
     this.secretService = new SecretService();
     this.auditService = new AuditService();
   }
@@ -158,13 +152,13 @@ export class RotationManager {
     });
     
     // Get full secret details for events
-    const secretIds = secretsDue.map(s => s.id);
+    const secretIds = secretsDue.map((s: any) => s.id);
     const secrets = await this.db.secret_secrets.findMany({
       where: { id: { in: secretIds } },
       select: { id: true, name: true, organizationId: true },
     });
     
-    const secretMap = new Map(secrets.map(s => [s.id, s]));
+    const secretMap = new Map<string, any>(secrets.map((s: any) => [s.id, s]));
     
     // Send rotation due notifications
     for (const secret of secretsDue) {
@@ -178,7 +172,7 @@ export class RotationManager {
       );
     }
     
-    return secretsDue.map(s => ({
+    return secretsDue.map((s: any) => ({
       id: s.id,
       name: s.name,
       nextRotationAt: s.nextRotationAt!,

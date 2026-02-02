@@ -105,14 +105,9 @@ export class SimulationService {
         ...opportunity.structuredData,
         ...scenario.modifications.opportunityData,
       };
+      void modifiedData;
 
-      // Create modified opportunity for evaluation
-      const modifiedOpportunity = {
-        ...opportunity,
-        structuredData: modifiedData,
-      };
-
-      // Evaluate with modifications
+      // Evaluate with modifications (full impl would pass modifiedData to evaluation)
       // Note: This is a simplified simulation - full implementation would
       // need to temporarily modify risk catalog weights
       const evaluation = await this.riskEvaluationService.evaluateRisk({
@@ -146,14 +141,12 @@ export class SimulationService {
 
       // Store simulation
       const container = getContainer('risk_simulations');
-      await container.items.create({
-        id: simulation.id,
-        tenantId,
-        ...simulation,
-      });
+      await container.items.create(
+        { ...simulation, id: simulation.id, tenantId },
+        { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]
+      );
 
-      await publishRiskAnalyticsEvent('risk.simulation.completed', {
-        tenantId,
+      await publishRiskAnalyticsEvent('risk.simulation.completed', tenantId, {
         opportunityId,
         simulationId: simulation.id,
         scenarioName: scenario.scenarioName,

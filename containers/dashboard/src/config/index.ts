@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { load } from 'yaml';
+import { parse as parseYaml } from 'yaml';
 
 export interface DashboardConfig {
   module: { name: string; version: string };
@@ -28,7 +28,7 @@ export interface DashboardConfig {
 
 export function loadConfig(): DashboardConfig {
   const configPath = join(__dirname, '../../config/default.yaml');
-  const config = load(readFileSync(configPath, 'utf-8')) as DashboardConfig;
+  const config = parseYaml(readFileSync(configPath, 'utf-8')) as DashboardConfig;
   
   // Override with environment variables if provided
   if (process.env.PORT) config.server.port = parseInt(process.env.PORT, 10);

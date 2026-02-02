@@ -9,11 +9,10 @@ import { MultiModalService } from '../services/MultiModalService';
 import {
   CreateMultiModalJobInput,
   UpdateMultiModalJobInput,
-  ModalType,
   ProcessingStatus,
 } from '../types/multimodal.types';
 
-export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
+export async function registerRoutes(app: FastifyInstance, _config: unknown): Promise<void> {
   const multiModalService = new MultiModalService();
 
   // ===== MULTI-MODAL JOB ROUTES =====

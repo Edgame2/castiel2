@@ -43,7 +43,7 @@ All 10 Cursor Skills have been successfully created, validated, and are ready fo
 
 ### ✅ Content Validation
 - 89 references to ModuleImplementationGuide.md across all skills
-- All skills reference SERVICE_MIGRATION_GUIDE.md where applicable
+- All skills reference ModuleImplementationGuide.md where applicable
 - All code examples match actual project patterns
 - All skills use correct tenant enforcement patterns:
   - `authenticateRequest()` and `tenantEnforcementMiddleware()` from @coder/shared
@@ -52,7 +52,7 @@ All 10 Cursor Skills have been successfully created, validated, and are ready fo
 
 ### ✅ Standards Compliance
 - All skills follow ModuleImplementationGuide.md standards
-- All skills follow SERVICE_MIGRATION_GUIDE.md patterns
+- All skills follow ModuleImplementationGuide.md patterns
 - All skills comply with .cursorrules requirements
 - All skills use patterns from actual codebase (containers/auth/, containers/context-service/, etc.)
 
@@ -146,7 +146,7 @@ The skills are ready for immediate use. No additional work is required.
 
 Developers can now:
 1. Create new container modules following standards
-2. Migrate services from old_code/ to containers/
+2. Migrate existing services to containers/
 3. Validate compliance with project rules
 4. Set up configuration, events, tests, and documentation
 5. Ensure tenant isolation and proper service communication

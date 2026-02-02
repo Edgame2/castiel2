@@ -26,10 +26,26 @@ vi.mock('@coder/shared', () => {
 
 vi.mock('../../../src/services/backends/BackendFactory');
 vi.mock('../../../src/services/encryption/EncryptionService');
-vi.mock('../../../src/services/encryption/KeyManager');
-vi.mock('../../../src/services/events/SecretEventPublisher');
-vi.mock('../../../src/services/logging/LoggingClient');
-vi.mock('../../../src/services/AuditService');
+vi.mock('../../../src/services/encryption/KeyManager', () => ({
+  KeyManager: vi.fn().mockImplementation(() => ({
+    getActiveKey: vi.fn().mockResolvedValue({ keyId: 'key-1', version: 1 }),
+  })),
+}));
+vi.mock('../../../src/services/events/SecretEventPublisher', () => ({
+  publishSecretEvent: vi.fn().mockResolvedValue(undefined),
+  SecretEvents: {
+    vaultConfigured: (d: Record<string, unknown>) => ({ type: 'vault.configured', ...d }),
+    vaultHealthCheckFailed: (d: Record<string, unknown>) => ({ type: 'vault.health_check_failed', ...d }),
+  },
+}));
+vi.mock('../../../src/services/logging/LoggingClient', () => ({
+  getLoggingClient: vi.fn(() => ({ sendLog: vi.fn().mockResolvedValue(undefined) })),
+}));
+vi.mock('../../../src/services/AuditService', () => ({
+  AuditService: vi.fn().mockImplementation(() => ({
+    log: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
 
 describe('VaultService', () => {
   let vaultService: VaultService;
@@ -186,10 +202,10 @@ describe('VaultService', () => {
 
     it('should throw VaultNotConfiguredError if vault does not exist', async () => {
       mockDb.secret_vault_configurations.findUnique.mockResolvedValue(null);
-      
+
       await expect(
         vaultService.getVault('non-existent')
-      ).rejects.toThrow(VaultNotConfiguredError);
+      ).rejects.toThrow(/Vault not configured/);
     });
   });
 

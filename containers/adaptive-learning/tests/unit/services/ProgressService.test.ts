@@ -7,7 +7,6 @@ import { ProgressService } from '../../../src/services/ProgressService';
 import { getContainer } from '@coder/shared/database';
 import { NotFoundError, BadRequestError } from '@coder/shared/utils/errors';
 
-// Mock dependencies
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(),
 }));
@@ -27,7 +26,7 @@ describe('ProgressService', () => {
       items: {
         create: vi.fn(),
         query: vi.fn(() => ({
-          fetchAll: vi.fn(),
+          fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
         })),
       },
       item: vi.fn(() => ({
@@ -41,59 +40,50 @@ describe('ProgressService', () => {
     service = new ProgressService();
   });
 
-  describe('create', () => {
-    it('should create progress record successfully', async () => {
-      const input = {
-        tenantId: 'tenant-123',
-        userId: 'user-123',
-        learningPathId: 'path-123',
-        currentModuleId: 'module-123',
-        progress: 50,
-      };
+  describe('getOrCreate', () => {
+    it('should create progress record when none exists', async () => {
+      const tenantId = 'tenant-123';
+      const userId = 'user-123';
+      const input = { learningPathId: 'path-123' };
 
+      mockContainer.items.query.mockReturnValue({
+        fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
+      });
       const mockProgress = {
         id: 'test-uuid-123',
-        ...input,
+        tenantId,
+        userId,
+        learningPathId: 'path-123',
+        status: 'not_started',
+        progress: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-
       mockContainer.items.create.mockResolvedValue({
         resource: mockProgress,
       });
 
-      const result = await service.create(input);
+      const result = await service.getOrCreate(tenantId, userId, input);
 
       expect(result).toHaveProperty('id');
-      expect(result.tenantId).toBe(input.tenantId);
-      expect(result.userId).toBe(input.userId);
+      expect(result.tenantId).toBe(tenantId);
+      expect(result.userId).toBe(userId);
       expect(mockContainer.items.create).toHaveBeenCalled();
     });
 
     it('should throw BadRequestError if tenantId is missing', async () => {
-      const input = {
-        userId: 'user-123',
-        learningPathId: 'path-123',
-      } as any;
-
-      await expect(service.create(input)).rejects.toThrow(BadRequestError);
+      await expect(service.getOrCreate('', 'user-123', {})).rejects.toThrow(BadRequestError);
     });
 
     it('should throw BadRequestError if userId is missing', async () => {
-      const input = {
-        tenantId: 'tenant-123',
-        learningPathId: 'path-123',
-      } as any;
-
-      await expect(service.create(input)).rejects.toThrow(BadRequestError);
+      await expect(service.getOrCreate('tenant-123', '', {})).rejects.toThrow(BadRequestError);
     });
   });
 
-  describe('getByUserId', () => {
+  describe('find', () => {
     it('should retrieve progress for a user', async () => {
       const tenantId = 'tenant-123';
       const userId = 'user-123';
-
       const mockProgress = [
         {
           id: 'progress-1',
@@ -105,23 +95,22 @@ describe('ProgressService', () => {
       ];
 
       mockContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
+        fetchNext: vi.fn().mockResolvedValue({
           resources: mockProgress,
         }),
       });
 
-      const result = await service.getByUserId(tenantId, userId);
+      const result = await service.find(tenantId, userId, {});
 
-      expect(result).toEqual(mockProgress);
+      expect(result).toEqual(mockProgress[0]);
       expect(mockContainer.items.query).toHaveBeenCalled();
     });
   });
 
   describe('update', () => {
     it('should update progress successfully', async () => {
-      const tenantId = 'tenant-123';
       const progressId = 'progress-123';
-
+      const tenantId = 'tenant-123';
       const existingProgress = {
         id: progressId,
         tenantId,
@@ -129,11 +118,7 @@ describe('ProgressService', () => {
         learningPathId: 'path-123',
         progress: 50,
       };
-
-      const updateInput = {
-        progress: 75,
-        currentModuleId: 'module-456',
-      };
+      const updateInput = { progress: 75 };
 
       mockContainer.item.mockReturnValue({
         read: vi.fn().mockResolvedValue({
@@ -144,15 +129,15 @@ describe('ProgressService', () => {
         }),
       });
 
-      const result = await service.update(tenantId, progressId, updateInput);
+      const result = await service.update(progressId, tenantId, updateInput);
 
       expect(result.progress).toBe(updateInput.progress);
-      expect(mockContainer.item().replace).toHaveBeenCalled();
+      expect(mockContainer.item(progressId, tenantId).replace).toHaveBeenCalled();
     });
 
     it('should throw NotFoundError if progress does not exist', async () => {
-      const tenantId = 'tenant-123';
       const progressId = 'progress-123';
+      const tenantId = 'tenant-123';
 
       mockContainer.item.mockReturnValue({
         read: vi.fn().mockResolvedValue({
@@ -160,7 +145,7 @@ describe('ProgressService', () => {
         }),
       });
 
-      await expect(service.update(tenantId, progressId, { progress: 75 })).rejects.toThrow(NotFoundError);
+      await expect(service.update(progressId, tenantId, { progress: 75 })).rejects.toThrow(NotFoundError);
     });
   });
 });

@@ -31,7 +31,7 @@ export async function getLinkedProviders(userId: string): Promise<Array<{
   linkedAt: Date;
   lastUsedAt: Date | null;
 }>> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   const user = await db.user.findUnique({
     where: { id: userId },
@@ -95,7 +95,7 @@ export async function linkGoogleProvider(
   userId: string,
   googleAccessToken: string
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   // Get user
   const user = await db.user.findUnique({
@@ -162,7 +162,7 @@ export async function unlinkProvider(
   userId: string,
   provider: AuthProvider
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   // Get user
   const user = await db.user.findUnique({
@@ -208,7 +208,7 @@ export async function unlinkProvider(
     
     // Update authProviders JSON field
     const currentProviders = (user.authProviders as AuthProvider[]) || [];
-    const updatedProviders = currentProviders.filter(p => p !== 'password' && p !== 'email') as AuthProvider[];
+    const updatedProviders = currentProviders.filter((p: string) => p !== 'password' && p !== 'email') as AuthProvider[];
     await db.user.update({
       where: { id: userId },
       data: {

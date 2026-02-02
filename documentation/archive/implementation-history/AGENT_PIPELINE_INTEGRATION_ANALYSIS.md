@@ -74,7 +74,7 @@
 2. `requirement-disambiguation` - Order 2, Required, Critical
 3. `planning` - Order 3, Required, Critical
 4. `context-selection` - Order 4, Required, Critical
-5. `code-generation` - Order 5, Required, Critical
+5. `generation` - Order 5, Required, Critical
 6. `static-analysis` - Order 6, Required, Critical
 7. `test-generation` - Order 7, Optional, Not Critical
 8. `execution` - Order 8, Required, Critical
@@ -185,7 +185,7 @@ StepExecutor.executeStep()
   - Map step types to pipeline stages
 
 **Details**:
-- Define stages: `code-generation`, `static-analysis`, `test-generation`, `execution`
+- Define stages: `generation`, `static-analysis`, `test-generation`, `execution`
 - Map step.type to appropriate stage
 - Configure dependencies between stages
 

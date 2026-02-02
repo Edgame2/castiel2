@@ -99,20 +99,7 @@ vi.mock('@coder/shared/database', () => ({
   connectDatabase: vi.fn(),
 }));
 
-// Mock @coder/shared events
-vi.mock('@coder/shared/events', () => ({
-  EventPublisher: vi.fn(() => ({
-    publish: vi.fn().mockResolvedValue(undefined),
-    close: vi.fn(),
-  })),
-  EventConsumer: vi.fn(() => ({
-    on: vi.fn(),
-    start: vi.fn(),
-    close: vi.fn(),
-  })),
-}));
-
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared (includes EventPublisher/EventConsumer so source imports resolve)
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn(() => ({
     get: vi.fn().mockResolvedValue({ data: {} }),
@@ -120,6 +107,12 @@ vi.mock('@coder/shared', () => ({
     put: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   })),
+  EventPublisher: vi.fn().mockImplementation(function (this: unknown) {
+    return { publish: vi.fn().mockResolvedValue(undefined), close: vi.fn() };
+  }),
+  EventConsumer: vi.fn().mockImplementation(function (this: unknown) {
+    return { on: vi.fn(), start: vi.fn().mockResolvedValue(undefined), stop: vi.fn().mockResolvedValue(undefined), close: vi.fn() };
+  }),
   authenticateRequest: vi.fn(() => vi.fn()),
   tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
   setupJWT: vi.fn(),

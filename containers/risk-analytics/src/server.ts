@@ -157,7 +157,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   fastify.addHook('onResponse', async (request, reply) => {
-    const route = (request as { routerPath?: string }).routerPath ?? (request as { routeOptions?: { url?: string } }).routeOptions?.url ?? String((request as { url?: string }).url || '').split('?')[0] || 'unknown';
+    const route = (request as { routerPath?: string }).routerPath ?? (request as { routeOptions?: { url?: string } }).routeOptions?.url ?? (String((request as { url?: string }).url ?? '').split('?')[0] || 'unknown');
     httpRequestsTotal.inc({ method: request.method, route, status: String(reply.statusCode) });
     httpRequestDurationSeconds.observe({ method: request.method, route }, (reply.elapsedTime ?? 0) / 1000);
     log.debug('Request completed', {

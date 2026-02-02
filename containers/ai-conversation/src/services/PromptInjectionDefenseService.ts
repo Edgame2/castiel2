@@ -22,7 +22,7 @@ export class PromptInjectionDefenseService {
   private readonly INJECTION_PATTERNS = [
     /ignore\s+(previous|above|all)\s+instructions/i,
     /system\s*:\s*you\s+are/i,
-    /\[INST\]|\[/INST\]/i,
+    /\[INST\]|\[\/INST\]/i,
     /<\|im_start\|>|<\|im_end\|>/i,
   ];
 

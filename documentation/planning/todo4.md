@@ -3923,7 +3923,7 @@ If you want, next we can:
 * Map this to your existing planning system
 Just tell me where you want to go next.
 give me an example of what the agent workflow would look like for code generation.
-Below is a concrete, end-to-end example of a code-generation agent workflow exactly in the spirit of your IDE: agent-driven, safe, extensible, and human-aware.
+Below is a concrete, end-to-end example of a code generation agent workflow exactly in the spirit of your IDE: agent-driven, safe, extensible, and human-aware.
 I’ll show:
 1. High-level workflow (human readable)
 2. Agent graph
@@ -4651,10 +4651,10 @@ partial_rollback:
 8. Agent Marketplace & Sharing
 Problem: Users will want to share/reuse agents across projects.
 
-Solution: Agent Registry with Trust Levels
+Solution: Registry with trust levels (conceptual).
 
 yaml
-agent_registry:
+registry:
   scopes:
     - global: "Built-in trusted agents"
     - organization: "Company-approved agents"

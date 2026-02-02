@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Infrastructure Services
   redis:
@@ -40,8 +38,8 @@ services:
   # API Gateway
   api-gateway:
     build:
-      context: ./containers/api-gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: containers/api-gateway/Dockerfile
     ports:
       - "3001:3001"
     environment:
@@ -80,8 +78,8 @@ services:
   # Core Services
   auth:
     build:
-      context: ./containers/auth
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: containers/auth/Dockerfile
     ports:
       - "3021:3021"
     environment:
@@ -102,8 +100,8 @@ services:
 
   user-management:
     build:
-      context: ./containers/user-management
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: containers/user-management/Dockerfile
     ports:
       - "3022:3022"
     environment:
@@ -125,8 +123,8 @@ services:
 
   secret-management:
     build:
-      context: ./containers/secret-management
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: containers/secret-management/Dockerfile
     ports:
       - "3003:3003"
     environment:
@@ -146,8 +144,8 @@ services:
 
   logging:
     build:
-      context: ./containers/logging
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: containers/logging/Dockerfile
     ports:
       - "3014:3014"
     environment:
@@ -167,10 +165,10 @@ services:
 
   notification-manager:
     build:
-      context: ./containers/notification-manager
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: containers/notification-manager/Dockerfile
     ports:
-      - "3001:3001"
+      - "3015:3001"
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3001
@@ -189,8 +187,8 @@ services:
   # Integration Processors - Light (fast processing: CRM mapping, ML aggregation, entity linking)
   integration-processors-light:
     build:
-      context: ./containers/integration-processors
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: containers/integration-processors/Dockerfile
     container_name: integration-processors-light
     environment:
       - NODE_ENV=${NODE_ENV:-development}
@@ -231,8 +229,8 @@ services:
   # Integration Processors - Heavy (slow processing: document processing, meeting processing, etc.)
   integration-processors-heavy:
     build:
-      context: ./containers/integration-processors
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: containers/integration-processors/Dockerfile
     container_name: integration-processors-heavy
     environment:
       - NODE_ENV=${NODE_ENV:-development}
@@ -274,6 +272,746 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 3
+
+  # Extension / AI & ML Services
+  ai-service:
+    build: { context: ., dockerfile: containers/ai-service/Dockerfile }
+    ports: ["3006:3006"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3006
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  embeddings:
+    build: { context: ., dockerfile: containers/embeddings/Dockerfile }
+    ports: ["3005:3005"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3005
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  shard-manager:
+    build: { context: ., dockerfile: containers/shard-manager/Dockerfile }
+    ports: ["3023:3023"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3023
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  document-manager:
+    build: { context: ., dockerfile: containers/document-manager/Dockerfile }
+    ports: ["3024:3024"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3024
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  pipeline-manager:
+    build: { context: ., dockerfile: containers/pipeline-manager/Dockerfile }
+    ports: ["3025:3025"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3025
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  integration-manager:
+    build: { context: ., dockerfile: containers/integration-manager/Dockerfile }
+    ports: ["3026:3026"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3026
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  ai-insights:
+    build: { context: ., dockerfile: containers/ai-insights/Dockerfile }
+    ports: ["3027:3027"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3027
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  content-generation:
+    build: { context: ., dockerfile: containers/content-generation/Dockerfile }
+    ports: ["3028:3028"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3028
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  search-service:
+    build: { context: ., dockerfile: containers/search-service/Dockerfile }
+    ports: ["3029:3029"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3029
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  analytics-service:
+    build: { context: ., dockerfile: containers/analytics-service/Dockerfile }
+    ports: ["3030:3030"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3030
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  collaboration-service:
+    build: { context: ., dockerfile: containers/collaboration-service/Dockerfile }
+    ports: ["3031:3031"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3031
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  adaptive-learning:
+    build: { context: ., dockerfile: containers/adaptive-learning/Dockerfile }
+    ports: ["3032:3032"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3032
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - AI_SERVICE_URL=http://ai-service:3006
+      - ML_SERVICE_URL=http://ml-service:3033
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  ml-service:
+    build: { context: ., dockerfile: containers/ml-service/Dockerfile }
+    ports: ["3033:3033"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3033
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  configuration-service:
+    build: { context: ., dockerfile: containers/configuration-service/Dockerfile }
+    ports: ["3034:3034"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3034
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  context-service:
+    build: { context: ., dockerfile: containers/context-service/Dockerfile }
+    ports: ["3134:3034"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3034
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  cache-service:
+    build: { context: ., dockerfile: containers/cache-service/Dockerfile }
+    ports: ["3035:3035"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3035
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  prompt-service:
+    build: { context: ., dockerfile: containers/prompt-service/Dockerfile }
+    ports: ["3036:3036"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3036
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  template-service:
+    build: { context: ., dockerfile: containers/template-service/Dockerfile }
+    ports: ["3037:3037"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3037
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  migration-service:
+    build: { context: ., dockerfile: containers/migration-service/Dockerfile }
+    ports: ["3038:3038"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3038
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  performance-optimization:
+    build: { context: ., dockerfile: containers/performance-optimization/Dockerfile }
+    ports: ["3041:3041"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3041
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  security-service:
+    build: { context: ., dockerfile: containers/security-service/Dockerfile }
+    ports: ["3042:3042"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3042
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  compliance-service:
+    build: { context: ., dockerfile: containers/compliance-service/Dockerfile }
+    ports: ["3043:3043"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3043
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  multi-modal-service:
+    build: { context: ., dockerfile: containers/multi-modal-service/Dockerfile }
+    ports: ["3044:3044"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3044
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  ai-conversation:
+    build: { context: ., dockerfile: containers/ai-conversation/Dockerfile }
+    ports: ["3045:3045"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3045
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  data-enrichment:
+    build: { context: ., dockerfile: containers/data-enrichment/Dockerfile }
+    ports: ["3046:3046"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3046
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  risk-catalog:
+    build: { context: ., dockerfile: containers/risk-catalog/Dockerfile }
+    ports: ["3047:3047"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3047
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  risk-analytics:
+    build: { context: ., dockerfile: containers/risk-analytics/Dockerfile }
+    ports: ["3048:3048"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3048
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  recommendations:
+    build: { context: ., dockerfile: containers/recommendations/Dockerfile }
+    ports: ["3049:3049"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3049
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  forecasting:
+    build: { context: ., dockerfile: containers/forecasting/Dockerfile }
+    ports: ["3050:3050"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3050
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  workflow-orchestrator:
+    build: { context: ., dockerfile: containers/workflow-orchestrator/Dockerfile }
+    ports: ["3051:3051"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3051
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  integration-sync:
+    build: { context: ., dockerfile: containers/integration-sync/Dockerfile }
+    ports: ["3052:3052"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3052
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - INTEGRATION_MANAGER_URL=http://integration-manager:3026
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  cache-management:
+    build: { context: ., dockerfile: containers/cache-management/Dockerfile }
+    ports: ["3053:3053"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3053
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  security-scanning:
+    build: { context: ., dockerfile: containers/security-scanning/Dockerfile }
+    ports: ["3054:3054"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3054
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  dashboard-analytics:
+    build: { context: ., dockerfile: containers/dashboard-analytics/Dockerfile }
+    ports: ["3055:3055"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3055
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  web-search:
+    build: { context: ., dockerfile: containers/web-search/Dockerfile }
+    ports: ["3056:3056"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3056
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  ai-analytics:
+    build: { context: ., dockerfile: containers/ai-analytics/Dockerfile }
+    ports: ["3057:3057"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3057
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  collaboration-intelligence:
+    build: { context: ., dockerfile: containers/collaboration-intelligence/Dockerfile }
+    ports: ["3058:3058"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3058
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  signal-intelligence:
+    build: { context: ., dockerfile: containers/signal-intelligence/Dockerfile }
+    ports: ["3059:3059"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3059
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  quality-monitoring:
+    build: { context: ., dockerfile: containers/quality-monitoring/Dockerfile }
+    ports: ["3060:3060"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3060
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  utility-services:
+    build: { context: ., dockerfile: containers/utility-services/Dockerfile }
+    ports: ["3061:3061"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3061
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  llm-service:
+    build: { context: ., dockerfile: containers/llm-service/Dockerfile }
+    ports: ["3062:3062"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3062
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  learning-service:
+    build: { context: ., dockerfile: containers/learning-service/Dockerfile }
+    ports: ["3063:3063"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3063
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  dashboard:
+    build: { context: ., dockerfile: containers/dashboard/Dockerfile }
+    ports: ["3011:3011"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3011
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  pattern-recognition:
+    build: { context: ., dockerfile: containers/pattern-recognition/Dockerfile }
+    ports: ["3137:3037"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3037
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  validation-engine:
+    build: { context: ., dockerfile: containers/validation-engine/Dockerfile }
+    ports: ["3136:3036"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3036
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
+
+  reasoning-engine:
+    build: { context: ., dockerfile: containers/reasoning-engine/Dockerfile }
+    ports: ["3145:3045"]
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3045
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on: [redis, rabbitmq]
+    networks: [coder-network]
+    restart: unless-stopped
 
 networks:
   coder-network:

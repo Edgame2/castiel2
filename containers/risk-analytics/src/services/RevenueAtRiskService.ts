@@ -118,16 +118,13 @@ export class RevenueAtRiskService {
 
       // Store in database
       const container = getContainer('risk_revenue_at_risk');
-      await container.items.create({
-        id: uuidv4(),
-        tenantId,
-        ...result,
-        createdAt: new Date(),
-      });
+      await container.items.create(
+        { ...result, id: uuidv4(), tenantId, createdAt: new Date() },
+        { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]
+      );
 
       // Publish event
-      await publishRiskAnalyticsEvent('revenue-at-risk.calculated', {
-        tenantId,
+      await publishRiskAnalyticsEvent('revenue-at-risk.calculated', tenantId, {
         opportunityId,
         dealValue,
         revenueAtRisk,
@@ -203,7 +200,7 @@ export class RevenueAtRiskService {
             lowRiskCount++;
           }
         } catch (error: unknown) {
-          log.warn('Failed to calculate revenue at risk for opportunity', error instanceof Error ? error : new Error(String(error)), { tenantId, userId, opportunityId: opportunity.id });
+          log.warn('Failed to calculate revenue at risk for opportunity', { error: error instanceof Error ? error.message : String(error), tenantId, userId, opportunityId: opportunity.id });
         }
       }
 
@@ -270,7 +267,7 @@ export class RevenueAtRiskService {
           const memberPortfolio = await this.calculateForPortfolio(memberId, tenantId);
           members.push(memberPortfolio);
         } catch (error: unknown) {
-          log.warn('Failed to calculate portfolio for team member', error instanceof Error ? error : new Error(String(error)), { tenantId, teamId, userId: memberId });
+          log.warn('Failed to calculate portfolio for team member', { error: error instanceof Error ? error.message : String(error), tenantId, teamId, userId: memberId });
         }
       }
 
@@ -354,7 +351,7 @@ export class RevenueAtRiskService {
           const portfolio = await this.calculateForPortfolio(userId, tenantId);
           portfolios.push(portfolio);
         } catch (error: unknown) {
-          log.warn('Failed to calculate portfolio for tenant owner', error instanceof Error ? error : new Error(String(error)), { tenantId, userId });
+          log.warn('Failed to calculate portfolio for tenant owner', { error: error instanceof Error ? error.message : String(error), tenantId, userId });
         }
       }
 

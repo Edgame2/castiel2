@@ -66,7 +66,7 @@ const container = db.getContainer(config.cosmos_db.containers.main);
 const container = cosmosClient.database('castiel').container('data');
 ```
 
-Reference: SERVICE_MIGRATION_GUIDE.md Step 6.2
+Reference: ModuleImplementationGuide.md Section 8
 
 ## Parameterized Queries
 

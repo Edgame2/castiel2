@@ -10,9 +10,11 @@ COPY containers/pipeline-manager ./containers/pipeline-manager
 COPY containers/shared ./containers/shared
 
 WORKDIR /app/containers/shared
+RUN npm install
 RUN npm run build
 
 WORKDIR /app/containers/pipeline-manager
+RUN npm install --legacy-peer-deps
 RUN npm run build
 
 EXPOSE 3025

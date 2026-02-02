@@ -87,6 +87,7 @@ vi.mock('@coder/shared/database', () => ({
       create: vi.fn(),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
       })),
     },
     item: vi.fn(() => ({

@@ -27,6 +27,6 @@
     "noImplicitThis": true,
     "alwaysStrict": true
   },
-  "exclude": ["node_modules", "dist", "build", "coverage", "old_code"]
+  "exclude": ["node_modules", "dist", "build", "coverage"]
 }
 

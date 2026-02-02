@@ -10,9 +10,11 @@ COPY containers/search-service ./containers/search-service
 COPY containers/shared ./containers/shared
 
 WORKDIR /app/containers/shared
+RUN npm install
 RUN npm run build
 
 WORKDIR /app/containers/search-service
+RUN npm install --legacy-peer-deps
 RUN npm run build
 
 EXPOSE 3029

@@ -3,7 +3,8 @@
  * Follows ModuleImplementationGuide Section 4.4
  */
 
-import { load } from 'js-yaml';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const yaml = require('js-yaml') as { load: (src: string) => unknown };
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import Ajv from 'ajv';
@@ -79,7 +80,7 @@ export function loadConfig(): ModuleConfig {
   
   try {
     const defaultConfigContent = readFileSync(defaultConfigPath, 'utf8');
-    defaultConfig = load(defaultConfigContent) as ModuleConfig;
+    defaultConfig = yaml.load(defaultConfigContent) as ModuleConfig;
   } catch (error: any) {
     throw new Error(`Failed to load default config from ${defaultConfigPath}: ${error.message}`);
   }
@@ -89,7 +90,7 @@ export function loadConfig(): ModuleConfig {
   try {
     const envConfigPath = join(configDir, `${env}.yaml`);
     const envConfigContent = readFileSync(envConfigPath, 'utf8');
-    envConfig = load(envConfigContent) as Partial<ModuleConfig>;
+    envConfig = yaml.load(envConfigContent) as Partial<ModuleConfig>;
   } catch (error: any) {
     // Environment-specific config is optional
     if (error.code !== 'ENOENT') {
@@ -125,7 +126,7 @@ export function loadConfig(): ModuleConfig {
     throw new Error(`Invalid config: ${errors}`);
   }
 
-  return resolved as ModuleConfig;
+  return resolved as unknown as ModuleConfig;
 }
 
 // Singleton config instance

@@ -112,7 +112,7 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared (ServiceClient + EventPublisher for publisher tests)
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn(() => ({
     get: vi.fn().mockResolvedValue({ data: {} }),
@@ -120,6 +120,12 @@ vi.mock('@coder/shared', () => ({
     put: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   })),
+  EventPublisher: vi.fn().mockImplementation(function (this: { publish: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> }) {
+    this.publish = vi.fn().mockResolvedValue(undefined);
+    this.close = vi.fn();
+    return this;
+  }),
+  generateServiceToken: vi.fn(() => 'mock-token'),
   authenticateRequest: vi.fn(() => vi.fn()),
   tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
   setupJWT: vi.fn(),

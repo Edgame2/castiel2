@@ -4,95 +4,75 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ExpirationManager } from '../../../../src/services/lifecycle/ExpirationManager';
-import { SecretService } from '../../../../src/services/SecretService';
-import { SecretExpiredError } from '../../../../src/errors/SecretErrors';
 
-// Mock dependencies
-vi.mock('../../../../src/services/SecretService');
-vi.mock('@coder/shared', () => {
-  return {
-    getDatabaseClient: vi.fn(() => ({
-      secret_secrets: {
-        findMany: vi.fn(),
-        update: vi.fn(),
-      },
-    })),
-  };
-});
+vi.mock('../../../../src/services/events/SecretEventPublisher', () => ({
+  publishSecretEvent: vi.fn().mockResolvedValue(undefined),
+  SecretEvents: {
+    secretExpiringSoon: (d: Record<string, unknown>) => ({ type: 'secret.expiring_soon', ...d }),
+    secretExpired: (d: Record<string, unknown>) => ({ type: 'secret.expired', ...d }),
+  },
+}));
+vi.mock('../../../../src/services/logging/LoggingClient', () => ({
+  getLoggingClient: vi.fn(() => ({ sendLog: vi.fn().mockResolvedValue(undefined) })),
+}));
+const mockDb = {
+  secret_secrets: {
+    findMany: vi.fn(),
+  },
+};
+vi.mock('@coder/shared', () => ({
+  getDatabaseClient: vi.fn(() => mockDb),
+}));
 
 describe('ExpirationManager', () => {
   let expirationManager: ExpirationManager;
-  let mockDb: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
     expirationManager = new ExpirationManager();
-    mockDb = (expirationManager as any).db;
   });
 
-  describe('checkExpiration', () => {
-    it('should throw SecretExpiredError if secret is expired', async () => {
-      const expiredDate = new Date();
-      expiredDate.setDate(expiredDate.getDate() - 1); // Expired yesterday
-      
-      const mockSecret = {
-        id: 'secret-1',
-        name: 'test-secret',
-        expiresAt: expiredDate,
-      };
-      
-      const mockSecretService = (expirationManager as any).secretService;
-      mockSecretService.getSecret = vi.fn().mockResolvedValue(mockSecret);
-      
-      await expect(
-        expirationManager.checkExpiration('secret-1')
-      ).rejects.toThrow(SecretExpiredError);
-    });
-
-    it('should not throw if secret is not expired', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 30); // Expires in 30 days
-      
-      const mockSecret = {
-        id: 'secret-1',
-        name: 'test-secret',
-        expiresAt: futureDate,
-      };
-      
-      const mockSecretService = (expirationManager as any).secretService;
-      mockSecretService.getSecret = vi.fn().mockResolvedValue(mockSecret);
-      
-      await expect(
-        expirationManager.checkExpiration('secret-1')
-      ).resolves.not.toThrow();
-    });
-  });
-
-  describe('processExpiredSecrets', () => {
-    it('should process expired secrets', async () => {
+  describe('isExpired', () => {
+    it('should return true if expiresAt is in the past', () => {
       const expiredDate = new Date();
       expiredDate.setDate(expiredDate.getDate() - 1);
-      
-      const mockExpiredSecrets = [
-        {
-          id: 'secret-1',
-          name: 'secret-1',
-          expiresAt: expiredDate,
-        },
-        {
-          id: 'secret-2',
-          name: 'secret-2',
-          expiresAt: expiredDate,
-        },
+      expect(expirationManager.isExpired(expiredDate)).toBe(true);
+    });
+
+    it('should return false if expiresAt is in the future', () => {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 30);
+      expect(expirationManager.isExpired(futureDate)).toBe(false);
+    });
+
+    it('should return false if expiresAt is null', () => {
+      expect(expirationManager.isExpired(null)).toBe(false);
+    });
+  });
+
+  describe('checkExpirations', () => {
+    it('should return counts for expiring and expired secrets', async () => {
+      const expiredDate = new Date();
+      expiredDate.setDate(expiredDate.getDate() - 1);
+      const expiredSecrets = [
+        { id: 's1', name: 'secret-1', expiresAt: expiredDate },
+        { id: 's2', name: 'secret-2', expiresAt: expiredDate },
       ];
-      
-      mockDb.secret_secrets.findMany.mockResolvedValue(mockExpiredSecrets);
-      mockDb.secret_secrets.update.mockResolvedValue({});
-      
-      const result = await expirationManager.processExpiredSecrets();
-      
-      expect(result.processed).toBe(2);
-      expect(mockDb.secret_secrets.update).toHaveBeenCalledTimes(2);
+      const expiredDetails = [
+        { id: 's1', name: 'secret-1', scope: 'ORGANIZATION', organizationId: 'org-1' },
+        { id: 's2', name: 'secret-2', scope: 'ORGANIZATION', organizationId: 'org-1' },
+      ];
+      mockDb.secret_secrets.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce(expiredSecrets)
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce(expiredDetails);
+
+      const result = await expirationManager.checkExpirations();
+
+      expect(result.checked).toBe(2);
+      expect(result.expired).toBe(2);
+      expect(result.secretsExpired).toHaveLength(2);
     });
   });
 });

@@ -157,15 +157,7 @@ describe('AWSSecretsBackend', () => {
       
       await expect(
         backend.retrieveSecret({ secretRef: 'non-existent' })
-      ).rejects.toThrow(SecretNotFoundError);
-      
-      // Verify it's SecretNotFoundError
-      try {
-        await backend.retrieveSecret({ secretRef: 'non-existent' });
-      } catch (thrownError: any) {
-        expect(thrownError.constructor.name).toBe('SecretNotFoundError');
-        expect(thrownError.message).toContain('non-existent');
-      }
+      ).rejects.toMatchObject({ name: 'SecretNotFoundError', message: expect.stringContaining('non-existent') });
     });
   });
 

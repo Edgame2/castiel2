@@ -12,7 +12,7 @@ import swaggerUI from '@fastify/swagger-ui';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { dump } from 'js-yaml';
-import { loadConfig } from './config';
+import { loadConfig, getConfig } from './config';
 import { log } from './utils/logger';
 
 // Global instances
@@ -216,7 +216,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   fastify.get('/ready', async () => {
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
     let dbStatus = 'unknown';
     let redisStatus = 'unknown';
     let rabbitmqStatus = 'unknown';
@@ -239,8 +239,14 @@ export async function buildApp(): Promise<FastifyInstance> {
 
     // Check RabbitMQ connection
     try {
-      const { getChannel } = await import('@coder/shared');
-      await getChannel();
+      const { connectEventPublisher } = await import('@coder/shared');
+      const cfg = getConfig();
+      if (cfg.rabbitmq?.url) {
+        await connectEventPublisher(
+          { url: cfg.rabbitmq.url, exchange: cfg.rabbitmq.exchange || 'coder.events' },
+          'auth'
+        );
+      }
       rabbitmqStatus = 'ok';
     } catch (error) {
       rabbitmqStatus = 'error';

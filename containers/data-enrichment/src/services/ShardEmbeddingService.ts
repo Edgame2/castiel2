@@ -274,19 +274,6 @@ export class ShardEmbeddingService {
         throw new Error('Failed to generate any embeddings');
       }
 
-        if (!embeddingResponse.embedding || !Array.isArray(embeddingResponse.embedding)) {
-          throw new Error('Failed to generate embedding');
-        }
-
-        // Normalize embedding using template
-        const normalized = this.embeddingTemplateService.normalizeEmbedding(
-          embeddingResponse.embedding,
-          template.normalization
-        );
-
-        embeddings.push(normalized);
-      }
-
       // Create vector objects for all embeddings
       const vectors = embeddings.map((embedding, index) => ({
         id: uuidv4(),

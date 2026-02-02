@@ -10,9 +10,11 @@ COPY containers/collaboration-service ./containers/collaboration-service
 COPY containers/shared ./containers/shared
 
 WORKDIR /app/containers/shared
+RUN npm install
 RUN npm run build
 
 WORKDIR /app/containers/collaboration-service
+RUN npm install --legacy-peer-deps
 RUN npm run build
 
 EXPOSE 3031

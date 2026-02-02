@@ -9,7 +9,6 @@ import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
 import {
   ProactiveInsight,
   ProactiveInsightStatus,
-  DeliveryChannel,
   InsightDelivery,
 } from '../types/insight.types';
 
@@ -72,10 +71,10 @@ export class ProactiveInsightService {
     };
 
     try {
-      const container = getContainer(this.containerName);
+      const container = getContainer(this.containerName) as any;
       const { resource } = await container.items.create(insight, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create proactive insight');
@@ -99,11 +98,13 @@ export class ProactiveInsightService {
     }
 
     try {
-      const container = getContainer(this.containerName);
-      const { resource } = await container.item(insightId, tenantId).read<ProactiveInsight>();
+      const container = getContainer(this.containerName) as any;
+      const item = container.item(insightId, tenantId);
+      const result = (await (item as any).read()) as any;
+      const resource = (result as any).resource as ProactiveInsight | undefined;
 
       if (!resource) {
-        throw new NotFoundError(`Proactive insight ${insightId} not found`);
+        throw new NotFoundError('Proactive insight', insightId);
       }
 
       return resource;
@@ -112,7 +113,7 @@ export class ProactiveInsightService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Proactive insight ${insightId} not found`);
+        throw new NotFoundError('Proactive insight', insightId);
       }
       throw error;
     }
@@ -144,17 +145,19 @@ export class ProactiveInsightService {
     };
 
     try {
-      const container = getContainer(this.containerName);
-      const { resource } = await container.item(insightId, tenantId).replace(updated);
+      const container = getContainer(this.containerName) as any;
+      const item = container.item(insightId, tenantId);
+      const result = (await (item as any).replace(updated)) as any;
+      const resource = (result as any).resource as ProactiveInsight | undefined;
 
-      if (!resource) {
+    if (!resource) {
         throw new Error('Failed to update proactive insight');
       }
 
       return resource as ProactiveInsight;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Proactive insight ${insightId} not found`);
+        throw new NotFoundError('Proactive insight', insightId);
       }
       throw error;
     }
@@ -176,8 +179,11 @@ export class ProactiveInsightService {
       updatedAt: new Date(),
     };
 
-    const container = getContainer(this.containerName);
-    const { resource } = await container.item(insightId, tenantId).replace(updated);
+      const container = getContainer(this.containerName) as any;
+      const item = container.item(insightId, tenantId);
+      const result: { resource?: ProactiveInsight } = (await (item as any).replace(updated)) as any;
+      // @ts-ignore Cosmos ItemResponse destructuring vs SDK typings
+      const { resource } = result;
 
     if (!resource) {
       throw new Error('Failed to record delivery');
@@ -203,7 +209,7 @@ export class ProactiveInsightService {
       throw new BadRequestError('tenantId is required');
     }
 
-    const container = getContainer(this.containerName);
+    const container = getContainer(this.containerName) as any;
     let query = 'SELECT * FROM c WHERE c.tenantId = @tenantId';
     const parameters: any[] = [{ name: '@tenantId', value: tenantId }];
 
@@ -232,12 +238,11 @@ export class ProactiveInsightService {
     const limit = filters?.limit || 100;
 
     try {
-      const { resources } = await container.items
-        .query<ProactiveInsight>({
+      const { resources } = await (container.items
+        .query({
           query,
           parameters,
-        })
-        .fetchNext();
+        }) as any).fetchNext();
 
       return resources.slice(0, limit);
     } catch (error: any) {

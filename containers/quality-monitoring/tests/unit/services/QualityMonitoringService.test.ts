@@ -6,13 +6,32 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QualityMonitoringService } from '../../../src/services/QualityMonitoringService';
 import { getContainer } from '@coder/shared/database';
 
-// Mock dependencies
+const mockClients = vi.hoisted(() => ({
+  ai: { get: vi.fn(), post: vi.fn() },
+  ml: { get: vi.fn(), post: vi.fn() },
+  analytics: { get: vi.fn(), post: vi.fn() },
+}));
+
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(),
 }));
 
+vi.mock('@coder/shared', () => ({
+  ServiceClient: vi.fn().mockImplementation(function (this: unknown, config: { baseURL?: string }) {
+    if (config?.baseURL?.includes('ai-service')) return mockClients.ai;
+    if (config?.baseURL?.includes('ml-service')) return mockClients.ml;
+    if (config?.baseURL?.includes('analytics-service')) return mockClients.analytics;
+    return { get: vi.fn(), post: vi.fn() };
+  }),
+}));
+
 vi.mock('../../../src/config', () => ({
   loadConfig: vi.fn(() => ({
+    services: {
+      ai_service: { url: 'http://ai-service:3000' },
+      ml_service: { url: 'http://ml-service:3000' },
+      analytics_service: { url: 'http://analytics-service:3000' },
+    },
     database: {
       containers: {
         quality_metrics: 'quality_metrics',
@@ -140,73 +159,36 @@ describe('QualityMonitoringService', () => {
   });
 
   describe('detectAnomaly', () => {
-    it('should detect an anomaly successfully', async () => {
+    it('should detect an anomaly when value deviates >2.5 std and >=10 historical metrics', async () => {
       const tenantId = 'tenant-123';
-      const data = {
-        metricType: 'response_time',
-        value: 300,
-      };
+      const data = { metricType: 'response_time', value: 300 };
 
-      // Mock historical metrics
+      // Service requires >=10 historical metrics and zScore > 2.5 to create an anomaly
+      const historical = Array.from({ length: 12 }, (_, i) => ({ value: 148 + i }));
       mockMetricsContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
-          resources: [
-            { value: 150 },
-            { value: 160 },
-            { value: 155 },
-            { value: 145 },
-          ],
-        }),
+        fetchAll: vi.fn().mockResolvedValue({ resources: historical }),
       });
 
-      mockAnomaliesContainer.items.create.mockResolvedValue({
-        resource: {
-          id: 'anomaly-123',
-          tenantId,
-          ...data,
-          severity: 'high',
-          detectedAt: new Date(),
-        },
-      });
+      mockAnomaliesContainer.items.create.mockResolvedValue({ resource: {} });
 
       const result = await service.detectAnomaly(tenantId, data);
 
       expect(result).toBeDefined();
+      expect(result?.severity).toBeDefined();
       expect(mockAnomaliesContainer.items.create).toHaveBeenCalled();
     });
-  });
 
-  describe('getAnomalies', () => {
-    it('should retrieve anomalies successfully', async () => {
+    it('should return null when fewer than 10 historical metrics', async () => {
       const tenantId = 'tenant-123';
-
-      const mockAnomalies = [
-        {
-          id: 'anomaly-1',
-          tenantId,
-          metricType: 'response_time',
-          value: 300,
-          severity: 'high',
-        },
-        {
-          id: 'anomaly-2',
-          tenantId,
-          metricType: 'error_rate',
-          value: 0.05,
-          severity: 'medium',
-        },
-      ];
-
-      mockAnomaliesContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
-          resources: mockAnomalies,
-        }),
+      const data = { metricType: 'response_time', value: 300 };
+      mockMetricsContainer.items.query.mockReturnValue({
+        fetchAll: vi.fn().mockResolvedValue({ resources: [{ value: 150 }, { value: 160 }] }),
       });
 
-      const result = await service.getAnomalies(tenantId, {});
+      const result = await service.detectAnomaly(tenantId, data);
 
-      expect(result).toHaveProperty('anomalies');
-      expect(result.anomalies.length).toBe(2);
+      expect(result).toBeNull();
+      expect(mockAnomaliesContainer.items.create).not.toHaveBeenCalled();
     });
   });
 });

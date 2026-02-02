@@ -30,8 +30,8 @@ export class HashiCorpVaultBackend implements SecretStorageBackend {
   
   private vaultClient: vault.client | null = null;
   private config: HashiCorpVaultConfig | null = null;
-  private secretEngine: string;
-  private secretEnginePath: string;
+  private secretEngine!: string;
+  private secretEnginePath!: string;
   
   /**
    * Initialize HashiCorp Vault backend
@@ -227,9 +227,9 @@ export class HashiCorpVaultBackend implements SecretStorageBackend {
           }
         }
         
-        value = Object.keys(metadata).length > 0 
+        value = (Object.keys(metadata).length > 0 
           ? { ...reconstructed, _metadata: metadata }
-          : reconstructed;
+          : reconstructed) as AnySecretValue;
       }
       
       // Extract metadata
@@ -245,7 +245,7 @@ export class HashiCorpVaultBackend implements SecretStorageBackend {
       }
       
       return {
-        value,
+        value: value as AnySecretValue,
         version: this.secretEnginePath === 'data' 
           ? (response.data as any).metadata?.version || 1
           : 1,
@@ -468,7 +468,7 @@ export class HashiCorpVaultBackend implements SecretStorageBackend {
             }
           }
         }
-        value = reconstructed;
+        value = reconstructed as AnySecretValue;
       }
       
       return {

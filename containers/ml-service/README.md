@@ -54,7 +54,7 @@ The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers)
 
 ### Azure ML integration (when workspace is ready)
 
-Layer 3 (ML prediction) currently uses mocks when Azure ML endpoints are not configured. When the Azure ML workspace and managed endpoints are provisioned:
+Production requires Azure ML Workspace and managed endpoints; set endpoint URLs via config/env. Layer 3 (ML prediction) uses Azure ML when endpoints are configured; otherwise mocks/heuristics. When the Azure ML workspace and managed endpoints are provisioned:
 
 1. **Config**: Set `azure_ml.endpoints` (modelId → scoring URL) and `azure_ml.api_key` (or key per endpoint) in `config/default.yaml` or environment (e.g. `AZURE_ML_WIN_PROBABILITY_URL`, `AZURE_ML_RISK_SCORING_URL`, `AZURE_ML_API_KEY`).
 2. **Code**: PredictionService and AzureMLClient will call live endpoints instead of returning mock scores. No code change is required beyond ensuring config is loaded; existing circuit breaker, retry, and fallback logic apply.

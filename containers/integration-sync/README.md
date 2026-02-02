@@ -108,6 +108,24 @@ External System → Integration Adapter → IntegrationSyncService
 - `integration.data.mapped` - Record successfully mapped and stored (updates sync execution stats)
 - `integration.data.mapping.failed` - Mapping failed for a record (updates sync execution stats)
 - `shard.updated` - Trigger sync when shards are updated (bidirectional sync)
+- `integration.token.refresh-requested` - OAuth token refresh requested for a connection (see OAuth token refresh below)
+
+## OAuth token refresh
+
+A dedicated timer (TokenRefreshService) runs inside integration-sync to refresh OAuth tokens before they expire.
+
+**Flow**
+
+1. **Timer**: On startup, TokenRefreshService starts and runs `checkAndRefreshTokens()` immediately, then on an interval (default 1 hour). Config: `token_refresh.enabled`, `token_refresh.interval_ms`, `token_refresh.expiration_threshold_ms`.
+2. **Check-expiring**: integration-sync publishes `integration.token.check-expiring` (with `timestamp`, `thresholdTime`) to RabbitMQ.
+3. **integration-manager**: Consumes `integration.token.check-expiring`, queries `integration_connections` for OAuth connections with `oauth.expiresAt <= thresholdTime`, and publishes `integration.token.refresh-requested` for each expiring connection.
+4. **integration-sync**: SyncTaskEventConsumer consumes `integration.token.refresh-requested` and calls TokenRefreshService.refreshConnectionTokens(), which calls integration-manager `POST /api/v1/integrations/:integrationId/connections/:connectionId/refresh`.
+
+**Config keys**
+
+- `token_refresh.enabled` (env: `TOKEN_REFRESH_ENABLED`, default: true)
+- `token_refresh.interval_ms` (env: `TOKEN_REFRESH_INTERVAL_MS`, default: 3600000 — 1 hour)
+- `token_refresh.expiration_threshold_ms` (env: `TOKEN_REFRESH_EXPIRATION_THRESHOLD_MS`, default: 3600000 — 1 hour before expiry)
 
 ## Dependencies
 

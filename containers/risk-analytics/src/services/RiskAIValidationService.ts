@@ -27,14 +27,14 @@ export interface ValidationIssue {
 
 export class RiskAIValidationService {
   private config: ReturnType<typeof loadConfig>;
-  private aiServiceClient: ServiceClient;
+  private _aiServiceClient: ServiceClient;
   private app: FastifyInstance | null = null;
 
   constructor(app?: FastifyInstance) {
     this.app = app || null;
     this.config = loadConfig();
     
-    this.aiServiceClient = new ServiceClient({
+    this._aiServiceClient = new ServiceClient({
       baseURL: this.config.services.ai_service?.url || '',
       timeout: 30000,
       retries: 3,
@@ -61,6 +61,8 @@ export class RiskAIValidationService {
     tenantId: string
   ): Promise<AIValidationResult> {
     try {
+      void this._aiServiceClient;
+      void this.getServiceToken(tenantId);
       const issues: ValidationIssue[] = [];
       let isValid = true;
       let confidence = 1.0;

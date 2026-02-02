@@ -42,7 +42,7 @@ export class HealthService {
     // Check database
     try {
       const startTime = Date.now();
-      const db = getDatabaseClient();
+      const db = getDatabaseClient() as any;
       await db.$queryRaw`SELECT 1`;
       checks.database = {
         status: 'healthy',
@@ -67,8 +67,7 @@ export class HealthService {
     // Check logging service
     try {
       const config = getConfig();
-      const loggingClient = getLoggingClient();
-      // Just check if client is initialized (non-blocking)
+      void getLoggingClient();
       const serviceUrl = config.services.logging?.url || config.logging.serviceUrl;
       checks.logging = {
         status: 'healthy',

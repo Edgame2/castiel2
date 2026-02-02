@@ -61,23 +61,22 @@ rabbitmq:
   };
 });
 
-// Mock yaml parser
+// Mock yaml parser (config uses load())
+const searchYamlConfig = () => ({
+  module: { name: 'search-service', version: '1.0.0' },
+  server: { port: 3025, host: '0.0.0.0' },
+  cosmos_db: {
+    endpoint: process.env.COSMOS_DB_ENDPOINT,
+    key: process.env.COSMOS_DB_KEY,
+    database_id: process.env.COSMOS_DB_DATABASE_ID,
+  },
+  jwt: { secret: process.env.JWT_SECRET },
+  rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
+  services: {},
+});
 vi.mock('yaml', () => ({
-  parse: vi.fn((content: string) => {
-    const config: any = {
-      module: { name: 'search-service', version: '1.0.0' },
-      server: { port: 3025, host: '0.0.0.0' },
-      cosmos_db: {
-        endpoint: process.env.COSMOS_DB_ENDPOINT,
-        key: process.env.COSMOS_DB_KEY,
-        database_id: process.env.COSMOS_DB_DATABASE_ID,
-      },
-      jwt: { secret: process.env.JWT_SECRET },
-      rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
-      services: {},
-    };
-    return config;
-  }),
+  parse: vi.fn(searchYamlConfig),
+  load: vi.fn(searchYamlConfig),
 }));
 
 // Mock @coder/shared database
@@ -87,6 +86,7 @@ vi.mock('@coder/shared/database', () => ({
       create: vi.fn(),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
       })),
     },
     item: vi.fn(() => ({
@@ -98,6 +98,16 @@ vi.mock('@coder/shared/database', () => ({
   initializeDatabase: vi.fn(),
   connectDatabase: vi.fn(),
   disconnectDatabase: vi.fn(),
+}));
+
+// Mock @coder/shared/services (SearchService uses ServiceClient from here)
+vi.mock('@coder/shared/services', () => ({
+  ServiceClient: vi.fn(function MockServiceClient() {
+    return {
+      post: vi.fn().mockResolvedValue({ embedding: [0.1, 0.2], data: {} }),
+      get: vi.fn().mockResolvedValue({ data: {} }),
+    };
+  }),
 }));
 
 // Mock @coder/shared events

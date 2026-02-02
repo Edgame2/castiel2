@@ -1,17 +1,35 @@
 /**
  * Secret Event Publisher
- * 
+ *
  * Publishes secret-related events to RabbitMQ for notification service consumption.
  */
 
-import { EventPublisher as SharedEventPublisher } from '@coder/shared/dist/rabbitmq/publisher';
+import { EventPublisher } from '@coder/shared';
+import { getConfig } from '../../config';
+
+let sharedPublisher: EventPublisher | null = null;
+
+function getPublisher(): EventPublisher {
+  if (!sharedPublisher) {
+    const config = getConfig();
+    const rabbitmq = config.rabbitmq ?? {};
+    sharedPublisher = new EventPublisher(
+      {
+        url: rabbitmq.url ?? 'amqp://localhost:5672',
+        exchange: rabbitmq.exchange ?? 'coder.events',
+      },
+      'secret-management'
+    );
+  }
+  return sharedPublisher;
+}
 
 export interface SecretEvent {
   type: string;
   timestamp: string;
   organizationId?: string;
   userId?: string;
-  actorId: string;
+  actorId?: string;
   secretId?: string;
   secretName?: string;
   secretScope?: string;
@@ -23,24 +41,22 @@ export interface SecretEvent {
   };
 }
 
-// Use the shared EventPublisher
-const sharedPublisher = new SharedEventPublisher('coder.events');
-
 /**
  * Publish a secret event to RabbitMQ
  */
 export async function publishSecretEvent(
   event: SecretEvent,
-  routingKey?: string
+  _routingKey?: string
 ): Promise<void> {
   try {
-    await sharedPublisher.publish(event, routingKey || event.type);
-  } catch (error: any) {
-    // Log but don't throw - event publishing should not block operations
+    const publisher = getPublisher();
+    const tenantId = event.organizationId ?? 'default';
+    await publisher.publish(event.type, tenantId, event);
+  } catch (error: unknown) {
     console.error('Failed to publish secret event to RabbitMQ', {
       eventType: event.type,
       secretId: event.secretId,
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 }
@@ -50,14 +66,21 @@ export async function publishSecretEvent(
  */
 export async function publishSecretEventsBatch(
   events: SecretEvent[],
-  routingKey?: string
+  _routingKey?: string
 ): Promise<void> {
   try {
-    await sharedPublisher.publishBatch(events, routingKey);
-  } catch (error: any) {
+    const publisher = getPublisher();
+    for (const event of events) {
+      await publisher.publish(
+        event.type,
+        event.organizationId ?? 'default',
+        event
+      );
+    }
+  } catch (error: unknown) {
     console.error('Failed to publish batch secret events to RabbitMQ', {
       count: events.length,
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 }

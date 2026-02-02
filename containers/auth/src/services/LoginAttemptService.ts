@@ -45,7 +45,7 @@ export async function recordLoginAttempt(
   userAgent: string | null,
   success: boolean
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   try {
     // Store in database for audit trail
@@ -137,7 +137,7 @@ export async function recordLoginAttempt(
  * @returns Promise resolving to true if account is locked, false otherwise
  */
 export async function isAccountLocked(email: string): Promise<boolean> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   try {
     const user = await db.user.findUnique({

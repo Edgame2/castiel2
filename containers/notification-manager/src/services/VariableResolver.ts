@@ -77,7 +77,7 @@ export class VariableResolver {
   } | null> {
     try {
       // Try to get from database first (faster)
-      const db = getDatabaseClient();
+      const db = getDatabaseClient() as any;
       const user = await db.user.findUnique({
         where: { id: userId },
         select: {

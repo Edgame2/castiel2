@@ -72,7 +72,7 @@ src/__tests__/e2e/
 │   ├── authentication.e2e.test.ts
 │   ├── project-management.e2e.test.ts
 │   ├── file-operations.e2e.test.ts
-│   └── code-generation.e2e.test.ts
+│   └── generation.e2e.test.ts
 └── setup/
     ├── test-setup.ts
     ├── test-helpers.ts

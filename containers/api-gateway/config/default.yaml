@@ -47,6 +47,8 @@ services:
     url: ${ML_SERVICE_URL:-http://localhost:3033}
   configuration_service:
     url: ${CONFIGURATION_SERVICE_URL:-http://localhost:3034}
+  adaptive_learning:
+    url: ${ADAPTIVE_LEARNING_URL:-http://localhost:3032}
 
 # Rate limiting
 rate_limit:

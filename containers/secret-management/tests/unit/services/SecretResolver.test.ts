@@ -71,10 +71,10 @@ describe('SecretResolver', () => {
       mockSecretService.getSecretValue.mockRejectedValue(
         new SecretNotFoundError('secret-123')
       );
-      
+
       await expect(
         resolver.resolveSecret('secret-123', context)
-      ).rejects.toThrow(SecretNotFoundError);
+      ).rejects.toThrow(/Secret not found/);
     });
   });
 

@@ -37,6 +37,7 @@ export interface WorkflowOrchestratorConfig {
     account_health_cron?: string;
     propagation_cron?: string;
     model_monitoring_cron?: string;
+    cais_learning_cron?: string;
   };
   features: { [key: string]: boolean };
 }

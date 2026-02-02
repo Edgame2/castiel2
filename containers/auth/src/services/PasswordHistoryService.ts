@@ -30,7 +30,7 @@ export async function isPasswordInHistory(
   userId: string,
   password: string
 ): Promise<boolean> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   // Get password history (last 5)
   const history = await db.passwordHistory.findMany({
@@ -62,7 +62,7 @@ export async function addPasswordToHistory(
   userId: string,
   passwordHash: string
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   // Add new password to history
   await db.passwordHistory.create({
@@ -82,7 +82,7 @@ export async function addPasswordToHistory(
  * @param userId - User ID
  */
 export async function cleanupPasswordHistory(userId: string): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   // Get all history entries ordered by creation date
   const allHistory = await db.passwordHistory.findMany({
@@ -92,7 +92,7 @@ export async function cleanupPasswordHistory(userId: string): Promise<void> {
   
   // If we have more than MAX_PASSWORD_HISTORY, delete the oldest ones
   if (allHistory.length > MAX_PASSWORD_HISTORY) {
-    const toDelete = allHistory.slice(MAX_PASSWORD_HISTORY).map(h => h.id);
+    const toDelete = allHistory.slice(MAX_PASSWORD_HISTORY).map((h: { id: string }) => h.id);
     
     if (toDelete.length > 0) {
       await db.passwordHistory.deleteMany({
@@ -116,7 +116,7 @@ export async function getPasswordHistory(
   id: string;
   createdAt: Date;
 }>> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   const history = await db.passwordHistory.findMany({
     where: { userId },
@@ -140,7 +140,7 @@ export async function getPasswordHistory(
  * @param userId - User ID
  */
 export async function clearPasswordHistory(userId: string): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   await db.passwordHistory.deleteMany({
     where: { userId },
@@ -162,7 +162,7 @@ export async function setPassword(
   newPassword: string,
   userInfo?: { email?: string; firstName?: string; lastName?: string }
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   // 1. Get user
   const user = await db.user.findUnique({
@@ -241,7 +241,7 @@ export async function changePasswordWithHistory(
   newPassword: string,
   userInfo?: { email?: string; firstName?: string; lastName?: string; organizationId?: string | null }
 ): Promise<void> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   // 1. Get user and verify old password
   const user = await db.user.findUnique({

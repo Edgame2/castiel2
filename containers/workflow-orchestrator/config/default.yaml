@@ -88,6 +88,8 @@ batch_jobs:
   propagation_cron: ${PROPAGATION_CRON:-0 5 * * *}
   # model-monitoring (Plan §9.3, §940): Sunday 6 AM; risk-analytics BatchJobWorker calls ml-service /api/v1/ml/model-monitoring/run; ml-service publishes ml.model.drift.detected, ml.model.performance.degraded when thresholds exceeded
   model_monitoring_cron: ${MODEL_MONITORING_CRON:-0 6 * * 0}
+  # Phase 12: cais-learning – daily 7 AM; adaptive-learning CaisLearningJobConsumer runs CaisLearningService.runLearningJob (update weights/model selection from outcomes)
+  cais_learning_cron: ${CAIS_LEARNING_CRON:-0 7 * * *}
 
 # Feature Flags
 features: {}

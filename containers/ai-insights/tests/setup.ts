@@ -80,19 +80,20 @@ vi.mock('yaml', () => ({
   }),
 }));
 
-// Mock @coder/shared database
+// Mock @coder/shared database (fetchNext for list() in services)
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(() => ({
     items: {
-      create: vi.fn(),
+      create: vi.fn().mockImplementation((doc: any) => Promise.resolve({ resource: { ...doc, id: doc?.id || 'created-id' } })),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
       })),
     },
     item: vi.fn(() => ({
       read: vi.fn().mockResolvedValue({ resource: null }),
-      replace: vi.fn(),
-      delete: vi.fn(),
+      replace: vi.fn().mockImplementation((doc: any) => Promise.resolve({ resource: doc })),
+      delete: vi.fn().mockResolvedValue(undefined),
     })),
   })),
   initializeDatabase: vi.fn(),
@@ -113,18 +114,28 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared and @coder/shared/services (InsightService uses ServiceClient from services)
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(() => ({
-    get: vi.fn().mockResolvedValue({ data: {} }),
-    post: vi.fn().mockResolvedValue({ data: {} }),
-    put: vi.fn().mockResolvedValue({ data: {} }),
-    delete: vi.fn().mockResolvedValue({ data: {} }),
-  })),
+  ServiceClient: vi.fn().mockImplementation(function (this: { get: ReturnType<typeof vi.fn>; post: ReturnType<typeof vi.fn>; put: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> }) {
+    this.get = vi.fn().mockResolvedValue({});
+    this.post = vi.fn().mockResolvedValue({});
+    this.put = vi.fn().mockResolvedValue({});
+    this.delete = vi.fn().mockResolvedValue(undefined);
+    return this;
+  }),
   authenticateRequest: vi.fn(() => vi.fn()),
   tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
   setupJWT: vi.fn(),
   setupHealthCheck: vi.fn(),
+}));
+vi.mock('@coder/shared/services', () => ({
+  ServiceClient: vi.fn().mockImplementation(function (this: { get: ReturnType<typeof vi.fn>; post: ReturnType<typeof vi.fn>; put: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> }) {
+    this.get = vi.fn().mockResolvedValue({});
+    this.post = vi.fn().mockResolvedValue({});
+    this.put = vi.fn().mockResolvedValue({});
+    this.delete = vi.fn().mockResolvedValue(undefined);
+    return this;
+  }),
 }));
 
 // Global test setup

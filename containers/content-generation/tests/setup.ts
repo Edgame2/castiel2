@@ -62,37 +62,50 @@ rabbitmq:
 });
 
 // Mock yaml parser
+const contentYamlConfig = () => ({
+  module: { name: 'content-generation', version: '1.0.0' },
+  server: { port: 3009, host: '0.0.0.0' },
+  cosmos_db: {
+    endpoint: process.env.COSMOS_DB_ENDPOINT,
+    key: process.env.COSMOS_DB_KEY,
+    database_id: process.env.COSMOS_DB_DATABASE_ID,
+  },
+  jwt: { secret: process.env.JWT_SECRET },
+  rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
+  services: {},
+});
 vi.mock('yaml', () => ({
-  parse: vi.fn((content: string) => {
-    const config: any = {
-      module: { name: 'content-generation', version: '1.0.0' },
-      server: { port: 3009, host: '0.0.0.0' },
-      cosmos_db: {
-        endpoint: process.env.COSMOS_DB_ENDPOINT,
-        key: process.env.COSMOS_DB_KEY,
-        database_id: process.env.COSMOS_DB_DATABASE_ID,
-      },
-      jwt: { secret: process.env.JWT_SECRET },
-      rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
-      services: {},
-    };
-    return config;
-  }),
+  parse: vi.fn(contentYamlConfig),
+  load: vi.fn(contentYamlConfig),
 }));
 
 // Mock @coder/shared database
 vi.mock('@coder/shared/database', () => ({
-  getContainer: vi.fn(() => ({
+  getContainer: vi.fn((name: string) => ({
     items: {
-      create: vi.fn(),
+      create: vi.fn().mockImplementation((doc: any) =>
+        Promise.resolve({ resource: { ...doc, id: doc.id || 'created-id' } })
+      ),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
       })),
     },
-    item: vi.fn(() => ({
-      read: vi.fn().mockResolvedValue({ resource: null }),
-      replace: vi.fn(),
-      delete: vi.fn(),
+    item: vi.fn((id: string, partitionKey: string) => ({
+      read: vi.fn().mockResolvedValue({
+        resource: {
+          id,
+          tenantId: partitionKey,
+          prompt: 'test',
+          templateId: undefined,
+          status: 'pending',
+          createdAt: new Date(),
+          retryCount: 0,
+          maxRetries: 2,
+        },
+      }),
+      replace: vi.fn().mockImplementation((doc: any) => Promise.resolve({ resource: doc })),
+      delete: vi.fn().mockResolvedValue(undefined),
     })),
   })),
   initializeDatabase: vi.fn(),
@@ -113,11 +126,11 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared and @coder/shared/services (ContentGenerationService uses ServiceClient from services)
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn(() => ({
     get: vi.fn().mockResolvedValue({ data: {} }),
-    post: vi.fn().mockResolvedValue({ data: {} }),
+    post: vi.fn().mockResolvedValue({ content: 'generated', model: 'test', tokensUsed: 1 }),
     put: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   })),
@@ -125,6 +138,14 @@ vi.mock('@coder/shared', () => ({
   tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
   setupJWT: vi.fn(),
   setupHealthCheck: vi.fn(),
+}));
+vi.mock('@coder/shared/services', () => ({
+  ServiceClient: class MockServiceClient {
+    get = vi.fn().mockResolvedValue({ data: {} });
+    post = vi.fn().mockResolvedValue({ content: 'generated', model: 'test', tokensUsed: 1 });
+    put = vi.fn().mockResolvedValue({ data: {} });
+    delete = vi.fn().mockResolvedValue({ data: {} });
+  },
 }));
 
 // Global test setup

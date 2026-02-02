@@ -627,56 +627,6 @@ GET  /api/context/graph/:scope
 
 ---
 
-### **🆕 Agent Registry (Port 3022)** - Agent Management
-
-**Purpose:** Manage specialized AI agents
-
-#### Features Handled:
-- **#4: Multi-Agent Specialization** ✅ PRIMARY OWNER
-  - Architecture agent
-  - Security agent
-  - Performance agent
-  - Testing agent
-  - Documentation agent
-  - 15+ specialized agents
-
-**Architecture:**
-```
-agent-registry/
-├── agents/
-│   ├── architecture-agent/
-│   ├── security-agent/
-│   ├── performance-agent/
-│   ├── testing-agent/
-│   ├── documentation-agent/
-│   ├── refactoring-agent/
-│   ├── database-agent/
-│   ├── api-design-agent/
-│   ├── ui-ux-agent/
-│   ├── devops-agent/
-│   ├── code-review-agent/
-│   └── migration-agent/
-├── agent-selector/        # Select right agent for task
-├── agent-loader/          # Load agent configurations
-├── agent-monitor/         # Monitor agent performance
-└── agent-updater/         # Update agent capabilities
-```
-
-**Dependencies:**
-- AI Service (agent execution)
-- Prompt Management (agent prompts)
-- Quality (agent validation)
-- Observability (agent metrics)
-
-**API Endpoints:**
-```typescript
-GET  /api/agents/list
-GET  /api/agents/:agentId
-POST /api/agents/select           // Select agent for task
-POST /api/agents/:agentId/invoke  // Invoke specific agent
-GET  /api/agents/:agentId/performance
-POST /api/agents/multi-invoke     // Multi-agent collaboration
-```
 
 ---
 
@@ -815,88 +765,6 @@ POST /api/migration/rollback/:id
 **Purpose:** Detect and fix bugs proactively
 
 #### Features Handled:
-- **#29: Bug Detection & Fixing** ✅ PRIMARY OWNER
-  - Anomaly detection
-  - Bug prediction
-  - Root cause analysis
-  - Auto-fix suggestions
-
-**Architecture:**
-```
-bug-detection/
-├── anomaly-detector/      # Detect unusual patterns
-├── bug-predictor/         # Predict likely bugs
-├── root-cause-analyzer/   // Analyze failures
-├── auto-fixer/           // Suggest/apply fixes
-├── regression-detector/   // Detect regressions
-├── vulnerability-patcher/ // Security patches
-└── performance-fixer/     // Fix performance issues
-```
-
-**Dependencies:**
-- Context Service (code analysis)
-- Quality (bug validation)
-- Observability (runtime errors)
-- AI Service (bug prediction)
-
-**API Endpoints:**
-```typescript
-POST /api/bugs/detect              // Detect potential bugs
-POST /api/bugs/predict             // Predict bug locations
-POST /api/bugs/analyze-root-cause
-POST /api/bugs/suggest-fix
-POST /api/bugs/detect-regression
-GET  /api/bugs/vulnerabilities
-POST /api/bugs/auto-patch
-```
-
----
-
-### **🆕 Code Generation (Port 3027)** - Specialized Generation
-
-**Purpose:** Specialized code generation tasks
-
-#### Features Handled:
-- **#30: Code Generation Specialties** ✅ PRIMARY OWNER
-  - UI component generation
-  - API endpoint generation
-  - Database schema generation
-  - Test data generation
-  - Configuration generation
-
-**Architecture:**
-```
-code-generation/
-├── ui-generator/          # Generate UI components
-├── api-generator/         # Generate API endpoints
-├── schema-generator/      // Generate DB schemas
-├── test-data-generator/   // Generate test data
-├── config-generator/      // Generate configs
-├── migration-generator/   // Generate migrations
-├── iac-generator/         // Generate IaC
-└── generation-validator/  // Validate generated code
-```
-
-**Dependencies:**
-- AI Service (generation)
-- Context Service (context)
-- Quality (validation)
-- Pattern Recognition (patterns)
-
-**API Endpoints:**
-```typescript
-POST /api/generate/ui-component
-POST /api/generate/api-endpoint
-POST /api/generate/database-schema
-POST /api/generate/test-data
-POST /api/generate/config
-POST /api/generate/migration
-POST /api/generate/infrastructure
-POST /api/generate/from-spec       // Generate from spec
-```
-
----
-
 ### **🆕 Performance Optimization (Port 3028)** - Performance Intelligence
 
 **Purpose:** Optimize code performance
@@ -1053,7 +921,6 @@ multi-modal-service/
 
 **Dependencies:**
 - AI Service (multi-modal models)
-- Code Generation (generate from designs)
 - Context Service (visual context)
 
 **API Endpoints:**
@@ -1168,7 +1035,6 @@ graph TB
     
     %% New Core Services
     Context[Context Service<br/>3021 NEW]
-    AgentReg[Agent Registry<br/>3022 NEW]
     Validation[Validation Engine<br/>3023 NEW]
     Pattern[Pattern Recognition<br/>3024 NEW]
     
@@ -1215,14 +1081,10 @@ graph TB
     
     Secret --> AI
     AI --> Embed
-    AI --> AgentReg
     AI --> Reasoning
     
     Context --> Embed
     Context --> KB
-    
-    AgentReg --> AI
-    AgentReg --> Prompt
     
     Validation --> Context
     Validation --> Quality
@@ -1231,7 +1093,6 @@ graph TB
     Pattern --> Embed
     
     Planning --> Context
-    Planning --> AgentReg
     Exec --> Planning
     Exec --> Validation
     
@@ -1280,12 +1141,12 @@ graph TB
 | Dynamic Context Assembly | Context Service 🆕 | Embeddings, AI Service | NEW |
 | External Knowledge Integration | Knowledge Base | Embeddings | ENHANCE |
 | **II. ADVANCED AI ORCHESTRATION** |
-| Multi-Agent Specialization | Agent Registry 🆕 | AI Service, Prompt Mgmt | NEW |
-| Agent Coordination | AI Service | Agent Registry 🆕 | MAJOR |
+| Multi-Agent Specialization | AI Service | Prompt Mgmt | ENHANCE |
+| Agent Coordination | AI Service | Prompt Mgmt | MAJOR |
 | Model Orchestration | AI Service | Usage Tracking | ENHANCE |
 | **III. QUALITY VALIDATION** |
 | Multi-Stage Validation | Validation Engine 🆕 | Quality | NEW |
-| Automated Testing | Quality | Code Generation 🆕 | MAJOR |
+| Automated Testing | Quality | AI Service | MAJOR |
 | Static Analysis | Quality | Context Service 🆕 | ENHANCE |
 | **IV. CONSISTENCY ENFORCEMENT** |
 | Pattern Recognition | Pattern Recognition 🆕 | Context, Embeddings | NEW |
@@ -1293,7 +1154,7 @@ graph TB
 | Cross-Module Consistency | Validation Engine 🆕 | Pattern Recognition 🆕 | NEW |
 | **V. AUTONOMOUS DECISION MAKING** |
 | Intent Understanding | Planning | AI Service, Context 🆕 | MAJOR |
-| Planning & Decomposition | Planning | Context 🆕, Agent Registry 🆕 | ENHANCE |
+| Planning & Decomposition | Planning | Context 🆕 | ENHANCE |
 | Self-Correction | Execution | Quality, Bug Detection 🆕 | MAJOR |
 | **VI. EXECUTION & VERIFICATION** |
 | Safe Execution | Execution | Workflow | ENHANCE |
@@ -1301,10 +1162,10 @@ graph TB
 | Post-Generation Validation | Quality | Validation Engine 🆕 | ENHANCE |
 | **VII. KNOWLEDGE MANAGEMENT** |
 | Organizational Memory | Knowledge Base | Planning, Collab | MAJOR |
-| Living Documentation | Knowledge Base | Code Generation 🆕 | MAJOR |
+| Living Documentation | Knowledge Base | AI Service | MAJOR |
 | Knowledge Retrieval | Embeddings | Knowledge Base | ENHANCE |
 | **VIII. PERFORMANCE & SCALABILITY** |
-| Efficient Code Generation | AI Service | Code Generation 🆕 | ENHANCE |
+| Efficient Code Generation | AI Service | Context Service | ENHANCE |
 | Performance Optimization | Performance Opt 🆕 | Observability | NEW |
 | Scalability Features | All Services | - | ENHANCE |
 | **IX. COLLABORATION & GOVERNANCE** |
@@ -1314,7 +1175,6 @@ graph TB
 | **X. SPECIALIZED CAPABILITIES** |
 | Code Migration | Migration Service 🆕 | Execution, Context 🆕 | NEW |
 | Bug Detection & Fixing | Bug Detection 🆕 | Quality, Observability | NEW |
-| Code Generation Specialties | Code Generation 🆕 | AI Service, Pattern 🆕 | NEW |
 | **XI. MONITORING & OBSERVABILITY** |
 | AI System Monitoring | Observability | Usage Tracking | MAJOR |
 | Code Health Monitoring | Observability | Quality | MAJOR |
@@ -1348,8 +1208,7 @@ graph TB
 
 **New Modules:**
 1. Context Service (3021)
-2. Agent Registry (3022)
-3. Validation Engine (3023)
+2. Validation Engine (3023)
 
 **Major Enhancements:**
 - AI Service: Model orchestration, agent coordination
@@ -1370,7 +1229,6 @@ graph TB
 **New Modules:**
 1. Pattern Recognition (3024)
 2. Reasoning Engine (3032)
-3. Code Generation (3027)
 
 **Major Enhancements:**
 - Planning: Intent understanding, task decomposition
@@ -1381,7 +1239,6 @@ graph TB
 **Deliverables:**
 - Pattern learning and enforcement
 - Advanced reasoning capabilities
-- Specialized code generation
 - Intelligent planning
 
 ---
@@ -1436,8 +1293,8 @@ graph TB
 | Type | Count | Ports |
 |------|-------|-------|
 | **Existing Modules** | 16 | 3001-3020 |
-| **New Modules Required** | 13 | 3021-3033 |
-| **Total Modules** | 29 | 3001-3033 |
+| **New Modules Required** | 11 | 3021-3033 |
+| **Total Modules** | 27 | 3001-3033 |
 
 ### Feature Implementation
 
@@ -1452,20 +1309,18 @@ graph TB
 
 | Phase | Duration | New Modules | Major Enhancements | Features Delivered |
 |-------|----------|-------------|-------------------|-------------------|
-| Phase 1 | 3 months | 3 | 4 | 12 |
-| Phase 2 | 3 months | 3 | 4 | 12 |
+| Phase 1 | 3 months | 2 | 4 | 12 |
+| Phase 2 | 3 months | 2 | 4 | 12 |
 | Phase 3 | 3 months | 3 | 4 | 12 |
 | Phase 4 | 3 months | 4 | 4 | 12 |
-| **Total** | **12 months** | **13** | **16** | **48** |
+| **Total** | **12 months** | **11** | **16** | **48** |
 
 ---
 
 ## CRITICAL SUCCESS FACTORS
 
 1. **Context Service (3021)** - Foundation for everything
-2. **Agent Registry (3022)** - Enable multi-agent intelligence
-3. **Validation Engine (3023)** - Ensure quality and consistency
-4. **Pattern Recognition (3024)** - Learn and enforce patterns
-5. **Code Generation (3027)** - Specialized generation capabilities
+2. **Validation Engine (3023)** - Ensure quality and consistency
+3. **Pattern Recognition (3024)** - Learn and enforce patterns
 
-These 5 new modules plus enhancements to existing modules will enable all 48 feature categories.
+These 3 new modules plus enhancements to existing modules will enable all 48 feature categories.

@@ -3,8 +3,6 @@
  * Calculates trust levels for risk evaluations
  */
 
-import { ServiceClient, generateServiceToken } from '@coder/shared';
-import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
 import { loadConfig } from '../config';
 import { log } from '../utils/logger';
@@ -28,14 +26,14 @@ export interface TrustLevelCalculation {
 }
 
 export class TrustLevelService {
-  private config: ReturnType<typeof loadConfig>;
+  private _config: ReturnType<typeof loadConfig>;
   private dataQualityService: DataQualityService;
   private app: FastifyInstance | null = null;
 
   constructor(app?: FastifyInstance, dataQualityService?: DataQualityService) {
-    this.app = app || null;
-    this.config = loadConfig();
-    this.dataQualityService = dataQualityService || new DataQualityService(app);
+    this.app = app ?? null;
+    this._config = loadConfig();
+    this.dataQualityService = dataQualityService ?? new DataQualityService(app);
   }
 
   /**
@@ -54,6 +52,8 @@ export class TrustLevelService {
     }
   ): Promise<TrustLevelCalculation> {
     try {
+      void this._config;
+      void this.app;
       let dataQuality: number;
       let dataCompleteness: number;
 

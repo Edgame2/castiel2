@@ -41,7 +41,7 @@ const start = async () => {
     });
     
     // Setup JWT for authentication
-    await setupJWT(server);
+    await setupJWT(server, { secret: process.env.JWT_SECRET || '' });
     
     await connectDatabase();
     

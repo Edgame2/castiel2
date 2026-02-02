@@ -122,13 +122,13 @@ export class ReactivationService {
               });
             }
           } catch (err) {
-            log.warn('llm-service reactivation strategy failed', err instanceof Error ? err : new Error(String(err)), { opportunityId, service: 'risk-analytics' });
+            log.warn('llm-service reactivation strategy failed', { error: err instanceof Error ? err.message : String(err), opportunityId, service: 'risk-analytics' });
           }
         }
 
         results.push(item);
       } catch (err) {
-        log.warn('Reactivation evaluation failed for opportunity', err instanceof Error ? err : new Error(String(err)), { opportunityId, service: 'risk-analytics' });
+        log.warn('Reactivation evaluation failed for opportunity', { error: err instanceof Error ? err.message : String(err), opportunityId, service: 'risk-analytics' });
       }
     }
 

@@ -24,7 +24,7 @@ export enum PromptABTestStatus {
 export interface PromptTemplate {
   id: string;
   tenantId: string; // Partition key
-  slug: string; // Unique identifier (e.g., 'code-generation', 'planning')
+  slug: string; // Unique identifier (e.g., 'planning', 'completion')
   name: string; // Human-readable name
   description?: string;
   category?: string; // Category for grouping (e.g., 'code', 'planning', 'qa')

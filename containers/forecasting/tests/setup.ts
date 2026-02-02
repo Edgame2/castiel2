@@ -80,39 +80,26 @@ vi.mock('yaml', () => ({
   }),
 }));
 
-// Mock @coder/shared database
+// Mock @coder/shared database (create/resolve for storePrediction, fetchAll for recordActual/getAccuracyMetrics)
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(() => ({
     items: {
-      create: vi.fn(),
+      create: vi.fn().mockImplementation((doc: any) => Promise.resolve({ resource: { ...doc } })),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
       })),
     },
     item: vi.fn(() => ({
       read: vi.fn().mockResolvedValue({ resource: null }),
-      replace: vi.fn(),
-      delete: vi.fn(),
+      replace: vi.fn().mockImplementation((doc: any) => Promise.resolve({ resource: doc })),
+      delete: vi.fn().mockResolvedValue(undefined),
     })),
   })),
   initializeDatabase: vi.fn(),
   connectDatabase: vi.fn(),
 }));
 
-// Mock @coder/shared events
-vi.mock('@coder/shared/events', () => ({
-  EventPublisher: vi.fn(() => ({
-    publish: vi.fn().mockResolvedValue(undefined),
-    close: vi.fn(),
-  })),
-  EventConsumer: vi.fn(() => ({
-    on: vi.fn(),
-    start: vi.fn(),
-    close: vi.fn(),
-  })),
-}));
-
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared (includes events so EventPublisher/EventConsumer resolve from '@coder/shared')
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn(() => ({
     get: vi.fn().mockResolvedValue({ data: {} }),
@@ -120,6 +107,12 @@ vi.mock('@coder/shared', () => ({
     put: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   })),
+  EventPublisher: vi.fn().mockImplementation(function (this: unknown) {
+    return { publish: vi.fn().mockResolvedValue(undefined), close: vi.fn() };
+  }),
+  EventConsumer: vi.fn().mockImplementation(function (this: unknown) {
+    return { on: vi.fn(), start: vi.fn().mockResolvedValue(undefined), stop: vi.fn().mockResolvedValue(undefined), close: vi.fn() };
+  }),
   authenticateRequest: vi.fn(() => vi.fn()),
   tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
   setupJWT: vi.fn(),

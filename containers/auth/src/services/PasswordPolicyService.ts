@@ -26,7 +26,7 @@ export interface PasswordValidationResult {
  * Get password policy for an organization
  */
 export async function getPasswordPolicy(organizationId: string | null): Promise<PasswordPolicy> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
 
   // Default policy
   const defaultPolicy: PasswordPolicy = {
@@ -128,7 +128,7 @@ export async function isPasswordExpired(userId: string, organizationId: string |
     return false; // No expiry
   }
 
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   const user = await db.user.findUnique({
     where: { id: userId },
     select: {
@@ -165,7 +165,7 @@ export async function getDaysUntilPasswordExpiry(
     return null; // No expiry
   }
 
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   const user = await db.user.findUnique({
     where: { id: userId },
     select: {

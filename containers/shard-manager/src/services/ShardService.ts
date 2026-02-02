@@ -108,6 +108,17 @@ export class ShardService {
   }
 
   /**
+   * Find shard by ID (returns null if not found)
+   */
+  async findById(shardId: string, tenantId: string): Promise<Shard | null> {
+    try {
+      return await this.getById(shardId, tenantId);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Get shard by ID
    */
   async getById(shardId: string, tenantId: string): Promise<Shard> {

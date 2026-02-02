@@ -9,7 +9,6 @@ import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
 import {
   MultiModalJob,
   CreateMultiModalJobInput,
-  UpdateMultiModalJobInput,
   ModalType,
   ProcessingStatus,
 } from '../types/multimodal.types';
@@ -45,7 +44,7 @@ export class MultiModalService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(job, {
         partitionKey: input.tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create multi-modal job');
@@ -169,7 +168,7 @@ export class MultiModalService {
    */
   private async analyze(
     job: MultiModalJob,
-    output: MultiModalJob['output']
+    _output: MultiModalJob['output']
   ): Promise<MultiModalJob['analysis']> {
     // Placeholder: In a real implementation, this would analyze the processed content
 
@@ -238,7 +237,7 @@ export class MultiModalService {
       return resource as MultiModalJob;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Multi-modal job ${jobId} not found`);
+        throw new NotFoundError('Multi-modal job', jobId);
       }
       throw error;
     }
@@ -257,7 +256,7 @@ export class MultiModalService {
       const { resource } = await container.item(jobId, tenantId).read<MultiModalJob>();
 
       if (!resource) {
-        throw new NotFoundError(`Multi-modal job ${jobId} not found`);
+        throw new NotFoundError('Multi-modal job', jobId);
       }
 
       return resource;
@@ -266,7 +265,7 @@ export class MultiModalService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Multi-modal job ${jobId} not found`);
+        throw new NotFoundError('Multi-modal job', jobId);
       }
       throw error;
     }

@@ -74,7 +74,6 @@ The following modules provide specialized functionality that may be used in spec
 | **Pattern Recognition** | 3037 | Pattern learning and enforcement | Context Service, AI Service |
 | **Validation Engine** | 3036 | Comprehensive validation pipeline | AI Service, Logging |
 | **Bug Detection** | 3039 | Proactive bug finding and fixing | Context Service, AI Service |
-| **Code Generation** | 3040 | Specialized code generation | AI Service, Context Service |
 | **Performance Optimization** | 3041 | Code performance optimization | Context Service, Observability |
 | **Planning** | 3007 | Planning service | AI Service, Embeddings |
 | **Execution** | 3008 | Plan execution engine | Planning, AI Service |
@@ -663,30 +662,6 @@ The following modules provide specialized functionality that may be used in spec
 - Cache manager
 - Relevance scorer
 
-#### Agent Registry
-**Responsibility**: Manage specialized AI agents
-
-- Architecture agent
-- Security agent
-- Performance agent
-- Testing agent
-- Documentation agent
-- 15+ specialized agents
-
-**Features Handled:**
-- **Multi-Agent Specialization**: Architecture, security, performance, testing, documentation, refactoring, database, API design, UI/UX, DevOps, code review, migration agents
-
-**Service**: `containers/agent-registry/`  
-**Port**: 3035  
-**API Base**: `/api/v1/agents`  
-**Dependencies**: AI Service, Prompt Management, Quality, Observability
-
-**Architecture Sub-Modules:**
-- Agent selector
-- Agent loader
-- Agent monitor
-- Agent updater
-
 #### Validation Engine (Optional)
 **Responsibility**: Comprehensive validation pipeline for specialized use cases
 
@@ -759,55 +734,6 @@ The following modules provide specialized functionality that may be used in spec
 - Database migrator
 - API migrator
 - Migration validator
-
-#### Bug Detection (Optional)
-**Responsibility**: Proactive bug finding and fixing for specialized use cases
-
-- Anomaly detection
-- Bug prediction
-- Root cause analysis
-- Auto-fix suggestions
-
-**Service**: `containers/bug-detection/`  
-**Port**: 3039  
-**API Base**: `/api/v1/bugs`  
-**Dependencies**: Context Service, AI Service
-
-**Architecture Sub-Modules:**
-- Anomaly detector
-- Bug predictor
-- Root cause analyzer
-- Auto-fixer
-- Regression detector
-- Vulnerability patcher
-- Performance fixer
-
-#### Code Generation
-**Responsibility**: Specialized code generation tasks
-
-- UI component generation
-- API endpoint generation
-- Database schema generation
-- Test data generation
-- Configuration generation
-
-**Features Handled:**
-- **Code Generation Specialties**: UI component generation, API endpoint generation, database schema generation, test data generation, configuration generation
-
-**Service**: `containers/code-generation/`  
-**Port**: 3040  
-**API Base**: `/api/v1/generate`  
-**Dependencies**: AI Service, Context Service, Quality, Pattern Recognition
-
-**Architecture Sub-Modules:**
-- UI generator
-- API generator
-- Schema generator
-- Test data generator
-- Config generator
-- Migration generator
-- IaC generator
-- Generation validator
 
 #### Performance Optimization
 **Responsibility**: Optimize code performance
@@ -902,7 +828,7 @@ The following modules provide specialized functionality that may be used in spec
 **Service**: `containers/multi-modal-service/`  
 **Port**: 3044  
 **API Base**: `/api/v1/multimodal`  
-**Dependencies**: AI Service, Code Generation, Context Service
+**Dependencies**: AI Service, Context Service
 
 **Architecture Sub-Modules:**
 - Image processor
@@ -1414,7 +1340,6 @@ graph TB
     
     %% New Core Services
     Context[Context Service<br/>3034 NEW]
-    AgentReg[Agent Registry<br/>3035 NEW]
     Validation[Validation Engine<br/>3036 NEW]
     Pattern[Pattern Recognition<br/>3037 NEW]
     
@@ -1434,7 +1359,6 @@ graph TB
     Compliance[Compliance<br/>3043 NEW]
     
     %% Code Services
-    CodeGen[Code Generation<br/>3040 NEW]
     Migration[Migration Service<br/>3038 NEW]
     BugDetect[Bug Detection<br/>3039 NEW]
     PerfOpt[Performance Opt<br/>3041 NEW]
@@ -1467,18 +1391,12 @@ graph TB
     %% AI Dependencies
     Secret --> AI
     AI --> Embed
-    AI --> AgentReg
     AI --> Reasoning
-    AI --> CodeGen
     AI --> MultiModal
     
     Context --> Embed
     Context --> KB
     Context --> Planning
-    
-    AgentReg --> AI
-    AgentReg --> Prompt
-    AgentReg --> Quality
     
     Validation --> Context
     Validation --> Quality
@@ -1490,7 +1408,6 @@ graph TB
     Pattern --> KB
     
     Planning --> Context
-    Planning --> AgentReg
     Planning --> Embed
     Planning --> AI
     Exec --> Planning
@@ -1508,11 +1425,6 @@ graph TB
     Compliance --> Security
     Compliance --> Quality
     Compliance --> Validation
-    
-    CodeGen --> AI
-    CodeGen --> Context
-    CodeGen --> Pattern
-    CodeGen --> Quality
     
     Migration --> Context
     Migration --> Exec
@@ -1548,7 +1460,7 @@ graph TB
     DevEx --> Learning
     DevEx --> Collab
     MultiModal --> AI
-    MultiModal --> CodeGen
+    MultiModal --> Context
     Collab --> Notification
     Collab --> AI
     Collab --> KB
@@ -1562,8 +1474,7 @@ graph TB
 
 **New Modules:**
 1. Context Service (3034)
-2. Agent Registry (3035)
-3. Validation Engine (3036)
+2. Validation Engine (3036)
 
 **Major Enhancements:**
 - AI Service: Model orchestration, agent coordination
@@ -1584,7 +1495,6 @@ graph TB
 **New Modules:**
 1. Pattern Recognition (3037)
 2. Reasoning Engine (3045)
-3. Code Generation (3040)
 
 **Major Enhancements:**
 - Planning: Intent understanding, task decomposition
@@ -1595,7 +1505,6 @@ graph TB
 **Deliverables:**
 - Pattern learning and enforcement
 - Advanced reasoning capabilities
-- Specialized code generation
 - Intelligent planning
 
 ---
@@ -1651,8 +1560,8 @@ graph TB
 |------|-------|-------|
 | **Core Modules** | 5 | 3001, 3003, 3014, 3021-3022 |
 | **Existing Extension Modules** | 16 | 3002, 3004-3013, 3015-3020 |
-| **New Extension Modules** | 13 | 3034-3046 |
-| **Total Modules** | 34 | 3001-3046 |
+| **New Extension Modules** | 12 | 3034-3046 |
+| **Total Modules** | 33 | 3001-3046 |
 
 ### Feature Implementation
 
@@ -1668,20 +1577,18 @@ graph TB
 | Phase | Duration | New Modules | Major Enhancements | Features Delivered |
 |-------|----------|-------------|-------------------|-------------------|
 | Phase 1 | 3 months | 3 | 4 | 12 |
-| Phase 2 | 3 months | 3 | 4 | 12 |
+| Phase 2 | 3 months | 2 | 4 | 12 |
 | Phase 3 | 3 months | 3 | 4 | 12 |
 | Phase 4 | 3 months | 4 | 4 | 12 |
-| **Total** | **12 months** | **13** | **16** | **48** |
+| **Total** | **12 months** | **12** | **16** | **48** |
 
 ### Critical Success Factors
 
 1. **Context Service (3034)** - Foundation for everything
-2. **Agent Registry (3035)** - Enable multi-agent intelligence
-3. **Validation Engine (3036)** - Ensure quality and consistency
-4. **Pattern Recognition (3037)** - Learn and enforce patterns
-5. **Code Generation (3040)** - Specialized generation capabilities
+2. **Validation Engine (3036)** - Ensure quality and consistency
+3. **Pattern Recognition (3037)** - Learn and enforce patterns
 
-These 5 new modules plus enhancements to existing modules will enable all 48 feature categories.
+These 3 new modules plus enhancements to existing modules will enable all 48 feature categories.
 
 ---
 

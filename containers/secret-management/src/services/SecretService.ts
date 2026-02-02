@@ -26,14 +26,14 @@ import { BackendFactory } from './backends/BackendFactory';
 import { VaultService } from './VaultService';
 import { AccessController } from './access/AccessController';
 import { ScopeValidator } from './access/ScopeValidator';
-import { SecretStorageBackend, BackendConfig } from '../types/backend.types';
+import { SecretStorageBackend } from '../types/backend.types';
 import { publishSecretEvent, SecretEvents } from './events/SecretEventPublisher';
 import { getLoggingClient } from './logging/LoggingClient';
 import { AuditService } from './AuditService';
 import { validateSecretValue, validateSecretName } from '../utils/validation';
 
 export class SecretService {
-  private db = getDatabaseClient();
+  private db = getDatabaseClient() as any;
   private encryptionService: EncryptionService;
   private keyManager: KeyManager;
   private vaultService: VaultService;
@@ -99,7 +99,8 @@ export class SecretService {
     // Determine storage backend
     const storageBackend = params.storageBackend || 'LOCAL_ENCRYPTED';
     const isExternalVault = storageBackend !== 'LOCAL_ENCRYPTED';
-    
+    const activeKey = await this.keyManager.getActiveKey();
+
     // Get backend and vault config if external vault
     let backend: SecretStorageBackend | null = null;
     let vaultSecretId: string | null = null;
@@ -140,7 +141,6 @@ export class SecretService {
     } else {
       // Local storage: encrypt and store in database
       encryptedValue = await this.encryptionService.encryptSecretValue(params.value);
-      const activeKey = await this.keyManager.getActiveKey();
       encryptionKeyId = activeKey.keyId;
     }
     
@@ -515,7 +515,7 @@ export class SecretService {
         const backend = await BackendFactory.createBackend(backendConfig);
         
         // Update in vault (creates new version)
-        const updateResult = await backend.updateSecret({
+        await backend.updateSecret({
           secretRef: secret.vaultSecretId,
           value: params.value,
           metadata: {
@@ -810,14 +810,6 @@ export class SecretService {
       secretScope: secret.scope,
       action: 'Delete secret',
     });
-  }
-  
-  /**
-   * Get storage backend
-   */
-  private async getBackend(backendType: string): Promise<SecretStorageBackend> {
-    const config = { type: backendType } as any;
-    return await BackendFactory.createBackend(config);
   }
   
   /**

@@ -36,11 +36,16 @@ export interface OrganizationUserRole {
  */
 export class UserManagementClient {
   private baseUrl: string;
+  private serviceClient: ServiceClient;
   private authToken?: string;
 
   constructor() {
     const config = getConfig();
     this.baseUrl = config.services.user_management.url;
+    this.serviceClient = new ServiceClient({
+      baseURL: config.services.user_management.url,
+      timeout: 5000,
+    });
     // Service-to-service auth token would come from config
     // For now, we'll rely on the JWT passed through from the request
   }
@@ -121,8 +126,9 @@ export class UserManagementClient {
         throw new Error(`User Management API error: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
-      
+      const data = (await response.json()) as {
+        data?: { userId?: string; organizationId?: string; roles?: UserRole[]; isOrgAdmin?: boolean };
+      };
       return {
         userId: data.data?.userId || userId,
         organizationId: data.data?.organizationId || organizationId,
@@ -200,11 +206,9 @@ export class UserManagementClient {
    * Health check for User Management service
    */
   async healthCheck(): Promise<{ status: 'ok' | 'error'; latency_ms?: number; message?: string }> {
+    const startTime = Date.now();
     try {
-      const startTime = Date.now();
-      
       await this.serviceClient.get('/health', { timeout: 5000 });
-      
       const latency = Date.now() - startTime;
       return { status: 'ok', latency_ms: latency };
     } catch (error: any) {

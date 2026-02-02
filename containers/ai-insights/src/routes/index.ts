@@ -12,10 +12,6 @@ import {
   CreateInsightInput,
   UpdateInsightInput,
   GenerateInsightRequest,
-  InsightType,
-  InsightStatus,
-  ProactiveInsightStatus,
-  RiskLevel,
 } from '../types/insight.types';
 
 export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
@@ -474,12 +470,12 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const userId = request.user!.id;
 
       const input = {
-        ...request.body,
+        ...(request.body as object),
         tenantId,
         userId,
       };
 
-      const analysis = await riskAnalysisService.create(input);
+      const analysis = await riskAnalysisService.create(input as any);
       reply.code(201).send(analysis);
     }
   );
@@ -555,7 +551,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
-      const analysis = await riskAnalysisService.update(request.params.id, tenantId, request.body);
+      const analysis = await riskAnalysisService.update(request.params.id, tenantId, request.body as any);
       reply.send(analysis);
     }
   );

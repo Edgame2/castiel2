@@ -30,7 +30,7 @@ export async function requestLoggingMiddleware(
   });
   
   // Hook into reply finish to log completion
-  reply.addHook('onSend', async (request: any, reply: any) => {
+  (reply as any).addHook('onSend', async (request: any, reply: any) => {
     const duration = Date.now() - startTime;
     
     await getLoggingClient().sendLog({

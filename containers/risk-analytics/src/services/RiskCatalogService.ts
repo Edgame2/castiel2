@@ -13,14 +13,12 @@ import {
   RiskCatalog,
   CreateRiskInput,
   UpdateRiskInput,
-  CatalogType,
   RiskPonderation,
 } from '../types/risk-catalog.types';
 import { publishRiskCatalogEvent } from '../events/publishers/RiskCatalogEventPublisher';
 
 const RISK_CATALOG_SHARD_TYPE_NAME = 'risk_catalog';
 const SYSTEM_TENANT_ID = 'system';
-const SYSTEM_USER_ID = 'system';
 
 interface Shard {
   id: string;

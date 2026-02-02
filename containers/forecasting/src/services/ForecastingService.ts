@@ -462,6 +462,18 @@ export class ForecastingService {
       const conversion = probability;
       const newBusinessScore = isNewBusiness ? 0.6 : 0.4;
 
+      const driverDecomposition = {
+        dealQuality,
+        velocity,
+        conversion,
+        newBusiness: newBusinessScore,
+      };
+      const confidenceDecomposition = {
+        commit: opportunityValue * commitFactor,
+        bestCase: opportunityValue * bestCaseFactor,
+        upside: opportunityValue * upsideFactor,
+        risk: opportunityValue * riskFactor,
+      };
       const decomposition: ForecastDecomposition = {
         decompositionId,
         forecastId,
@@ -480,19 +492,12 @@ export class ForecastingService {
           expansions: opportunityValue * expansionsPct,
           renewals: opportunityValue * renewalsPct,
         },
-        confidenceDecomposition: {
-          commit: opportunityValue * commitFactor,
-          bestCase: opportunityValue * bestCaseFactor,
-          upside: opportunityValue * upsideFactor,
-          risk: opportunityValue * riskFactor,
-        },
-        driverDecomposition: {
-          dealQuality,
-          velocity,
-          conversion,
-          newBusiness: newBusinessScore,
-        },
-        recommendations: this.generateDecompositionRecommendations(decomposition),
+        confidenceDecomposition,
+        driverDecomposition,
+        recommendations: this.generateDecompositionRecommendations({
+          driverDecomposition,
+          confidenceDecomposition,
+        } as ForecastDecomposition),
         createdAt: new Date(),
       };
 

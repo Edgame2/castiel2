@@ -262,23 +262,25 @@ export class RecommendationsService {
         timestamp: new Date().toISOString(),
       });
 
-      // Step 10: recordPrediction (REST) and publish outcome to adaptive-learning (MISSING_FEATURES 3.2)
-      const avgScore = withExplanations.length ? withExplanations.reduce((s, r) => s + r.score, 0) / withExplanations.length : 0.5;
+      // Step 10: recordPrediction once per recommendation so feedback can link via predictionId = rec.id (Phase 6)
       if (this.config.services.adaptive_learning?.url) {
-        try {
-          const token = this.getServiceToken(request.tenantId);
-          await this.adaptiveLearningClient.post(
-            '/api/v1/adaptive-learning/outcomes/record-prediction',
-            {
-              component: 'recommendations',
-              predictionId: recommendationId,
-              context: { opportunityId: request.opportunityId, count: withExplanations.length },
-              predictedValue: avgScore,
-            },
-            { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': request.tenantId } }
-          );
-        } catch (e: unknown) {
-          log.warn('recordPrediction (adaptive-learning) failed', { error: (e as Error).message, recommendationId, service: 'recommendations' });
+        const token = this.getServiceToken(request.tenantId);
+        const headers = { Authorization: `Bearer ${token}`, 'X-Tenant-ID': request.tenantId };
+        for (const rec of withExplanations) {
+          try {
+            await this.adaptiveLearningClient.post(
+              '/api/v1/adaptive-learning/outcomes/record-prediction',
+              {
+                component: 'recommendations',
+                predictionId: rec.id,
+                context: { opportunityId: request.opportunityId, recommendationId: rec.id },
+                predictedValue: rec.score,
+              },
+              { headers }
+            );
+          } catch (e: unknown) {
+            log.warn('recordPrediction (adaptive-learning) failed', { error: (e as Error).message, recommendationId: rec.id, service: 'recommendations' });
+          }
         }
       }
       await publishRecommendationEvent('adaptive.learning.outcome.recorded', request.tenantId, {
@@ -1012,6 +1014,30 @@ export class RecommendationsService {
           }
         : undefined,
     });
+
+    if (this.config.services.adaptive_learning?.url) {
+      try {
+        const outcomeValue = feedback.action === 'accept' ? 1 : feedback.action === 'ignore' ? 0.5 : 0;
+        const outcomeType = feedback.action === 'accept' ? 'success' : feedback.action === 'irrelevant' ? 'failure' : 'partial';
+        const token = this.getServiceToken(feedback.tenantId);
+        await this.adaptiveLearningClient.post(
+          '/api/v1/adaptive-learning/outcomes/record-outcome',
+          {
+            predictionId: feedback.recommendationId,
+            outcomeValue,
+            outcomeType,
+            context: { feedbackTypeId, userId: feedback.userId },
+          },
+          { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': feedback.tenantId } }
+        );
+      } catch (e: unknown) {
+        log.warn('recordOutcome (adaptive-learning) failed', {
+          error: (e as Error).message,
+          recommendationId: feedback.recommendationId,
+          service: 'recommendations',
+        });
+      }
+    }
 
     log.info('Recommendation feedback recorded', {
       recommendationId: feedback.recommendationId,

@@ -5,6 +5,11 @@ All notable changes to the Authentication module will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Production-safe URLs:** LoggingService uses only `config.services.logging.url` (no localhost fallback). OAuth redirect frontend URL uses `config.services.main_app.url ?? config.frontend_url`; in production with neither set, returns 500 with clear message instead of redirecting to localhost. SAML acsUrl uses only `config.server.base_url`; throws if missing (no localhost fallback). SAML callback path fixed to `/api/v1/auth/sso/saml/callback`.
+
 ## [1.1.0] - 2025-01-22
 
 ### Changed

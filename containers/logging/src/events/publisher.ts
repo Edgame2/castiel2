@@ -22,7 +22,10 @@ let publisher: EventPublisher | null = null;
 function getPublisher(): EventPublisher {
   if (!publisher) {
     const config = getConfig();
-    publisher = new EventPublisher(config.rabbitmq.exchange);
+    publisher = new EventPublisher(
+      { url: config.rabbitmq.url, exchange: config.rabbitmq.exchange },
+      'logging'
+    );
   }
   return publisher;
 }
@@ -44,18 +47,10 @@ export async function publishEvent(
   }
 
   try {
-    const event: LoggingEvent = {
-      type: eventType,
-      organizationId,
-      userId,
-      data,
-      timestamp: new Date(),
-    };
-
-    // Use shared event publisher
+    // Use shared event publisher: publish(eventType, tenantId, data)
     const pub = getPublisher();
-    await pub.publish(event, `audit.${eventType}`);
-    
+    await pub.publish(eventType, organizationId ?? '', data);
+
     log.debug('Event published', { eventType, organizationId });
   } catch (error) {
     log.error('Failed to publish event', error, { eventType, organizationId });

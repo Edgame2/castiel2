@@ -22,7 +22,7 @@ The UI Container is a Next.js 16 application (App Router) that provides the fron
 ### Prerequisites
 
 - Node.js 20+
-- API Gateway running on port 3001
+- API Gateway URL (configurable via `NEXT_PUBLIC_API_BASE_URL`; defaults for local dev only)
 
 ### Installation
 
@@ -88,8 +88,8 @@ containers/ui/
 
 ## Dependencies
 
-- **API Gateway**: Port 3001 (required)
-- **Backend Services**: Via API Gateway
+- **API Gateway**: URL set via `NEXT_PUBLIC_API_BASE_URL` (required for API calls)
+- **Backend Services**: Accessed via API Gateway
 
 ## Related Documentation
 

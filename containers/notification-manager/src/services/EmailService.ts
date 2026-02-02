@@ -258,20 +258,24 @@ export class EmailService {
     
     if (!template) {
       log.warn('Email template not found', { templateName, service: 'notification-manager' });
+      const msg = String(data.message ?? 'Notification');
       return {
-        html: `<p>${data.message || 'Notification'}</p>`,
-        text: data.message || 'Notification',
+        html: `<p>${msg}</p>`,
+        text: msg,
       };
     }
 
     // Simple string replacement
-    let html = template.html;
-    let text = template.text;
+    let html: string = String(template.html ?? '');
+    let text: string = String(template.text ?? '');
 
     for (const [key, value] of Object.entries(data)) {
       const placeholder = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
-      html = html.replace(placeholder, String(value || ''));
-      text = text.replace(placeholder, String(value || ''));
+      const repl = String(value ?? '');
+      const nextHtml: string = html.replace(placeholder, repl);
+      const nextText: string = text.replace(placeholder, repl);
+      html = nextHtml;
+      text = nextText;
     }
 
     return { html, text };
@@ -707,7 +711,7 @@ This email was sent by Castiel.
    */
   async getUserEmail(userId: string): Promise<string | null> {
     try {
-      const db = getDatabaseClient();
+      const db = getDatabaseClient() as any;
       const user = await db.user.findUnique({
         where: { id: userId },
         select: { email: true },

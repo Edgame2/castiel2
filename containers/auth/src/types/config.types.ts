@@ -72,6 +72,7 @@ export interface AuthConfig {
     sentinels?: string;
     master_name?: string;
   };
+  frontend_url?: string;
   services?: {
     user_management?: {
       url: string;

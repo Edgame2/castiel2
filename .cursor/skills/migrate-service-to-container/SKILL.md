@@ -1,11 +1,11 @@
 ---
 name: migrate-service-to-container
-description: Guides migration from old_code/ to containers/ following SERVICE_MIGRATION_GUIDE.md. Transforms imports to use @coder/shared, adds tenantId to database queries, replaces hardcoded URLs with config, updates routes with auth/tenant enforcement, sets up event publishers/consumers, and transforms service communication. Use when migrating existing services, transforming old code patterns, or refactoring legacy code to new architecture.
+description: Guides migration of existing services to containers/ following ModuleImplementationGuide.md. Transforms imports to use @coder/shared, adds tenantId to database queries, replaces hardcoded URLs with config, updates routes with auth/tenant enforcement, sets up event publishers/consumers, and transforms service communication. Use when migrating existing services, transforming legacy code patterns, or refactoring to container architecture.
 ---
 
 # Migrate Service to Container
 
-Guides migration from `old_code/` to `containers/` following SERVICE_MIGRATION_GUIDE.md and ModuleImplementationGuide.md standards.
+Guides migration of existing services to `containers/` following ModuleImplementationGuide.md standards.
 
 ## Pre-Migration Analysis
 
@@ -68,7 +68,7 @@ async getData(tenantId: string, id: string) {
 }
 ```
 
-Reference: SERVICE_MIGRATION_GUIDE.md Step 6, ModuleImplementationGuide.md Section 8
+Reference: ModuleImplementationGuide.md Section 8
 
 ### Step 4: Replace Hardcoded URLs
 
@@ -94,7 +94,7 @@ const response = await client.get('/api/v1/users/123', {
 });
 ```
 
-Reference: SERVICE_MIGRATION_GUIDE.md Step 7, ModuleImplementationGuide.md Section 5.3
+Reference: ModuleImplementationGuide.md Section 5.3
 
 ### Step 5: Transform Routes
 
@@ -125,7 +125,7 @@ fastify.get<{ Params: { id: string } }>(
 );
 ```
 
-Reference: SERVICE_MIGRATION_GUIDE.md Step 5
+Reference: ModuleImplementationGuide.md Section 7 (Routes)
 
 ### Step 6: Update Error Handling
 

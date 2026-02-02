@@ -415,15 +415,15 @@ The Utils module provides utility functions and helpers used throughout the back
 
 ### Overview
 
-The UI container provides the user interface for Coder IDE. It is a Next.js application that reuses components and pages from `old_code/apps/web/` and communicates with microservices via a hybrid pattern (direct API calls + BFF).
+The UI container provides the user interface for Coder IDE. It is a Next.js application that reuses components and pages from the legacy web app and communicates with microservices via a hybrid pattern (direct API calls + BFF).
 
 ### Location
 
 - **Source**: `containers/ui/`
 - **Port**: 3000 (configurable via `PORT` environment variable)
 - **Technology**: Next.js 16 (App Router), React 19, TypeScript
-- **UI Components**: Reused from `old_code/apps/web/src/components/`
-- **Pages**: Reused from `old_code/apps/web/src/app/`
+- **UI Components**: Reused from the legacy web app
+- **Pages**: Reused from the legacy web app
 
 ### Architecture
 
@@ -431,7 +431,7 @@ The UI container provides the user interface for Coder IDE. It is a Next.js appl
 graph TB
     subgraph UI["UI Container - Next.js"]
         Pages[App Router Pages]
-        Components[React Components<br/>Reused from old_code]
+        Components[React Components<br/>Reused from legacy]
         APIRoutes[API Routes BFF]
         APIClient[Axios Client<br/>Direct Calls]
     end
@@ -454,7 +454,7 @@ graph TB
 
 ### Communication Pattern
 
-**Hybrid Approach** (recommended based on old_code implementation):
+**Hybrid Approach** (recommended):
 
 1. **Direct API Calls (90% of operations)**
    - Axios client (`apiClient`) configured with base URL
@@ -470,8 +470,7 @@ graph TB
 ### Key Features
 
 1. **Component Reuse**
-   - Reuses components from `old_code/apps/web/src/components/`
-   - Reuses pages from `old_code/apps/web/src/app/`
+   - Reuses components and pages from the legacy web app
    - Maintains existing UI patterns and structure
    - No need to rebuild UI components
 
@@ -508,7 +507,7 @@ containers/ui/
 │   │   ├── (protected)/       # Protected routes
 │   │   ├── (public)/          # Public routes
 │   │   └── api/               # API routes (BFF)
-│   ├── components/           # React components (reused from old_code)
+│   ├── components/           # React components (reused from legacy)
 │   │   ├── ui/                # Shadcn UI components
 │   │   ├── layout/            # Layout components
 │   │   └── [features]/       # Feature-specific components

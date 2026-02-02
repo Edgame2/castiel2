@@ -7,6 +7,15 @@ import { AIAnalyticsService } from '../../../src/services/AIAnalyticsService';
 import { getContainer } from '@coder/shared/database';
 
 // Mock dependencies
+vi.mock('uuid', () => ({
+  v4: vi.fn(() => 'test-uuid-123'),
+}));
+vi.mock('@coder/shared', () => ({
+  ServiceClient: vi.fn().mockImplementation(function (this: any) {
+    this.get = vi.fn().mockResolvedValue({ data: {} });
+    this.post = vi.fn().mockResolvedValue({ data: {} });
+  }),
+}));
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(),
 }));
@@ -17,6 +26,11 @@ vi.mock('../../../src/config', () => ({
       containers: {
         ai_analytics: 'ai_analytics',
       },
+    },
+    services: {
+      ai_service: { url: 'http://ai-service' },
+      ai_insights: { url: 'http://ai-insights' },
+      analytics_service: { url: 'http://analytics-service' },
     },
   })),
 }));
@@ -49,58 +63,39 @@ describe('AIAnalyticsService', () => {
     service = new AIAnalyticsService();
   });
 
-  describe('recordAIUsage', () => {
-    it('should record AI usage successfully', async () => {
+  describe('recordEvent', () => {
+    it('should record AI analytics event successfully', async () => {
       const tenantId = 'tenant-123';
-      const usage = {
+      const event = {
+        eventType: 'usage' as const,
         modelId: 'gpt-4',
-        promptTokens: 100,
-        completionTokens: 50,
+        tokens: 150,
         cost: 0.01,
       };
 
-      mockContainer.items.create.mockResolvedValue({
-        resource: {
-          id: 'usage-123',
-          tenantId,
-          ...usage,
-          timestamp: new Date(),
-        },
-      });
+      mockContainer.items.create.mockResolvedValue({});
 
-      await service.recordAIUsage(tenantId, usage);
+      await service.recordEvent(tenantId, event);
 
       expect(mockContainer.items.create).toHaveBeenCalled();
     });
   });
 
-  describe('getAIUsageStats', () => {
-    it('should retrieve AI usage statistics', async () => {
+  describe('getModelAnalytics', () => {
+    it('should retrieve model analytics', async () => {
       const tenantId = 'tenant-123';
-
-      const mockStats = {
-        totalRequests: 1000,
-        totalTokens: 50000,
-        totalCost: 10.5,
-        byModel: {
-          'gpt-4': { requests: 500, tokens: 25000, cost: 5.0 },
-          'gpt-3.5-turbo': { requests: 500, tokens: 25000, cost: 5.5 },
-        },
-      };
+      const mockModels = [
+        { id: 'm1', tenantId, modelId: 'gpt-4', usageCount: 100, totalTokens: 5000 },
+      ];
 
       mockContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
-          resources: [
-            { modelId: 'gpt-4', promptTokens: 100, completionTokens: 50, cost: 0.01 },
-            { modelId: 'gpt-3.5-turbo', promptTokens: 80, completionTokens: 40, cost: 0.005 },
-          ],
-        }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: mockModels }),
       });
 
-      const result = await service.getAIUsageStats(tenantId, {});
+      const result = await service.getModelAnalytics(tenantId);
 
-      expect(result).toHaveProperty('totalRequests');
-      expect(result).toHaveProperty('totalCost');
+      expect(result).toEqual(mockModels);
+      expect(mockContainer.items.query).toHaveBeenCalled();
     });
   });
 });

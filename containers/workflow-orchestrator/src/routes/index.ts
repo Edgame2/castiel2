@@ -12,7 +12,7 @@ import * as HitlApprovalService from '../services/HitlApprovalService';
 /**
  * Register all routes
  */
-export async function registerRoutes(fastify: FastifyInstance, config: ReturnType<typeof loadConfig>): Promise<void> {
+export async function registerRoutes(fastify: FastifyInstance, _config: ReturnType<typeof loadConfig>): Promise<void> {
   try {
     const workflowOrchestratorService = new WorkflowOrchestratorService();
 

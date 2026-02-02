@@ -43,10 +43,9 @@ export class EarlyWarningService {
 
   private config: ReturnType<typeof loadConfig>;
   private shardManagerClient: ServiceClient;
-  private riskEvaluationService: RiskEvaluationService;
   private app: FastifyInstance | null = null;
 
-  constructor(app?: FastifyInstance, riskEvaluationService?: RiskEvaluationService) {
+  constructor(app?: FastifyInstance, _riskEvaluationService?: RiskEvaluationService) {
     this.app = app || null;
     this.config = loadConfig();
     
@@ -57,7 +56,6 @@ export class EarlyWarningService {
       circuitBreaker: { enabled: true },
     });
 
-    this.riskEvaluationService = riskEvaluationService || new RiskEvaluationService(app);
   }
 
   private getServiceToken(tenantId: string): string {
@@ -124,15 +122,13 @@ export class EarlyWarningService {
       // Store signals
       const container = getContainer('risk_warnings');
       for (const signal of signals) {
-        await container.items.create({
-          id: signal.id,
-          tenantId,
-          ...signal,
-        });
+        await container.items.create(
+          { ...signal, id: signal.id, tenantId },
+          { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]
+        );
       }
 
-      await publishRiskAnalyticsEvent('early-warning.signals-detected', {
-        tenantId,
+      await publishRiskAnalyticsEvent('early-warning.signals-detected', tenantId, {
         opportunityId,
         signalCount: signals.length,
       });
@@ -276,7 +272,7 @@ export class EarlyWarningService {
 
       return null;
     } catch (error: unknown) {
-      log.warn('Failed to check stakeholder churn', error instanceof Error ? error : new Error(String(error)), { tenantId, opportunityId: opportunity.id });
+      log.warn('Failed to check stakeholder churn', { error: error instanceof Error ? error.message : String(error), tenantId, opportunityId: opportunity.id });
       return null;
     }
   }
@@ -284,7 +280,7 @@ export class EarlyWarningService {
   private async checkRiskAcceleration(
     opportunityId: string,
     tenantId: string,
-    userId: string
+    _userId: string
   ): Promise<EarlyWarningSignal | null> {
     try {
       // Get previous evaluation
@@ -328,7 +324,7 @@ export class EarlyWarningService {
       }
       return null;
     } catch (error: unknown) {
-      log.warn('Failed to check risk acceleration', error instanceof Error ? error : new Error(String(error)), { tenantId, opportunityId });
+      log.warn('Failed to check risk acceleration', { error: error instanceof Error ? error.message : String(error), tenantId, opportunityId });
       return null;
     }
   }

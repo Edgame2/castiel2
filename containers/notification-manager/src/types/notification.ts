@@ -77,6 +77,7 @@ export interface NotificationInput {
   projectId?: string;
   escalationChainId?: string;
   deduplicationKey?: string;
+  batchId?: string;
 }
 
 export interface NotificationPreferences {

@@ -18,6 +18,7 @@ import {
   Prediction,
   CreatePredictionInput,
   ModelStatus,
+  ModelType,
 } from '../types/ml.types';
 import { loadConfig } from '../config';
 import {
@@ -126,9 +127,48 @@ export class PredictionService {
     });
   }
 
+  /** Model selection from CAIS (adaptive-learning). Defaults on failure. */
+  private async getModelSelection(tenantId: string, context: string = 'risk-scoring'): Promise<{ modelId: string; confidence: number }> {
+    if (!this.config.services.adaptive_learning?.url) {
+      return { modelId: context === 'forecasting' ? 'revenue-forecasting-model' : 'default-risk-model', confidence: 0.8 };
+    }
+    try {
+      const token = this.getServiceToken(tenantId);
+      const response = await this.adaptiveLearningClient.get<{ modelId: string; confidence: number }>(
+        `/api/v1/adaptive-learning/model-selection/${tenantId}?context=${encodeURIComponent(context)}`,
+        { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId } }
+      );
+      if (response && typeof response.modelId === 'string') {
+        return { modelId: response.modelId, confidence: typeof response.confidence === 'number' ? response.confidence : 0.8 };
+      }
+      return { modelId: context === 'forecasting' ? 'revenue-forecasting-model' : 'default-risk-model', confidence: 0.8 };
+    } catch (e: unknown) {
+      console.warn('getModelSelection failed, using default', {
+        error: e instanceof Error ? e.message : String(e),
+        tenantId,
+        context,
+        service: 'ml-service',
+      });
+      return { modelId: context === 'forecasting' ? 'revenue-forecasting-model' : 'default-risk-model', confidence: 0.8 };
+    }
+  }
+
+  /** Map model type to Azure ML endpoint key when endpoint is configured. */
+  private endpointKeyForModelType(modelType: string): string | null {
+    const map: Record<string, string> = {
+      'risk-scoring': 'risk-scoring-model',
+      risk_scoring: 'risk-scoring-model',
+      'win-probability': 'win-probability-model',
+      win_probability: 'win-probability-model',
+      anomaly: 'anomaly',
+      forecasting: 'revenue_forecasting',
+    };
+    return map[modelType] ?? null;
+  }
+
   /**
-   * Create prediction
-   * Note: This is a placeholder - actual prediction would call the ML model
+   * Create prediction.
+   * Uses Azure ML when an endpoint is configured for the model type; otherwise placeholder.
    */
   async predict(input: CreatePredictionInput): Promise<Prediction> {
     if (!input.tenantId || !input.modelId || !input.input) {
@@ -149,14 +189,49 @@ export class PredictionService {
       throw new BadRequestError(`Missing required features: ${missingFeatures.join(', ')}`);
     }
 
-    // Placeholder prediction logic
-    // In a real implementation, this would:
-    // 1. Load the model from modelPath
-    // 2. Preprocess input features
-    // 3. Run prediction
-    // 4. Postprocess output
-    const output = this.generatePlaceholderPrediction(model.type, input.input);
-    const confidence = this.calculatePlaceholderConfidence(model.metrics);
+    const endpointKey = this.endpointKeyForModelType(model.type);
+    const feat = input.input as Record<string, unknown>;
+    const toNumeric = (o: Record<string, unknown>): Record<string, number> => {
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(o)) {
+        const n = typeof v === 'number' ? v : Number(v);
+        if (!isNaN(n)) out[k] = n;
+      }
+      return out;
+    };
+
+    let output: any;
+    let confidence: number;
+
+    if (endpointKey && this.azureMlClient.hasEndpoint(endpointKey)) {
+      const numFeat = toNumeric(feat);
+      if (Object.keys(numFeat).length > 0) {
+        try {
+          const score = await this.azureMlClient.predict(endpointKey, numFeat);
+          output = model.type === ModelType.RISK_SCORING
+            ? { riskScore: score }
+            : model.type === ModelType.WIN_PROBABILITY
+              ? { probability: score }
+              : { value: score };
+          confidence = 0.85;
+        } catch (e: unknown) {
+          console.warn('Azure ML predict failed, using placeholder', {
+            error: e instanceof Error ? e.message : String(e),
+            modelType: model.type,
+            endpointKey,
+            service: 'ml-service',
+          });
+          output = this.generatePlaceholderPrediction(model.type, input.input);
+          confidence = this.calculatePlaceholderConfidence(model.metrics);
+        }
+      } else {
+        output = this.generatePlaceholderPrediction(model.type, input.input);
+        confidence = this.calculatePlaceholderConfidence(model.metrics);
+      }
+    } else {
+      output = this.generatePlaceholderPrediction(model.type, input.input);
+      confidence = this.calculatePlaceholderConfidence(model.metrics);
+    }
 
     const prediction: Prediction = {
       id: uuidv4(),
@@ -485,18 +560,20 @@ export class PredictionService {
       return out;
     };
 
-    if (this.azureMlClient.hasEndpoint('risk-scoring-model')) {
+    const modelSelection = await this.getModelSelection(tenantId, 'risk-scoring');
+    const preferredEndpoint = this.azureMlClient.hasEndpoint(modelSelection.modelId) ? modelSelection.modelId : 'risk-scoring-model';
+    if (this.azureMlClient.hasEndpoint(preferredEndpoint)) {
       const numFeat = toNumeric(feat);
       if (Object.keys(numFeat).length > 0) {
         try {
-          const riskScore = await this.azureMlClient.predict('risk-scoring-model', numFeat);
-          const out = { riskScore, confidence: 0.8, modelId: 'risk-scoring-model' };
-          publishMlPredictionCompleted(tenantId, { modelId: 'risk-scoring-model', opportunityId: body.opportunityId, inferenceMs: Date.now() - t0, requestId });
+          const riskScore = await this.azureMlClient.predict(preferredEndpoint, numFeat);
+          const out = { riskScore, confidence: modelSelection.confidence, modelId: preferredEndpoint };
+          publishMlPredictionCompleted(tenantId, { modelId: preferredEndpoint, opportunityId: body.opportunityId, inferenceMs: Date.now() - t0, requestId });
           await this.setCachedPrediction(tenantId, body.opportunityId, 'risk_scoring', out);
           return out;
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e);
-          console.warn('Azure ML risk-scoring-model failed, falling through', { opportunityId: body.opportunityId, error: msg, service: 'ml-service' });
+          console.warn('Azure ML risk-scoring failed, falling through', { opportunityId: body.opportunityId, endpoint: preferredEndpoint, error: msg, service: 'ml-service' });
         }
       }
     }
@@ -575,14 +652,16 @@ export class PredictionService {
     const feat = body.features || {};
     const oppVal = (feat.opportunityValue as number) ?? 0;
     const prob = (feat.probability as number) ?? 0.5;
+    const modelSelection = await this.getModelSelection(tenantId, 'forecasting');
+    const preferredModelId = body.modelId ?? (modelSelection.modelId || undefined);
 
-    if (body.modelId) {
+    if (preferredModelId) {
       try {
-        const model = await this.modelService.getById(body.modelId, tenantId);
+        const model = await this.modelService.getById(preferredModelId, tenantId);
         if (model.status === ModelStatus.DEPLOYED || model.status === ModelStatus.READY) {
           const pred = await this.predict({
             tenantId,
-            modelId: body.modelId,
+            modelId: preferredModelId,
             input: { ...feat, opportunityId: body.opportunityId },
           });
           const out = (pred.output as any) || {};
@@ -596,12 +675,12 @@ export class PredictionService {
             { scenario: 'base', probability: 0.5, forecast: p50 },
             { scenario: 'best', probability: 0.4, forecast: p90 },
           ];
-          publishMlPredictionCompleted(tenantId, { modelId: body.modelId ?? 'forecast', opportunityId: body.opportunityId, inferenceMs: Date.now() - t0 });
+          publishMlPredictionCompleted(tenantId, { modelId: preferredModelId, opportunityId: body.opportunityId, inferenceMs: Date.now() - t0 });
           return {
             pointForecast: pt,
             uncertainty: { p10, p50, p90 },
             scenarios: sc,
-            confidence: pred.confidence,
+            confidence: pred.confidence ?? modelSelection.confidence,
           };
         }
       } catch {

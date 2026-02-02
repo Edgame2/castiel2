@@ -4,7 +4,7 @@
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { load } from 'yaml';
+import { parse } from 'yaml';
 
 export interface GatewayConfig {
   module: {
@@ -32,7 +32,7 @@ export interface GatewayConfig {
 export function loadConfig(): GatewayConfig {
   const configPath = join(__dirname, '../../config/default.yaml');
   const configFile = readFileSync(configPath, 'utf-8');
-  const config = load(configFile) as GatewayConfig;
+  const config = parse(configFile) as GatewayConfig;
   
   // Apply environment variable overrides
   if (process.env.PORT) {

@@ -102,7 +102,7 @@ export interface SalesMethodologyDocument extends SalesMethodology {
   updatedAt: string;
 }
 
-export interface UpsertSalesMethodologyBody extends SalesMethodology {
+export interface UpsertSalesMethodologyBody extends Omit<SalesMethodology, 'tenantId'> {
   tenantId?: string;
 }
 

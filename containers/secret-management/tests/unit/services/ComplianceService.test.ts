@@ -3,74 +3,43 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ComplianceService } from '../../../../src/services/ComplianceService';
-import { SecretService } from '../../../../src/services/SecretService';
+import { ComplianceService } from '../../../src/services/ComplianceService';
 
-// Mock dependencies
-vi.mock('../../../../src/services/SecretService');
-vi.mock('@coder/shared', () => {
-  return {
-    getDatabaseClient: vi.fn(() => ({
-      secret_secrets: {
-        findMany: vi.fn(),
-      },
-    })),
-  };
-});
+// Mock dependencies - use a single object so service and test share the same mocks
+const mockDb = vi.hoisted(() => ({
+  secret_secrets: { count: vi.fn() },
+  secret_audit_logs: {
+    count: vi.fn(),
+    findMany: vi.fn().mockResolvedValue([]),
+    groupBy: vi.fn().mockResolvedValue([]),
+  },
+  secret_usage: { findMany: vi.fn().mockResolvedValue([]) },
+}));
+vi.mock('@coder/shared', () => ({
+  getDatabaseClient: vi.fn(() => mockDb),
+}));
 
 describe('ComplianceService', () => {
   let complianceService: ComplianceService;
-  let mockDb: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockDb.secret_secrets.count.mockResolvedValue(2);
+    mockDb.secret_audit_logs.count.mockResolvedValue(0);
     complianceService = new ComplianceService();
-    mockDb = (complianceService as any).db;
   });
 
-  describe('checkCompliance', () => {
-    it('should check compliance for a secret', async () => {
-      const mockSecret = {
-        id: 'secret-1',
-        name: 'test-secret',
-        type: 'API_KEY',
-        rotationEnabled: true,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      };
-      
-      const mockSecretService = (complianceService as any).secretService;
-      mockSecretService.getSecret = vi.fn().mockResolvedValue(mockSecret);
-      
-      const result = await complianceService.checkCompliance('secret-1');
-      
-      expect(result).toBeDefined();
-      expect(result.secretId).toBe('secret-1');
-    });
-  });
-
-  describe('generateComplianceReport', () => {
+  describe('generateReport', () => {
     it('should generate a compliance report', async () => {
-      const mockSecrets = [
-        {
-          id: 'secret-1',
-          name: 'secret-1',
-          rotationEnabled: true,
-        },
-        {
-          id: 'secret-2',
-          name: 'secret-2',
-          rotationEnabled: false,
-        },
-      ];
-      
-      mockDb.secret_secrets.findMany.mockResolvedValue(mockSecrets);
-      
-      const result = await complianceService.generateComplianceReport({
+      const result = await complianceService.generateReport({
         organizationId: 'org-123',
+        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        endDate: new Date(),
       });
-      
+
       expect(result).toBeDefined();
-      expect(result.totalSecrets).toBe(2);
+      expect(result.summary.totalSecrets).toBe(2);
+      expect(mockDb.secret_secrets.count).toHaveBeenCalled();
     });
   });
 });

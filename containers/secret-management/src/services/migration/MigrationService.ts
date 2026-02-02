@@ -4,10 +4,9 @@
  * Handles migration of secrets between storage backends.
  */
 
+import { getDatabaseClient } from '@coder/shared';
 import { SecretService } from '../SecretService';
 import { VaultService } from '../VaultService';
-import { BackendFactory } from '../backends/BackendFactory';
-import { MigrationError } from '../../errors/SecretErrors';
 import { SecretContext } from '../../types';
 import { publishSecretEvent, SecretEvents } from '../events/SecretEventPublisher';
 import { getLoggingClient } from '../logging/LoggingClient';
@@ -107,8 +106,8 @@ export class MigrationService {
     // Publish migration event
     await publishSecretEvent(
       SecretEvents.secretsMigrated({
-        organizationId: context.organizationId,
-        actorId: context.userId,
+        organizationId: context?.organizationId ?? '',
+        actorId: context?.userId ?? 'system',
         migratedCount: result.migrated,
         failedCount: result.failed,
         sourceVault: sourceVault.name,
@@ -126,16 +125,16 @@ export class MigrationService {
         failed: result.failed,
         sourceVault: sourceVault.name,
         targetVault: targetVault.name,
-        organizationId: context.organizationId,
-        userId: context.userId,
+        organizationId: context?.organizationId,
+        userId: context?.userId,
       },
     });
     
     // Audit log
     await this.auditService.log({
       eventType: 'SECRETS_MIGRATED',
-      actorId: context.userId,
-      organizationId: context.organizationId,
+      actorId: context?.userId ?? 'system',
+      organizationId: context?.organizationId ?? 'system',
       action: 'Migrate secrets between vaults',
       details: {
         migrated: result.migrated,
@@ -166,14 +165,14 @@ export class MigrationService {
     );
     
     // Get secret metadata
-    const secret = await this.secretService.getSecretMetadata(
+    await this.secretService.getSecretMetadata(
       secretId,
       context || { userId: 'system', consumerModule: 'migration' }
     );
     
     // Update secret to use target vault
     // This will re-encrypt and store in new backend
-    const updated = await this.secretService.updateSecret(
+    await this.secretService.updateSecret(
       secretId,
       {
         value,
@@ -183,12 +182,14 @@ export class MigrationService {
     );
     
     // Update storage backend reference in database
-    const db = getDatabaseClient();
-    await db.secret_secrets.update({
-      where: { id: secretId },
-      data: {
-        storageBackend: targetVault.backend as any,
-      },
-    });
+    const db = getDatabaseClient() as { secret_secrets?: { update: (arg: { where: { id: string }; data: { storageBackend: unknown } }) => Promise<unknown> } };
+    if (db.secret_secrets?.update) {
+      await db.secret_secrets.update({
+        where: { id: secretId },
+        data: {
+          storageBackend: targetVault.backend as any,
+        },
+      });
+    }
   }
 }

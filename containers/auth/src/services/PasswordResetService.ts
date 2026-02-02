@@ -58,7 +58,7 @@ function getRateLimitKey(email: string): string {
  * @throws Error if rate limit exceeded
  */
 export async function requestPasswordReset(email: string): Promise<string | null> {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   
   // Check rate limit
   const rateLimitKey = getRateLimitKey(email);
@@ -176,7 +176,7 @@ export async function resetPasswordWithToken(
   const { userId, email } = tokenData;
   
   // Get user info for password validation
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   const user = await db.user.findUnique({
     where: { id: userId },
     select: {

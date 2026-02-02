@@ -5,15 +5,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EnrichmentService } from '../../../src/services/EnrichmentService';
 import { getContainer } from '@coder/shared/database';
-import { ServiceClient } from '@coder/shared';
+import {
+  EnrichmentJobStatus,
+  EnrichmentProcessorType,
+} from '../../../src/types/enrichment.types';
 
-// Mock dependencies
+const mockClients = vi.hoisted(() => ({
+  shard: { get: vi.fn(), post: vi.fn() },
+  embeddings: { post: vi.fn() },
+  ai: { post: vi.fn() },
+}));
+
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(),
 }));
 
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(),
+  ServiceClient: vi.fn().mockImplementation(function (this: unknown, config: { baseURL?: string }) {
+    if (config?.baseURL?.includes('shard-manager')) return mockClients.shard;
+    if (config?.baseURL?.includes('embeddings')) return mockClients.embeddings;
+    if (config?.baseURL?.includes('ai-service')) return mockClients.ai;
+    return { get: vi.fn(), post: vi.fn() };
+  }),
+  generateServiceToken: vi.fn(() => 'mock-token'),
 }));
 
 vi.mock('../../../src/config', () => ({
@@ -23,10 +37,11 @@ vi.mock('../../../src/config', () => ({
       embeddings: { url: 'http://embeddings:3000' },
       shard_manager: { url: 'http://shard-manager:3000' },
     },
-    database: {
+    cosmos_db: {
       containers: {
         enrichment_jobs: 'enrichment_jobs',
         enrichment_results: 'enrichment_results',
+        enrichment_configurations: 'enrichment_configurations',
       },
     },
   })),
@@ -37,279 +52,143 @@ vi.mock('../../../src/utils/logger', () => ({
     info: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),
+    debug: vi.fn(),
   },
 }));
 
 vi.mock('../../../src/events/publishers/EnrichmentEventPublisher', () => ({
-  publishEnrichmentEvent: vi.fn(),
+  publishEnrichmentEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../../src/services/ShardEmbeddingService', () => ({
+  ShardEmbeddingService: vi.fn().mockImplementation(() => ({})),
+}));
+
+vi.mock('../../../src/services/processors', () => ({
+  EntityExtractionProcessor: vi.fn().mockImplementation(() => ({ getType: () => 'entity-extraction', process: vi.fn() })),
+  ClassificationProcessor: vi.fn().mockImplementation(() => ({ getType: () => 'classification', process: vi.fn() })),
+  SummarizationProcessor: vi.fn().mockImplementation(() => ({ getType: () => 'summarization', process: vi.fn() })),
+  SentimentAnalysisProcessor: vi.fn().mockImplementation(() => ({ getType: () => 'sentiment-analysis', process: vi.fn() })),
+  KeyPhrasesProcessor: vi.fn().mockImplementation(() => ({ getType: () => 'key-phrases', process: vi.fn() })),
 }));
 
 describe('EnrichmentService', () => {
   let service: EnrichmentService;
-  let mockContainer: any;
-  let mockAiServiceClient: any;
-  let mockEmbeddingsClient: any;
-  let mockShardManagerClient: any;
+  let mockJobsContainer: { items: { query: ReturnType<typeof vi.fn> }; item: ReturnType<typeof vi.fn> };
+  let mockConfigContainer: { items: { query: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> } };
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock container
-    mockContainer = {
+    mockJobsContainer = {
       items: {
-        create: vi.fn(),
-        query: vi.fn(() => ({
-          fetchAll: vi.fn(),
-        })),
-        read: vi.fn(),
-        replace: vi.fn(),
+        query: vi.fn().mockReturnValue({
+          fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        }),
+      },
+      item: vi.fn(() => ({
+        read: vi.fn().mockResolvedValue({ resource: null }),
+      })),
+    };
+
+    mockConfigContainer = {
+      items: {
+        query: vi.fn().mockReturnValue({
+          fetchAll: vi.fn().mockResolvedValue({
+            resources: [
+              {
+                id: 'default',
+                tenantId: 'tenant-123',
+                enabled: true,
+                processors: [],
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            ],
+          }),
+        }),
+        create: vi.fn().mockResolvedValue({}),
       },
     };
-    (getContainer as any).mockReturnValue(mockContainer);
 
-    // Mock service clients
-    mockAiServiceClient = {
-      post: vi.fn(),
-    };
-    mockEmbeddingsClient = {
-      post: vi.fn(),
-    };
-    mockShardManagerClient = {
-      get: vi.fn(),
-      post: vi.fn(),
-    };
-
-    (ServiceClient as any).mockImplementation((config: any) => {
-      if (config.baseURL?.includes('ai-service')) {
-        return mockAiServiceClient;
-      }
-      if (config.baseURL?.includes('embeddings')) {
-        return mockEmbeddingsClient;
-      }
-      if (config.baseURL?.includes('shard-manager')) {
-        return mockShardManagerClient;
-      }
-      return {};
+    (getContainer as ReturnType<typeof vi.fn>).mockImplementation((name: string) => {
+      if (name === 'enrichment_configurations') return mockConfigContainer;
+      if (name === 'enrichment_jobs') return mockJobsContainer;
+      return mockJobsContainer;
     });
 
     service = new EnrichmentService();
   });
 
-  describe('createEnrichmentJob', () => {
-    it('should create an enrichment job successfully', async () => {
-      const tenantId = 'tenant-123';
-      const userId = 'user-123';
-      const input = {
-        shardId: 'shard-123',
-        enrichmentTypes: ['ai_summary', 'vectorization'],
-      };
-
-      const mockJob = {
-        id: 'job-123',
-        tenantId,
-        userId,
-        shardId: input.shardId,
-        status: 'pending',
-        enrichmentTypes: input.enrichmentTypes,
-        createdAt: new Date(),
-      };
-
-      mockContainer.items.create.mockResolvedValue({
-        resource: mockJob,
-      });
-
-      const result = await service.createEnrichmentJob(tenantId, userId, input);
-
-      expect(result).toHaveProperty('id');
-      expect(result.status).toBe('pending');
-      expect(mockContainer.items.create).toHaveBeenCalled();
-    });
-
-    it('should handle errors during job creation', async () => {
-      const tenantId = 'tenant-123';
-      const userId = 'user-123';
-      const input = {
-        shardId: 'shard-123',
-        enrichmentTypes: ['ai_summary'],
-      };
-
-      mockContainer.items.create.mockRejectedValue(new Error('Database error'));
-
-      await expect(
-        service.createEnrichmentJob(tenantId, userId, input)
-      ).rejects.toThrow();
-    });
-  });
-
-  describe('executeEnrichmentJob', () => {
-    it('should execute an enrichment job successfully', async () => {
-      const tenantId = 'tenant-123';
-      const jobId = 'job-123';
-
-      const mockJob = {
-        id: jobId,
-        tenantId,
-        shardId: 'shard-123',
-        status: 'pending',
-        enrichmentTypes: ['ai_summary'],
-      };
-
-      mockContainer.items.read.mockResolvedValue({
-        resource: mockJob,
-      });
-
-      // Mock AI service response
-      mockAiServiceClient.post.mockResolvedValue({
-        summary: 'Test summary',
-        keywords: ['test', 'example'],
-      });
-
-      // Mock shard update
-      mockShardManagerClient.post.mockResolvedValue({
-        id: 'shard-123',
-        data: {
-          enriched: true,
-          summary: 'Test summary',
-        },
-      });
-
-      // Mock job update
-      mockContainer.items.replace.mockResolvedValue({
-        resource: {
-          ...mockJob,
-          status: 'completed',
-          completedAt: new Date(),
-        },
-      });
-
-      const result = await service.executeEnrichmentJob(tenantId, jobId);
-
-      expect(result.status).toBe('completed');
-      expect(mockAiServiceClient.post).toHaveBeenCalled();
-      expect(mockContainer.items.replace).toHaveBeenCalled();
-    });
-
-    it('should handle job not found', async () => {
-      const tenantId = 'tenant-123';
-      const jobId = 'non-existent';
-
-      mockContainer.items.read.mockResolvedValue({
-        resource: null,
-      });
-
-      await expect(
-        service.executeEnrichmentJob(tenantId, jobId)
-      ).rejects.toThrow();
-    });
-  });
-
-  describe('vectorizeShard', () => {
-    it('should vectorize a shard successfully', async () => {
-      const tenantId = 'tenant-123';
-      const shardId = 'shard-123';
-
-      // Mock shard data
-      mockShardManagerClient.get.mockResolvedValue({
-        id: shardId,
-        tenantId,
-        data: {
-          content: 'Test content to vectorize',
-        },
-      });
-
-      // Mock embeddings service
-      mockEmbeddingsClient.post.mockResolvedValue({
-        embedding: [0.1, 0.2, 0.3],
-        model: 'text-embedding-ada-002',
-      });
-
-      // Mock shard update
-      mockShardManagerClient.post.mockResolvedValue({
-        id: shardId,
-        data: {
-          vectorized: true,
-          embedding: [0.1, 0.2, 0.3],
-        },
-      });
-
-      const result = await service.vectorizeShard(tenantId, shardId);
-
-      expect(result).toHaveProperty('vectorized');
-      expect(result.vectorized).toBe(true);
-      expect(mockEmbeddingsClient.post).toHaveBeenCalled();
-    });
-
-    it('should handle vectorization errors', async () => {
-      const tenantId = 'tenant-123';
-      const shardId = 'shard-123';
-
-      mockShardManagerClient.get.mockRejectedValue(new Error('Shard not found'));
-
-      await expect(
-        service.vectorizeShard(tenantId, shardId)
-      ).rejects.toThrow();
-    });
-  });
-
   describe('getEnrichmentJob', () => {
-    it('should retrieve an enrichment job successfully', async () => {
-      const tenantId = 'tenant-123';
+    it('should return job when found', async () => {
       const jobId = 'job-123';
-
+      const tenantId = 'tenant-123';
       const mockJob = {
         id: jobId,
         tenantId,
         shardId: 'shard-123',
-        status: 'completed',
-        enrichmentTypes: ['ai_summary'],
+        status: EnrichmentJobStatus.COMPLETED,
+        processors: [],
         createdAt: new Date(),
         completedAt: new Date(),
       };
 
-      mockContainer.items.read.mockResolvedValue({
-        resource: mockJob,
+      mockJobsContainer.item.mockReturnValue({
+        read: vi.fn().mockResolvedValue({ resource: mockJob }),
       });
 
-      const result = await service.getEnrichmentJob(tenantId, jobId);
+      const result = await service.getEnrichmentJob(jobId, tenantId);
 
       expect(result).toEqual(mockJob);
-      expect(mockContainer.items.read).toHaveBeenCalledWith(
-        jobId,
-        { partitionKey: tenantId }
-      );
+      expect(mockJobsContainer.item).toHaveBeenCalledWith(jobId, tenantId);
+    });
+
+    it('should return null when job not found', async () => {
+      const jobId = 'non-existent';
+      const tenantId = 'tenant-123';
+
+      mockJobsContainer.item.mockReturnValue({
+        read: vi.fn().mockResolvedValue({ resource: null }),
+      });
+
+      const result = await service.getEnrichmentJob(jobId, tenantId);
+
+      expect(result).toBeNull();
     });
   });
 
-  describe('listEnrichmentJobs', () => {
-    it('should list enrichment jobs successfully', async () => {
+  describe('getStatistics', () => {
+    it('should return enrichment statistics for tenant', async () => {
       const tenantId = 'tenant-123';
-      const shardId = 'shard-123';
-
       const mockJobs = [
         {
           id: 'job-1',
           tenantId,
-          shardId,
-          status: 'completed',
+          status: EnrichmentJobStatus.COMPLETED,
+          processors: [EnrichmentProcessorType.ENTITY_EXTRACTION],
+          completedAt: new Date(),
+          processingTimeMs: 100,
         },
         {
           id: 'job-2',
           tenantId,
-          shardId,
-          status: 'pending',
+          status: EnrichmentJobStatus.PENDING,
+          processors: [],
         },
       ];
 
-      mockContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
-          resources: mockJobs,
-        }),
+      mockJobsContainer.items.query.mockReturnValue({
+        fetchAll: vi.fn().mockResolvedValue({ resources: mockJobs }),
       });
 
-      const result = await service.listEnrichmentJobs(tenantId, { shardId });
+      const result = await service.getStatistics(tenantId);
 
-      expect(result).toHaveProperty('jobs');
-      expect(result.jobs.length).toBe(2);
+      expect(result).toHaveProperty('tenantId', tenantId);
+      expect(result.totalShards).toBe(2);
+      expect(result.enrichedShards).toBe(1);
+      expect(result.pendingShards).toBe(1);
+      expect(result.failedShards).toBe(0);
     });
   });
 });

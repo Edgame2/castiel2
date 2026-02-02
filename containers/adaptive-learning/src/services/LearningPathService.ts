@@ -12,6 +12,7 @@ import {
   UpdateLearningPathInput,
   LearningPathStatus,
   LearningModule,
+  LearningResource,
 } from '../types/learning.types';
 
 export class LearningPathService {
@@ -34,10 +35,7 @@ export class LearningPathService {
       order: m.order || index + 1,
       estimatedDuration: m.estimatedDuration,
       skills: m.skills || [],
-      resources: m.resources?.map((r) => ({
-        id: uuidv4(),
-        ...r,
-      })),
+      resources: m.resources?.map((r) => ({ ...r, id: uuidv4() } as LearningResource)),
       assessments: [],
     }));
 
@@ -64,7 +62,7 @@ export class LearningPathService {
       const container = getContainer(this.containerName);
       const { resource } = await container.items.create(learningPath, {
         partitionKey: input.tenantId,
-      });
+      } as Parameters<typeof container.items.create>[1]);
 
       if (!resource) {
         throw new Error('Failed to create learning path');
@@ -92,7 +90,7 @@ export class LearningPathService {
       const { resource } = await container.item(pathId, tenantId).read<LearningPath>();
 
       if (!resource) {
-        throw new NotFoundError(`Learning path ${pathId} not found`);
+        throw new NotFoundError('Learning path', pathId);
       }
 
       return resource;
@@ -101,7 +99,7 @@ export class LearningPathService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Learning path ${pathId} not found`);
+        throw new NotFoundError('Learning path', pathId);
       }
       throw error;
     }
@@ -134,7 +132,7 @@ export class LearningPathService {
       return resource as LearningPath;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Learning path ${pathId} not found`);
+        throw new NotFoundError('Learning path', pathId);
       }
       throw error;
     }
@@ -192,10 +190,7 @@ export class LearningPathService {
 
     try {
       const { resources, continuationToken } = await container.items
-        .query<LearningPath>({
-          query,
-          parameters,
-        })
+        .query<LearningPath>({ query, parameters }, { partitionKey: tenantId } as Record<string, unknown>)
         .fetchNext();
 
       return {

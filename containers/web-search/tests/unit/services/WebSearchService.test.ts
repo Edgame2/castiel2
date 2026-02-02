@@ -4,16 +4,25 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WebSearchService } from '../../../src/services/WebSearchService';
-import { ServiceClient } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 
-// Mock dependencies
+const mockClients = vi.hoisted(() => ({
+  ai: { post: vi.fn() },
+  context: { post: vi.fn() },
+  embeddings: { post: vi.fn() },
+}));
+
+vi.mock('uuid', () => ({ v4: vi.fn(() => 'test-uuid') }));
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(),
 }));
-
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(),
+  ServiceClient: vi.fn().mockImplementation(function (this: unknown, config: { baseURL?: string }) {
+    if (config?.baseURL?.includes('ai-service')) return mockClients.ai;
+    if (config?.baseURL?.includes('context-service')) return mockClients.context;
+    if (config?.baseURL?.includes('embeddings')) return mockClients.embeddings;
+    return { post: vi.fn() };
+  }),
 }));
 
 vi.mock('../../../src/config', () => ({
@@ -41,47 +50,24 @@ vi.mock('../../../src/utils/logger', () => ({
 
 describe('WebSearchService', () => {
   let service: WebSearchService;
-  let mockContainer: any;
-  let mockAiServiceClient: any;
-  let mockContextServiceClient: any;
-  let mockEmbeddingsClient: any;
+  let mockContainer: ReturnType<typeof createMockContainer>;
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-
-    mockContainer = {
+  function createMockContainer() {
+    return {
       items: {
         create: vi.fn(),
         query: vi.fn(() => ({
-          fetchAll: vi.fn(),
+          fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
+          fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
         })),
       },
     };
-    (getContainer as any).mockReturnValue(mockContainer);
+  }
 
-    mockAiServiceClient = {
-      post: vi.fn(),
-    };
-    mockContextServiceClient = {
-      post: vi.fn(),
-    };
-    mockEmbeddingsClient = {
-      post: vi.fn(),
-    };
-
-    (ServiceClient as any).mockImplementation((config: any) => {
-      if (config.baseURL?.includes('ai-service')) {
-        return mockAiServiceClient;
-      }
-      if (config.baseURL?.includes('context-service')) {
-        return mockContextServiceClient;
-      }
-      if (config.baseURL?.includes('embeddings')) {
-        return mockEmbeddingsClient;
-      }
-      return {};
-    });
-
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockContainer = createMockContainer();
+    (getContainer as ReturnType<typeof vi.fn>).mockReturnValue(mockContainer);
     service = new WebSearchService();
   });
 
@@ -97,8 +83,7 @@ describe('WebSearchService', () => {
         }),
       });
 
-      // Mock AI service response
-      mockAiServiceClient.post.mockResolvedValue({
+      mockClients.ai.post.mockResolvedValue({
         results: [
           {
             title: 'Test Result',
@@ -124,7 +109,7 @@ describe('WebSearchService', () => {
 
       expect(result).toHaveProperty('query');
       expect(result).toHaveProperty('results');
-      expect(mockAiServiceClient.post).toHaveBeenCalled();
+      expect(mockClients.ai.post).toHaveBeenCalled();
     });
 
     it('should return cached result when available', async () => {
@@ -136,27 +121,30 @@ describe('WebSearchService', () => {
         tenantId,
         query,
         results: [
-          {
-            title: 'Cached Result',
-            url: 'https://example.com',
-            snippet: 'Cached snippet',
-            relevance: 0.9,
-          },
+          { title: 'Cached Result', url: 'https://example.com', snippet: 'Cached snippet', relevance: 0.9 },
         ],
-        cached: true,
+        cached: false,
         createdAt: new Date(),
       };
 
-      mockContainer.items.query.mockReturnValue({
-        fetchAll: vi.fn().mockResolvedValue({
-          resources: [cachedResult],
-        }),
+      (getContainer as ReturnType<typeof vi.fn>).mockImplementation((name: string) => {
+        if (name === 'web_search_cache') {
+          return {
+            items: {
+              query: vi.fn().mockReturnValue({
+                fetchNext: vi.fn().mockResolvedValue({ resources: [cachedResult] }),
+              }),
+            },
+          };
+        }
+        return mockContainer;
       });
 
       const result = await service.search(tenantId, query, { useCache: true });
 
       expect(result.cached).toBe(true);
-      expect(mockAiServiceClient.post).not.toHaveBeenCalled();
+      expect(result.results.length).toBe(1);
+      expect(mockClients.ai.post).not.toHaveBeenCalled();
     });
   });
 });

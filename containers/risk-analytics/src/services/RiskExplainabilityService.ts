@@ -30,14 +30,14 @@ export interface RiskBreakdown {
 
 export class RiskExplainabilityService {
   private config: ReturnType<typeof loadConfig>;
-  private aiServiceClient: ServiceClient;
+  private _aiServiceClient: ServiceClient;
   private app: FastifyInstance | null = null;
 
   constructor(app?: FastifyInstance) {
     this.app = app || null;
     this.config = loadConfig();
     
-    this.aiServiceClient = new ServiceClient({
+    this._aiServiceClient = new ServiceClient({
       baseURL: this.config.services.ai_service?.url || '',
       timeout: 30000,
       retries: 3,
@@ -64,6 +64,8 @@ export class RiskExplainabilityService {
     tenantId: string
   ): Promise<RiskExplainability> {
     try {
+      void this._aiServiceClient;
+      void this.getServiceToken(tenantId);
       // Generate summary
       const summary = this.generateSummary(evaluation);
       

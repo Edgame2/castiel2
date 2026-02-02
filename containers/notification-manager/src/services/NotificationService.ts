@@ -10,7 +10,7 @@ export interface GetNotificationsInput {
 }
 
 export class NotificationService {
-  private db = getDatabaseClient();
+  private db = getDatabaseClient() as any;
 
   async createNotification(input: {
     userId?: string;

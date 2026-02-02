@@ -45,6 +45,6 @@ export interface TenantMLConfigurationDocument extends TenantMLConfiguration {
   updatedAt: string;
 }
 
-export interface UpsertTenantMLConfigBody extends TenantMLConfiguration {
+export interface UpsertTenantMLConfigBody extends Omit<TenantMLConfiguration, 'tenantId'> {
   tenantId?: string;
 }

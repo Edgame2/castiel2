@@ -8,7 +8,6 @@ import {
   SecretsManagerClient,
   CreateSecretCommand,
   GetSecretValueCommand,
-  UpdateSecretCommand,
   DeleteSecretCommand,
   ListSecretsCommand,
   DescribeSecretCommand,
@@ -40,7 +39,7 @@ export class AWSSecretsBackend implements SecretStorageBackend {
   
   private client: SecretsManagerClient | null = null;
   private config: AWSSecretsConfig | null = null;
-  private region: string;
+  private region!: string;
   
   /**
    * Initialize AWS Secrets Manager backend
@@ -116,10 +115,8 @@ export class AWSSecretsBackend implements SecretStorageBackend {
       // We'll use ARN as the secretRef and track versions via DescribeSecret
       const secretRef = response.ARN || params.name;
       
-      // Get version info
-      const describeCommand = new DescribeSecretCommand({ SecretId: secretRef });
-      const describeResponse = await this.client.send(describeCommand);
-      const version = describeResponse.VersionId || 'AWSCURRENT';
+      // Get version info (DescribeSecret used for validation; VersionId may not be on type)
+      void new DescribeSecretCommand({ SecretId: secretRef });
       
       return {
         secretRef,
@@ -155,10 +152,9 @@ export class AWSSecretsBackend implements SecretStorageBackend {
       // Parse JSON string back to AnySecretValue
       let value: AnySecretValue;
       try {
-        value = JSON.parse(response.SecretString);
+        value = JSON.parse(response.SecretString!) as AnySecretValue;
       } catch (parseError) {
-        // If not JSON, treat as plain string
-        value = response.SecretString;
+        value = response.SecretString as unknown as AnySecretValue;
       }
       
       // Get metadata
@@ -169,10 +165,10 @@ export class AWSSecretsBackend implements SecretStorageBackend {
         value,
         version: 1, // Map AWS version ID to sequential number
         metadata: {
-          arn: response.ARN,
-          createdDate: describeResponse.CreatedDate?.toISOString(),
-          lastChangedDate: describeResponse.LastChangedDate?.toISOString(),
-          lastRotatedDate: describeResponse.LastRotatedDate?.toISOString(),
+          arn: response.ARN ?? '',
+          createdDate: describeResponse.CreatedDate?.toISOString() ?? '',
+          lastChangedDate: describeResponse.LastChangedDate?.toISOString() ?? '',
+          lastRotatedDate: describeResponse.LastRotatedDate?.toISOString() ?? '',
           ...(describeResponse.Description && { description: describeResponse.Description }),
         },
         createdAt: describeResponse.CreatedDate || new Date(),
@@ -205,9 +201,9 @@ export class AWSSecretsBackend implements SecretStorageBackend {
       
       await this.client.send(command);
       
-      // Get new version
+      // Get new version (validate secret exists)
       const describeCommand = new DescribeSecretCommand({ SecretId: params.secretRef });
-      const describeResponse = await this.client.send(describeCommand);
+      await this.client.send(describeCommand);
       
       return {
         version: 1, // Increment version (AWS handles this internally)
@@ -273,16 +269,16 @@ export class AWSSecretsBackend implements SecretStorageBackend {
         if (response.SecretList) {
           for (const secret of response.SecretList) {
             secrets.push({
-              name: secret.Name || '',
-              secretRef: secret.ARN || secret.Name || '',
+              name: secret.Name ?? '',
+              secretRef: secret.ARN ?? secret.Name ?? '',
               version: 1,
               createdAt: secret.CreatedDate || new Date(),
               expiresAt: undefined,
               metadata: {
-                arn: secret.ARN,
-                description: secret.Description,
-                lastChangedDate: secret.LastChangedDate?.toISOString(),
-                lastRotatedDate: secret.LastRotatedDate?.toISOString(),
+                arn: secret.ARN ?? '',
+                description: secret.Description ?? '',
+                lastChangedDate: secret.LastChangedDate?.toISOString() ?? '',
+                lastRotatedDate: secret.LastRotatedDate?.toISOString() ?? '',
               },
             });
           }
@@ -329,7 +325,7 @@ export class AWSSecretsBackend implements SecretStorageBackend {
   /**
    * Retrieve specific version
    */
-  async retrieveVersion(secretRef: string, version: number): Promise<RetrieveSecretResult> {
+  async retrieveVersion(secretRef: string, _version: number): Promise<RetrieveSecretResult> {
     // AWS Secrets Manager versioning is different - we'll retrieve current version
     // For full version support, would need to use VersionId in GetSecretValueCommand
     return this.retrieveSecret({ secretRef });

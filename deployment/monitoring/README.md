@@ -26,8 +26,18 @@ deployment/monitoring/
     ├── rollout.md            # Beta tenants, 25/50/100%, feature flags, monitoring (Plan §984)
     ├── validation.md         # KPIs (Brier, MAPE, early-warning accuracy), UAT scenarios and pass criteria (Plan §985)
     ├── deep-learning-rl-causal.md  # Optional (§961): DNN/LSTM, RL (DQN), DoWhy; when in scope, Azure ML jobs and integration
-    └── ml-training-jobs.md   # Azure ML training jobs (risk-scoring, lstm, win-prob, prophet, anomaly); submit, data sources (Plan §5.6)
+    ├── ml-training-jobs.md   # Azure ML training jobs (risk-scoring, lstm, win-prob, prophet, anomaly); submit, data sources (Plan §5.6)
+    ├── feedback-recommendation-flow.md  # Feedback recording, aggregation, recommendation.feedback.received, Data Lake /feedback sync (Plan W1)
+    ├── tenant-list-admin.md  # Super Admin tenant list: recommendations → user-management admin/organizations (Plan Feedbacks Remaining §1)
+    └── verification.md
 ```
+
+## Success criteria checkpoints (Plan §10)
+
+- **Test coverage:** ≥80% per key module; run Vitest with coverage (e.g. `pnpm test --coverage` in each container).
+- **Performance:** Feedback &lt;100ms p95, catalog &lt;200ms p95, feature &lt;500ms, ML &lt;2s, end-to-end &lt;5s p95; verify via load tests and Prometheus/Grafana dashboards.
+- **Recommendation accuracy:** &gt;85% measured from feedback aggregation or evaluation pipeline; tune models/config as needed.
+- **Runbooks:** feedback-recommendation-flow, tenant-list-admin, model-monitoring, ml-training-jobs for ops verification.
 
 ## Prometheus
 

@@ -6,9 +6,10 @@
  */
 
 import { randomUUID } from 'crypto';
-import { EventPublisher, getChannel, closeConnection } from '@coder/shared';
+import { EventPublisher, connectEventPublisher, closeConnection } from '@coder/shared';
 import { log } from '../../utils/logger';
-import { AuthEvent, BaseEvent } from '../../types/events';
+import type { AuthEvent } from '../../types/events';
+import { BaseEvent } from '../../types/events';
 import { getConfig } from '../../config';
 
 let publisher: EventPublisher | null = null;
@@ -29,13 +30,14 @@ export async function initializeEventPublisher(): Promise<void> {
   }
 
   try {
-    // Test connection by getting channel
-    await getChannel();
+    const rabbitmqConfig = {
+      url: config.rabbitmq.url,
+      exchange: config.rabbitmq.exchange || 'coder.events',
+    };
+    await connectEventPublisher(rabbitmqConfig, 'auth');
+    publisher = new EventPublisher(rabbitmqConfig, 'auth');
     
-    // Create publisher instance
-    publisher = new EventPublisher(config.rabbitmq.exchange || 'coder.events');
-    
-    log.info('Event publisher initialized', { service: 'auth', exchange: config.rabbitmq.exchange || 'coder.events' });
+    log.info('Event publisher initialized', { service: 'auth', exchange: rabbitmqConfig.exchange });
   } catch (error: any) {
     log.error('Failed to initialize event publisher', error, { service: 'auth' });
     // Don't throw - allow service to start without events
@@ -61,7 +63,12 @@ export async function closeEventPublisher(): Promise<void> {
 function getPublisher(): EventPublisher | null {
   if (!publisher) {
     const config = getConfig();
-    publisher = new EventPublisher(config.rabbitmq.exchange || 'coder.events');
+    if (config.rabbitmq?.url) {
+      publisher = new EventPublisher(
+        { url: config.rabbitmq.url, exchange: config.rabbitmq.exchange || 'coder.events' },
+        'auth'
+      );
+    }
   }
   return publisher;
 }
@@ -103,7 +110,8 @@ export async function publishEvent(event: AuthEvent, routingKey?: string): Promi
   }
 
   try {
-    await pub.publish(event, routingKey || event.type);
+    const tenantId = event.organizationId ?? event.userId ?? '';
+    await pub.publish(event.type, tenantId, event.data);
     log.debug('Auth event published', { type: event.type, service: 'auth' });
   } catch (error) {
     log.error('Failed to publish auth event', error as Error, {

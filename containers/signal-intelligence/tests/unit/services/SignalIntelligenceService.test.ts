@@ -6,9 +6,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SignalIntelligenceService } from '../../../src/services/SignalIntelligenceService';
 import { ServiceClient } from '@coder/shared';
 
-// Mock dependencies
+// Mock dependencies - ServiceClient must be a constructor (use function, not arrow)
+const mockServiceClientImpl = vi.hoisted(() => vi.fn());
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(),
+  ServiceClient: mockServiceClientImpl,
 }));
 
 vi.mock('../../../src/config', () => ({
@@ -44,14 +45,14 @@ describe('SignalIntelligenceService', () => {
       post: vi.fn(),
     };
 
-    (ServiceClient as any).mockImplementation((config: any) => {
-      if (config.baseURL?.includes('ai-service')) {
+    mockServiceClientImpl.mockImplementation(function (this: any, config: any) {
+      if (config?.baseURL?.includes('ai-service')) {
         return mockAiServiceClient;
       }
-      if (config.baseURL?.includes('analytics-service')) {
+      if (config?.baseURL?.includes('analytics-service')) {
         return mockAnalyticsServiceClient;
       }
-      return {};
+      return this ?? {};
     });
 
     service = new SignalIntelligenceService();

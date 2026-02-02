@@ -12,11 +12,9 @@ import {
   UpdatePromptTemplateInput,
   RenderPromptInput,
   CreatePromptABTestInput,
-  PromptStatus,
-  PromptABTestStatus,
 } from '../types/prompt.types';
 
-export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
+export async function registerRoutes(app: FastifyInstance, _config: unknown): Promise<void> {
   const promptService = new PromptService();
   const abTestService = new ABTestService();
 

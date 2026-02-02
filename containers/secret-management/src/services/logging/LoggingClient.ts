@@ -8,7 +8,7 @@
 /**
  * Logging Service configuration
  */
-import { loadConfig } from '../../../config';
+import { getConfig } from '../../config';
 const SERVICE_NAME = 'secret-management';
 
 /**
@@ -39,8 +39,12 @@ export class LoggingClient {
   private enabled: boolean;
 
   constructor() {
-    const config = loadConfig();
-    this.baseUrl = config.services?.logging?.url || process.env.LOGGING_SERVICE_URL || '';
+    const config = getConfig();
+    this.baseUrl =
+      config.logging?.serviceUrl ??
+      config.services?.logging?.url ??
+      process.env.LOGGING_SERVICE_URL ??
+      '';
     this.serviceName = SERVICE_NAME;
     // Only enable if logging service URL is configured
     this.enabled = !!this.baseUrl || process.env.NODE_ENV === 'production';

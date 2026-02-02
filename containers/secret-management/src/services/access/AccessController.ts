@@ -7,14 +7,13 @@
 import { getDatabaseClient } from '@coder/shared';
 import { SecretAction, AccessCheckResult, SecretContext } from '../../types';
 import { ScopeValidator } from './ScopeValidator';
-import { AccessDeniedError, SecretNotFoundError } from '../../errors/SecretErrors';
-import { SecretMetadata } from '../../types';
+import { SecretNotFoundError } from '../../errors/SecretErrors';
 import { getLoggingClient } from '../logging/LoggingClient';
 import { AuditService } from '../AuditService';
 import { getUserRoles, isSuperAdmin } from './RoleService';
 
 export class AccessController {
-  private db = getDatabaseClient();
+  private db = getDatabaseClient() as any;
   private auditService: AuditService;
   
   constructor() {

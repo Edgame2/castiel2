@@ -39,7 +39,7 @@ All 10 Cursor Skills have been created, validated, and are ready for production 
 - Clear, actionable instructions
 - Code examples from actual project patterns
 - References to ModuleImplementationGuide.md sections
-- References to SERVICE_MIGRATION_GUIDE.md where applicable
+- References to ModuleImplementationGuide.md where applicable
 - Checklists and validation steps
 - Cross-references to related skills
 
@@ -54,7 +54,7 @@ All 10 Cursor Skills have been created, validated, and are ready for production 
 
 ✅ **All skills comply with**:
 - ModuleImplementationGuide.md standards
-- SERVICE_MIGRATION_GUIDE.md patterns
+- ModuleImplementationGuide.md patterns
 - .cursorrules requirements
 - Cursor Skill best practices
 
@@ -134,7 +134,7 @@ All 10 Cursor Skills have been created, validated, and are ready for production 
 
 ✅ migrate-service-to-container references create-container-module  
 ✅ All skills reference ModuleImplementationGuide.md sections  
-✅ All skills reference SERVICE_MIGRATION_GUIDE.md where applicable  
+✅ All skills reference ModuleImplementationGuide.md where applicable  
 ✅ All skills use containers/auth/ as reference implementation  
 
 ## Ready for Production

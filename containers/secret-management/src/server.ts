@@ -120,7 +120,7 @@ const start = async () => {
     const config = loadConfig();
     
     // Setup JWT for authentication
-    await setupJWT(server);
+    await setupJWT(server, { secret: process.env.JWT_SECRET || '' });
     
     // Initialize database with config
     initializeDatabase({
@@ -167,8 +167,8 @@ const start = async () => {
         console.warn('Failed to export OpenAPI spec:', error.message);
         // Don't fail startup if spec export fails
       }
-    }).catch((error) => {
-      console.warn('Failed to export OpenAPI spec:', error.message);
+    }).then(undefined, (error: any) => {
+      console.warn('Failed to export OpenAPI spec:', error?.message ?? error);
     });
     
     // Start scheduler service

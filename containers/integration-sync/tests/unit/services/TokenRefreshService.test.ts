@@ -4,11 +4,14 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TokenRefreshService } from '../../../src/services/TokenRefreshService';
-import { ServiceClient } from '@coder/shared';
 import { publishIntegrationSyncEvent } from '../../../src/events/publishers/IntegrationSyncEventPublisher';
 
+const mockIntegrationManagerClient = vi.hoisted(() => ({ post: vi.fn(), put: vi.fn() }));
+
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(),
+  ServiceClient: vi.fn().mockImplementation(function (this: unknown, _config: { baseURL?: string }) {
+    return mockIntegrationManagerClient;
+  }),
   generateServiceToken: vi.fn(() => 'mock-token'),
 }));
 
@@ -29,17 +32,14 @@ vi.mock('../../../src/events/publishers/IntegrationSyncEventPublisher', () => ({
 
 describe('TokenRefreshService', () => {
   let service: TokenRefreshService;
-  let mockIntegrationManagerClient: { post: ReturnType<typeof vi.fn>; put: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockIntegrationManagerClient = { post: vi.fn(), put: vi.fn() };
-    (ServiceClient as any).mockImplementation(() => mockIntegrationManagerClient);
     service = new TokenRefreshService();
   });
 
   afterEach(async () => {
-    await service.stop();
+    if (service) await service.stop();
   });
 
   describe('start', () => {

@@ -339,8 +339,7 @@ These services are required for other services to function:
 #### 7.1 Already Migrated ✅
 - ✅ notification-manager
 - ✅ dashboard
-- ✅ bug-detection
-- ✅ code-generation
+- Removed: bug-detection
 - ✅ pattern-recognition
 - ✅ performance-optimization
 - ✅ pipeline-manager

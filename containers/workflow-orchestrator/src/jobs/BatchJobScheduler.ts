@@ -155,6 +155,24 @@ export async function startBatchJobScheduler(): Promise<void> {
     log.warn('Invalid model_monitoring_cron, skipping', { cron: bj.model_monitoring_cron, service: 'workflow-orchestrator' });
   }
 
+  if (bj?.cais_learning_cron && cronValidate(bj.cais_learning_cron)) {
+    const expr = bj.cais_learning_cron;
+    cronJobs.push(cronSchedule(expr, async () => {
+      try {
+        await publishJobTrigger('cais-learning', { schedule: expr, triggeredAt: new Date().toISOString() });
+        batchJobTriggersTotal.inc({ batch_job: 'cais-learning' });
+      } catch (e) {
+        log.error('BatchJobScheduler: publishJobTrigger failed', e instanceof Error ? e : new Error(String(e)), {
+          job: 'cais-learning',
+          service: 'workflow-orchestrator',
+        });
+      }
+    }));
+    log.info('Batch job: cais-learning scheduled (Phase 12)', { cron: expr, service: 'workflow-orchestrator' });
+  } else if (bj?.cais_learning_cron) {
+    log.warn('Invalid cais_learning_cron, skipping', { cron: bj.cais_learning_cron, service: 'workflow-orchestrator' });
+  }
+
   if (cronJobs.length === 0) {
     log.info('Batch job scheduler: no valid crons, idle', { service: 'workflow-orchestrator' });
   }

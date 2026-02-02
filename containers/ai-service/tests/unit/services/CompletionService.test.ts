@@ -4,13 +4,32 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CompletionService } from '../../../src/services/CompletionService';
-import { ServiceClient } from '@coder/shared';
 
-// Mock dependencies
+const { mockServiceClient, mockDb, mockOpenaiPost } = vi.hoisted(() => {
+  const post = vi.fn().mockResolvedValue({
+    choices: [{ message: { content: 'Hi there!' } }],
+    usage: { total_tokens: 10 },
+  });
+  return {
+    mockServiceClient: { post: vi.fn(), get: vi.fn() },
+    mockOpenaiPost: post,
+    mockDb: {
+      ai_completions: {
+        create: vi.fn().mockResolvedValue({ id: 'c1', createdAt: new Date() }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+    },
+  };
+});
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(),
+  ServiceClient: vi.fn().mockImplementation(function (this: any) {
+    return mockServiceClient;
+  }),
+  getDatabaseClient: vi.fn(() => mockDb),
+  HttpClient: vi.fn().mockImplementation(function (this: any) {
+    return { post: mockOpenaiPost, get: vi.fn() };
+  }),
 }));
-
 vi.mock('../../../src/config', () => ({
   loadConfig: vi.fn(() => ({
     providers: {
@@ -23,18 +42,10 @@ vi.mock('../../../src/config', () => ({
 
 describe('CompletionService', () => {
   let service: CompletionService;
-  let mockServiceClient: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    mockServiceClient = {
-      post: vi.fn(),
-      get: vi.fn(),
-    };
-
-    (ServiceClient as any).mockImplementation(() => mockServiceClient);
-
+    process.env.OPENAI_API_KEY = 'test-key';
     service = new CompletionService();
   });
 
@@ -46,15 +57,6 @@ describe('CompletionService', () => {
         organizationId: 'org-123',
         userId: 'user-123',
       };
-
-      const mockResponse = {
-        id: 'completion-123',
-        choices: [{ message: { role: 'assistant', content: 'Hi there!' } }],
-        usage: { totalTokens: 10 },
-      };
-
-      // Mock the internal completion logic
-      vi.spyOn(service as any, 'callProvider').mockResolvedValue(mockResponse);
 
       const result = await service.complete(input);
 
@@ -69,21 +71,23 @@ describe('CompletionService', () => {
         organizationId: 'org-123',
         userId: 'user-123',
       };
-
-      vi.spyOn(service as any, 'callProvider').mockRejectedValue(new Error('Provider error'));
+      mockOpenaiPost.mockRejectedValueOnce(new Error('Provider error'));
 
       await expect(service.complete(input)).rejects.toThrow();
     });
 
-    it('should validate required fields', async () => {
+    it('should throw when OPENAI API key not configured', async () => {
+      delete process.env.OPENAI_API_KEY;
+      const svc = new CompletionService();
       const input = {
-        messages: [],
+        messages: [{ role: 'user', content: 'Hello' }],
         model: 'gpt-4',
         organizationId: 'org-123',
         userId: 'user-123',
-      } as any;
+      };
 
-      await expect(service.complete(input)).rejects.toThrow();
+      await expect(svc.complete(input)).rejects.toThrow('OpenAI API key not configured');
+      process.env.OPENAI_API_KEY = 'test-key';
     });
   });
 });

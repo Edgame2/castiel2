@@ -18,26 +18,28 @@ import {
 
 export class InsightService {
   private containerName = 'ai_insights';
-  private aiServiceClient: ServiceClient;
+  private _aiServiceClient: ServiceClient;
   private shardManagerClient: ServiceClient;
-  private embeddingsClient: ServiceClient;
+  private _embeddingsClient: ServiceClient;
 
   constructor(aiServiceUrl: string, shardManagerUrl: string, embeddingsUrl: string) {
-    this.aiServiceClient = new ServiceClient({
-      baseUrl: aiServiceUrl,
+    this._aiServiceClient = new ServiceClient({
+      baseURL: aiServiceUrl,
       timeout: 30000,
       retries: 2,
     });
     this.shardManagerClient = new ServiceClient({
-      baseUrl: shardManagerUrl,
+      baseURL: shardManagerUrl,
       timeout: 10000,
       retries: 2,
     });
-    this.embeddingsClient = new ServiceClient({
-      baseUrl: embeddingsUrl,
+    this._embeddingsClient = new ServiceClient({
+      baseURL: embeddingsUrl,
       timeout: 10000,
       retries: 2,
     });
+    void this._aiServiceClient;
+    void this._embeddingsClient;
   }
 
   /**
@@ -78,10 +80,10 @@ export class InsightService {
     };
 
     try {
-      const container = getContainer(this.containerName);
+      const container = getContainer(this.containerName) as any;
       const { resource } = await container.items.create(insight, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create insight');
@@ -156,11 +158,13 @@ export class InsightService {
     }
 
     try {
-      const container = getContainer(this.containerName);
-      const { resource } = await container.item(insightId, tenantId).read<Insight>();
+      const container = getContainer(this.containerName) as any;
+      const item = container.item(insightId, tenantId);
+      const result = (await (item as any).read()) as any;
+      const resource = (result as any).resource as Insight | undefined;
 
       if (!resource) {
-        throw new NotFoundError(`Insight ${insightId} not found`);
+        throw new NotFoundError('Insight', insightId);
       }
 
       return resource;
@@ -169,7 +173,7 @@ export class InsightService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Insight ${insightId} not found`);
+        throw new NotFoundError('Insight', insightId);
       }
       throw error;
     }
@@ -195,8 +199,10 @@ export class InsightService {
     };
 
     try {
-      const container = getContainer(this.containerName);
-      const { resource } = await container.item(insightId, tenantId).replace(updated);
+      const container = getContainer(this.containerName) as any;
+      const item = container.item(insightId, tenantId);
+      const result = (await (item as any).replace(updated)) as any;
+      const resource = (result as any).resource as Insight | undefined;
 
       if (!resource) {
         throw new Error('Failed to update insight');
@@ -205,7 +211,7 @@ export class InsightService {
       return resource as Insight;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Insight ${insightId} not found`);
+        throw new NotFoundError('Insight', insightId);
       }
       throw error;
     }
@@ -215,10 +221,11 @@ export class InsightService {
    * Delete insight
    */
   async delete(insightId: string, tenantId: string): Promise<void> {
-    const existing = await this.getById(insightId, tenantId);
+    await this.getById(insightId, tenantId);
 
-    const container = getContainer(this.containerName);
-    await container.item(insightId, tenantId).delete();
+    const container = getContainer(this.containerName) as any;
+    const item = container.item(insightId, tenantId);
+    await (item as any).delete();
   }
 
   /**
@@ -239,7 +246,7 @@ export class InsightService {
       throw new BadRequestError('tenantId is required');
     }
 
-    const container = getContainer(this.containerName);
+    const container = getContainer(this.containerName) as any;
     let query = 'SELECT * FROM c WHERE c.tenantId = @tenantId';
     const parameters: any[] = [{ name: '@tenantId', value: tenantId }];
 
@@ -268,12 +275,11 @@ export class InsightService {
     const limit = filters?.limit || 100;
 
     try {
-      const { resources, continuationToken } = await container.items
-        .query<Insight>({
+      const { resources, continuationToken } = await (container.items
+        .query({
           query,
           parameters,
-        })
-        .fetchNext();
+        }) as any).fetchNext();
 
       return {
         items: resources.slice(0, limit),

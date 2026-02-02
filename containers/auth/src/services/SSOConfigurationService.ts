@@ -75,7 +75,7 @@ export class SSOConfigurationService {
     ssoConfig: any;
     secretId: string;
   }> {
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
     let secretId: string | null = null;
 
     try {
@@ -174,7 +174,7 @@ export class SSOConfigurationService {
    * Get SSO configuration (non-sensitive data only)
    */
   async getSSOConfiguration(organizationId: string, provider?: SSOProvider): Promise<any | null> {
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
 
     const where: any = { organizationId };
     if (provider) {
@@ -294,7 +294,7 @@ export class SSOConfigurationService {
    * Disable SSO for organization
    */
   async disableSSO(organizationId: string, userId: string): Promise<void> {
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
 
     await db.organization.update({
       where: { id: organizationId },
@@ -320,7 +320,7 @@ export class SSOConfigurationService {
    * Delete SSO configuration
    */
   async deleteSSOConfiguration(organizationId: string, provider: SSOProvider, userId: string): Promise<void> {
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
 
     const config = await db.sSOConfiguration.findUnique({
       where: {

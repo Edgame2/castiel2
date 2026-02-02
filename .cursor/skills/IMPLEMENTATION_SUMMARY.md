@@ -26,7 +26,7 @@ All 10 Cursor Skills have been successfully created and are ready for use.
 ✅ **All skills have proper YAML frontmatter** with `name` and `description` fields  
 ✅ **All descriptions include trigger terms** for agent discovery  
 ✅ **All skills reference ModuleImplementationGuide.md** sections  
-✅ **All skills reference SERVICE_MIGRATION_GUIDE.md** where applicable  
+✅ **All skills reference ModuleImplementationGuide.md** where applicable  
 ✅ **All skills use containers/auth/** as reference implementation  
 ✅ **Cross-references included** (e.g., migrate-service-to-container references create-container-module)  
 ✅ **README.md created** documenting all skills  
@@ -119,7 +119,7 @@ All 10 Cursor Skills have been successfully created and are ready for use.
 
 All skills follow:
 - ✅ ModuleImplementationGuide.md standards
-- ✅ SERVICE_MIGRATION_GUIDE.md patterns
+- ✅ ModuleImplementationGuide.md patterns
 - ✅ .cursorrules requirements
 - ✅ containers/auth/ reference implementation
 - ✅ Cursor Skill best practices (concise, specific, actionable)
@@ -141,7 +141,7 @@ All skills are stored in: `.cursor/skills/{skill-name}/SKILL.md`
 
 The skills are ready to use. Developers can now:
 1. Create new container modules following standards
-2. Migrate services from old_code/ to containers/
+2. Migrate existing services to containers/
 3. Validate compliance with project rules
 4. Set up configuration, events, tests, and documentation
 5. Ensure tenant isolation and proper service communication

@@ -55,7 +55,7 @@ export async function vaultRoutes(fastify: FastifyInstance) {
       const user = (request as any).user;
       const body = createVaultSchema.parse(request.body);
       
-      const vault = await vaultService.createVault(body, user.id);
+      const vault = await vaultService.createVault({ ...body, config: body.config ?? {} }, user.id);
       reply.code(201).send(vault);
     } catch (error: any) {
       throw error;

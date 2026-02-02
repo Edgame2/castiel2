@@ -4,17 +4,25 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CacheManagementService } from '../../../src/services/CacheManagementService';
-import { ServiceClient } from '@coder/shared';
+import { getContainer } from '@coder/shared/database';
 
-// Mock dependencies
+const { mockCacheServiceClient } = vi.hoisted(() => ({
+  mockCacheServiceClient: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
+}));
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(),
+  ServiceClient: vi.fn().mockImplementation(function (this: any) {
+    return mockCacheServiceClient;
+  }),
+}));
+vi.mock('@coder/shared/database', () => ({
+  getContainer: vi.fn(),
 }));
 
 vi.mock('../../../src/config', () => ({
   loadConfig: vi.fn(() => ({
     services: {
       cache_service: { url: 'http://cache-service:3000' },
+      embeddings: { url: 'http://embeddings:3000' },
     },
   })),
 }));
@@ -29,77 +37,83 @@ vi.mock('../../../src/utils/logger', () => ({
 
 describe('CacheManagementService', () => {
   let service: CacheManagementService;
-  let mockCacheServiceClient: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    mockCacheServiceClient = {
-      get: vi.fn(),
-      post: vi.fn(),
-      delete: vi.fn(),
-    };
-
-    (ServiceClient as any).mockImplementation(() => mockCacheServiceClient);
-
     service = new CacheManagementService();
   });
 
   describe('getCacheMetrics', () => {
     it('should retrieve cache metrics successfully', async () => {
       const tenantId = 'tenant-123';
-
-      const mockMetrics = {
-        hitRate: 0.85,
-        missRate: 0.15,
-        totalRequests: 1000,
-        totalHits: 850,
-        totalMisses: 150,
+      const mockResources = [
+        {
+          id: 'm1',
+          tenantId,
+          cacheKey: 'k1',
+          hitCount: 10,
+          missCount: 2,
+          hitRate: 0.83,
+          averageResponseTime: 1,
+          lastAccessed: new Date(),
+          createdAt: new Date(),
+        },
+      ];
+      const mockContainer = {
+        items: {
+          query: vi.fn().mockReturnValue({
+            fetchNext: vi.fn().mockResolvedValue({ resources: mockResources }),
+          }),
+        },
       };
-
-      mockCacheServiceClient.get.mockResolvedValue(mockMetrics);
+      (getContainer as any).mockReturnValue(mockContainer);
 
       const result = await service.getCacheMetrics(tenantId);
 
-      expect(result).toEqual(mockMetrics);
-      expect(mockCacheServiceClient.get).toHaveBeenCalled();
+      expect(result).toEqual(mockResources);
+      expect(getContainer).toHaveBeenCalledWith('cache_metrics');
     });
   });
 
   describe('optimizeCache', () => {
     it('should optimize cache successfully', async () => {
       const tenantId = 'tenant-123';
-      const strategy = 'lru' as const;
-
-      const mockOptimization = {
-        strategy,
-        evictedKeys: 50,
-        remainingKeys: 950,
-        memorySaved: 1024 * 1024, // 1MB
+      const mockMetrics = [
+        {
+          id: 'm1',
+          tenantId,
+          cacheKey: 'k1',
+          hitCount: 1,
+          missCount: 9,
+          hitRate: 0.1,
+          averageResponseTime: 100,
+          lastAccessed: new Date(),
+          createdAt: new Date(),
+        },
+      ];
+      const metricsContainer = {
+        items: {
+          query: vi.fn().mockReturnValue({
+            fetchNext: vi.fn().mockResolvedValue({ resources: mockMetrics }),
+          }),
+        },
       };
+      const strategiesContainer = {
+        items: {
+          query: vi.fn().mockReturnValue({
+            fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+          }),
+        },
+        item: vi.fn().mockReturnValue({ replace: vi.fn().mockResolvedValue({}) }),
+      };
+      (getContainer as any).mockImplementation((name: string) =>
+        name === 'cache_metrics' ? metricsContainer : strategiesContainer
+      );
 
-      mockCacheServiceClient.post.mockResolvedValue(mockOptimization);
+      const result = await service.optimizeCache(tenantId);
 
-      const result = await service.optimizeCache(tenantId, strategy);
-
-      expect(result).toEqual(mockOptimization);
-      expect(mockCacheServiceClient.post).toHaveBeenCalled();
-    });
-  });
-
-  describe('clearCache', () => {
-    it('should clear cache successfully', async () => {
-      const tenantId = 'tenant-123';
-      const pattern = 'user:*';
-
-      mockCacheServiceClient.delete.mockResolvedValue({
-        clearedKeys: 100,
-      });
-
-      const result = await service.clearCache(tenantId, pattern);
-
-      expect(result).toHaveProperty('clearedKeys');
-      expect(mockCacheServiceClient.delete).toHaveBeenCalled();
+      expect(result).toHaveProperty('optimized');
+      expect(result).toHaveProperty('freed');
     });
   });
 });

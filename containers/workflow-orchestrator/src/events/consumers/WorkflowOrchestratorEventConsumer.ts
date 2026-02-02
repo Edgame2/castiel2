@@ -28,7 +28,7 @@ export async function initializeEventConsumer(): Promise<void> {
       url: config.rabbitmq.url,
       exchange: config.rabbitmq.exchange || 'coder_events',
       queue: config.rabbitmq.queue,
-      bindings: config.rabbitmq.bindings,
+      routingKeys: config.rabbitmq.bindings ?? [],
     });
 
     // Handle opportunity change events from integration-manager

@@ -19,7 +19,7 @@ const auditLogsSchema = z.object({
 });
 
 export async function auditRoutes(fastify: FastifyInstance) {
-  const db = getDatabaseClient();
+  const db = getDatabaseClient() as any;
   const complianceService = new ComplianceService();
 
   // List audit logs

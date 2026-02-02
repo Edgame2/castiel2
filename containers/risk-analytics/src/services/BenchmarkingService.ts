@@ -4,11 +4,9 @@
  */
 
 import { ServiceClient, generateServiceToken } from '@coder/shared';
-import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
 import { loadConfig } from '../config';
 import { log } from '../utils/logger';
-import { v4 as uuidv4 } from 'uuid';
 
 export interface WinRateBenchmark {
   scope: 'tenant' | 'industry' | 'peer';

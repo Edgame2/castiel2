@@ -6,7 +6,7 @@
  */
 
 import { getDatabaseClient } from '@coder/shared';
-import { KeyNotFoundError, KeyRotationError } from '../../errors/SecretErrors';
+import { KeyNotFoundError } from '../../errors/SecretErrors';
 import * as crypto from 'crypto';
 
 export interface EncryptionKey {
@@ -22,7 +22,7 @@ export interface EncryptionKey {
 }
 
 export class KeyManager {
-  private db = getDatabaseClient();
+  private db = getDatabaseClient() as any;
   private masterKey: Buffer;
   
   constructor() {

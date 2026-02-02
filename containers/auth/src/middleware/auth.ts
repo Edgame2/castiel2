@@ -64,7 +64,7 @@ export async function authenticateRequest(
     }
 
     // Get user from database
-    const db = getDatabaseClient();
+    const db = getDatabaseClient() as any;
     const user = await db.user.findUnique({
       where: { id: sessionData.userId },
       select: { 
@@ -133,7 +133,7 @@ export async function optionalAuth(
       const sessionData = await validateSession(token, userAgent, request.server);
       
       if (sessionData) {
-        const db = getDatabaseClient();
+        const db = getDatabaseClient() as any;
         const user = await db.user.findUnique({
           where: { id: sessionData.userId },
           select: { id: true, email: true, name: true },

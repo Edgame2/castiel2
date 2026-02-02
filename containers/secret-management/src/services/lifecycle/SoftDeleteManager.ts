@@ -11,7 +11,7 @@ import { getLoggingClient } from '../logging/LoggingClient';
 import { AuditService } from '../AuditService';
 
 export class SoftDeleteManager {
-  private db = getDatabaseClient();
+  private db = getDatabaseClient() as any;
   private auditService: AuditService;
   private readonly RECOVERY_PERIOD_DAYS = 30;
   

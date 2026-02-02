@@ -9,7 +9,7 @@ export * from './services/SecretService';
 export * from './services/SecretResolver';
 export * from './services/VaultService';
 export * from './services/AuditService';
-export * from './services/ComplianceService';
+export { ComplianceService } from './services/ComplianceService';
 export * from './services/health/HealthService';
 
 // Access Control

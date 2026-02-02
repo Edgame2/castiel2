@@ -77,6 +77,7 @@ describe('RecommendationsService', () => {
     // Mock service clients
     mockAdaptiveLearningClient = {
       get: vi.fn(),
+      post: vi.fn().mockResolvedValue(undefined),
     };
     mockMlServiceClient = {
       post: vi.fn(),
@@ -219,6 +220,37 @@ describe('RecommendationsService', () => {
       mockContainer.item().read.mockResolvedValue({ resource: null });
 
       await expect(service.recordFeedback(feedback)).resolves.toBeDefined();
+    });
+
+    it('calls adaptive-learning record-outcome with correct predictionId and outcomeValue', async () => {
+      const tenantId = 'tenant-123';
+      const userId = 'user-123';
+      const recommendationId = 'rec-456';
+      const feedback = {
+        recommendationId,
+        userId,
+        tenantId,
+        action: 'accept' as const,
+        timestamp: new Date(),
+      };
+
+      mockContainer.item().read.mockResolvedValue({
+        resource: { id: recommendationId, tenantId, status: 'active' },
+      });
+      mockContainer.item().replace.mockResolvedValue({});
+      mockContainer.items.create.mockResolvedValue({ resource: {} });
+
+      await service.recordFeedback(feedback);
+
+      const postCalls = mockAdaptiveLearningClient.post.mock.calls;
+      const recordOutcomeCall = postCalls.find((c: unknown[]) => typeof c[0] === 'string' && (c[0] as string).includes('record-outcome'));
+      expect(recordOutcomeCall).toBeDefined();
+      expect(recordOutcomeCall![0]).toContain('/api/v1/adaptive-learning/outcomes/record-outcome');
+      expect(recordOutcomeCall![1]).toMatchObject({
+        predictionId: recommendationId,
+        outcomeValue: 1,
+        outcomeType: 'success',
+      });
     });
   });
 

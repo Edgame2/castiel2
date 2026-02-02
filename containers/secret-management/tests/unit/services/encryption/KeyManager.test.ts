@@ -2,7 +2,7 @@
  * Unit tests for Key Manager
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { KeyManager } from '../../../../src/services/encryption/KeyManager';
 
 // Mock database
@@ -22,11 +22,17 @@ vi.mock('@coder/shared', () => {
 describe('KeyManager', () => {
   let keyManager: KeyManager;
   let mockDb: any;
+  const validMasterKey = '0'.repeat(64);
 
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.SECRET_MASTER_KEY = validMasterKey;
     keyManager = new KeyManager();
     mockDb = (keyManager as any).db;
+  });
+
+  afterEach(() => {
+    delete process.env.SECRET_MASTER_KEY;
   });
 
   describe('getActiveKey', () => {
@@ -96,7 +102,7 @@ describe('KeyManager', () => {
       expect(mockDb.secret_encryption_keys.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            isActive: false,
+            status: 'ROTATING',
           }),
         })
       );

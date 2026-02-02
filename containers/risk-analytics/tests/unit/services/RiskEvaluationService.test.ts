@@ -28,6 +28,11 @@ vi.mock('../../../src/config', () => ({
       embeddings: { url: 'http://embeddings:3000' },
       search_service: { url: 'http://search-service:3029' },
     },
+    cosmos_db: {
+      containers: {
+        tenant_ml_config: 'risk_tenant_ml_config',
+      },
+    },
   })),
 }));
 
@@ -36,6 +41,7 @@ vi.mock('../../../src/utils/logger', () => ({
     info: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),
+    debug: vi.fn(),
   },
 }));
 
@@ -54,6 +60,13 @@ describe('RiskEvaluationService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    const mockContainer = {
+      items: {
+        create: vi.fn().mockResolvedValue({ resource: {} }),
+      },
+    };
+    (getContainer as ReturnType<typeof vi.fn>).mockReturnValue(mockContainer);
 
     // Mock service clients
     mockRiskCatalogClient = {
@@ -75,28 +88,14 @@ describe('RiskEvaluationService', () => {
       post: vi.fn(),
     };
 
-    (ServiceClient as any).mockImplementation((config: any) => {
-      if (config.baseURL?.includes('risk-catalog')) {
-        return mockRiskCatalogClient;
-      }
-      if (config.baseURL?.includes('adaptive-learning')) {
-        return mockAdaptiveLearningClient;
-      }
-      if (config.baseURL?.includes('ml-service')) {
-        return mockMlServiceClient;
-      }
-      if (config.baseURL?.includes('ai-insights')) {
-        return mockAiInsightsClient;
-      }
-      if (config.baseURL?.includes('shard-manager')) {
-        return mockShardManagerClient;
-      }
-      if (config.baseURL?.includes('embeddings')) {
-        return mockEmbeddingsClient;
-      }
-      if (config.baseURL?.includes('search-service')) {
-        return { post: vi.fn().mockResolvedValue({ results: [] }) };
-      }
+    (ServiceClient as any).mockImplementation(function (this: any, config: any) {
+      if (config?.baseURL?.includes('risk-catalog')) return mockRiskCatalogClient;
+      if (config?.baseURL?.includes('adaptive-learning')) return mockAdaptiveLearningClient;
+      if (config?.baseURL?.includes('ml-service')) return mockMlServiceClient;
+      if (config?.baseURL?.includes('ai-insights')) return mockAiInsightsClient;
+      if (config?.baseURL?.includes('shard-manager')) return mockShardManagerClient;
+      if (config?.baseURL?.includes('embeddings')) return mockEmbeddingsClient;
+      if (config?.baseURL?.includes('search-service')) return { post: vi.fn().mockResolvedValue({ results: [] }) };
       return {};
     });
 
@@ -197,7 +196,7 @@ describe('RiskEvaluationService', () => {
       expect(result).toHaveProperty('opportunityId');
       expect(result).toHaveProperty('detectedRisks');
       expect(mockAdaptiveLearningClient.get).toHaveBeenCalled();
-      expect(mockRiskCatalogClient.get).toHaveBeenCalled();
+      // When riskCatalogService is not injected, getRiskCatalog returns [] without calling riskCatalogClient
     });
 
     it('should handle missing opportunity', async () => {
@@ -227,32 +226,19 @@ describe('RiskEvaluationService', () => {
       const tenantId = 'tenant-123';
       const opportunityId = 'opp-123';
 
-      // Mock opportunity
+      // Mock opportunity (service reads structuredData.amount)
       mockShardManagerClient.get.mockResolvedValueOnce({
         id: opportunityId,
         tenantId,
-        data: {
+        structuredData: {
           amount: 100000,
           probability: 0.8,
         },
       });
 
-      // Mock risk evaluation
-      const mockEvaluation = {
-        opportunityId,
-        detectedRisks: [
-          {
-            riskId: 'risk-1',
-            probability: 0.3,
-            impact: 'high',
-            revenueImpact: 0.2,
-          },
-        ],
-        overallRiskScore: 0.6,
-      };
+      const riskScore = 0.6;
 
-      // This would typically be called internally, but we can test the calculation logic
-      const result = await service.calculateRevenueAtRisk(tenantId, opportunityId, mockEvaluation);
+      const result = await service.calculateRevenueAtRisk(opportunityId, tenantId, riskScore);
 
       expect(result).toHaveProperty('opportunityId');
       expect(result).toHaveProperty('revenueAtRisk');

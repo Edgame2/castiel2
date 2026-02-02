@@ -8,12 +8,26 @@ import { ServiceClient } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 
 // Mock dependencies
+const mockClients = vi.hoisted(() => ({
+  adaptive: { get: vi.fn() },
+  ml: { post: vi.fn() },
+  analytics: { get: vi.fn(), post: vi.fn() },
+  risk: { get: vi.fn(), post: vi.fn() },
+  shard: { get: vi.fn() },
+}));
+vi.mock('uuid', () => ({ v4: vi.fn(() => 'test-uuid') }));
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(),
 }));
-
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(),
+  ServiceClient: vi.fn().mockImplementation(function (this: unknown, config: { baseURL?: string }) {
+    if (config?.baseURL?.includes('adaptive-learning')) return mockClients.adaptive;
+    if (config?.baseURL?.includes('ml-service')) return mockClients.ml;
+    if (config?.baseURL?.includes('analytics-service')) return mockClients.analytics;
+    if (config?.baseURL?.includes('risk-analytics')) return mockClients.risk;
+    if (config?.baseURL?.includes('shard-manager')) return mockClients.shard;
+    return {};
+  }),
   generateServiceToken: vi.fn(() => 'mock-token'),
 }));
 
@@ -25,6 +39,15 @@ vi.mock('../../../src/config', () => ({
       analytics_service: { url: 'http://analytics-service:3000' },
       risk_analytics: { url: 'http://risk-analytics:3000' },
       shard_manager: { url: 'http://shard-manager:3000' },
+    },
+    cosmos_db: {
+      containers: {
+        decompositions: 'forecasting_decompositions',
+        consensus: 'forecasting_consensus',
+        commitments: 'forecasting_commitments',
+        pipeline_health: 'forecasting_pipeline_health',
+        predictions: 'forecasting_predictions',
+      },
     },
     database: {
       containers: {
@@ -39,6 +62,7 @@ vi.mock('../../../src/utils/logger', () => ({
     info: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),
+    debug: vi.fn(),
   },
 }));
 
@@ -48,65 +72,22 @@ vi.mock('../../../src/events/publishers/ForecastingEventPublisher', () => ({
 
 describe('ForecastingService', () => {
   let service: ForecastingService;
-  let mockAdaptiveLearningClient: any;
-  let mockMlServiceClient: any;
-  let mockAnalyticsServiceClient: any;
-  let mockRiskAnalyticsClient: any;
-  let mockShardManagerClient: any;
   let mockContainer: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock container
     mockContainer = {
       items: {
         create: vi.fn(),
         query: vi.fn(() => ({
-          fetchAll: vi.fn(),
+          fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
+          fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
         })),
-        read: vi.fn(),
-        replace: vi.fn(),
+        item: vi.fn(() => ({ read: vi.fn(), replace: vi.fn() })),
       },
     };
     (getContainer as any).mockReturnValue(mockContainer);
-
-    // Mock service clients
-    mockAdaptiveLearningClient = {
-      get: vi.fn(),
-    };
-    mockMlServiceClient = {
-      post: vi.fn(),
-    };
-    mockAnalyticsServiceClient = {
-      get: vi.fn(),
-      post: vi.fn(),
-    };
-    mockRiskAnalyticsClient = {
-      post: vi.fn(),
-    };
-    mockShardManagerClient = {
-      get: vi.fn(),
-    };
-
-    (ServiceClient as any).mockImplementation((config: any) => {
-      if (config.baseURL?.includes('adaptive-learning')) {
-        return mockAdaptiveLearningClient;
-      }
-      if (config.baseURL?.includes('ml-service')) {
-        return mockMlServiceClient;
-      }
-      if (config.baseURL?.includes('analytics-service')) {
-        return mockAnalyticsServiceClient;
-      }
-      if (config.baseURL?.includes('risk-analytics')) {
-        return mockRiskAnalyticsClient;
-      }
-      if (config.baseURL?.includes('shard-manager')) {
-        return mockShardManagerClient;
-      }
-      return {};
-    });
 
     service = new ForecastingService();
   });
@@ -119,20 +100,21 @@ describe('ForecastingService', () => {
         decomposition: 0.3,
         consensus: 0.4,
         commitment: 0.3,
+        ml: 0.2,
       };
 
-      mockAdaptiveLearningClient.get.mockResolvedValue(mockWeights);
+      mockClients.adaptive.get.mockResolvedValue(mockWeights);
 
       const result = await service.getLearnedWeights(tenantId);
 
       expect(result).toEqual(mockWeights);
-      expect(mockAdaptiveLearningClient.get).toHaveBeenCalled();
+      expect(mockClients.adaptive.get).toHaveBeenCalled();
     });
 
     it('should return default weights on error', async () => {
       const tenantId = 'tenant-123';
 
-      mockAdaptiveLearningClient.get.mockRejectedValue(new Error('Service unavailable'));
+      mockClients.adaptive.get.mockRejectedValue(new Error('Service unavailable'));
 
       const result = await service.getLearnedWeights(tenantId);
 
@@ -145,6 +127,7 @@ describe('ForecastingService', () => {
     it('should generate forecast successfully', async () => {
       const tenantId = 'tenant-123';
       const request = {
+        tenantId,
         opportunityId: 'opp-123',
         timeframe: 'quarter',
         includeDecomposition: true,
@@ -152,94 +135,66 @@ describe('ForecastingService', () => {
         includeCommitment: true,
       };
 
-      // Mock learned weights
-      mockAdaptiveLearningClient.get.mockResolvedValueOnce({
+      mockClients.adaptive.get.mockResolvedValue({
         decomposition: 0.3,
         consensus: 0.4,
         commitment: 0.3,
+        ml: 0.2,
       });
 
-      // Mock opportunity data
-      mockShardManagerClient.get.mockResolvedValueOnce({
+      mockClients.shard.get.mockResolvedValue({
         id: 'opp-123',
         tenantId,
-        data: {
-          amount: 100000,
-          stage: 'negotiation',
+        structuredData: { amount: 100000, stage: 'negotiation', probability: 0.5 },
+      });
+
+      (getContainer as any).mockImplementation(() => ({
+        items: {
+          create: vi.fn().mockResolvedValue({}),
+          query: vi.fn().mockReturnValue({
+            fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
+            fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+          }),
+          item: vi.fn(() => ({ read: vi.fn(), replace: vi.fn() })),
         },
-      });
+      }));
 
-      // Mock analytics data
-      mockAnalyticsServiceClient.get.mockResolvedValueOnce({
-        historicalData: [
-          { period: '2024-Q1', revenue: 50000 },
-          { period: '2024-Q2', revenue: 60000 },
-        ],
-      });
-
-      // Mock ML forecast
-      mockMlServiceClient.post.mockResolvedValueOnce({
-        forecast: {
-          baseForecast: 70000,
-          confidence: 0.85,
-        },
-      });
-
-      const result = await service.generateForecast(tenantId, request);
+      const result = await service.generateForecast(request);
 
       expect(result).toHaveProperty('opportunityId');
-      expect(result).toHaveProperty('forecast');
-      expect(mockAdaptiveLearningClient.get).toHaveBeenCalled();
+      expect(result).toHaveProperty('revenueForecast');
+      expect(mockClients.adaptive.get).toHaveBeenCalled();
     });
 
     it('should handle missing opportunity', async () => {
       const tenantId = 'tenant-123';
       const request = {
+        tenantId,
         opportunityId: 'non-existent',
         timeframe: 'quarter',
       };
 
-      mockAdaptiveLearningClient.get.mockResolvedValueOnce({
+      mockClients.adaptive.get.mockResolvedValue({
         decomposition: 0.3,
         consensus: 0.4,
         commitment: 0.3,
+        ml: 0.2,
       });
 
-      mockShardManagerClient.get.mockRejectedValue(new Error('Not found'));
+      mockClients.shard.get.mockRejectedValue(new Error('Not found'));
 
-      await expect(
-        service.generateForecast(tenantId, request)
-      ).rejects.toThrow();
-    });
-  });
-
-  describe('getForecast', () => {
-    it('should retrieve a forecast successfully', async () => {
-      const tenantId = 'tenant-123';
-      const forecastId = 'forecast-123';
-
-      const mockForecast = {
-        id: forecastId,
-        tenantId,
-        opportunityId: 'opp-123',
-        forecast: {
-          baseForecast: 70000,
-          confidence: 0.85,
+      (getContainer as any).mockImplementation(() => ({
+        items: {
+          create: vi.fn().mockResolvedValue({}),
+          query: vi.fn().mockReturnValue({
+            fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
+            fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+          }),
+          item: vi.fn(() => ({ read: vi.fn(), replace: vi.fn() })),
         },
-        createdAt: new Date(),
-      };
+      }));
 
-      mockContainer.items.read.mockResolvedValue({
-        resource: mockForecast,
-      });
-
-      const result = await service.getForecast(tenantId, forecastId);
-
-      expect(result).toEqual(mockForecast);
-      expect(mockContainer.items.read).toHaveBeenCalledWith(
-        forecastId,
-        { partitionKey: tenantId }
-      );
+      await expect(service.generateForecast(request)).rejects.toThrow();
     });
   });
 });

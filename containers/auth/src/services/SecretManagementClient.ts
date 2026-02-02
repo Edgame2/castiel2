@@ -95,7 +95,8 @@ export interface CertificateExpirationResponse {
 }
 
 /**
- * Secret Management Client
+ * Secret Management Client.
+ * Secret management URL must be set via config or SECRET_MANAGEMENT_SERVICE_URL; no default URL in code per .cursorrules.
  */
 export class SecretManagementClient {
   private serviceClient: ServiceClient;
@@ -104,10 +105,15 @@ export class SecretManagementClient {
 
   constructor() {
     const config = loadConfig();
-    const baseUrl = config.services?.secret_management?.url || process.env.SECRET_MANAGEMENT_SERVICE_URL || 'http://localhost:3003';
+    const baseUrl = config.services?.secret_management?.url || process.env.SECRET_MANAGEMENT_SERVICE_URL;
+    if (!baseUrl || baseUrl.trim() === '') {
+      throw new Error(
+        'Secret management URL required: set SECRET_MANAGEMENT_URL or config.services.secret_management.url (or SECRET_MANAGEMENT_SERVICE_URL env)'
+      );
+    }
     this.serviceToken = process.env.SERVICE_AUTH_TOKEN || '';
     this.requestingService = 'auth-service';
-    
+
     this.serviceClient = new ServiceClient({
       baseURL: baseUrl,
       timeout: 30000,
@@ -181,11 +187,12 @@ export class SecretManagementClient {
     request: UpdateSSOSecretRequest
   ): Promise<void> {
     try {
-      await this.serviceClient.put(
-        `/api/secrets/sso/${secretId}`,
-        request,
-        { headers: this.getAuthHeaders(organizationId) }
-      );
+      await this.serviceClient.request({
+        method: 'PUT',
+        url: `/api/secrets/sso/${secretId}`,
+        data: request,
+        headers: this.getAuthHeaders(organizationId),
+      });
     } catch (error: any) {
       log.error('Failed to update SSO secret', error, {
         secretId,
@@ -247,16 +254,13 @@ export class SecretManagementClient {
     organizationId?: string
   ): Promise<CertificateExpirationResponse | null> {
     try {
-      return await this.serviceClient.get<CertificateExpirationResponse>(
-        `/api/secrets/sso/${secretId}/expiration`,
-        { headers: this.getAuthHeaders(organizationId) }
-      );
-    } catch (error: any) {
-      log.warn('Failed to get certificate expiration', error, {
-        secretId,
-        organizationId,
-        service: 'auth',
+      return await this.serviceClient.request<CertificateExpirationResponse>({
+        method: 'GET',
+        url: `/api/secrets/sso/${secretId}/expiration`,
+        headers: this.getAuthHeaders(organizationId),
       });
+    } catch (error: any) {
+      log.warn('Failed to get certificate expiration', { error, secretId, organizationId, service: 'auth' });
       return null;
     }
   }

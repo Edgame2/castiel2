@@ -10,11 +10,9 @@ import {
   CreateTemplateInput,
   UpdateTemplateInput,
   RenderTemplateInput,
-  TemplateType,
-  TemplateStatus,
 } from '../types/template.types';
 
-export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
+export async function registerRoutes(app: FastifyInstance, _config: any): Promise<void> {
   const templateService = new TemplateService();
 
   // ===== TEMPLATE ROUTES =====

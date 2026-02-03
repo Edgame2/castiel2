@@ -81,7 +81,7 @@ export class OptimizerService {
         },
         status: OptimizationStatus.OPTIMIZING,
         startedAt: new Date(),
-      });
+      } as any);
 
       // Analyze and optimize
       const optimized = await this.optimize(optimization, baselineMetrics, applyChanges);
@@ -102,19 +102,19 @@ export class OptimizerService {
         optimized: {
           metrics: optimizedMetrics,
           improvements,
-          changes: optimized.changes,
+          changes: (optimized as any).changes,
         },
         recommendations,
         completedAt: new Date(),
         duration,
-      });
+      } as any);
     } catch (error: any) {
       await this.optimizationService.update(optimization.id, tenantId, {
         status: OptimizationStatus.FAILED,
         error: error.message,
         completedAt: new Date(),
         duration: Date.now() - startTime,
-      });
+      } as any);
     }
   }
 
@@ -150,13 +150,13 @@ export class OptimizerService {
     optimization: PerformanceOptimization,
     baselineMetrics: any,
     applyChanges: boolean
-  ): Promise<{ changes: PerformanceOptimization['optimized']['changes'] }> {
+  ): Promise<{ changes: NonNullable<PerformanceOptimization['optimized']>['changes'] }> {
     // Placeholder: In a real implementation, this would:
     // 1. Analyze code for optimization opportunities
     // 2. Apply optimizations (if applyChanges is true)
     // 3. Return optimized code and changes
 
-    const changes: PerformanceOptimization['optimized']['changes'] = [];
+    const changes: NonNullable<PerformanceOptimization['optimized']>['changes'] = [];
 
     switch (optimization.type) {
       case OptimizationType.CODE:
@@ -195,9 +195,9 @@ export class OptimizerService {
   private async measureOptimized(
     optimization: PerformanceOptimization,
     optimized: any
-  ): Promise<PerformanceOptimization['optimized']['metrics']> {
+  ): Promise<NonNullable<PerformanceOptimization['optimized']>['metrics']> {
     // Placeholder: In a real implementation, this would measure the optimized code
-    const baseline = optimization.baseline.metrics;
+    const baseline = (optimization.baseline as any).metrics;
 
     // Simulate improvements
     return {
@@ -215,9 +215,9 @@ export class OptimizerService {
    */
   private calculateImprovements(
     baseline: PerformanceOptimization['baseline']['metrics'],
-    optimized: PerformanceOptimization['optimized']['metrics']
-  ): PerformanceOptimization['optimized']['improvements'] {
-    const improvements: PerformanceOptimization['optimized']['improvements'] = {};
+    optimized: NonNullable<PerformanceOptimization['optimized']>['metrics']
+  ): NonNullable<PerformanceOptimization['optimized']>['improvements'] {
+    const improvements: NonNullable<PerformanceOptimization['optimized']>['improvements'] = {};
 
     if (baseline.executionTime && optimized.executionTime) {
       improvements.executionTime = ((baseline.executionTime - optimized.executionTime) / baseline.executionTime) * 100;
@@ -252,7 +252,7 @@ export class OptimizerService {
   private generateRecommendations(
     optimization: PerformanceOptimization,
     baseline: PerformanceOptimization['baseline']['metrics'],
-    optimized: PerformanceOptimization['optimized']['metrics']
+    optimized: NonNullable<PerformanceOptimization['optimized']>['metrics']
   ): PerformanceOptimization['recommendations'] {
     const recommendations: PerformanceOptimization['recommendations'] = [];
 

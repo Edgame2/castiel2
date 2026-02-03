@@ -12,6 +12,7 @@ import {
   DeleteCacheEntryInput,
   InvalidateCachePatternInput,
 } from '../types/cache.types';
+import { publishCacheManagementEvent } from '../events/publishers/CacheManagementEventPublisher';
 
 export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
   const cacheService = new CacheService();
@@ -445,6 +446,10 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     try {
       const tenantId = request.user!.tenantId;
       const result = await cacheService.optimizeCache(tenantId);
+      await publishCacheManagementEvent('cache_management.evicted', tenantId, {
+        optimized: result.optimized,
+        freed: result.freed,
+      });
       return reply.send(result);
     } catch (error: any) {
       return reply.status(error.statusCode || 500).send({

@@ -22,7 +22,7 @@ export class OpportunityService {
 
   constructor(shardManagerUrl: string) {
     this.shardManagerClient = new ServiceClient({
-      baseUrl: shardManagerUrl,
+      baseURL: shardManagerUrl,
       timeout: 10000,
       retries: 2,
     });
@@ -156,9 +156,9 @@ export class OpportunityService {
       };
 
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(opportunity, {
+      const { resource } = await (container.items as any).create(opportunity, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create opportunity');
@@ -186,7 +186,7 @@ export class OpportunityService {
       const { resource } = await container.item(opportunityId, tenantId).read<Opportunity>();
 
       if (!resource) {
-        throw new NotFoundError(`Opportunity ${opportunityId} not found`);
+        throw new NotFoundError('Opportunity', opportunityId);
       }
 
       return resource;
@@ -195,7 +195,7 @@ export class OpportunityService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Opportunity ${opportunityId} not found`);
+        throw new NotFoundError('Opportunity', opportunityId);
       }
       throw error;
     }

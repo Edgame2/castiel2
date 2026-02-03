@@ -25,6 +25,16 @@ services:
     url: ${ANALYTICS_SERVICE_URL:-http://localhost:3005}
   cache_service:
     url: ${CACHE_SERVICE_URL:-http://localhost:3035}
+  risk_analytics:
+    url: ${RISK_ANALYTICS_URL:-}
+  forecasting:
+    url: ${FORECASTING_URL:-}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3023}
+  signal_intelligence:
+    url: ${SIGNAL_INTELLIGENCE_URL:-}
+  integration_manager:
+    url: ${INTEGRATION_MANAGER_URL:-http://localhost:3026}
 
 rabbitmq:
   url: ${RABBITMQ_URL}

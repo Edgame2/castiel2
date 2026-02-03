@@ -61,7 +61,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: Omit<CreateMLModelInput, 'tenantId' | 'userId'> }>(
     '/api/v1/ml/models',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Create a new ML model',
         tags: ['Models'],
@@ -108,7 +108,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<Record<string, never>>(
     '/api/v1/ml/models/health',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Azure ML endpoint health (status, latency). W4 Layer 3.',
         tags: ['Models', 'Health'],
@@ -162,7 +162,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<Record<string, never>>(
     '/api/v1/ml/endpoints',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'List ML endpoints with health status. Super Admin §4.2.',
         tags: ['Models', 'Endpoints'],
@@ -243,7 +243,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<Record<string, never>>(
     '/api/v1/ml/monitoring/alerts',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'List ML monitoring alert rules. Super Admin §4.4.2.',
         tags: ['Models', 'Monitoring'],
@@ -320,7 +320,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/monitoring/alerts',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Create ML monitoring alert rule. Super Admin §4.4.2.',
         tags: ['Models', 'Monitoring'],
@@ -416,7 +416,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/monitoring/alerts/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Update ML monitoring alert rule. Super Admin §4.4.2.',
         tags: ['Models', 'Monitoring'],
@@ -470,7 +470,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.delete<{ Params: { id: string } }>(
     '/api/v1/ml/monitoring/alerts/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Delete ML monitoring alert rule. Super Admin §4.4.2.',
         tags: ['Models', 'Monitoring'],
@@ -501,7 +501,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Params: { id: string } }>(
     '/api/v1/ml/models/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Get ML model by ID',
         tags: ['Models'],
@@ -533,7 +533,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Params: { id: string } }>(
     '/api/v1/ml/models/:id/card',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Model card (purpose, input, output, limitations). Plan §11.9, §946.',
         tags: ['Models'],
@@ -576,7 +576,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.put<{ Params: { id: string }; Body: UpdateMLModelInput }>(
     '/api/v1/ml/models/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Update ML model',
         tags: ['Models'],
@@ -619,7 +619,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Params: { id: string } }>(
     '/api/v1/ml/models/:id/deploy',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Deploy ML model',
         tags: ['Models'],
@@ -652,7 +652,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.delete<{ Params: { id: string } }>(
     '/api/v1/ml/models/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Delete ML model',
         tags: ['Models'],
@@ -691,7 +691,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/models',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'List ML models',
         tags: ['Models'],
@@ -737,7 +737,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/features/opportunity/:opportunityId',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Layer 2: Extract features for opportunity (cache, persist, version).',
         tags: ['Features'],
@@ -778,7 +778,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/features/batch',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Layer 2: Extract features for multiple opportunities.',
         tags: ['Features'],
@@ -810,7 +810,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Querystring: { purpose?: string } }>(
     '/api/v1/ml/features/schema',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Layer 2: Feature schema (names and types).',
         tags: ['Features'],
@@ -829,7 +829,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Querystring: { industry?: string; stage?: string } }>(
     '/api/v1/ml/features/risk-catalog',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'W7 Layer 2: Extract risk catalog features (categories, templates, industry/methodology risks).',
         tags: ['Features'],
@@ -866,7 +866,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Querystring: { opportunityId: string } }>(
     '/api/v1/ml/features/methodology',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'W8 Layer 2: Extract methodology-aware features (stage compliance, duration, MEDDIC) for an opportunity.',
         tags: ['Features'],
@@ -914,7 +914,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Querystring: { opportunityId: string } }>(
     '/api/v1/ml/features/reactivation',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'W9 Layer 2: Extract dormant opportunity features (inactivity, activity trends, engagement, dormancy category).',
         tags: ['Features'],
@@ -957,7 +957,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Querystring: { opportunityId: string } }>(
     '/api/v1/ml/reactivation/predict',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'W9 Layer 3: Predict reactivation probability and strategy (heuristic from dormant features).',
         tags: ['Predictions'],
@@ -999,7 +999,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Querystring: { purpose: string; version?: string; maxSamples?: number } }>(
     '/api/v1/ml/features/statistics',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Layer 2: Per-feature statistics (mean, std, min, max, missingRate).',
         tags: ['Features'],
@@ -1025,7 +1025,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/features/export',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Layer 2: Export feature snapshots for training.',
         tags: ['Features'],
@@ -1055,7 +1055,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Params: { snapshotId: string } }>(
     '/api/v1/ml/features/snapshots/:snapshotId',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Layer 2: Get feature snapshot by id.',
         tags: ['Features'],
@@ -1079,7 +1079,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Querystring: { purpose: string } }>(
     '/api/v1/ml/features/versions/resolve',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Layer 2: Resolve version for inference (latest active or pinned).',
         tags: ['Features'],
@@ -1100,7 +1100,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/features/versions',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Layer 2: Create or update feature version metadata (enables pin/deprecate).',
         tags: ['Features'],
@@ -1130,7 +1130,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Querystring: { purpose?: string } }>(
     '/api/v1/ml/features/versions',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Layer 2: List feature version metadata.',
         tags: ['Features'],
@@ -1149,7 +1149,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<Record<string, never>>(
     '/api/v1/ml/features/version-policy',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Feature version policy (versioning strategy, backward compatibility, deprecation). Super Admin §5.2.2. Read from config.',
         tags: ['Features'],
@@ -1204,7 +1204,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { purpose: string; version: string } }>(
     '/api/v1/ml/features/versions/pin',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Layer 2: Pin feature version for training.',
         tags: ['Features'],
@@ -1223,7 +1223,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { purpose: string; version: string } }>(
     '/api/v1/ml/features/versions/deprecate',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Layer 2: Deprecate feature version.',
         tags: ['Features'],
@@ -1242,7 +1242,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<Record<string, never>>(
     '/api/v1/ml/features/quality-rules',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Default feature quality rules (missing rate, drift, outlier method). Super Admin §5.3.2. Read from config.',
         tags: ['Features'],
@@ -1274,7 +1274,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Querystring: { purpose: string; version?: string } }>(
     '/api/v1/ml/features/quality',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Layer 2: Check feature quality (missing rate, drift). Uses config feature_quality_rules for thresholds.',
         tags: ['Features'],
@@ -1298,7 +1298,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { opportunityId: string; reason?: string } }>(
     '/api/v1/ml/features/cache/invalidate',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Layer 2: Invalidate feature cache for an opportunity.',
         tags: ['Features'],
@@ -1331,7 +1331,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/features',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Create a new feature',
         tags: ['Features'],
@@ -1371,7 +1371,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Params: { id: string } }>(
     '/api/v1/ml/features/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Get feature by ID',
         tags: ['Features'],
@@ -1403,7 +1403,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.put<{ Params: { id: string }; Body: Partial<{ name: string; description: string; type: string; source: string; transformation: string; statistics: any }> }>(
     '/api/v1/ml/features/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Update feature',
         tags: ['Features'],
@@ -1447,7 +1447,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.delete<{ Params: { id: string } }>(
     '/api/v1/ml/features/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Delete feature',
         tags: ['Features'],
@@ -1485,7 +1485,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/features',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'List features',
         tags: ['Features'],
@@ -1527,7 +1527,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { opportunityId: string; purpose: FeaturePurpose } }>(
     '/api/v1/ml/features/build',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Build feature vector for an opportunity from shard-manager and risk-analytics. Purpose: risk-scoring | win-probability | lstm | anomaly | forecasting.',
         tags: ['Features'],
@@ -1566,7 +1566,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: Omit<CreateTrainingJobInput, 'tenantId' | 'userId'> }>(
     '/api/v1/ml/training-jobs',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Create a new training job',
         tags: ['Training'],
@@ -1616,7 +1616,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Params: { id: string } }>(
     '/api/v1/ml/training-jobs/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Get training job by ID',
         tags: ['Training'],
@@ -1656,7 +1656,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/training-jobs/:id/status',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Update training job status',
         tags: ['Training'],
@@ -1703,7 +1703,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Params: { id: string } }>(
     '/api/v1/ml/training-jobs/:id/cancel',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Cancel training job',
         tags: ['Training'],
@@ -1742,7 +1742,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/training-jobs',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'List training jobs',
         tags: ['Training'],
@@ -1788,7 +1788,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/evaluation',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Run model evaluation (Plan W6 Layer 8)',
         tags: ['Training', 'Evaluation'],
@@ -1851,7 +1851,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/evaluation/drift/:modelId',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Get drift metrics for a model (Plan W6 Layer 8)',
         tags: ['Training', 'Evaluation'],
@@ -1893,7 +1893,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/learning/suggestions/:modelId',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Get improvement suggestions for a model (Plan W6 Layer 8)',
         tags: ['Training', 'Learning'],
@@ -1935,7 +1935,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/models/:id/predict',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Make prediction using ML model',
         tags: ['Predictions'],
@@ -1983,7 +1983,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Params: { id: string } }>(
     '/api/v1/ml/predictions/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Get prediction by ID',
         tags: ['Predictions'],
@@ -2021,7 +2021,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/predictions',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'List predictions',
         tags: ['Predictions'],
@@ -2063,7 +2063,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { opportunityId: string } }>(
     '/api/v1/ml/predictions/cache/invalidate',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Invalidate prediction cache for an opportunity (win_probability, risk_scoring, anomaly). Call when opportunity is updated.',
         tags: ['Predictions'],
@@ -2087,7 +2087,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/risk-scoring/predict',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Predict risk score for an opportunity; uses deployed model when available, else feature-based heuristic.',
         tags: ['Predictions'],
@@ -2142,7 +2142,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { opportunityId: string } }>(
     '/api/v1/ml/win-probability/predict',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Predict win probability for an opportunity; uses Azure ML win-probability-model when configured, else heuristic from features.',
         tags: ['Predictions'],
@@ -2173,7 +2173,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { opportunityId: string } }>(
     '/api/v1/ml/win-probability/explain',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Top drivers for win-probability. Phase 1: top features by magnitude from buildVector; Phase 2: tree importance or SHAP.',
         tags: ['Predictions'],
@@ -2221,7 +2221,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Params: { opportunityId: string }; Querystring: { from?: string; to?: string } }>(
     '/api/v1/ml/win-probability/:opportunityId/trend',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Historical win-probability points for an opportunity. Reads from ml_win_probability_predictions. Query: from, to (ISO date).',
         tags: ['Predictions'],
@@ -2263,7 +2263,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { opportunityId: string } }>(
     '/api/v1/ml/anomaly/predict',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Anomaly detection (Isolation Forest) for an opportunity. Requires azure_ml.endpoints.anomaly.',
         tags: ['Predictions'],
@@ -2303,7 +2303,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { sequence: number[][]; opportunityId?: string } }>(
     '/api/v1/ml/risk-trajectory/predict',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: '30/60/90-day risk from LSTM. sequence: [[risk_score, activity_count_30d, days_since_last_activity], ...] (pad to 30). Requires azure_ml.endpoints.risk_trajectory_lstm.',
         tags: ['Predictions'],
@@ -2359,7 +2359,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Querystring: { industryId?: string } }>(
     '/api/v1/ml/model-selection/risk-scoring',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Select risk-scoring model: global or industry. Stub: industry when industryId and risk_scoring_industry endpoint; else global.',
         tags: ['Models'],
@@ -2388,7 +2388,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get(
     '/api/v1/ml/model-selection/win-probability',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Select win-probability model. Stub: win-probability-model or win_probability when endpoint configured.',
         tags: ['Models'],
@@ -2422,7 +2422,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/ml/forecast/predict',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Revenue forecast with P10/P50/P90 and best/base/worst scenarios. Uses deployed model when available.',
         tags: ['Predictions'],
@@ -2498,7 +2498,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { history: Array<[string, number]>; periods?: number } }>(
     '/api/v1/ml/forecast/period',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Prophet revenue-forecast for one period. Body: history [[date, value], ...] (chronological), periods (default 1). Requires azure_ml.endpoints.revenue_forecasting. 503 when endpoint not configured.',
         tags: ['Predictions'],
@@ -2584,7 +2584,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: Omit<CreateMultiModalJobInput, 'tenantId' | 'userId'> }>(
     '/api/v1/multimodal/jobs',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Create a new multi-modal processing job',
         tags: ['Multi-Modal'],
@@ -2646,7 +2646,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Params: { id: string } }>(
     '/api/v1/multimodal/jobs/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Get multi-modal job by ID',
         tags: ['Multi-Modal'],
@@ -2678,7 +2678,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.put<{ Params: { id: string }; Body: UpdateMultiModalJobInput }>(
     '/api/v1/multimodal/jobs/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Update multi-modal job',
         tags: ['Multi-Modal'],
@@ -2730,7 +2730,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Params: { id: string } }>(
     '/api/v1/multimodal/jobs/:id/cancel',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'Cancel multi-modal job',
         tags: ['Multi-Modal'],
@@ -2769,7 +2769,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/multimodal/jobs',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
       schema: {
         description: 'List multi-modal jobs',
         tags: ['Multi-Modal'],

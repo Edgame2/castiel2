@@ -1,4 +1,4 @@
-# Coder IDE Enterprise Migration - Cursor Rules
+# Castiel - Cursor Rules
 
 ## Core Principles
 - NEVER use hardcoded ports, URLs, or service addresses

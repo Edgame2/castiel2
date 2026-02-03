@@ -710,31 +710,6 @@ The following modules provide specialized functionality that may be used in spec
 - Pattern library
 - Consistency scorer
 
-#### Migration Service
-**Responsibility**: Handle code migrations and refactoring
-
-- Version upgrade automation
-- Breaking change handling
-- Large-scale refactoring
-- Tech stack migration
-
-**Features Handled:**
-- **Code Migration & Refactoring**: Version upgrade automation, breaking change handling, large-scale refactoring, tech stack migration
-
-**Service**: `containers/migration-service/`  
-**Port**: 3038  
-**API Base**: `/api/v1/migration`  
-**Dependencies**: Context Service, Execution, Quality, Knowledge Base
-
-**Architecture Sub-Modules:**
-- Version upgrader
-- Breaking change handler
-- Refactoring engine
-- Stack migrator
-- Database migrator
-- API migrator
-- Migration validator
-
 #### Performance Optimization
 **Responsibility**: Optimize code performance
 
@@ -761,58 +736,6 @@ The following modules provide specialized functionality that may be used in spec
 - Network optimizer
 - Render optimizer
 - Profiler
-
-#### Security Service
-**Responsibility**: Security analysis and protection
-
-- Code obfuscation
-- Secret scanning
-- Vulnerability scanning
-- PII detection
-- SAST/DAST/SCA
-
-**Features Handled:**
-- **Security Features**: Code obfuscation, secret scanning, vulnerability scanning, PII detection, SAST/DAST/SCA
-- **Privacy Protection**: PII detection, data encryption, privacy compliance
-
-**Service**: `containers/security-service/`  
-**Port**: 3042  
-**API Base**: `/api/v1/security`  
-**Dependencies**: Context Service, Quality, Observability, Workflow
-
-**Architecture Sub-Modules:**
-- Secret scanner
-- Vulnerability scanner
-- PII detector
-- Obfuscator
-- Compliance checker
-- Encryption manager
-- Audit logger
-- Threat detector
-
-#### Compliance Service
-**Responsibility**: Ensure regulatory and policy compliance
-
-- Industry standards (WCAG, OWASP, etc.)
-- Regulatory compliance (GDPR, HIPAA, SOC2)
-- Policy management
-
-**Features Handled:**
-- **Standards & Conventions** (Partial): Industry standards (WCAG, OWASP), regulatory compliance (GDPR, HIPAA, SOC2)
-
-**Service**: `containers/compliance-service/`  
-**Port**: 3043  
-**API Base**: `/api/v1/compliance`  
-**Dependencies**: Quality, Security Service, Validation Engine, Workflow
-
-**Architecture Sub-Modules:**
-- Standards checker
-- Regulation enforcer
-- Accessibility checker
-- Security standards
-- Privacy compliance
-- Audit reporter
-- Policy manager
 
 #### Multi-Modal Service
 **Responsibility**: Handle multi-modal inputs (images, diagrams, audio, video)
@@ -1356,10 +1279,8 @@ graph TB
     %% Quality & Security
     Quality[Quality<br/>3017]
     Security[Security Service<br/>3042 NEW]
-    Compliance[Compliance<br/>3043 NEW]
     
     %% Code Services
-    Migration[Migration Service<br/>3038 NEW]
     BugDetect[Bug Detection<br/>3039 NEW]
     PerfOpt[Performance Opt<br/>3041 NEW]
     
@@ -1512,9 +1433,8 @@ graph TB
 ### Phase 3: Autonomy (Months 7-9) - Autonomous Operation
 
 **New Modules:**
-1. Migration Service (3038)
-2. Bug Detection (3039)
-3. Performance Optimization (3041)
+1. Bug Detection (3039)
+2. Performance Optimization (3041)
 
 **Major Enhancements:**
 - Execution: Self-correction, iterative refinement
@@ -1534,9 +1454,8 @@ graph TB
 
 **New Modules:**
 1. Security Service (3042)
-2. Compliance Service (3043)
-3. Multi-Modal Service (3044)
-4. Developer Experience (3046)
+2. Multi-Modal Service (3044)
+3. Developer Experience (3046)
 
 **Major Enhancements:**
 - Planning: Predictive capabilities

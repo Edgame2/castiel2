@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document defines the **mandatory rules**, **best practices**, and **recommendations** for creating and implementing modules in the Coder IDE system. All modules MUST follow these guidelines to ensure **reusability**, **maintainability**, and **consistency**.
+This document defines the **mandatory rules**, **best practices**, and **recommendations** for creating and implementing modules in the Castiel platform. All modules MUST follow these guidelines to ensure **reusability**, **maintainability**, and **consistency**.
 
 ---
 
@@ -3310,7 +3310,7 @@ src/
 // locales/en/common.json
 {
   "app": {
-    "name": "Coder IDE",
+    "name": "Castiel",
     "loading": "Loading...",
     "error": "An error occurred"
   },

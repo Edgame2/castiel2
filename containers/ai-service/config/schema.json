@@ -41,9 +41,18 @@
             "prompts": { "type": "string" },
             "versions": { "type": "string" },
             "ab_tests": { "type": "string" },
-            "analytics": { "type": "string" }
+            "analytics": { "type": "string" },
+            "llm_outputs": { "type": "string" }
           }
         }
+      }
+    },
+    "llm": {
+      "type": "object",
+      "properties": {
+        "provider": { "type": "string" },
+        "model": { "type": "string" },
+        "timeout_ms": { "type": "number" }
       }
     },
     "services": {

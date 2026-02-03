@@ -30,7 +30,7 @@ Multi-channel notification service for Castiel. Consumes events from RabbitMQ an
 ### Email Configuration
 - `EMAIL_ENABLED` - Enable/disable email sending (default: true)
 - `EMAIL_PROVIDER` - Email provider: `sendgrid`, `smtp`, or `ses` (default: smtp)
-- `EMAIL_FROM` or `EMAIL_FROM_ADDRESS` - Sender email address (default: noreply@coder.ide)
+- `EMAIL_FROM` or `EMAIL_FROM_ADDRESS` - Sender email address (default: noreply@castiel)
 - `EMAIL_FROM_NAME` - Sender name (default: Castiel)
 
 ### SendGrid Configuration (if using SendGrid)

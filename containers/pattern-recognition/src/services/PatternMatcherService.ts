@@ -70,9 +70,9 @@ export class PatternMatcherService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(scan, {
+      const { resource } = await (container.items as any).create(scan, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create pattern scan');
@@ -122,9 +122,9 @@ export class PatternMatcherService {
       // Save matches
       const matchesContainer = getContainer(this.matchesContainerName);
       for (const match of matches) {
-        await matchesContainer.items.create(match, {
+        await (matchesContainer.items as any).create(match, {
           partitionKey: tenantId,
-        });
+        } as any);
       }
 
       // Calculate summary
@@ -242,7 +242,7 @@ export class PatternMatcherService {
       return resource as PatternScan;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Pattern scan ${scanId} not found`);
+        throw new NotFoundError('Pattern scan', scanId);
       }
       throw error;
     }
@@ -261,7 +261,7 @@ export class PatternMatcherService {
       const { resource } = await container.item(scanId, tenantId).read<PatternScan>();
 
       if (!resource) {
-        throw new NotFoundError(`Pattern scan ${scanId} not found`);
+        throw new NotFoundError('Pattern scan', scanId);
       }
 
       return resource;
@@ -270,7 +270,7 @@ export class PatternMatcherService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Pattern scan ${scanId} not found`);
+        throw new NotFoundError('Pattern scan', scanId);
       }
       throw error;
     }

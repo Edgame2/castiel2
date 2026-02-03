@@ -71,9 +71,9 @@ export class ValidationService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(validationRun, {
+      const { resource } = await (container.items as any).create(validationRun, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create validation run');
@@ -137,9 +137,9 @@ export class ValidationService {
       // Save results
       const resultsContainer = getContainer(this.resultsContainerName);
       for (const result of results) {
-        await resultsContainer.items.create(result, {
+        await (resultsContainer.items as any).create(result, {
           partitionKey: tenantId,
-        });
+        } as any);
       }
 
       // Calculate summary
@@ -252,7 +252,7 @@ export class ValidationService {
       return resource as ValidationRun;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Validation run ${validationId} not found`);
+        throw new NotFoundError('Validation run', validationId);
       }
       throw error;
     }
@@ -271,7 +271,7 @@ export class ValidationService {
       const { resource } = await container.item(validationId, tenantId).read<ValidationRun>();
 
       if (!resource) {
-        throw new NotFoundError(`Validation run ${validationId} not found`);
+        throw new NotFoundError('Validation run', validationId);
       }
 
       return resource;
@@ -280,7 +280,7 @@ export class ValidationService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Validation run ${validationId} not found`);
+        throw new NotFoundError('Validation run', validationId);
       }
       throw error;
     }

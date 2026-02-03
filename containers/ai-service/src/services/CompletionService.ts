@@ -49,7 +49,7 @@ export class CompletionService {
     const model = request.model || 'gpt-4';
     
     // Record completion in database
-    const completion = await this.db.ai_completions.create({
+    const completion = await (this.db as any).ai_completions.create({
       data: {
         modelId: model,
         request: request as any,
@@ -72,7 +72,7 @@ export class CompletionService {
       });
 
       // Update completion record
-      await this.db.ai_completions.update({
+      await (this.db as any).ai_completions.update({
         where: { id: completion.id },
         data: {
           response: response as any,
@@ -90,7 +90,7 @@ export class CompletionService {
       };
     } catch (error: any) {
       // Update completion record with error
-      await this.db.ai_completions.update({
+      await (this.db as any).ai_completions.update({
         where: { id: completion.id },
         data: {
           status: 'failed',

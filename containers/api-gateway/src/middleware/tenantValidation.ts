@@ -9,8 +9,10 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 const PUBLIC_AUTH_PATH_PREFIXES = [
   '/api/auth/login',
   '/api/auth/register',
-  '/api/auth/google/callback',
-  '/api/auth/oauth/github/callback',
+  '/api/auth/refresh',
+  '/api/auth/logout',
+  '/api/auth/google',
+  '/api/auth/oauth/github',
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
   '/api/auth/sso/saml/initiate',

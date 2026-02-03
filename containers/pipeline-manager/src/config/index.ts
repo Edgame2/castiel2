@@ -4,7 +4,7 @@
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { load } from 'yaml';
+import { parse as parseYaml } from 'yaml';
 
 export interface PipelineManagerConfig {
   module: {
@@ -19,6 +19,7 @@ export interface PipelineManagerConfig {
     endpoint: string;
     key: string;
     database_id: string;
+    containers?: Record<string, string>;
   };
   services: {
     logging: { url: string };
@@ -35,7 +36,7 @@ export interface PipelineManagerConfig {
 export function loadConfig(): PipelineManagerConfig {
   const configPath = join(__dirname, '../../config/default.yaml');
   const configFile = readFileSync(configPath, 'utf-8');
-  const config = load(configFile) as PipelineManagerConfig;
+  const config = parseYaml(configFile) as PipelineManagerConfig;
   
   if (process.env.PORT) {
     config.server.port = parseInt(process.env.PORT, 10);

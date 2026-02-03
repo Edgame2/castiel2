@@ -8,7 +8,6 @@ import { log } from '../utils/logger';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { EnrichmentService } from '../services/EnrichmentService';
 import { VectorizationService } from '../services/VectorizationService';
-import { ShardEmbeddingService } from '../services/ShardEmbeddingService';
 import {
   EnrichShardRequest,
   BulkEnrichmentRequest,
@@ -27,7 +26,6 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
   try {
     const enrichmentService = new EnrichmentService(fastify);
     const vectorizationService = new VectorizationService(fastify);
-    const shardEmbeddingService = new ShardEmbeddingService(fastify);
 
     // Get enrichment job status
     fastify.get<{ Params: { jobId: string } }>(
@@ -77,6 +75,16 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           description: 'Enrich a shard using enrichment configuration',
           tags: ['Enrichment'],
           security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['shardId'],
+            properties: {
+              shardId: { type: 'string' },
+              configId: { type: 'string' },
+              processors: { type: 'array', items: { type: 'string' } },
+              force: { type: 'boolean' },
+            },
+          },
         },
       },
       async (request, reply) => {
@@ -315,143 +323,6 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           log.error('Failed to batch vectorize', error instanceof Error ? error : new Error(msg), { service: 'data-enrichment' });
           return reply.status(statusCode).send({
             error: { code: 'BATCH_VECTORIZATION_FAILED', message: msg || 'Failed to batch vectorize shards' },
-          });
-        }
-      }
-    );
-
-    // ============================================
-    // SHARD EMBEDDING ROUTES
-    // ============================================
-
-    // Generate embeddings for shard
-    fastify.post<{ Body: { shardId: string; forceRegenerate?: boolean } }>(
-      '/api/v1/shard-embeddings/generate',
-      {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-        schema: {
-          description: 'Generate embeddings for a shard using template',
-          tags: ['Shard Embeddings'],
-          security: [{ bearerAuth: [] }],
-        },
-      },
-      async (request, reply) => {
-        try {
-          const { shardId, forceRegenerate } = request.body;
-          const tenantId = request.user!.tenantId;
-
-          const result = await shardEmbeddingService.generateEmbeddingsForShard(
-            shardId,
-            tenantId,
-            { forceRegenerate }
-          );
-
-          return reply.send(result);
-        } catch (error: any) {
-          log.error('Failed to generate shard embeddings', error, { service: 'data-enrichment' });
-          return reply.status(error.statusCode || 500).send({
-            error: {
-              code: 'EMBEDDING_GENERATION_FAILED',
-              message: error.message || 'Failed to generate shard embeddings',
-            },
-          });
-        }
-      }
-    );
-
-    // Batch generate embeddings
-    fastify.post<{ Body: { shardIds: string[]; forceRegenerate?: boolean; concurrency?: number } }>(
-      '/api/v1/shard-embeddings/batch',
-      {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-        schema: {
-          description: 'Batch generate embeddings for multiple shards',
-          tags: ['Shard Embeddings'],
-          security: [{ bearerAuth: [] }],
-        },
-      },
-      async (request, reply) => {
-        try {
-          const { shardIds, forceRegenerate, concurrency } = request.body;
-          const tenantId = request.user!.tenantId;
-
-          const result = await shardEmbeddingService.batchGenerateEmbeddings(
-            shardIds,
-            tenantId,
-            { forceRegenerate, concurrency }
-          );
-
-          return reply.send(result);
-        } catch (error: unknown) {
-          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
-          const msg = error instanceof Error ? error.message : String(error);
-          log.error('Failed to batch generate embeddings', error instanceof Error ? error : new Error(msg), { service: 'data-enrichment' });
-          return reply.status(statusCode).send({
-            error: { code: 'BATCH_EMBEDDING_GENERATION_FAILED', message: msg || 'Failed to batch generate embeddings' },
-          });
-        }
-      }
-    );
-
-    // Regenerate embeddings for shard type
-    fastify.post<{ Body: { shardTypeId: string; forceRegenerate?: boolean } }>(
-      '/api/v1/shard-embeddings/regenerate-type',
-      {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-        schema: {
-          description: 'Regenerate embeddings for all shards of a type',
-          tags: ['Shard Embeddings'],
-          security: [{ bearerAuth: [] }],
-        },
-      },
-      async (request, reply) => {
-        try {
-          const { shardTypeId, forceRegenerate } = request.body;
-          const tenantId = request.user!.tenantId;
-
-          const result = await shardEmbeddingService.regenerateEmbeddingsForShardType(
-            shardTypeId,
-            tenantId,
-            { forceRegenerate }
-          );
-
-          return reply.send(result);
-        } catch (error: any) {
-          log.error('Failed to regenerate embeddings for shard type', error, { service: 'data-enrichment' });
-          return reply.status(error.statusCode || 500).send({
-            error: {
-              code: 'REGENERATION_FAILED',
-              message: error.message || 'Failed to regenerate embeddings for shard type',
-            },
-          });
-        }
-      }
-    );
-
-    // Get embedding statistics
-    fastify.get<{ Querystring: { tenantId?: string } }>(
-      '/api/v1/shard-embeddings/statistics',
-      {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-        schema: {
-          description: 'Get embedding statistics for tenant',
-          tags: ['Shard Embeddings'],
-          security: [{ bearerAuth: [] }],
-        },
-      },
-      async (request, reply) => {
-        try {
-          const tenantId = request.user!.tenantId;
-
-          const stats = await shardEmbeddingService.getEmbeddingStats(tenantId);
-
-          return reply.send(stats);
-        } catch (error: unknown) {
-          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
-          const msg = error instanceof Error ? error.message : String(error);
-          log.error('Failed to get embedding statistics', error instanceof Error ? error : new Error(msg), { service: 'data-enrichment' });
-          return reply.status(statusCode).send({
-            error: { code: 'STATISTICS_RETRIEVAL_FAILED', message: msg || 'Failed to retrieve embedding statistics' },
           });
         }
       }

@@ -129,7 +129,7 @@ export class ConfigurationService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(setting, {
+      const { resource } = await (container.items as any).create(setting, {
         partitionKey: input.tenantId,
       });
 
@@ -159,7 +159,7 @@ export class ConfigurationService {
       const { resource } = await container.item(settingId, tenantId).read<ConfigurationSetting>();
 
       if (!resource) {
-        throw new NotFoundError(`Configuration setting ${settingId} not found`);
+        throw new NotFoundError('Configuration setting', settingId);
       }
 
       return resource;
@@ -168,7 +168,7 @@ export class ConfigurationService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Configuration setting ${settingId} not found`);
+        throw new NotFoundError('Configuration setting', settingId);
       }
       throw error;
     }
@@ -233,7 +233,7 @@ export class ConfigurationService {
         .fetchNext();
 
       if (resources.length === 0) {
-        throw new NotFoundError(`Configuration setting with key '${key}' not found`);
+        throw new NotFoundError('Configuration setting', key);
       }
 
       // Return the most specific match (most recent)
@@ -302,7 +302,7 @@ export class ConfigurationService {
       // Ignore
     }
 
-    throw new NotFoundError(`Configuration value for key '${key}' not found`);
+    throw new NotFoundError('Configuration value', key);
   }
 
   /**
@@ -343,7 +343,7 @@ export class ConfigurationService {
       return resource as ConfigurationSetting;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Configuration setting ${settingId} not found`);
+        throw new NotFoundError('Configuration setting', settingId);
       }
       throw error;
     }

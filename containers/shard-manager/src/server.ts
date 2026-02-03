@@ -9,6 +9,7 @@ import { initializeDatabase, getDatabaseClient, connectDatabase, disconnectDatab
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import { loadConfig } from './config';
+import { registerRoutes } from './routes';
 
 // Global instance
 let app: FastifyInstance | null = null;
@@ -96,7 +97,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Initialize event publisher
   try {
-    const { initializeEventPublisher } = await import('./events/publishers/ShardEventPublisher');
+    const { initializeEventPublisher } = await import('./events/publishers/ShardEventPublisher.js');
     await initializeEventPublisher();
   } catch (error) {
     console.warn('Failed to initialize event publisher', error);
@@ -137,7 +138,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
     await app.close();
   }
   try {
-    const { closeEventPublisher } = await import('./events/publishers/ShardEventPublisher');
+    const { closeEventPublisher } = await import('./events/publishers/ShardEventPublisher.js');
     await closeEventPublisher();
   } catch (error) {
     console.warn('Failed to close event publisher', error);

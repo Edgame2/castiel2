@@ -101,6 +101,7 @@ export interface SecurityFinding {
     column?: number;
     function?: string;
     endpoint?: string;
+    identifier?: string;
   };
   evidence?: string; // Code snippet or evidence
   recommendation?: string;
@@ -155,8 +156,8 @@ export interface PIIDetection {
   piiType: string; // SSN, email, phone, credit card, etc.
   value?: string; // Masked value
   location: {
-    file: string;
-    line: number;
+    file?: string;
+    line?: number;
     column?: number;
   };
   confidence: number; // 0-1
@@ -195,6 +196,9 @@ export interface UpdateSecurityScanInput {
   findings?: SecurityFinding[];
   summary?: SecurityScan['summary'];
   error?: string;
+  startedAt?: Date;
+  completedAt?: Date;
+  duration?: number;
 }
 
 /**

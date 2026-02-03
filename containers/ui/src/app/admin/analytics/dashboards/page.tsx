@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
@@ -39,7 +39,7 @@ function generateId(): string {
   return `dash-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
-export default function AnalyticsDashboardsPage() {
+function AnalyticsDashboardsContent() {
   const searchParams = useSearchParams();
   const tenantId = searchParams.get('tenantId') ?? '';
   const [config, setConfig] = useState<AnalyticsConfig | null>(null);
@@ -232,5 +232,18 @@ export default function AnalyticsDashboardsPage() {
       </div>
       <Link href="/admin/analytics" className="inline-block mt-4 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">← Back to Analytics & Reporting</Link>
     </div>
+  );
+}
+
+export default function AnalyticsDashboardsPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-6">
+        <Link href="/admin/analytics" className="text-sm font-medium hover:underline">← Analytics</Link>
+        <p className="text-muted-foreground mt-4">Loading…</p>
+      </div>
+    }>
+      <AnalyticsDashboardsContent />
+    </Suspense>
   );
 }

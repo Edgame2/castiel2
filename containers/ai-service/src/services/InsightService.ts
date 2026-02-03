@@ -27,7 +27,7 @@ export class InsightService {
     
     if (config.services.shard_manager?.url) {
       this.shardManagerClient = new ServiceClient({
-        baseUrl: config.services.shard_manager.url,
+        baseURL: config.services.shard_manager.url,
         timeout: 10000,
         retries: 2,
       });
@@ -35,7 +35,7 @@ export class InsightService {
     
     if (config.services.embeddings?.url) {
       this.embeddingsClient = new ServiceClient({
-        baseUrl: config.services.embeddings.url,
+        baseURL: config.services.embeddings.url,
         timeout: 10000,
         retries: 2,
       });
@@ -81,9 +81,9 @@ export class InsightService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(insight, {
+      const { resource } = await (container.items as any).create(insight, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create insight');
@@ -162,7 +162,7 @@ export class InsightService {
       const { resource } = await container.item(insightId, tenantId).read<Insight>();
 
       if (!resource) {
-        throw new NotFoundError(`Insight ${insightId} not found`);
+        throw new NotFoundError('Insight', insightId);
       }
 
       return resource;
@@ -171,7 +171,7 @@ export class InsightService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Insight ${insightId} not found`);
+        throw new NotFoundError('Insight', insightId);
       }
       throw error;
     }
@@ -207,7 +207,7 @@ export class InsightService {
       return resource as Insight;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Insight ${insightId} not found`);
+        throw new NotFoundError('Insight', insightId);
       }
       throw error;
     }

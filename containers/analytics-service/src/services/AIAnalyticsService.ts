@@ -63,7 +63,7 @@ export class AIAnalyticsService {
       };
 
       const container = getContainer('ai_analytics_events');
-      await container.items.create(analyticsEvent, { partitionKey: tenantId });
+      await (container.items as any).create(analyticsEvent, { partitionKey: tenantId } as any);
     } catch (error: any) {
       throw new Error(`Failed to record AI analytics event: ${error.message}`);
     }

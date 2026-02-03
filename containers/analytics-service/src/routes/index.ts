@@ -19,6 +19,8 @@ import {
   TimeAggregation,
 } from '../types/analytics.types';
 
+const authPreHandler = [authenticateRequest(), tenantEnforcementMiddleware()] as any;
+
 export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
   const analyticsService = new AnalyticsService();
   const reportService = new ReportService(analyticsService);
@@ -35,7 +37,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: Omit<CreateAnalyticsEventInput, 'tenantId' | 'userId'> }>(
     '/api/v1/analytics/events',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Track analytics event',
         tags: ['Analytics'],
@@ -89,7 +91,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { events: Omit<CreateAnalyticsEventInput, 'tenantId' | 'userId'>[] } }>(
     '/api/v1/analytics/events/batch',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Track multiple analytics events',
         tags: ['Analytics'],
@@ -148,7 +150,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: Omit<AnalyticsQuery, 'tenantId'> }>(
     '/api/v1/analytics/metrics/aggregate',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Get aggregate metrics',
         tags: ['Analytics'],
@@ -218,7 +220,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/analytics/trends/:metricName',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Get trending analysis for a metric',
         tags: ['Analytics'],
@@ -279,7 +281,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/analytics/dashboard',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Get dashboard metrics',
         tags: ['Analytics'],
@@ -335,7 +337,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: Omit<CreateAnalyticsReportInput, 'tenantId' | 'userId'> }>(
     '/api/v1/analytics/reports',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Generate analytics report',
         tags: ['Reports'],
@@ -393,7 +395,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Params: { id: string } }>(
     '/api/v1/analytics/reports/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Get analytics report by ID',
         tags: ['Reports'],
@@ -425,7 +427,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.put<{ Params: { id: string }; Body: { reportName?: string; description?: string; schedule?: any; exportFormats?: string[] } }>(
     '/api/v1/analytics/reports/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Update analytics report',
         tags: ['Reports'],
@@ -454,7 +456,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
-      const report = await reportService.update(request.params.id, tenantId, request.body);
+      const report = await reportService.update(request.params.id, tenantId, request.body as any);
       reply.send(report);
     }
   );
@@ -466,7 +468,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.delete<{ Params: { id: string } }>(
     '/api/v1/analytics/reports/:id',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Delete analytics report',
         tags: ['Reports'],
@@ -504,7 +506,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   }>(
     '/api/v1/analytics/reports',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'List analytics reports',
         tags: ['Reports'],
@@ -544,7 +546,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Querystring: { metricType?: string } }>(
     '/api/v1/analytics/quality/metrics',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Get quality metrics',
         tags: ['Quality Monitoring'],
@@ -604,7 +606,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { metricType: string; value: number; threshold: number; status?: string } }>(
     '/api/v1/analytics/quality/metrics',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Record quality metric',
         tags: ['Quality Monitoring'],
@@ -648,6 +650,23 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
 
   // ===== AI ANALYTICS ROUTES (from ai-analytics) =====
 
+  /** Shared handler for AI model analytics (used by both paths) */
+  const getAiModelsHandler = async (request: any, reply: any) => {
+    try {
+      const tenantId = request.user!.tenantId;
+      const { modelId } = request.query;
+      const models = await aiAnalyticsService.getModelAnalytics(tenantId, modelId);
+      return reply.send({ models });
+    } catch (error: any) {
+      return reply.status(error.statusCode || 500).send({
+        error: {
+          code: 'ANALYTICS_RETRIEVAL_FAILED',
+          message: error.message || 'Failed to retrieve model analytics',
+        },
+      });
+    }
+  };
+
   /**
    * Get AI model analytics
    * GET /api/v1/analytics/ai/models
@@ -655,7 +674,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{ Querystring: { modelId?: string } }>(
     '/api/v1/analytics/ai/models',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Get AI model analytics',
         tags: ['AI Analytics'],
@@ -676,21 +695,38 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         },
       },
     },
-    async (request, reply) => {
-      try {
-        const tenantId = request.user!.tenantId;
-        const { modelId } = request.query;
-        const models = await aiAnalyticsService.getModelAnalytics(tenantId, modelId);
-        return reply.send({ models });
-      } catch (error: any) {
-        return reply.status(error.statusCode || 500).send({
-          error: {
-            code: 'ANALYTICS_RETRIEVAL_FAILED',
-            message: error.message || 'Failed to retrieve model analytics',
+    getAiModelsHandler
+  );
+
+  /**
+   * Get AI model analytics (backward-compat alias for ai-analytics callers)
+   * GET /api/v1/ai-analytics/models
+   */
+  app.get<{ Querystring: { modelId?: string } }>(
+    '/api/v1/ai-analytics/models',
+    {
+      preHandler: authPreHandler,
+      schema: {
+        description: 'Get AI model analytics (alias)',
+        tags: ['AI Analytics'],
+        querystring: {
+          type: 'object',
+          properties: {
+            modelId: { type: 'string' },
           },
-        });
-      }
-    }
+        },
+        response: {
+          200: {
+            type: 'object',
+            description: 'AI model analytics',
+            properties: {
+              models: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    getAiModelsHandler
   );
 
   /**
@@ -700,7 +736,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { eventType: string; modelId?: string; tokens?: number; cost?: number; latencyMs?: number; metadata?: any } }>(
     '/api/v1/analytics/ai/events',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Record AI analytics event',
         tags: ['AI Analytics'],
@@ -755,7 +791,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.post<{ Body: { signalType: string; source: string; data: any } }>(
     '/api/v1/analytics/signals/analyze',
     {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      preHandler: authPreHandler,
       schema: {
         description: 'Analyze signal',
         tags: ['Signal Intelligence'],

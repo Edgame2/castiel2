@@ -245,7 +245,7 @@ export class ACLService {
       const shard = await this.shardService.findById(input.shardId, tenantId);
 
       if (!shard) {
-        throw new NotFoundError('Shard not found');
+        throw new NotFoundError('Shard', input.shardId);
       }
 
       // Initialize ACL if not exists
@@ -311,7 +311,7 @@ export class ACLService {
       const shard = await this.shardService.findById(input.shardId, tenantId);
 
       if (!shard) {
-        throw new NotFoundError('Shard not found');
+        throw new NotFoundError('Shard', input.shardId);
       }
 
       if (!shard.acl || shard.acl.length === 0) {
@@ -374,7 +374,7 @@ export class ACLService {
       const shard = await this.shardService.findById(input.shardId, tenantId);
 
       if (!shard) {
-        throw new NotFoundError('Shard not found');
+        throw new NotFoundError('Shard', input.shardId);
       }
 
       // Initialize ACL if not exists

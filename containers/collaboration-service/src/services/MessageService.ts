@@ -69,9 +69,9 @@ export class MessageService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(message, {
+      const { resource } = await (container.items as any).create(message, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create message');
@@ -84,7 +84,7 @@ export class MessageService {
       );
       await this.conversationService.update(input.conversationId, input.tenantId, {
         messageCount: updatedConversation.messageCount + 1,
-      });
+      } as any);
 
       return resource as ConversationMessage;
     } catch (error: any) {
@@ -108,7 +108,7 @@ export class MessageService {
       const { resource } = await container.item(messageId, tenantId).read<ConversationMessage>();
 
       if (!resource) {
-        throw new NotFoundError(`Message ${messageId} not found`);
+        throw new NotFoundError('Message', messageId);
       }
 
       return resource;
@@ -117,7 +117,7 @@ export class MessageService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Message ${messageId} not found`);
+        throw new NotFoundError('Message', messageId);
       }
       throw error;
     }
@@ -161,7 +161,7 @@ export class MessageService {
       return resource as ConversationMessage;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Message ${messageId} not found`);
+        throw new NotFoundError('Message', messageId);
       }
       throw error;
     }

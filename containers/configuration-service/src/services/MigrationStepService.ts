@@ -49,7 +49,7 @@ export class MigrationStepService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(step, {
+      const { resource } = await (container.items as any).create(step, {
         partitionKey: input.tenantId,
       });
 
@@ -91,7 +91,7 @@ export class MigrationStepService {
       const { resource } = await container.item(stepId, tenantId).read<MigrationStep>();
 
       if (!resource) {
-        throw new NotFoundError(`Migration step ${stepId} not found`);
+        throw new NotFoundError('Migration step', stepId);
       }
 
       return resource;
@@ -100,7 +100,7 @@ export class MigrationStepService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Migration step ${stepId} not found`);
+        throw new NotFoundError('Migration step', stepId);
       }
       throw error;
     }
@@ -166,7 +166,7 @@ export class MigrationStepService {
       return resource as MigrationStep;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Migration step ${stepId} not found`);
+        throw new NotFoundError('Migration step', stepId);
       }
       throw error;
     }

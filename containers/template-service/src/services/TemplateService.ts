@@ -151,7 +151,7 @@ export class TemplateService {
       const { resource } = await container.item(templateId, tenantId).read();
 
       if (!resource) {
-        throw new NotFoundError(`Template ${templateId} not found`);
+        throw new NotFoundError('Template', templateId);
       }
 
       return resource;
@@ -160,7 +160,7 @@ export class TemplateService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Template ${templateId} not found`);
+        throw new NotFoundError('Template', templateId);
       }
       throw error;
     }
@@ -220,7 +220,7 @@ export class TemplateService {
       return resource as Template;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Template ${templateId} not found`);
+        throw new NotFoundError('Template', templateId);
       }
       throw error;
     }
@@ -384,7 +384,7 @@ const container = (getContainer as (n: string) => any)(this.versionContainerName
       .fetchNext();
 
     if (resources.length === 0) {
-      throw new NotFoundError(`Template version ${version} not found`);
+      throw new NotFoundError('Template version', String(version));
     }
 
     return resources[0];

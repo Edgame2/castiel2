@@ -81,9 +81,9 @@ export class RiskAnalysisService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(analysis, {
+      const { resource } = await (container.items as any).create(analysis, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create risk analysis');
@@ -111,7 +111,7 @@ export class RiskAnalysisService {
       const { resource } = await container.item(analysisId, tenantId).read<RiskAnalysis>();
 
       if (!resource) {
-        throw new NotFoundError(`Risk analysis ${analysisId} not found`);
+        throw new NotFoundError('Risk analysis', analysisId);
       }
 
       return resource;
@@ -120,7 +120,7 @@ export class RiskAnalysisService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Risk analysis ${analysisId} not found`);
+        throw new NotFoundError('Risk analysis', analysisId);
       }
       throw error;
     }
@@ -168,7 +168,7 @@ export class RiskAnalysisService {
       return resource as RiskAnalysis;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Risk analysis ${analysisId} not found`);
+        throw new NotFoundError('Risk analysis', analysisId);
       }
       throw error;
     }

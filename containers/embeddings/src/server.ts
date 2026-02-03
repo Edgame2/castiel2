@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import { initializeDatabase, connectDatabase, disconnectDatabase, setupHealthCheck, setupJWT } from '@coder/shared';
 import { loadConfig } from './config';
 import { embeddingRoutes } from './routes/embeddings';
+import { shardEmbeddingRoutes } from './routes/shard-embeddings';
+import { initializeShardEmbeddingPublisher, closeShardEmbeddingPublisher } from './events/publishers/ShardEmbeddingEventPublisher';
 
 const server = Fastify({
   logger: true,
@@ -9,6 +11,9 @@ const server = Fastify({
 
 // Register routes
 server.register(embeddingRoutes, { prefix: '/api/embeddings' });
+server.register(async (instance) => {
+  await shardEmbeddingRoutes(instance);
+}, { prefix: '/api/v1/shard-embeddings' });
 
 // Setup health check endpoints
 setupHealthCheck(server);
@@ -30,7 +35,8 @@ const start = async () => {
     await setupJWT(server, { secret: process.env.JWT_SECRET || 'dev-secret' });
     
     await connectDatabase();
-    
+    await initializeShardEmbeddingPublisher();
+
     await server.listen({ port: config.server.port, host: config.server.host });
     console.log(`Embeddings Service listening on port ${config.server.port}`);
   } catch (err) {
@@ -42,6 +48,7 @@ const start = async () => {
 // Graceful shutdown
 const shutdown = async () => {
   console.log('Shutting down Embeddings Service...');
+  await closeShardEmbeddingPublisher();
   await server.close();
   await disconnectDatabase();
   process.exit(0);

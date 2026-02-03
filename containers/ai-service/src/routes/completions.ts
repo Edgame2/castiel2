@@ -2,10 +2,16 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { CompletionService } from '../services/CompletionService';
 import { EventPublisher } from '@coder/shared';
+import { loadConfig } from '../config';
+
+function getEventPublisher(): EventPublisher {
+  const config = loadConfig();
+  return new EventPublisher({ url: config.rabbitmq.url, exchange: config.rabbitmq.exchange }, 'ai-service');
+}
 
 export async function completionRoutes(fastify: FastifyInstance) {
   const completionService = new CompletionService();
-  const eventPublisher = new EventPublisher('coder.events');
+  const eventPublisher = getEventPublisher();
 
   // Register authentication and tenant enforcement middleware
   fastify.addHook('preHandler', async (request, reply) => {
@@ -27,9 +33,9 @@ export async function completionRoutes(fastify: FastifyInstance) {
       const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const model = body.model || 'gpt-4';
 
+      const tenantId = (user as any).tenantId || user.organizationId || '';
       // Publish event: completion started
-      await eventPublisher.publish({
-        type: 'ai.completion.started',
+      await eventPublisher.publish('ai.completion.started', tenantId, {
         requestId,
         model,
         organizationId: user.organizationId,
@@ -53,8 +59,7 @@ export async function completionRoutes(fastify: FastifyInstance) {
         const durationMs = Date.now() - startTime;
 
         // Publish event: completion completed
-        await eventPublisher.publish({
-          type: 'ai.completion.completed',
+        await eventPublisher.publish('ai.completion.completed', tenantId, {
           requestId,
           model,
           tokensUsed: completion.usage?.totalTokens || 0,
@@ -68,8 +73,7 @@ export async function completionRoutes(fastify: FastifyInstance) {
         const durationMs = Date.now() - startTime;
         const msg = error instanceof Error ? error.message : String(error);
         // Publish event: completion failed
-        await eventPublisher.publish({
-          type: 'ai.completion.failed',
+        await eventPublisher.publish('ai.completion.failed', tenantId, {
           requestId,
           model,
           error: msg,

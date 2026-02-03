@@ -25,7 +25,7 @@ export interface WidgetCache {
 }
 
 export class DashboardService {
-  private db = getDatabaseClient();
+  private db = getDatabaseClient() as any;
   private config: ReturnType<typeof loadConfig>;
   private analyticsServiceClient: ServiceClient;
   private cacheServiceClient: ServiceClient;
@@ -100,9 +100,7 @@ export class DashboardService {
       if (resources.length > 0) {
         // Update existing
         const existing = resources[0];
-        await container.item(existing.id, tenantId).replace({
-          id: existing.id,
-          tenantId,
+        await (container as any).item(existing.id, tenantId).replace({
           ...existing,
           viewCount: existing.viewCount + 1,
           lastViewed: new Date(),
@@ -121,7 +119,7 @@ export class DashboardService {
           createdAt: new Date(),
           updatedAt: new Date(),
         };
-        await container.items.create(analytics, { partitionKey: tenantId });
+        await (container.items as any).create(analytics, { partitionKey: tenantId } as any);
       }
     } catch (error: any) {
       throw new Error(`Failed to record dashboard view: ${error.message}`);
@@ -168,7 +166,7 @@ export class DashboardService {
         createdAt: new Date(),
       };
 
-      await container.items.create(cache, { partitionKey: tenantId });
+      await (container.items as any).create(cache, { partitionKey: tenantId } as any);
     } catch (error: any) {
       throw new Error(`Failed to set widget cache: ${error.message}`);
     }

@@ -182,13 +182,15 @@ vi.mock('../../../src/utils/redis', () => {
   };
 });
 
-// Mock ajv (used by config validation)
+// Mock ajv (used by config validation) - must be a constructor
 vi.mock('ajv', () => {
-  const Ajv = vi.fn(() => ({
-    compile: vi.fn(() => vi.fn(() => true)), // Always validate
-    validate: vi.fn(() => true),
-    errors: null,
-  }));
+  function Ajv() {
+    return {
+      compile: vi.fn(() => vi.fn(() => true)),
+      validate: vi.fn(() => true),
+      errors: null,
+    };
+  }
   return { default: Ajv, Ajv };
 });
 
@@ -196,26 +198,6 @@ vi.mock('ajv', () => {
 vi.mock('ajv-formats', () => ({
   default: vi.fn(),
 }));
-
-// Mock fastify (for integration tests)
-vi.mock('fastify', () => {
-  const mockFastify = {
-    register: vi.fn(),
-    listen: vi.fn(),
-    ready: vi.fn(),
-    close: vi.fn(),
-    inject: vi.fn(),
-    log: {
-      error: vi.fn(),
-      warn: vi.fn(),
-      info: vi.fn(),
-    },
-  };
-  
-  return {
-    default: vi.fn(() => mockFastify),
-  };
-});
 
 // Global test setup
 beforeAll(async () => {

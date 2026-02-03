@@ -24,7 +24,7 @@ cd ..
 
 1. Create a PostgreSQL database:
 ```bash
-createdb coder_ide
+createdb castiel
 ```
 
 2. Configure database connection in `server/.env`:
@@ -190,7 +190,7 @@ npm run db:seed
 
 1. Verify PostgreSQL is running: `pg_isready`
 2. Check DATABASE_URL in `server/.env`
-3. Ensure database exists: `psql -l | grep coder_ide`
+3. Ensure database exists: `psql -l | grep castiel`
 
 ### OAuth Issues
 

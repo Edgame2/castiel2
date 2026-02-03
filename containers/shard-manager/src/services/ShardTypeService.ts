@@ -47,9 +47,9 @@ export class ShardTypeService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(shardType, {
+      const { resource } = await (container.items as any).create(shardType, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create shard type');
@@ -77,7 +77,7 @@ export class ShardTypeService {
       const { resource } = await container.item(shardTypeId, tenantId).read<ShardType>();
 
       if (!resource) {
-        throw new NotFoundError(`Shard type ${shardTypeId} not found`);
+        throw new NotFoundError('Shard type', shardTypeId);
       }
 
       return resource;
@@ -86,7 +86,7 @@ export class ShardTypeService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Shard type ${shardTypeId} not found`);
+        throw new NotFoundError('Shard type', shardTypeId);
       }
       throw error;
     }
@@ -146,7 +146,7 @@ export class ShardTypeService {
       return resource as ShardType;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Shard type ${shardTypeId} not found`);
+        throw new NotFoundError('Shard type', shardTypeId);
       }
       throw error;
     }

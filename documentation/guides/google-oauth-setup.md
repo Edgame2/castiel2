@@ -13,7 +13,7 @@
    - Add test users if in testing mode
 6. Create OAuth 2.0 Client ID:
    - **Application type**: Web application
-   - **Name**: Coder IDE (or your preferred name)
+   - **Name**: Castiel (or your preferred name)
    - **Authorized redirect URIs**: 
      - For development: `http://localhost:3000/api/auth/google/callback`
      - For production: `https://yourdomain.com/api/auth/google/callback`

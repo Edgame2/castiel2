@@ -51,6 +51,22 @@ describe('isPublicAuthPath', () => {
     expect(isPublicAuthPath('/api/auth/health')).toBe(true);
   });
 
+  it('returns true for /api/auth/refresh', () => {
+    expect(isPublicAuthPath('/api/auth/refresh')).toBe(true);
+  });
+
+  it('returns true for /api/auth/logout', () => {
+    expect(isPublicAuthPath('/api/auth/logout')).toBe(true);
+  });
+
+  it('returns true for /api/auth/google (OAuth initiate)', () => {
+    expect(isPublicAuthPath('/api/auth/google')).toBe(true);
+  });
+
+  it('returns true for /api/auth/oauth/github (OAuth initiate)', () => {
+    expect(isPublicAuthPath('/api/auth/oauth/github')).toBe(true);
+  });
+
   it('returns false for /api/users/me', () => {
     expect(isPublicAuthPath('/api/users/me')).toBe(false);
   });

@@ -41,8 +41,6 @@ Context Service (code context)
     ↓
 Knowledge Base (validation knowledge)
     ↓
-Compliance Service (compliance validation)
-    ↓
 Cosmos DB (store validation results)
     ↓
 Event Publisher (RabbitMQ)
@@ -53,7 +51,6 @@ Event Publisher (RabbitMQ)
 - **Quality Service**: For quality checks
 - **Context Service**: For code context
 - **Knowledge Base**: For validation knowledge
-- **Compliance Service**: For compliance validation
 - **Logging Service**: For audit logging
 
 ## Configuration

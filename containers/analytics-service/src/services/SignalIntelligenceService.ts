@@ -132,7 +132,7 @@ export class SignalIntelligenceService {
 
       // Store signal
       const container = getContainer('signal_intelligence_signals');
-      await container.items.create(signalRecord, { partitionKey: tenantId });
+      await (container.items as any).create(signalRecord, { partitionKey: tenantId } as any);
 
       return signalRecord;
     } catch (error: any) {

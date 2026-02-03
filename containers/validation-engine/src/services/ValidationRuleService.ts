@@ -46,9 +46,9 @@ export class ValidationRuleService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(rule, {
+      const { resource } = await (container.items as any).create(rule, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create validation rule');
@@ -76,7 +76,7 @@ export class ValidationRuleService {
       const { resource } = await container.item(ruleId, tenantId).read<ValidationRule>();
 
       if (!resource) {
-        throw new NotFoundError(`Validation rule ${ruleId} not found`);
+        throw new NotFoundError('Validation rule', ruleId);
       }
 
       return resource;
@@ -85,7 +85,7 @@ export class ValidationRuleService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Validation rule ${ruleId} not found`);
+        throw new NotFoundError('Validation rule', ruleId);
       }
       throw error;
     }
@@ -126,7 +126,7 @@ export class ValidationRuleService {
       return resource as ValidationRule;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Validation rule ${ruleId} not found`);
+        throw new NotFoundError('Validation rule', ruleId);
       }
       throw error;
     }

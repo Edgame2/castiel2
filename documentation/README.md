@@ -84,53 +84,16 @@ graph TB
 
 ## Documentation Structure
 
-### [Core Modules](./modules/core/)
-Core modules that are always required for the system to function. Each module consolidates backend, frontend, and microservice documentation.
+### [Containers](./containers/README.md) (source of truth for runtime services)
 
-- [Authentication](./modules/core/authentication/) - User authentication, OAuth, and session management (Port 3021)
-- [User Management](./modules/core/user-management/) - User profiles, organizations, teams, RBAC (Port 3022)
-- [Logging](./modules/core/logging/) - Audit logging and compliance (Port 3014)
-- [Application Log Monitoring](./modules/core/application-log-monitoring/) - Unified log monitoring abstraction (Application Insights, Sentry) (Port 3015)
-- [Notification](./modules/core/notification/) - Multi-channel notification delivery (Port 3001)
-- [Secret Management](./modules/core/secret-management/) - Centralized secret storage (Port 3003)
+Single source of truth for all runtime containers: integration overview, container list with ports, purpose and integration by category, and **detailed full-spec docs per container** (reference, architecture, deployment, security, links).
 
-### [Extension Modules](./modules/extensions/)
-Optional extension modules that provide additional functionality. Each module consolidates backend, frontend, and microservice documentation.
+- **[Containers index](./containers/README.md)** – Main file: every container described with purpose, dependencies, storage, events; links to per-container docs.
+- **Per-container docs** – One file per service (e.g. [api-gateway](./containers/api-gateway.md), [auth](./containers/auth.md), [shard-manager](./containers/shard-manager.md), [risk-analytics](./containers/risk-analytics.md), [ui](./containers/ui.md), etc.) with full spec: config, API, events, Cosmos, deployment, tenant isolation.
 
-#### Business Intelligence Core
-- [Pipeline Manager](./modules/extensions/pipeline-manager/) - Sales pipeline and opportunity management (Port 3025)
-- [AI Insights](./modules/extensions/ai-insights/) - AI-powered insights and risk analysis (Port 3027)
-- [ML Service](./modules/extensions/ml-service/) - Machine learning model management and predictions (Port 3033)
-- [Analytics Service](./modules/extensions/analytics-service/) - Analytics and reporting (Port 3030)
-- [Shard Manager](./modules/extensions/shard-manager/) - Core data model management (Port 3023)
+See also: [UI Container Architecture](./UI_CONTAINER_ARCHITECTURE.md), [Documentation Status](./DOCUMENTATION_STATUS.md), [Platform services clarification](./clarification.md).
 
-#### AI & Intelligence
-- [AI Service](./modules/extensions/ai-service/) - LLM completions and model routing (Port 3006)
-- [Embeddings](./modules/extensions/embeddings/) - Vector embeddings and semantic search (Port 3005)
-- [Adaptive Learning](./modules/extensions/adaptive-learning/) - CAIS adaptive learning system (Port 3032)
-- [Search Service](./modules/extensions/search-service/) - Advanced search and vector search (Port 3029)
-
-#### Integration & Content
-- [Integration Manager](./modules/extensions/integration-manager/) - Third-party integrations and webhooks (Port 3026)
-- [Document Manager](./modules/extensions/document-manager/) - Document and file management (Port 3024)
-- [Content Generation](./modules/extensions/content-generation/) - AI-powered content generation (Port 3028)
-- [Template Service](./modules/extensions/template-service/) - Template management (Port 3037)
-
-#### Platform Services
-- [Dashboard](./modules/extensions/dashboard/) - Dashboard configuration (Port 3011)
-- [Collaboration Service](./modules/extensions/collaboration-service/) - Real-time collaboration features (Port 3031)
-- [Configuration Service](./modules/extensions/configuration-service/) - Centralized configuration management (Port 3034)
-- [Cache Service](./modules/extensions/cache-service/) - Caching and cache management (Port 3035)
-- [Prompt Service](./modules/extensions/prompt-service/) - Prompt management and A/B testing (Port 3036)
-
-#### Security & Compliance
-- [Security Service](./modules/extensions/security-service/) - Security analysis and protection (Port 3042)
-- [Compliance Service](./modules/extensions/compliance-service/) - Regulatory compliance (Port 3043)
-
-#### Additional Services
-- [Multi-Modal Service](./modules/extensions/multi-modal-service/) - Multi-modal understanding (Port 3044)
-- [Reasoning Engine](./modules/extensions/reasoning-engine/) - Advanced reasoning capabilities (Port 3045)
-- [Migration Service](./modules/extensions/migration-service/) - Code migration and refactoring (Port 3038)
+---
 
 ### [Infrastructure](./global/Infrastructure.md)
 Infrastructure components that support the application but are not business logic modules. These are documented in a single consolidated file.
@@ -203,61 +166,27 @@ Setup and user guides for getting started with Castiel:
 - [Admin Guide](./guides/admin-guide.md) - Advanced administration
 - [Permission Matrix](./guides/permission-matrix.md) - Permission reference
 
-## Specifications
-
-Feature specifications and design documents:
-
-- [Authentication & User Management](./specifications/authentication-user-management.md) - Complete authentication and user management specification
-- [SSO & Secrets Management](./specifications/sso-secrets-management-addition.md) - SSO and secrets management additions
-- [Collaboration & Organization](./specifications/collaboration-organization.md) - Collaboration features and organization structure
-
-## Planning
-
-Planning documents, questions, and todo items:
-
-- [Questions for Features](./planning/QUESTIONS_FOR_FEATURES.md) - Clarification questions about features
-- [Answers](./planning/answers.md) - Answers to feature questions
-- [Todo Lists](./planning/) - Active todo items and task tracking
-
-## Archive
-
-Historical documentation and implementation history:
-
-- [Implementation History](./archive/implementation-history/) - Historical implementation reports, status files, and completion summaries
-- [Root Status Files](./archive/root-status-files/) - Root-level status and completion reports
-- [Architecture (Detailed)](./archive/Architecture-detailed.md) - Detailed architecture document with container specifications
-
-**Note**: The archive contains historical documents preserved for reference. For current documentation, see the sections above.
-
 ## Quick Links
 
+- **[Containers (all services)](./containers/README.md)** - Container index and per-container full-spec docs
 - [System Architecture Overview](./global/Architecture.md)
 - [CAIS Architecture](./global/CAIS_OVERVIEW.md) - Compound AI System overview
 - [Infrastructure Components](./global/Infrastructure.md) - API Gateway, Database, Middleware, etc.
 - [Module Overview](./global/ModuleOverview.md) - High-level module purposes and dependencies
 - [Module Implementation Guide](./global/ModuleImplementationGuide.md) - Module development standards
-- [Core Modules](./modules/core/) - Core module documentation
-- [Extension Modules](./modules/extensions/) - Extension module documentation
-- [ML Service](./modules/extensions/ml-service/) - Machine learning capabilities
 - [Documentation Status](./DOCUMENTATION_STATUS.md)
-- [Expansion Summary](./EXPANSION_SUMMARY.md)
+- [UI Container Architecture](./UI_CONTAINER_ARCHITECTURE.md)
+- [Archive (historical summaries)](./archive/) - Consolidation, expansion, reorganization summaries
 
 ## Documentation Status
 
-All modules have been expanded with comprehensive documentation:
+- ✅ **Containers** – [containers/README.md](./containers/README.md) (index) and one full-spec file per container
+- ✅ **Global** – Architecture, CAIS, ModuleImplementationGuide, DataFlow, Deployment, etc. in [global/](./global/)
+- ✅ **Guides** – Setup, Docker, OAuth, admin, permissions in [guides/](./guides/)
+- ✅ **Database** – [Cosmos DB reference](./database/COSMOS_DB_CONTAINERS_REFERENCE.md)
+- ✅ **Business** – Plan, progress, status in [business/](./business/)
 
-- ✅ **12 modules** with detailed documentation (architecture, API, examples)
-- ✅ **73 modules** with expanded README files
-- ✅ **85+ total modules** documented
-- ✅ **10 modules** with detailed SPECIFICATION.md files
-- ✅ **6 setup and user guides** in `guides/` folder
-- ✅ **3 feature specifications** in `specifications/` folder
-- ✅ **Planning documents** in `planning/` folder
-- ✅ **Historical archive** with implementation history
-- ✅ Architecture diagrams (Mermaid) for all modules
-- ✅ Cross-references between related modules
-
-See [EXPANSION_SUMMARY.md](./EXPANSION_SUMMARY.md) and [CONSOLIDATION_SUMMARY.md](./CONSOLIDATION_SUMMARY.md) for details.
+See [DOCUMENTATION_STATUS.md](./DOCUMENTATION_STATUS.md) for full structure. Historical summaries are in [archive/](./archive/).
 
 ## Documentation Organization
 
@@ -266,34 +195,25 @@ This documentation is organized as follows:
 ```
 documentation/
 ├── README.md                    # This file - main index
-├── modules/                     # Module documentation
-│   ├── core/                    # Core modules (always required)
-│   │   ├── authentication/     # Consolidated auth docs (backend + frontend + microservice)
-│   │   ├── user-management/    # Consolidated user mgmt docs
-│   │   ├── logging/            # Consolidated logging docs
-│   │   ├── notification/      # Consolidated notification docs
-│   │   └── secret-management/  # Consolidated secret mgmt docs
-│   └── extensions/              # Extension modules (optional)
-│       ├── ml-service/          # ML service with CAIS architecture
-│       ├── ai-insights/         # AI insights and risk analysis
-│       ├── pipeline-manager/    # Sales pipeline management
-│       └── [other extensions]   # Other extension modules
+├── containers/                  # Container documentation (source of truth for services)
+│   ├── README.md                # Main file: all containers, categories, integration, ports
+│   └── *.md                     # One full-spec file per container (e.g. api-gateway.md, auth.md)
 ├── global/                      # Global architecture and system documentation
-│   ├── CAIS_OVERVIEW.md        # Compound AI System overview
-│   ├── Infrastructure.md       # Infrastructure components (consolidated)
-│   ├── ModuleOverview.md        # High-level module overview
+│   ├── CAIS_OVERVIEW.md         # Compound AI System overview
+│   ├── Architecture.md         # System architecture
+│   ├── Infrastructure.md       # Infrastructure components
+│   ├── ModuleOverview.md       # High-level module overview
 │   └── ModuleImplementationGuide.md  # Module development standards
+├── database/                    # Cosmos DB reference
 ├── guides/                      # Setup and user guides
-├── specifications/              # Feature specifications and design documents
-├── planning/                    # Planning documents, questions, and todos
-├── archive/                     # Historical documentation
-│   ├── implementation-history/  # Historical implementation reports
-│   ├── root-status-files/       # Root-level status files
-│   └── Architecture-detailed.md  # Detailed architecture document
-└── [status files]               # Documentation status and summaries
+├── integrations/                # Integration docs (e.g. secret-management usage)
+├── business/                    # Business plan, progress, status, team
+├── archive/                     # Historical summaries (consolidation, expansion, reorganization)
+├── DOCUMENTATION_STATUS.md      # Current structure and maintenance
+└── UI_CONTAINER_ARCHITECTURE.md # UI-specific architecture
 ```
 
-**Single Source of Truth**: All active documentation is in the `documentation/` folder. Historical documents are preserved in `archive/` for reference.
+**Single Source of Truth**: Container list and service details are in `documentation/containers/`. All active documentation is in the `documentation/` folder.
 
 ## Contributing
 

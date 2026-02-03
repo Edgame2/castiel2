@@ -38,7 +38,6 @@ import {
   KeyPhrasesProcessor,
 } from './processors';
 import { extractTextFromShard } from '../utils/textExtraction';
-import { ShardEmbeddingService } from './ShardEmbeddingService';
 
 export interface EnrichmentJob {
   jobId: string;
@@ -59,7 +58,6 @@ export class EnrichmentService {
   private shardManagerClient: ServiceClient;
   private embeddingsClient: ServiceClient;
   private aiServiceClient: ServiceClient;
-  private shardEmbeddingService: ShardEmbeddingService;
   private processors = new Map<EnrichmentProcessorType, IEnrichmentProcessor>();
   private runningJobs = new Set<string>();
   private app: FastifyInstance | null = null;
@@ -67,8 +65,7 @@ export class EnrichmentService {
   constructor(app?: FastifyInstance) {
     this.app = app || null;
     this.config = loadConfig();
-    this.shardEmbeddingService = new ShardEmbeddingService(app);
-    
+
     this.shardManagerClient = new ServiceClient({
       baseURL: this.config.services.shard_manager?.url || '',
       timeout: 30000,
@@ -375,9 +372,19 @@ export class EnrichmentService {
       // Update shard with enrichment results
       await this.updateShardEnrichment(job.shardId, job.tenantId, results);
 
-      // Generate embeddings for the shard (automatic on shard create/update, per MISSING_FEATURES 2.4)
+      // Generate embeddings via embeddings service (enrichment-before-embedding flow)
       try {
-        await this.shardEmbeddingService.generateEmbeddingsForShard(job.shardId, job.tenantId, { forceRegenerate: false });
+        const token = this.getServiceToken(job.tenantId);
+        await this.embeddingsClient.post(
+          '/api/v1/shard-embeddings/generate',
+          { shardId: job.shardId, forceRegenerate: false },
+          {
+            headers: {
+              Authorization: token ? `Bearer ${token}` : '',
+              'X-Tenant-ID': job.tenantId,
+            },
+          }
+        );
       } catch (embErr: unknown) {
         log.warn('Embedding generation failed after enrichment (enrichment succeeded)', {
           jobId: job.id,

@@ -61,7 +61,7 @@ export class BlobStorageService {
 
     try {
       await this.containerClient.createIfNotExists({
-        access: 'private',
+        access: 'private' as any,
       });
     } catch (error: any) {
       throw new Error(`Failed to ensure container exists: ${error.message}`);
@@ -113,12 +113,12 @@ export class BlobStorageService {
     try {
       const downloadResponse = await blobClient.download();
       if (!downloadResponse.readableStreamBody) {
-        throw new NotFoundError(`File not found: ${blobPath}`);
+        throw new NotFoundError('File', blobPath);
       }
 
       const chunks: Uint8Array[] = [];
       for await (const chunk of downloadResponse.readableStreamBody) {
-        chunks.push(chunk);
+        chunks.push(Buffer.isBuffer(chunk) ? new Uint8Array(chunk) : (chunk as unknown as Uint8Array));
       }
 
       return Buffer.concat(chunks);
@@ -127,7 +127,7 @@ export class BlobStorageService {
         throw error;
       }
       if (error.statusCode === 404) {
-        throw new NotFoundError(`File not found: ${blobPath}`);
+        throw new NotFoundError('File', blobPath);
       }
       throw new Error(`Failed to download file: ${error.message}`);
     }
@@ -276,7 +276,7 @@ export class BlobStorageService {
       };
     } catch (error: any) {
       if (error.statusCode === 404) {
-        throw new NotFoundError(`File not found: ${blobPath}`);
+        throw new NotFoundError('File', blobPath);
       }
       throw new Error(`Failed to get file properties: ${error.message}`);
     }

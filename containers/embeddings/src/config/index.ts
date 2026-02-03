@@ -14,8 +14,9 @@ export interface EmbeddingsConfig {
   services: {
     ai_service?: { url: string };
     logging?: { url: string };
+    shard_manager?: { url: string };
   };
-  rabbitmq: { url: string; exchange: string; queue: string };
+  rabbitmq?: { url?: string; exchange?: string; queue?: string };
   redis: {
     url?: string;
     host: string;
@@ -41,7 +42,10 @@ export function loadConfig(): EmbeddingsConfig {
   if (process.env.LOGGING_URL) {
     config.services.logging = { url: process.env.LOGGING_URL };
   }
-  if (process.env.RABBITMQ_URL) config.rabbitmq.url = process.env.RABBITMQ_URL;
+  if (process.env.SHARD_MANAGER_URL) {
+    config.services.shard_manager = { url: process.env.SHARD_MANAGER_URL };
+  }
+  if (process.env.RABBITMQ_URL && config.rabbitmq) config.rabbitmq.url = process.env.RABBITMQ_URL;
   if (process.env.REDIS_URL) config.redis.url = process.env.REDIS_URL;
   if (process.env.REDIS_HOST) config.redis.host = process.env.REDIS_HOST;
   if (process.env.REDIS_PORT) config.redis.port = parseInt(process.env.REDIS_PORT, 10);

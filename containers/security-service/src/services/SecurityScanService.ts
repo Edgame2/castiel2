@@ -39,7 +39,7 @@ export class SecurityScanService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(scan, {
+      const { resource } = await (container.items as any).create(scan, {
         partitionKey: input.tenantId,
       });
 
@@ -69,7 +69,7 @@ export class SecurityScanService {
       const { resource } = await container.item(scanId, tenantId).read<SecurityScan>();
 
       if (!resource) {
-        throw new NotFoundError(`Security scan ${scanId} not found`);
+        throw new NotFoundError('Security scan', scanId);
       }
 
       return resource;
@@ -78,7 +78,7 @@ export class SecurityScanService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Security scan ${scanId} not found`);
+        throw new NotFoundError('Security scan', scanId);
       }
       throw error;
     }
@@ -112,7 +112,7 @@ export class SecurityScanService {
       return resource as SecurityScan;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Security scan ${scanId} not found`);
+        throw new NotFoundError('Security scan', scanId);
       }
       throw error;
     }

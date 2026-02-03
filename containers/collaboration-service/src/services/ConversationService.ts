@@ -66,9 +66,9 @@ export class ConversationService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(conversation, {
+      const { resource } = await (container.items as any).create(conversation, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create conversation');
@@ -96,7 +96,7 @@ export class ConversationService {
       const { resource } = await container.item(conversationId, tenantId).read<Conversation>();
 
       if (!resource) {
-        throw new NotFoundError(`Conversation ${conversationId} not found`);
+        throw new NotFoundError('Conversation', conversationId);
       }
 
       return resource;
@@ -105,7 +105,7 @@ export class ConversationService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Conversation ${conversationId} not found`);
+        throw new NotFoundError('Conversation', conversationId);
       }
       throw error;
     }
@@ -138,7 +138,7 @@ export class ConversationService {
       return resource as Conversation;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Conversation ${conversationId} not found`);
+        throw new NotFoundError('Conversation', conversationId);
       }
       throw error;
     }

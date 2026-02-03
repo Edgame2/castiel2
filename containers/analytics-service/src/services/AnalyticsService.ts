@@ -58,9 +58,9 @@ export class AnalyticsService {
 
     try {
       const container = getContainer(this.eventsContainerName);
-      const { resource } = await container.items.create(event, {
+      const { resource } = await (container.items as any).create(event, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to track analytics event');

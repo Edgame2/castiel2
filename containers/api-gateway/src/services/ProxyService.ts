@@ -4,6 +4,7 @@
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
+import axios from 'axios';
 import { ServiceClient } from '@coder/shared';
 
 /**
@@ -115,32 +116,27 @@ export class ProxyService {
         headers['X-Request-ID'] = request.headers['x-request-id'] as string;
       }
 
-      // Make request to backend service
+      // Make request with axios so we preserve backend HTTP status (ServiceClient returns only body)
       const method = request.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete';
       const body = (request.body as any) || undefined;
+      const baseURL = mapping.serviceUrl.replace(/\/$/, '');
+      const fullUrl = targetPath.startsWith('http') ? targetPath : `${baseURL}${targetPath}`;
 
-      let response: any;
-      const requestConfig = { headers };
-      
-      if (method === 'get' || method === 'delete') {
-        response = await client[method](targetPath, requestConfig);
-      } else {
-        response = await client[method](targetPath, body, requestConfig);
-      }
-
-      // Forward response (preserve status code if available)
-      const statusCode = (response as any)?.statusCode || 200;
-      reply.code(statusCode).send(response);
+      const res = await axios.request({
+        method,
+        url: fullUrl,
+        data: body,
+        headers,
+        timeout: 30000,
+        validateStatus: () => true,
+      });
+      reply.code(res.status).send(res.data);
     } catch (error: any) {
-      // Handle errors
       if (error.response) {
-        // Backend service error
         reply.code(error.response.status || 500).send(error.response.data || { error: 'Service error' });
       } else if (error.message?.includes('Circuit breaker')) {
-        // Circuit breaker open
         reply.code(503).send({ error: 'Service temporarily unavailable' });
       } else {
-        // Network or other error
         reply.code(502).send({ error: 'Bad gateway' });
       }
     }

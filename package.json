@@ -1,7 +1,7 @@
 {
   "name": "castiel-enterprise",
   "version": "1.0.0",
-  "description": "Coder IDE Enterprise Migration - Root Package",
+  "description": "Castiel - Root Package",
   "private": true,
   "scripts": {
     "lint:all": "pnpm -r --filter './containers/*' lint",

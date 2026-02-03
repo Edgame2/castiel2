@@ -48,7 +48,7 @@ export class MigrationService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(migration, {
+      const { resource } = await (container.items as any).create(migration, {
         partitionKey: input.tenantId,
       });
 
@@ -78,7 +78,7 @@ export class MigrationService {
       const { resource } = await container.item(migrationId, tenantId).read<Migration>();
 
       if (!resource) {
-        throw new NotFoundError(`Migration ${migrationId} not found`);
+        throw new NotFoundError('Migration', migrationId);
       }
 
       return resource;
@@ -87,7 +87,7 @@ export class MigrationService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Migration ${migrationId} not found`);
+        throw new NotFoundError('Migration', migrationId);
       }
       throw error;
     }
@@ -124,7 +124,7 @@ export class MigrationService {
       return resource as Migration;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Migration ${migrationId} not found`);
+        throw new NotFoundError('Migration', migrationId);
       }
       throw error;
     }

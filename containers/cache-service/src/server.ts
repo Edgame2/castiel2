@@ -5,6 +5,10 @@ import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import { loadConfig } from './config';
 import { registerRoutes } from './routes';
+import {
+  initializeCacheManagementEventPublisher,
+  closeCacheManagementEventPublisher,
+} from './events/publishers/CacheManagementEventPublisher';
 
 let app: FastifyInstance | null = null;
 
@@ -60,6 +64,9 @@ export async function buildApp(): Promise<FastifyInstance> {
     throw error;
   }
 
+  // Cache management event publisher (merged from cache-management)
+  await initializeCacheManagementEventPublisher();
+
   // Register routes
   await registerRoutes(fastify, config);
 
@@ -82,6 +89,7 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   console.log(`${signal} received, shutting down gracefully`);
   if (app) await app.close();
+  await closeCacheManagementEventPublisher();
   await disconnectCache();
   process.exit(0);
 }

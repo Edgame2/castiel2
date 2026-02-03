@@ -5,6 +5,7 @@ import { completionRoutes } from './routes/completions';
 import { modelRoutes } from './routes/models';
 import { agentRoutes } from './routes/agents';
 import { registerAllRoutes } from './routes';
+import { initializeLLMReasoningEventPublisher, closeLLMReasoningEventPublisher } from './events/publishers/LLMReasoningEventPublisher';
 
 const server = Fastify({
   logger: true,
@@ -32,13 +33,14 @@ const start = async () => {
     });
     
     // Setup JWT for authentication
-    await setupJWT(server);
+    await setupJWT(server, { secret: process.env.JWT_SECRET || (config as any).jwt?.secret || 'change-me' });
     
     await connectDatabase();
-    
-    // Register merged routes (insights, reasoning, prompts)
+    await initializeLLMReasoningEventPublisher();
+
+    // Register merged routes (insights, reasoning, prompts, LLM)
     await registerAllRoutes(server);
-    
+
     await server.listen({ port: config.server.port, host: config.server.host });
     console.log(`AI Service listening on port ${config.server.port}`);
   } catch (err) {
@@ -50,6 +52,7 @@ const start = async () => {
 // Graceful shutdown
 const shutdown = async () => {
   console.log('Shutting down AI Service...');
+  await closeLLMReasoningEventPublisher();
   await server.close();
   await closeConnection(); // Close RabbitMQ connection
   await disconnectDatabase();

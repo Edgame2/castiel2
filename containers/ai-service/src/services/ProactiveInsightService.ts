@@ -73,9 +73,9 @@ export class ProactiveInsightService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(insight, {
+      const { resource } = await (container.items as any).create(insight, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create proactive insight');
@@ -103,7 +103,7 @@ export class ProactiveInsightService {
       const { resource } = await container.item(insightId, tenantId).read<ProactiveInsight>();
 
       if (!resource) {
-        throw new NotFoundError(`Proactive insight ${insightId} not found`);
+        throw new NotFoundError('Proactive insight', insightId);
       }
 
       return resource;
@@ -112,7 +112,7 @@ export class ProactiveInsightService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Proactive insight ${insightId} not found`);
+        throw new NotFoundError('Proactive insight', insightId);
       }
       throw error;
     }
@@ -154,7 +154,7 @@ export class ProactiveInsightService {
       return resource as ProactiveInsight;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Proactive insight ${insightId} not found`);
+        throw new NotFoundError('Proactive insight', insightId);
       }
       throw error;
     }

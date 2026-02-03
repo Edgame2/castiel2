@@ -123,7 +123,7 @@ export class CacheService {
     try {
       const serialized = JSON.stringify(input.value);
       if (input.ttl) {
-        await redis.setEx(cacheKey, input.ttl, serialized);
+        await redis.setex(cacheKey, input.ttl, serialized);
       } else {
         await redis.set(cacheKey, serialized);
       }
@@ -482,7 +482,7 @@ export class CacheService {
         updatedAt: new Date(),
       };
 
-      await container.items.create(strategy, { partitionKey: tenantId });
+      await (container.items as any).create(strategy, { partitionKey: tenantId });
       return strategy;
     } catch (error: any) {
       throw new Error(`Failed to upsert cache strategy: ${error.message}`);

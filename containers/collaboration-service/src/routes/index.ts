@@ -417,7 +417,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const message = await messageService.update(request.params.id, tenantId, {
         ...request.body,
         userId,
-      });
+      } as any);
       reply.send(message);
     }
   );

@@ -338,7 +338,7 @@ export class ComplianceCheckerService {
     const container = getContainer(this.requirementsContainerName);
 
     for (const requirement of requirements) {
-      await container.items.create(requirement, {
+      await (container.items as any).create(requirement, {
         partitionKey: tenantId,
       });
     }
@@ -353,7 +353,7 @@ export class ComplianceCheckerService {
     const container = getContainer(this.violationsContainerName);
 
     for (const violation of violations) {
-      await container.items.create(violation, {
+      await (container.items as any).create(violation, {
         partitionKey: tenantId,
       });
     }

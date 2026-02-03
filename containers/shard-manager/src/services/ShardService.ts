@@ -80,9 +80,9 @@ export class ShardService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(shard, {
+      const { resource } = await (container.items as any).create(shard, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create shard');
@@ -131,12 +131,12 @@ export class ShardService {
       const { resource } = await container.item(shardId, tenantId).read<Shard>();
 
       if (!resource) {
-        throw new NotFoundError(`Shard ${shardId} not found`);
+        throw new NotFoundError('Shard', shardId);
       }
 
       // Check if deleted
       if (resource.deletedAt) {
-        throw new NotFoundError(`Shard ${shardId} has been deleted`);
+        throw new NotFoundError('Shard', shardId);
       }
 
       return resource;
@@ -145,7 +145,7 @@ export class ShardService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Shard ${shardId} not found`);
+        throw new NotFoundError('Shard', shardId);
       }
       throw error;
     }
@@ -220,13 +220,13 @@ export class ShardService {
         shardTypeName: resource.shardTypeName,
         opportunityId: resource.structuredData?.opportunityId || resource.structuredData?.id,
       }, {
-        userId: input.userId,
+        userId: (input as any).userId,
       });
 
       return resource as Shard;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Shard ${shardId} not found`);
+        throw new NotFoundError('Shard', shardId);
       }
       throw error;
     }

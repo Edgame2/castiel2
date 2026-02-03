@@ -71,7 +71,7 @@ export class CommentService {
 
     const comment = message.comments?.find((c) => c.id === commentId);
     if (!comment) {
-      throw new NotFoundError(`Comment ${commentId} not found`);
+      throw new NotFoundError('Comment', commentId);
     }
 
     if (comment.userId !== userId) {
@@ -118,7 +118,7 @@ export class CommentService {
 
     const comment = message.comments?.find((c) => c.id === commentId);
     if (!comment) {
-      throw new NotFoundError(`Comment ${commentId} not found`);
+      throw new NotFoundError('Comment', commentId);
     }
 
     if (comment.userId !== userId) {

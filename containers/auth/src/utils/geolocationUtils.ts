@@ -56,7 +56,7 @@ export async function getLocationFromIP(ipAddress: string | null): Promise<Locat
     // For production, consider using MaxMind GeoIP2 or a paid service
     const response = await fetch(`http://ip-api.com/json/${cleanIP}?fields=status,country,city`, {
       headers: {
-        'User-Agent': 'Coder-IDE/1.0',
+        'User-Agent': 'Castiel/1.0',
       },
     });
 

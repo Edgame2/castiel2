@@ -303,7 +303,12 @@ export default function CAISAdminPage() {
                       value={weights[key] ?? ''}
                       onChange={(e) => {
                         const v = e.target.value;
-                        setWeights((prev) => ({ ...prev, [key]: v === '' ? undefined : Number(v) }));
+                        setWeights((prev) => {
+                          const next = { ...prev };
+                          if (v === '') delete next[key];
+                          else next[key] = Number(v);
+                          return next;
+                        });
                       }}
                       className="border rounded px-2 py-1 text-sm w-20 bg-white dark:bg-gray-800"
                     />

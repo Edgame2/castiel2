@@ -39,7 +39,7 @@ export class ComplianceCheckService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(check, {
+      const { resource } = await (container.items as any).create(check, {
         partitionKey: input.tenantId,
       });
 
@@ -69,7 +69,7 @@ export class ComplianceCheckService {
       const { resource } = await container.item(checkId, tenantId).read<ComplianceCheck>();
 
       if (!resource) {
-        throw new NotFoundError(`Compliance check ${checkId} not found`);
+        throw new NotFoundError('Compliance check', checkId);
       }
 
       return resource;
@@ -78,7 +78,7 @@ export class ComplianceCheckService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Compliance check ${checkId} not found`);
+        throw new NotFoundError('Compliance check', checkId);
       }
       throw error;
     }
@@ -113,7 +113,7 @@ export class ComplianceCheckService {
       return resource as ComplianceCheck;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Compliance check ${checkId} not found`);
+        throw new NotFoundError('Compliance check', checkId);
       }
       throw error;
     }

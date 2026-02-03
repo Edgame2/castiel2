@@ -53,8 +53,8 @@ export async function buildApp(): Promise<FastifyInstance> {
     containers: config.cosmos_db.containers,
   });
 
-  await setupJWT(fastify, { secret: process.env.JWT_SECRET || '' });
-  setupHealthCheck(fastify);
+  await setupJWT(fastify as any, { secret: process.env.JWT_SECRET || '' });
+  setupHealthCheck(fastify as any);
 
   try {
     await connectDatabase();
@@ -64,7 +64,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   }
 
   try {
-    const { initializeUsageTrackingConsumer } = await import('./events/consumers/UsageTrackingConsumer');
+    const { initializeUsageTrackingConsumer } = await import('./events/consumers/UsageTrackingConsumer.js');
     await initializeUsageTrackingConsumer();
   } catch (error) {
     console.warn('UsageTrackingConsumer init failed (continuing)', error);
@@ -97,7 +97,7 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   console.log(`${signal} received, shutting down gracefully`);
   try {
-    const { closeUsageTrackingConsumer } = await import('./events/consumers/UsageTrackingConsumer');
+    const { closeUsageTrackingConsumer } = await import('./events/consumers/UsageTrackingConsumer.js');
     await closeUsageTrackingConsumer();
   } catch (e) {
     console.warn('Error closing UsageTrackingConsumer', e);

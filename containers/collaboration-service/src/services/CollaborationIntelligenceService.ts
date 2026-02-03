@@ -88,7 +88,7 @@ export class CollaborationIntelligenceService {
       };
 
       const container = getContainer('collaboration_insights');
-      await container.items.create(insight, { partitionKey: tenantId });
+      await (container.items as any).create(insight, { partitionKey: tenantId } as any);
 
       return insight;
     } catch (error: any) {

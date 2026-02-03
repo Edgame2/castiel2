@@ -57,7 +57,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     containers: config.cosmos_db.containers,
   });
 
-  await setupJWT(fastify, { secret: process.env.JWT_SECRET || '' });
+  await setupJWT(fastify as any, { secret: process.env.JWT_SECRET || '' });
 
   // /health (Plan §11.7): includes Azure ML endpoints reachable
   fastify.get('/health', {

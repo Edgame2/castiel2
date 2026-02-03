@@ -7,7 +7,7 @@
 
 import Link from 'next/link';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, Suspense } from 'react';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -38,7 +38,7 @@ interface RoleResponse {
   data?: RoleData;
 }
 
-export default function RoleDetailPage() {
+function RoleDetailContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -464,5 +464,13 @@ export default function RoleDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function RoleDetailPage() {
+  return (
+    <Suspense fallback={<div className="p-6"><p className="text-sm text-muted-foreground">Loading…</p></div>}>
+      <RoleDetailContent />
+    </Suspense>
   );
 }

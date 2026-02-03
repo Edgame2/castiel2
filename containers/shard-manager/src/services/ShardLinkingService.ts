@@ -31,7 +31,7 @@ export class ShardLinkingService {
    * Get container instance
    */
   private async getContainer() {
-    return getContainer(this.containerName, '/tenantId');
+    return getContainer(this.containerName);
   }
 
   /**
@@ -133,7 +133,7 @@ export class ShardLinkingService {
     ]);
 
     if (!fromShard || !toShard) {
-      throw new NotFoundError('One or both shards not found');
+      throw new NotFoundError('Shard', '');
     }
 
     const container = await this.getContainer();
@@ -341,7 +341,7 @@ export class ShardLinkingService {
   ): Promise<ShardLink> {
     const link = await this.getLink(tenantId, projectId, linkId);
     if (!link) {
-      throw new NotFoundError(`Link ${linkId} not found`);
+      throw new NotFoundError('Link', linkId);
     }
 
     // Update fields
@@ -393,7 +393,7 @@ export class ShardLinkingService {
   ): Promise<void> {
     const link = await this.getLink(tenantId, projectId, linkId);
     if (!link) {
-      throw new NotFoundError(`Link ${linkId} not found`);
+      throw new NotFoundError('Link', linkId);
     }
 
     // Mark as inactive (soft delete)

@@ -16,7 +16,7 @@ services:
       timeout: 3s
       retries: 3
     networks:
-      - coder-network
+      - castiel-network
 
   # RabbitMQ Message Broker
   rabbitmq:
@@ -37,7 +37,7 @@ services:
       timeout: 3s
       retries: 3
     networks:
-      - coder-network
+      - castiel-network
 
   # Optional: Cosmos DB Emulator (if using Azure Cosmos DB Emulator)
   # Note: Cosmos DB Emulator requires Windows or Docker Desktop with Linux containers
@@ -53,7 +53,7 @@ services:
   #   volumes:
   #     - cosmosdb-data:/data
   #   networks:
-  #     - coder-network
+  #     - castiel-network
 
 volumes:
   redis-data:
@@ -64,7 +64,7 @@ volumes:
   #   driver: local
 
 networks:
-  coder-network:
+  castiel-network:
     driver: bridge
-    name: coder-network
+    name: castiel-network
 

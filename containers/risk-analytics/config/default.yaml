@@ -103,8 +103,8 @@ services:
     url: ${SEARCH_SERVICE_URL:-http://localhost:3029}
   recommendations:
     url: ${RECOMMENDATIONS_URL:-}
-  llm_service:
-    url: ${LLM_SERVICE_URL:-http://localhost:3062}
+  ai_service:
+    url: ${AI_SERVICE_URL:-http://localhost:3006}
 
 # RabbitMQ Configuration
 rabbitmq:

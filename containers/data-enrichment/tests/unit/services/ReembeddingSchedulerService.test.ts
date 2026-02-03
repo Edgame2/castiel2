@@ -6,16 +6,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ReembeddingSchedulerService } from '../../../src/services/ReembeddingSchedulerService';
 import { loadConfig } from '../../../src/config';
 
+const mockPost = vi.fn().mockResolvedValue({ processed: 0, failed: 0, durationMs: 0 });
+
 vi.mock('../../../src/config', () => ({ loadConfig: vi.fn() }));
 
 vi.mock('../../../src/utils/logger', () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock('../../../src/services/ShardEmbeddingService', () => ({
-  ShardEmbeddingService: vi.fn().mockImplementation(function (this: any) {
-    this.regenerateEmbeddingsForShardType = vi.fn().mockResolvedValue({ processed: 0, failed: 0, skipped: 0 });
+vi.mock('@coder/shared', () => ({
+  ServiceClient: vi.fn().mockImplementation(function (this: { post: ReturnType<typeof vi.fn> }) {
+    this.post = mockPost;
   }),
+  generateServiceToken: vi.fn(() => 'mock-token'),
 }));
 
 describe('ReembeddingSchedulerService', () => {
@@ -24,6 +27,7 @@ describe('ReembeddingSchedulerService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(loadConfig).mockReturnValue({
+      services: { embeddings: { url: 'http://embeddings:3035' } },
       reembedding_scheduler: {
         enabled: false,
         tenant_ids: [],
@@ -42,6 +46,7 @@ describe('ReembeddingSchedulerService', () => {
 
     it('returns without starting when tenant_ids or shard_type_ids empty', async () => {
       vi.mocked(loadConfig).mockReturnValue({
+        services: { embeddings: { url: 'http://embeddings:3035' } },
         reembedding_scheduler: {
           enabled: true,
           tenant_ids: [],

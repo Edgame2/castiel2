@@ -1,6 +1,6 @@
 # Docker Setup Guide
 
-This guide explains how to run the Coder IDE system using Docker containers.
+This guide explains how to run the Castiel system using Docker containers.
 
 ## Architecture
 
@@ -68,7 +68,7 @@ docker-compose ps
 curl http://localhost:3000/health
 
 # Test database connection
-docker-compose exec postgres psql -U coder -d coder_ide -c "SELECT 1;"
+docker-compose exec postgres psql -U coder -d castiel -c "SELECT 1;"
 ```
 
 ### 5. Start Electron App
@@ -89,7 +89,7 @@ npm start
 
 - **Container**: `coder-postgres`
 - **Port**: `5432` (exposed to host)
-- **Database**: `coder_ide`
+- **Database**: `castiel`
 - **User**: `coder`
 - **Password**: `coder_password` (change in production!)
 - **Data Volume**: `postgres_data` (persists data between restarts)
@@ -134,7 +134,7 @@ docker-compose exec api npx prisma generate
 
 ```bash
 # Connect to database
-docker-compose exec postgres psql -U coder -d coder_ide
+docker-compose exec postgres psql -U coder -d castiel
 
 # Prisma Studio (database GUI)
 docker-compose exec api npx prisma studio
@@ -202,10 +202,10 @@ Database data is stored in a Docker volume (`postgres_data`). To backup:
 
 ```bash
 # Backup database
-docker-compose exec postgres pg_dump -U coder coder_ide > backup.sql
+docker-compose exec postgres pg_dump -U coder castiel > backup.sql
 
 # Restore database
-docker-compose exec -T postgres psql -U coder coder_ide < backup.sql
+docker-compose exec -T postgres psql -U coder castiel < backup.sql
 ```
 
 ## Troubleshooting

@@ -77,7 +77,7 @@ export class DocumentService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(document, {
+      const { resource } = await (container.items as any).create(document, {
         partitionKey: input.tenantId,
       });
 
@@ -107,12 +107,12 @@ export class DocumentService {
       const { resource } = await container.item(documentId, tenantId).read<Document>();
 
       if (!resource) {
-        throw new NotFoundError(`Document ${documentId} not found`);
+        throw new NotFoundError('Document', documentId);
       }
 
       // Check if deleted
       if (resource.status === DocumentStatus.DELETED) {
-        throw new NotFoundError(`Document ${documentId} has been deleted`);
+        throw new NotFoundError('Document', documentId);
       }
 
       return resource;
@@ -121,7 +121,7 @@ export class DocumentService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Document ${documentId} not found`);
+        throw new NotFoundError('Document', documentId);
       }
       throw error;
     }
@@ -162,7 +162,7 @@ export class DocumentService {
       return resource as Document;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Document ${documentId} not found`);
+        throw new NotFoundError('Document', documentId);
       }
       throw error;
     }
@@ -288,7 +288,7 @@ export class DocumentService {
     const document = await this.getById(documentId, tenantId);
 
     if (document.status === DocumentStatus.DELETED) {
-      throw new NotFoundError('Document has been deleted');
+      throw new NotFoundError('Document', 'deleted');
     }
 
     const { url, expiresAt } = this.blobStorage.generateDownloadUrl(

@@ -51,10 +51,10 @@ export class ShardRelationshipService {
     ]);
 
     if (!sourceShard) {
-      throw new NotFoundError(`Source shard not found: ${input.sourceShardId}`);
+      throw new NotFoundError('Source shard', input.sourceShardId);
     }
     if (!targetShard) {
-      throw new NotFoundError(`Target shard not found: ${input.targetShardId}`);
+      throw new NotFoundError('Target shard', input.targetShardId);
     }
 
     // Check for existing relationship

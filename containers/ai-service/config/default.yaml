@@ -25,6 +25,7 @@ cosmos_db:
     versions: prompt_versions
     ab_tests: prompt_ab_tests
     analytics: prompt_analytics
+    llm_outputs: llm_outputs
 
 services:
   secret_management:
@@ -48,3 +49,8 @@ redis:
   password: ${REDIS_PASSWORD:-}
   db: ${REDIS_DB:-0}
 
+# LLM provider (merged from llm-service; configurable per tenant later)
+llm:
+  provider: ${LLM_PROVIDER:-mock}
+  model: ${LLM_MODEL:-gpt-4}
+  timeout_ms: ${LLM_TIMEOUT_MS:-10000}

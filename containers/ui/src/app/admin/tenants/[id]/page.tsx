@@ -8,7 +8,7 @@
 
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, Suspense } from 'react';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -67,7 +67,7 @@ interface TenantOverview {
   activeOpportunities?: number | null;
 }
 
-export default function TenantDetailPage() {
+function TenantDetailContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const id = typeof params?.id === 'string' ? params.id : '';
@@ -934,5 +934,13 @@ export default function TenantDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TenantDetailPage() {
+  return (
+    <Suspense fallback={<div className="p-6"><p className="text-sm text-muted-foreground">Loading…</p></div>}>
+      <TenantDetailContent />
+    </Suspense>
   );
 }

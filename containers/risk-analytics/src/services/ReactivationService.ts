@@ -43,10 +43,11 @@ export class ReactivationService {
         retries: 2,
       });
     }
-    const llmUrl = this.config.services?.llm_service?.url;
-    if (llmUrl) {
+    // Reactivation strategy: use ai-service (llm-service merged into ai-service)
+    const aiServiceUrl = this.config.services?.ai_service?.url;
+    if (aiServiceUrl) {
       this.llmServiceClient = new ServiceClient({
-        baseURL: llmUrl,
+        baseURL: aiServiceUrl,
         timeout: 20000,
         retries: 2,
       });
@@ -64,7 +65,7 @@ export class ReactivationService {
   ): Promise<ReactivationEvaluationItem[]> {
     const minProbability = options.minProbability ?? 0.3;
     const maxOpportunities = Math.min(options.maxOpportunities ?? 20, opportunityIds.length);
-    const includeStrategy = options.includeStrategy === true && !!this.llmServiceClient;
+    const includeStrategy = options.includeStrategy === true && !!this.llmServiceClient; // ai-service hosts LLM reactivation/strategy
 
     if (!this.mlServiceClient) {
       log.warn('ml_service.url not configured; skipping reactivation evaluation', { service: 'risk-analytics' });
@@ -122,7 +123,7 @@ export class ReactivationService {
               });
             }
           } catch (err) {
-            log.warn('llm-service reactivation strategy failed', { error: err instanceof Error ? err.message : String(err), opportunityId, service: 'risk-analytics' });
+            log.warn('ai-service reactivation strategy failed', { error: err instanceof Error ? err.message : String(err), opportunityId, service: 'risk-analytics' });
           }
         }
 

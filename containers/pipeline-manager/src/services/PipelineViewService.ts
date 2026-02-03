@@ -51,9 +51,9 @@ export class PipelineViewService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(view, {
+      const { resource } = await (container.items as any).create(view, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create pipeline view');
@@ -81,7 +81,7 @@ export class PipelineViewService {
       const { resource } = await container.item(viewId, tenantId).read<PipelineView>();
 
       if (!resource) {
-        throw new NotFoundError(`Pipeline view ${viewId} not found`);
+        throw new NotFoundError('Pipeline view', viewId);
       }
 
       return resource;
@@ -90,7 +90,7 @@ export class PipelineViewService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Pipeline view ${viewId} not found`);
+        throw new NotFoundError('Pipeline view', viewId);
       }
       throw error;
     }
@@ -132,7 +132,7 @@ export class PipelineViewService {
       return resource as PipelineView;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Pipeline view ${viewId} not found`);
+        throw new NotFoundError('Pipeline view', viewId);
       }
       throw error;
     }

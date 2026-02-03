@@ -60,10 +60,6 @@ vi.mock('../../../src/events/publishers/EnrichmentEventPublisher', () => ({
   publishEnrichmentEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../../../src/services/ShardEmbeddingService', () => ({
-  ShardEmbeddingService: vi.fn().mockImplementation(() => ({})),
-}));
-
 vi.mock('../../../src/services/processors', () => ({
   EntityExtractionProcessor: vi.fn().mockImplementation(() => ({ getType: () => 'entity-extraction', process: vi.fn() })),
   ClassificationProcessor: vi.fn().mockImplementation(() => ({ getType: () => 'classification', process: vi.fn() })),

@@ -52,9 +52,9 @@ export class PatternService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(pattern, {
+      const { resource } = await (container.items as any).create(pattern, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create pattern');
@@ -82,7 +82,7 @@ export class PatternService {
       const { resource } = await container.item(patternId, tenantId).read<Pattern>();
 
       if (!resource) {
-        throw new NotFoundError(`Pattern ${patternId} not found`);
+        throw new NotFoundError('Pattern', patternId);
       }
 
       return resource;
@@ -91,7 +91,7 @@ export class PatternService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Pattern ${patternId} not found`);
+        throw new NotFoundError('Pattern', patternId);
       }
       throw error;
     }
@@ -117,9 +117,9 @@ export class PatternService {
         ...existing.metadata,
         ...input.metadata,
       },
-      enforcement: input.enforcement
+      enforcement: (input.enforcement
         ? { ...existing.enforcement, ...input.enforcement }
-        : existing.enforcement,
+        : existing.enforcement) as Pattern['enforcement'],
       updatedAt: new Date(),
     };
 
@@ -134,7 +134,7 @@ export class PatternService {
       return resource as Pattern;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Pattern ${patternId} not found`);
+        throw new NotFoundError('Pattern', patternId);
       }
       throw error;
     }

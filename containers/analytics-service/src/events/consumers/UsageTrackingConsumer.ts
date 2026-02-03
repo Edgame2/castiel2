@@ -53,7 +53,7 @@ async function recordUsage(
   };
 
   const container = getContainer('usage_ml');
-  await container.items.create(doc, { partitionKey: tenantId });
+  await (container.items as any).create(doc, { partitionKey: tenantId } as any);
 }
 
 export async function initializeUsageTrackingConsumer(): Promise<void> {
@@ -71,29 +71,29 @@ export async function initializeUsageTrackingConsumer(): Promise<void> {
       exchange: mq.exchange || 'coder_events',
       queue: mq.queue,
       bindings,
-    });
+    } as any);
 
-    consumer.on('ml.prediction.completed', async (ev: UsageEvent) => {
+    consumer.on('ml.prediction.completed', async (ev: any) => {
       try {
-        await recordUsage('ml.prediction.completed', ev);
+        await recordUsage('ml.prediction.completed', ev as UsageEvent);
       } catch (e: unknown) {
         console.error('UsageTrackingConsumer ml.prediction.completed', e);
         throw e;
       }
     });
-    consumer.on('llm.inference.completed', async (ev: UsageEvent) => {
+    consumer.on('llm.inference.completed', async (ev: any) => {
       rabbitmqMessagesConsumedTotal.inc({ queue: mq.queue });
       try {
-        await recordUsage('llm.inference.completed', ev);
+        await recordUsage('llm.inference.completed', ev as UsageEvent);
       } catch (e: unknown) {
         console.error('UsageTrackingConsumer llm.inference.completed', e);
         throw e;
       }
     });
-    consumer.on('embedding.generated', async (ev: UsageEvent) => {
+    consumer.on('embedding.generated', async (ev: any) => {
       rabbitmqMessagesConsumedTotal.inc({ queue: mq.queue });
       try {
-        await recordUsage('embedding.generated', ev);
+        await recordUsage('embedding.generated', ev as UsageEvent);
       } catch (e: unknown) {
         console.error('UsageTrackingConsumer embedding.generated', e);
         throw e;

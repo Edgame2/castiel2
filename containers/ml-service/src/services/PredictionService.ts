@@ -120,7 +120,7 @@ export class PredictionService {
     if (!this.app) {
       return '';
     }
-    return generateServiceToken(this.app, {
+    return generateServiceToken(this.app as any, {
       serviceId: 'ml-service',
       serviceName: 'ml-service',
       tenantId,
@@ -444,10 +444,10 @@ export class PredictionService {
     }
     query += ' ORDER BY c.createdAt ASC';
     try {
-      const { resources } = await container.items
-        .query<{ createdAt?: string; probability?: number }>({ query, parameters }, { partitionKey: tenantId } as Parameters<typeof container.items.query>[1])
+      const { resources } = await (container.items as any)
+        .query({ query, parameters }, { partitionKey: tenantId })
         .fetchAll();
-      const points = (resources ?? []).map((r) => ({
+      const points = (resources ?? []).map((r: { createdAt?: string; probability?: number }) => ({
         date: (r.createdAt || '').slice(0, 10),
         probability: typeof r.probability === 'number' ? r.probability : 0.5,
       }));

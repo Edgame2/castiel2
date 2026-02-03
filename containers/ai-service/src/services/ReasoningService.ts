@@ -8,6 +8,7 @@ import { getContainer } from '@coder/shared/database';
 import { BadRequestError, NotFoundError } from '@coder/shared/utils/errors';
 import {
   ReasoningTask,
+  ReasoningStep,
   CreateReasoningTaskInput,
   UpdateReasoningTaskInput,
   ReasoningType,
@@ -43,9 +44,9 @@ export class ReasoningService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(task, {
+      const { resource } = await (container.items as any).create(task, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create reasoning task');
@@ -164,7 +165,7 @@ export class ReasoningService {
   /**
    * Generate chain-of-thought steps
    */
-  private generateChainOfThoughtSteps(task: ReasoningTask): ReasoningTask['output']['steps'] {
+  private generateChainOfThoughtSteps(task: ReasoningTask): ReasoningStep[] {
     return [
       {
         id: uuidv4(),
@@ -212,8 +213,8 @@ export class ReasoningService {
   /**
    * Generate tree-of-thought steps
    */
-  private generateTreeOfThoughtSteps(task: ReasoningTask): ReasoningTask['output']['steps'] {
-    const rootStep: ReasoningTask['output']['steps'][0] = {
+  private generateTreeOfThoughtSteps(task: ReasoningTask): ReasoningStep[] {
+    const rootStep: ReasoningStep = {
       id: uuidv4(),
       order: 1,
       type: 'observation',
@@ -223,7 +224,7 @@ export class ReasoningService {
       childrenStepIds: [],
     };
 
-    const branch1Step: ReasoningTask['output']['steps'][0] = {
+    const branch1Step: ReasoningStep = {
       id: uuidv4(),
       order: 2,
       type: 'hypothesis',
@@ -233,7 +234,7 @@ export class ReasoningService {
       parentStepId: rootStep.id,
     };
 
-    const branch2Step: ReasoningTask['output']['steps'][0] = {
+    const branch2Step: ReasoningStep = {
       id: uuidv4(),
       order: 3,
       type: 'hypothesis',
@@ -288,7 +289,7 @@ export class ReasoningService {
       return resource as ReasoningTask;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Reasoning task ${taskId} not found`);
+        throw new NotFoundError('Reasoning task', taskId);
       }
       throw error;
     }
@@ -307,7 +308,7 @@ export class ReasoningService {
       const { resource } = await container.item(taskId, tenantId).read<ReasoningTask>();
 
       if (!resource) {
-        throw new NotFoundError(`Reasoning task ${taskId} not found`);
+        throw new NotFoundError('Reasoning task', taskId);
       }
 
       return resource;
@@ -316,7 +317,7 @@ export class ReasoningService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Reasoning task ${taskId} not found`);
+        throw new NotFoundError('Reasoning task', taskId);
       }
       throw error;
     }

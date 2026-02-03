@@ -101,7 +101,7 @@ export class ABTestService {
       const { resource } = await container.item(testId, tenantId).read();
 
       if (!resource) {
-        throw new NotFoundError(`A/B test ${testId} not found`);
+        throw new NotFoundError('A/B test', testId);
       }
 
       return resource;
@@ -110,7 +110,7 @@ export class ABTestService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`A/B test ${testId} not found`);
+        throw new NotFoundError('A/B test', testId);
       }
       throw error;
     }
@@ -149,7 +149,7 @@ export class ABTestService {
       return resource as PromptABTest;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`A/B test ${testId} not found`);
+        throw new NotFoundError('A/B test', testId);
       }
       throw error;
     }

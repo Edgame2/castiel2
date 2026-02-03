@@ -67,7 +67,7 @@ export class QualityMonitoringService {
         ],
       };
       const { resources: historicalMetrics } = await metricsContainer.items
-        .query(querySpec, { partitionKey: tenantId })
+        .query(querySpec, { partitionKey: tenantId } as any)
         .fetchAll();
 
       if (!historicalMetrics || historicalMetrics.length < 10) {
@@ -103,7 +103,7 @@ export class QualityMonitoringService {
 
         // Store anomaly
         const anomaliesContainer = getContainer('quality_anomalies');
-        await anomaliesContainer.items.create(anomaly, { partitionKey: tenantId });
+        await (anomaliesContainer.items as any).create(anomaly, { partitionKey: tenantId } as any);
 
         return anomaly;
       }
@@ -126,7 +126,7 @@ export class QualityMonitoringService {
       };
 
       const container = getContainer('quality_metrics');
-      await container.items.create(metricRecord, { partitionKey: tenantId });
+      await (container.items as any).create(metricRecord, { partitionKey: tenantId } as any);
 
       // Check for anomalies
       await this.detectAnomaly(tenantId, metric);

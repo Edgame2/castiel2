@@ -25,6 +25,9 @@ ENV NODE_ENV production
 # Build Next.js application
 RUN npm run build
 
+# Ensure public exists (Next.js may not create it)
+RUN mkdir -p /app/public
+
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
@@ -35,7 +38,7 @@ ENV NEXT_TELEMETRY_DISABLED 1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy built application
+# Copy built application (public may be empty)
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static

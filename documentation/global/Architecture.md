@@ -2,7 +2,7 @@
 
 ## Overview
 
-Castiel follows a **three-tier microservices architecture** designed for scalability, maintainability, and separation of concerns. The system consists of a Next.js web application, an API gateway, and 38+ independent microservices that provide AI-native business intelligence capabilities.
+Castiel follows a **three-tier microservices architecture** designed for scalability, maintainability, and separation of concerns. The system consists of a Next.js web application, an API gateway, and consolidated microservices that provide AI-native business intelligence capabilities. **Service consolidation** has merged llm-service and reasoning-engine into **ai-service**, ai-analytics into **analytics-service**, and moved shard-embedding generation into **embeddings** (data-enrichment handles enrichment only).
 
 The platform is architected as a **Compound AI System (CAIS)** that orchestrates ML models, LLMs, rules, memory, and feedback loops to deliver predictive intelligence for business decision-making.
 
@@ -204,15 +204,15 @@ Castiel uses a **Compound AI System (CAIS)** architecture that orchestrates mult
 | **Pipeline Manager** | 3025 | Sales pipeline and opportunity management | REST + RabbitMQ |
 | **AI Insights** | 3027 | AI-powered insights and risk analysis | REST + RabbitMQ |
 | **ML Service** | 3033 | Machine learning model management and predictions | REST + RabbitMQ |
-| **Analytics Service** | 3030 | Analytics and reporting | REST |
+| **Analytics Service** | 3030 | Analytics, reporting, **AI analytics** (models, events; merged from ai-analytics). Backward-compat path: `/api/v1/ai-analytics/models`. | REST |
 | **Shard Manager** | 3023 | Core data model management | REST + RabbitMQ |
 
 #### AI & Intelligence Services
 
 | Service | Port | Purpose | Communication |
 |---------|------|---------|---------------|
-| **AI Service** | 3006 | LLM completions and model routing | REST + RabbitMQ (publisher) |
-| **Embeddings** | 3005 | Vector embeddings and semantic search | REST + RabbitMQ (publisher) |
+| **AI Service** | 3006 | LLM completions, model routing, **LLM reasoning** (CoT: explain, recommendations, scenarios, summary, playbook, reactivation strategy), **Reasoning tasks** (CRUD). Merged from llm-service and reasoning-engine. | REST + RabbitMQ (publisher) |
+| **Embeddings** | 3005 | Vector store and **shard embedding generation** (templates, generate/batch/regenerate-type, statistics). | REST + RabbitMQ (publisher) |
 | **Adaptive Learning** | 3032 | CAIS adaptive learning system | REST + RabbitMQ |
 | **Search Service** | 3029 | Advanced search and vector search | REST |
 
@@ -246,6 +246,14 @@ Castiel uses a **Compound AI System (CAIS)** architecture that orchestrates mult
 | **Cache Service** | 3035 | Caching and cache management | REST |
 | **Prompt Service** | 3036 | Prompt management and A/B testing | REST + RabbitMQ |
 | **Template Service** | 3037 | Template management | REST |
+
+### Service consolidation
+
+The following consolidations are in place:
+
+- **ai-service** hosts all LLM and reasoning capabilities: completions, insights, prompts, **reasoning tasks** (from reasoning-engine), and **LLM CoT** (explain, recommendations, scenarios, summary, playbook, reactivation strategy from llm-service). Callers (e.g. risk-analytics) use `ai_service.url` for reactivation strategy.
+- **analytics-service** is the single backend for analytics and **AI analytics** (models, events). The former ai-analytics container is deprecated; use `GET /api/v1/analytics/ai/models` or the alias `GET /api/v1/ai-analytics/models`.
+- **embeddings** owns vector storage and **shard-embedding generation** (template-based; routes under `/api/v1/shard-embeddings/*`). **data-enrichment** runs enrichment only (entity extraction, classification, etc.) and then calls embeddings for shard embedding; it also runs the re-embedding scheduler, which calls embeddings for regenerate-type.
 
 ## Communication Patterns
 

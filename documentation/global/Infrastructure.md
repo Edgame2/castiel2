@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document consolidates all infrastructure-related modules and components that support the Coder IDE platform. These are foundational systems that enable the application to function but are not business logic modules.
+This document consolidates all infrastructure-related modules and components that support the Castiel platform. These are foundational systems that enable the application to function but are not business logic modules.
 
 ## Table of Contents
 
@@ -415,7 +415,7 @@ The Utils module provides utility functions and helpers used throughout the back
 
 ### Overview
 
-The UI container provides the user interface for Coder IDE. It is a Next.js application that reuses components and pages from the legacy web app and communicates with microservices via a hybrid pattern (direct API calls + BFF).
+The UI container provides the user interface for Castiel. It is a Next.js application that reuses components and pages from the legacy web app and communicates with microservices via a hybrid pattern (direct API calls + BFF).
 
 ### Location
 
@@ -534,7 +534,7 @@ PORT=3000
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
 
 # Other environment variables
-NEXT_PUBLIC_APP_NAME=Coder IDE
+NEXT_PUBLIC_APP_NAME=Castiel
 ```
 
 ### Port Configuration Recommendation

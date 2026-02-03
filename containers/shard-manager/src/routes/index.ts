@@ -16,6 +16,15 @@ import {
   CreateShardTypeInput,
   UpdateShardTypeInput,
 } from '../types/shard.types';
+import {
+  CreateEdgeInput,
+  UpdateEdgeInput,
+  GraphTraversalOptions,
+  BulkEdgeInput,
+  EdgeQueryOptions,
+} from '../types/shard-edge.types';
+import { CreateLinkInput, UpdateLinkInput, BulkLinkInput } from '../types/shard-linking.types';
+import { PermissionCheckContext, ACLBatchCheckRequest, GrantPermissionInput, RevokePermissionInput, UpdateACLInput } from '../types/acl.types';
 
 export async function registerRoutes(fastify: FastifyInstance, config: any): Promise<void> {
   const shardService = new ShardService();
@@ -471,10 +480,10 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
       const userId = request.user!.id;
 
       const input: CreateEdgeInput = {
-        ...request.body,
+        ...(request.body as object),
         tenantId,
         createdBy: userId,
-      };
+      } as CreateEdgeInput;
 
       const edge = await relationshipService.createRelationship(input);
       reply.code(201).send(edge);
@@ -600,9 +609,9 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
       const { id } = request.params;
 
       const input: UpdateEdgeInput = {
-        ...request.body,
+        ...(request.body as object),
         updatedBy: userId,
-      };
+      } as UpdateEdgeInput;
 
       const edge = await relationshipService.updateRelationship(id, tenantId, input);
       if (!edge) {
@@ -658,9 +667,9 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
       const tenantId = request.user!.tenantId;
 
       const options: GraphTraversalOptions = {
-        ...request.body,
+        ...(request.body as object),
         tenantId,
-      };
+      } as GraphTraversalOptions;
 
       const graph = await relationshipService.traverseGraph(options);
       reply.send(graph);
@@ -717,7 +726,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
 
-      const result = await relationshipService.bulkCreateRelationships(tenantId, request.body);
+      const result = await relationshipService.bulkCreateRelationships(tenantId, request.body as BulkEdgeInput);
       reply.send(result);
     }
   );
@@ -738,13 +747,14 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
 
+      const body = request.body as EdgeQueryOptions & { filter?: { tenantId?: string } };
       const options: EdgeQueryOptions = {
-        ...request.body,
+        ...(body as object),
         filter: {
-          ...request.body.filter,
+          ...(body.filter as object),
           tenantId,
         },
-      };
+      } as EdgeQueryOptions;
 
       const result = await relationshipService.queryEdges(options);
       reply.send(result);
@@ -769,7 +779,8 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
       const userId = request.user!.id;
-      const { projectId, ...linkInput } = request.body;
+      const body = request.body as CreateLinkInput & { projectId: string };
+      const { projectId, ...linkInput } = body;
 
       const link = await linkingService.createLink(tenantId, projectId, linkInput, userId);
       reply.code(201).send(link);
@@ -860,7 +871,8 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
       const tenantId = request.user!.tenantId;
       const userId = request.user!.id;
       const { id } = request.params;
-      const { projectId, ...updateInput } = request.body;
+      const body = request.body as UpdateLinkInput & { projectId: string };
+      const { projectId, ...updateInput } = body;
 
       const link = await linkingService.updateLink(tenantId, projectId, id, updateInput, userId);
       reply.send(link);
@@ -908,7 +920,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
       const tenantId = request.user!.tenantId;
       const userId = request.user!.id;
 
-      const result = await linkingService.bulkCreateLinks(tenantId, request.body, userId);
+      const result = await linkingService.bulkCreateLinks(tenantId, request.body as BulkLinkInput, userId);
       reply.send(result);
     }
   );
@@ -931,9 +943,9 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
       const context: PermissionCheckContext = {
-        ...request.body,
+        ...(request.body as object),
         tenantId,
-      };
+      } as PermissionCheckContext;
 
       const result = await aclService.checkPermission(context);
       reply.send(result);
@@ -956,9 +968,9 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
       const requestBody: ACLBatchCheckRequest = {
-        ...request.body,
+        ...(request.body as object),
         tenantId,
-      };
+      } as ACLBatchCheckRequest;
 
       const result = await aclService.batchCheckPermissions(requestBody);
       reply.send(result);
@@ -983,9 +995,9 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
       const userId = request.user!.id;
 
       const input: GrantPermissionInput = {
-        ...request.body,
+        ...(request.body as object),
         grantedBy: userId,
-      };
+      } as GrantPermissionInput;
 
       await aclService.grantPermission(input, tenantId);
       reply.code(204).send();
@@ -1010,9 +1022,9 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
       const userId = request.user!.id;
 
       const input: RevokePermissionInput = {
-        ...request.body,
+        ...(request.body as object),
         revokedBy: userId,
-      };
+      } as RevokePermissionInput;
 
       await aclService.revokePermission(input, tenantId);
       reply.code(204).send();
@@ -1037,9 +1049,9 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
       const userId = request.user!.id;
 
       const input: UpdateACLInput = {
-        ...request.body,
+        ...(request.body as object),
         updatedBy: userId,
-      };
+      } as UpdateACLInput;
 
       await aclService.updateACL(input, tenantId);
       reply.code(204).send();
@@ -1373,5 +1385,5 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
     }
   );
 
-  log.info('Shard manager routes registered', { service: 'shard-manager' });
+  fastify.log.info({ service: 'shard-manager' }, 'Shard manager routes registered');
 }

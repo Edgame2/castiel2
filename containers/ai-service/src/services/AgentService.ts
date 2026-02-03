@@ -31,14 +31,14 @@ export class AgentService {
       where.projectId = input.projectId;
     }
 
-    const agents = await this.db.agent_agents.findMany({
+    const agents = await (this.db as any).agent_agents.findMany({
       where,
       take: input.limit || 50,
       skip: input.offset || 0,
       orderBy: { createdAt: 'desc' },
     });
 
-    const total = await this.db.agent_agents.count({ where });
+    const total = await (this.db as any).agent_agents.count({ where });
 
     return {
       items: agents,
@@ -49,14 +49,14 @@ export class AgentService {
   }
 
   async getAgent(id: string) {
-    return await this.db.agent_agents.findUnique({
+    return await (this.db as any).agent_agents.findUnique({
       where: { id },
     });
   }
 
   async executeAgent(input: ExecuteAgentInput) {
     // Create execution record
-    const execution = await this.db.execution_executions.create({
+    const execution = await (this.db as any).execution_executions.create({
       data: {
         planId: input.agentId, // Using planId field for agentId
         status: 'pending',

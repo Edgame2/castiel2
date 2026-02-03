@@ -48,7 +48,7 @@ notification:
       enabled: ${EMAIL_ENABLED:-true}
       provider: ${EMAIL_PROVIDER:-smtp}  # sendgrid | ses | smtp
       secret_id: ${SENDGRID_SECRET_ID:-}
-      from_address: ${EMAIL_FROM_ADDRESS:-noreply@coder.ide}
+      from_address: ${EMAIL_FROM_ADDRESS:-noreply@castiel}
       from_name: ${EMAIL_FROM_NAME:-Castiel}
     push:
       enabled: ${PUSH_ENABLED:-false}

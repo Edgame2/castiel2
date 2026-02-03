@@ -192,6 +192,9 @@ export interface UpdateComplianceCheckInput {
   violations?: ComplianceViolation[];
   summary?: ComplianceCheck['summary'];
   error?: string;
+  startedAt?: Date;
+  completedAt?: Date;
+  duration?: number;
 }
 
 /**

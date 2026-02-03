@@ -142,7 +142,7 @@ export class PromptService {
       const { resource } = await container.item(promptId, tenantId).read();
 
       if (!resource) {
-        throw new NotFoundError(`Prompt template ${promptId} not found`);
+        throw new NotFoundError('Prompt template', promptId);
       }
 
       return resource;
@@ -151,7 +151,7 @@ export class PromptService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Prompt template ${promptId} not found`);
+        throw new NotFoundError('Prompt template', promptId);
       }
       throw error;
     }
@@ -180,20 +180,21 @@ export class PromptService {
     }
 
     try {
-      const { resources } = await container.items
-        .query<PromptTemplate>({
+      const { resources } = await (container.items as any)
+        .query({
           query,
           parameters,
         })
         .fetchNext();
 
-      if (resources.length === 0) {
-        throw new NotFoundError(`Prompt template with slug '${slug}' not found`);
+      const items = (resources || []) as PromptTemplate[];
+      if (items.length === 0) {
+        throw new NotFoundError('Prompt template with slug', slug);
       }
 
       // Return organization-specific if available, otherwise default
-      const orgSpecific = resources.find((r) => r.organizationId === organizationId);
-      return orgSpecific || resources[0];
+      const orgSpecific = items.find((r: PromptTemplate) => r.organizationId === organizationId);
+      return orgSpecific || items[0];
     } catch (error: any) {
       if (error instanceof NotFoundError) {
         throw error;
@@ -242,7 +243,7 @@ export class PromptService {
       return resource as PromptTemplate;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Prompt template ${promptId} not found`);
+        throw new NotFoundError('Prompt template', promptId);
       }
       throw error;
     }
@@ -388,8 +389,8 @@ export class PromptService {
    */
   async getVersion(tenantId: string, promptId: string, version: number): Promise<PromptVersion> {
     const container = getContainer(this.versionContainerName) as any;
-    const { resources } = await container.items
-      .query<PromptVersion>({
+    const { resources } = await (container.items as any)
+      .query({
         query: 'SELECT * FROM c WHERE c.tenantId = @tenantId AND c.promptId = @promptId AND c.version = @version',
         parameters: [
           { name: '@tenantId', value: tenantId },
@@ -399,20 +400,21 @@ export class PromptService {
       })
       .fetchNext();
 
-    if (resources.length === 0) {
-      throw new NotFoundError(`Prompt version ${version} not found`);
+    const items = (resources || []) as PromptVersion[];
+    if (items.length === 0) {
+      throw new NotFoundError('Prompt version', String(version));
     }
 
-    return resources[0];
+    return items[0];
   }
 
   /**
    * Get all versions for a prompt
    */
   async getVersions(tenantId: string, promptId: string): Promise<PromptVersion[]> {
-    const container = getContainer(this.versionContainerName);
-    const { resources } = await container.items
-      .query<PromptVersion>({
+    const container = getContainer(this.versionContainerName) as any;
+    const { resources } = await (container.items as any)
+      .query({
         query: 'SELECT * FROM c WHERE c.tenantId = @tenantId AND c.promptId = @promptId ORDER BY c.version DESC',
         parameters: [
           { name: '@tenantId', value: tenantId },
@@ -421,7 +423,7 @@ export class PromptService {
       })
       .fetchNext();
 
-    return resources;
+    return (resources || []) as PromptVersion[];
   }
 }
 

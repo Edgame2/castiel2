@@ -6,8 +6,8 @@ Data enrichment and vectorization pipeline service for Castiel, providing AI-pow
 
 - **AI Enrichment**: Entity extraction, classification, summarization, sentiment analysis, key phrase extraction
 - **Vectorization**: Convert shard content to embeddings for semantic search
-- **Shard Embedding Management**: Manage embeddings for shards; automatic embedding generation on shard create/update (via EmbeddingTemplateService); scheduled batch re-embedding (reembedding_scheduler)
-- **Embedding templates**: This module is the **owner** of template-based shard embeddings. EmbeddingTemplateService and ShardEmbeddingService provide templates, field weights, preprocessing, normalization, and per-shard-type model selection. Supported shard types for vectorization: `document`, `email`, `meeting`, `message`, `calendarevent`. Callers that need template-based shard embeddings (e.g. semantic search over shards, ML feature vectors from shard content) should use data-enrichment APIs (e.g. generate embeddings for a shard via the enrichment/embedding routes).
+- **Enrichment-before-embedding**: On shard create/update, runs enrichment then calls the **embeddings** service (`POST /api/v1/shard-embeddings/generate`) for shard embedding generation. Supported shard types for vectorization: `document`, `email`, `meeting`, `message`, `calendarevent`.
+- **Re-embedding scheduler**: Scheduled batch re-embedding (calls embeddings service `POST /api/v1/shard-embeddings/regenerate-type`). Template-based shard embeddings are owned by the **embeddings** service.
 - **Relationship Processing**: Process shard relationships and links
 - **ACL Integration**: Access control list processing
 - **Batch Processing**: Bulk enrichment operations

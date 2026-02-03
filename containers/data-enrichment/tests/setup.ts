@@ -78,6 +78,15 @@ vi.mock('yaml', () => ({
         endpoint: process.env.COSMOS_DB_ENDPOINT,
         key: process.env.COSMOS_DB_KEY,
         database_id: process.env.COSMOS_DB_DATABASE_ID,
+        containers: {
+          enrichment_jobs: 'enrichment_jobs',
+          enrichment_results: 'enrichment_results',
+          enrichment_configurations: 'enrichment_configurations',
+          enrichment_history: 'enrichment_history',
+          vectorization_jobs: 'vectorization_jobs',
+          shard_relationships: 'shard_relationships',
+          shard_acls: 'shard_acls',
+        },
       },
       jwt: { secret: process.env.JWT_SECRET },
       rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
@@ -93,19 +102,44 @@ vi.mock('yaml', () => ({
 
 // Mock @coder/shared database
 vi.mock('@coder/shared/database', () => ({
-  getContainer: vi.fn(() => ({
-    items: {
-      create: vi.fn(),
+  getContainer: vi.fn((name: string) => {
+    const defaultItems = {
+      create: vi.fn().mockResolvedValue(undefined),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
       })),
-    },
-    item: vi.fn(() => ({
-      read: vi.fn().mockResolvedValue({ resource: null }),
+    };
+    const defaultItem = vi.fn((id: string, _partitionKey?: string) => ({
+      read: vi.fn().mockResolvedValue({
+        resource: name === 'enrichment_jobs' && id === 'job-123'
+          ? { id: 'job-123', jobId: 'job-123', tenantId: 'tenant-123', status: 'completed' }
+          : null,
+      }),
       replace: vi.fn(),
       delete: vi.fn(),
-    })),
-  })),
+    }));
+    const enrichmentConfigItems = {
+      create: vi.fn().mockResolvedValue(undefined),
+      query: vi.fn(() => ({
+        fetchAll: vi.fn().mockResolvedValue({
+          resources: [{
+            id: 'default',
+            tenantId: 'tenant-123',
+            name: 'Default',
+            enabled: true,
+            autoEnrich: false,
+            processors: [],
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }],
+        }),
+      })),
+    };
+    return {
+      items: name === 'enrichment_configurations' ? enrichmentConfigItems : defaultItems,
+      item: defaultItem,
+    };
+  }),
   initializeDatabase: vi.fn(),
   connectDatabase: vi.fn(),
 }));
@@ -123,17 +157,25 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared (server imports initializeDatabase, connectDatabase, setupJWT from here)
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(() => ({
-    get: vi.fn().mockResolvedValue({ data: {} }),
-    post: vi.fn().mockResolvedValue({ data: {} }),
-    put: vi.fn().mockResolvedValue({ data: {} }),
-    delete: vi.fn().mockResolvedValue({ data: {} }),
-  })),
-  authenticateRequest: vi.fn(() => vi.fn()),
-  tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
+  ServiceClient: vi.fn().mockImplementation(function (this: { get: ReturnType<typeof vi.fn>; post: ReturnType<typeof vi.fn>; put: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> }) {
+    this.get = vi.fn().mockResolvedValue({ data: {} });
+    this.post = vi.fn().mockResolvedValue({ data: {} });
+    this.put = vi.fn().mockResolvedValue({ data: {} });
+    this.delete = vi.fn().mockResolvedValue({ data: {} });
+  }),
+  authenticateRequest: vi.fn(() => (request: any, _reply: any, next: () => void) => {
+    request.user = { id: 'test-user-id', tenantId: 'tenant-123' };
+    next();
+  }),
+  tenantEnforcementMiddleware: vi.fn(() => (_request: any, _reply: any, next: () => void) => {
+    next();
+  }),
   setupJWT: vi.fn(),
+  initializeDatabase: vi.fn(),
+  connectDatabase: vi.fn(),
+  generateServiceToken: vi.fn(() => 'mock-service-token'),
 }));
 
 // Global test setup

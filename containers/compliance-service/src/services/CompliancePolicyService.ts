@@ -44,7 +44,7 @@ export class CompliancePolicyService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(policy, {
+      const { resource } = await (container.items as any).create(policy, {
         partitionKey: input.tenantId,
       });
 
@@ -74,7 +74,7 @@ export class CompliancePolicyService {
       const { resource } = await container.item(policyId, tenantId).read<CompliancePolicy>();
 
       if (!resource) {
-        throw new NotFoundError(`Compliance policy ${policyId} not found`);
+        throw new NotFoundError('Compliance policy', policyId);
       }
 
       return resource;
@@ -83,7 +83,7 @@ export class CompliancePolicyService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Compliance policy ${policyId} not found`);
+        throw new NotFoundError('Compliance policy', policyId);
       }
       throw error;
     }
@@ -122,7 +122,7 @@ export class CompliancePolicyService {
       return resource as CompliancePolicy;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Compliance policy ${policyId} not found`);
+        throw new NotFoundError('Compliance policy', policyId);
       }
       throw error;
     }

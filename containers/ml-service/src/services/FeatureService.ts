@@ -323,7 +323,7 @@ export class FeatureService {
     if (!this.app) {
       return '';
     }
-    return generateServiceToken(this.app, {
+    return generateServiceToken(this.app as any, {
       serviceId: 'ml-service',
       serviceName: 'ml-service',
       tenantId,

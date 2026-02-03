@@ -32,6 +32,11 @@ export interface AIServiceConfig {
     password?: string;
     db: number;
   };
+  llm?: {
+    provider?: string;
+    model?: string;
+    timeout_ms?: number;
+  };
 }
 
 let cachedConfig: AIServiceConfig | null = null;

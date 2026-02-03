@@ -51,7 +51,7 @@ export class EmailService {
                     providerEnv === 'ses' ? 'ses' : 'smtp';
     
     this.enabled = emailConfig.enabled !== false; // Default enabled
-    this.fromAddress = emailConfig.from_address || 'noreply@coder.ide';
+    this.fromAddress = emailConfig.from_address || 'noreply@castiel';
     this.fromName = emailConfig.from_name || 'Castiel';
     this.appUrl = config.app?.url || 'http://localhost:3000';
   }

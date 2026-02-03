@@ -64,9 +64,9 @@ export class ReportService {
 
     try {
       const container = getContainer(this.reportsContainerName);
-      const { resource } = await container.items.create(report, {
+      const { resource } = await (container.items as any).create(report, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to generate analytics report');
@@ -94,7 +94,7 @@ export class ReportService {
       const { resource } = await container.item(reportId, tenantId).read<AnalyticsReport>();
 
       if (!resource) {
-        throw new NotFoundError(`Analytics report ${reportId} not found`);
+        throw new NotFoundError('Analytics report', reportId);
       }
 
       return resource;
@@ -103,7 +103,7 @@ export class ReportService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Analytics report ${reportId} not found`);
+        throw new NotFoundError('Analytics report', reportId);
       }
       throw error;
     }
@@ -141,7 +141,7 @@ export class ReportService {
       return resource as AnalyticsReport;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Analytics report ${reportId} not found`);
+        throw new NotFoundError('Analytics report', reportId);
       }
       throw error;
     }

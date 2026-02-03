@@ -90,7 +90,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     endpoint: config.cosmos_db.endpoint,
     key: config.cosmos_db.key,
     database: config.cosmos_db.database_id,
-    containers: config.cosmos_db.containers,
+    containers: config.cosmos_db.containers ?? {},
   });
 
   // Connect to database

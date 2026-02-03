@@ -423,7 +423,7 @@ export class SecurityScannerService {
             confidence: pii.confidence,
             createdAt: new Date(),
           };
-          await container.items.create(detection, { partitionKey: tenantId });
+          await (container.items as any).create(detection, { partitionKey: tenantId });
         }
       } catch (error) {
         // Ignore storage errors
@@ -447,7 +447,7 @@ export class SecurityScannerService {
         title: 'Cross-Site Scripting (XSS) Vulnerability',
         description: 'User input is directly rendered without sanitization',
         location: {
-          file: scan.target.path,
+          file: scan.target.path ?? '',
           line: 50,
         },
         evidence: '<div>{userInput}</div>',
@@ -548,7 +548,7 @@ export class SecurityScannerService {
     const container = getContainer(this.findingsContainerName);
 
     for (const finding of findings) {
-      await container.items.create(finding, {
+      await (container.items as any).create(finding, {
         partitionKey: tenantId,
       });
     }

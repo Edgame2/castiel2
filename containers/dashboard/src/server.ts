@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import { initializeDatabase, connectDatabase, disconnectDatabase, setupHealthCheck, setupJWT } from '@coder/shared';
 import { loadConfig } from './config';
 import { dashboardRoutes } from './routes/dashboards';
+import { analyticsRoutes } from './routes/analytics';
+import { initializeDashboardAnalyticsEventPublisher, closeDashboardAnalyticsEventPublisher } from './events/publishers/DashboardAnalyticsEventPublisher';
 
 const server = Fastify({
   logger: true,
@@ -9,6 +11,7 @@ const server = Fastify({
 
 // Register routes
 server.register(dashboardRoutes, { prefix: '/api/dashboards' });
+server.register(analyticsRoutes);
 
 // Setup health check endpoints
 setupHealthCheck(server);
@@ -30,6 +33,8 @@ const start = async () => {
     await setupJWT(server, { secret: process.env.JWT_SECRET || 'dev-secret' });
     
     await connectDatabase();
+
+    await initializeDashboardAnalyticsEventPublisher();
     
     await server.listen({ port: config.server.port, host: config.server.host });
     console.log(`Dashboard Service listening on port ${config.server.port}`);
@@ -43,6 +48,7 @@ const start = async () => {
 const shutdown = async () => {
   console.log('Shutting down Dashboard Service...');
   await server.close();
+  await closeDashboardAnalyticsEventPublisher();
   await disconnectDatabase();
   process.exit(0);
 };

@@ -106,9 +106,9 @@ export class PromptService {
 
     try {
       const container = getContainer(this.promptContainerName);
-      const { resource } = await container.items.create(prompt, {
+      const { resource } = await (container.items as any).create(prompt, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create prompt template');
@@ -142,7 +142,7 @@ export class PromptService {
       const { resource } = await container.item(promptId, tenantId).read<PromptTemplate>();
 
       if (!resource) {
-        throw new NotFoundError(`Prompt template ${promptId} not found`);
+        throw new NotFoundError('Prompt template', promptId);
       }
 
       return resource;
@@ -151,7 +151,7 @@ export class PromptService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Prompt template ${promptId} not found`);
+        throw new NotFoundError('Prompt template', promptId);
       }
       throw error;
     }
@@ -188,11 +188,11 @@ export class PromptService {
         .fetchNext();
 
       if (resources.length === 0) {
-        throw new NotFoundError(`Prompt template with slug '${slug}' not found`);
+        throw new NotFoundError('Prompt template with slug', slug);
       }
 
       // Return organization-specific if available, otherwise default
-      const orgSpecific = resources.find((r) => r.organizationId === organizationId);
+      const orgSpecific = resources.find((r: PromptTemplate) => r.organizationId === organizationId);
       return orgSpecific || resources[0];
     } catch (error: any) {
       if (error instanceof NotFoundError) {
@@ -242,7 +242,7 @@ export class PromptService {
       return resource as PromptTemplate;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Prompt template ${promptId} not found`);
+        throw new NotFoundError('Prompt template', promptId);
       }
       throw error;
     }
@@ -369,9 +369,9 @@ export class PromptService {
 
     try {
       const container = getContainer(this.versionContainerName);
-      const { resource } = await container.items.create(version, {
+      const { resource } = await (container.items as any).create(version, {
         partitionKey: tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create prompt version');
@@ -400,7 +400,7 @@ export class PromptService {
       .fetchNext();
 
     if (resources.length === 0) {
-      throw new NotFoundError(`Prompt version ${version} not found`);
+      throw new NotFoundError('Prompt version', String(version));
     }
 
     return resources[0];

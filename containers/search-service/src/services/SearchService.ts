@@ -43,12 +43,12 @@ export class SearchService {
   constructor(embeddingsUrl: string, shardManagerUrl: string) {
     this.config = loadConfig();
     this.embeddingsClient = new ServiceClient({
-      baseUrl: embeddingsUrl,
+      baseURL: embeddingsUrl,
       timeout: 30000,
       retries: 2,
     });
     this.shardManagerClient = new ServiceClient({
-      baseUrl: shardManagerUrl,
+      baseURL: shardManagerUrl,
       timeout: 10000,
       retries: 2,
     });
@@ -193,7 +193,7 @@ export class SearchService {
           ...vectorResults.metadata,
           vectorWeight: normalizedVectorWeight,
           keywordWeight: normalizedKeywordWeight,
-        },
+        } as any,
       };
     } catch (error: any) {
       throw new Error(`Hybrid search failed: ${error.message}`);
@@ -364,9 +364,9 @@ export class SearchService {
       };
 
       const container = getContainer(this.queriesContainerName);
-      await container.items.create(searchQuery, {
+      await (container.items as any).create(searchQuery, {
         partitionKey: query.tenantId,
-      });
+      } as any);
     } catch (error) {
       // Log but don't fail the search if analytics recording fails
       console.error('Failed to record search query:', error);
@@ -496,7 +496,7 @@ export class SearchService {
   private async cacheWebSearch(result: WebSearchResult): Promise<void> {
     try {
       const container = getContainer('web_search_cache');
-      await container.items.create(result, { partitionKey: result.tenantId });
+      await (container.items as any).create(result, { partitionKey: result.tenantId } as any);
     } catch {
       // Ignore cache errors
     }

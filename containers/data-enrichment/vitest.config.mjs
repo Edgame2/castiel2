@@ -12,7 +12,6 @@ export default defineConfig({
     // Excluded until module load hang is fixed (setup/shared resolution)
     exclude: [
       '**/EnrichmentService.test.ts',
-      '**/EmbeddingTemplateService.test.ts',
     ],
     testTimeout: 30000,
     hookTimeout: 30000,

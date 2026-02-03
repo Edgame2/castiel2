@@ -6,9 +6,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { buildApp } from '../../../src/server';
 
-// Mock dependencies are set up in tests/setup.ts
-vi.mock('@coder/shared/database');
-vi.mock('@coder/shared');
+// Mock dependencies are set up in tests/setup.ts (do not re-mock @coder/shared or @coder/shared/database or mocks become undefined)
 vi.mock('../../../src/events/publishers/EnrichmentEventPublisher');
 
 describe('POST /api/v1/enrichment/enrich', () => {
@@ -40,8 +38,9 @@ describe('POST /api/v1/enrichment/enrich', () => {
 
     expect(response.statusCode).toBe(202);
     const body = response.json();
-    expect(body).toHaveProperty('data');
-    expect(body.data).toHaveProperty('jobId');
+    expect(body).toHaveProperty('jobId');
+    expect(body).toHaveProperty('shardId', 'shard-123');
+    expect(body).toHaveProperty('status');
   });
 
   it('should return 400 for invalid input', async () => {
@@ -53,7 +52,7 @@ describe('POST /api/v1/enrichment/enrich', () => {
         'x-tenant-id': 'tenant-123',
       },
       payload: {
-        // Missing required fields
+        // Missing required shardId
       },
     });
 
@@ -86,8 +85,8 @@ describe('GET /api/v1/enrichment/jobs/:jobId', () => {
 
     expect(response.statusCode).toBe(200);
     const body = response.json();
-    expect(body).toHaveProperty('data');
-    expect(body.data).toHaveProperty('jobId');
+    expect(body).toHaveProperty('jobId', 'job-123');
+    expect(body).toHaveProperty('status');
   });
 
   it('should return 404 for non-existent job', async () => {

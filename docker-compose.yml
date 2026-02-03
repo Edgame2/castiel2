@@ -8,7 +8,7 @@ services:
       - redis-data:/data
     command: redis-server --appendonly yes
     networks:
-      - coder-network
+      - castiel-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -27,7 +27,7 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
-      - coder-network
+      - castiel-network
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
@@ -55,7 +55,7 @@ services:
       - redis
       - rabbitmq
     networks:
-      - coder-network
+      - castiel-network
     restart: unless-stopped
 
   # UI Container
@@ -72,7 +72,7 @@ services:
     depends_on:
       - api-gateway
     networks:
-      - coder-network
+      - castiel-network
     restart: unless-stopped
 
   # Core Services
@@ -95,7 +95,7 @@ services:
       - redis
       - rabbitmq
     networks:
-      - coder-network
+      - castiel-network
     restart: unless-stopped
 
   user-management:
@@ -118,7 +118,7 @@ services:
       - rabbitmq
       - auth
     networks:
-      - coder-network
+      - castiel-network
     restart: unless-stopped
 
   secret-management:
@@ -139,7 +139,7 @@ services:
       - redis
       - rabbitmq
     networks:
-      - coder-network
+      - castiel-network
     restart: unless-stopped
 
   logging:
@@ -160,7 +160,7 @@ services:
       - redis
       - rabbitmq
     networks:
-      - coder-network
+      - castiel-network
     restart: unless-stopped
 
   notification-manager:
@@ -181,7 +181,7 @@ services:
       - redis
       - rabbitmq
     networks:
-      - coder-network
+      - castiel-network
     restart: unless-stopped
 
   # Integration Processors - Light (fast processing: CRM mapping, ML aggregation, entity linking)
@@ -217,7 +217,7 @@ services:
       - redis
       - rabbitmq
     networks:
-      - coder-network
+      - castiel-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
@@ -264,7 +264,7 @@ services:
       - redis
       - rabbitmq
     networks:
-      - coder-network
+      - castiel-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
@@ -287,7 +287,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   embeddings:
@@ -303,7 +303,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   shard-manager:
@@ -319,7 +319,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   document-manager:
@@ -335,7 +335,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   pipeline-manager:
@@ -351,7 +351,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   integration-manager:
@@ -367,7 +367,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   ai-insights:
@@ -383,7 +383,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   content-generation:
@@ -399,7 +399,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   search-service:
@@ -415,7 +415,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   analytics-service:
@@ -431,7 +431,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   collaboration-service:
@@ -447,7 +447,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   adaptive-learning:
@@ -465,7 +465,7 @@ services:
       - AI_SERVICE_URL=http://ai-service:3006
       - ML_SERVICE_URL=http://ml-service:3033
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   ml-service:
@@ -481,7 +481,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   configuration-service:
@@ -497,7 +497,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   context-service:
@@ -513,7 +513,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   cache-service:
@@ -529,7 +529,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   prompt-service:
@@ -545,7 +545,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   template-service:
@@ -561,71 +561,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
-    restart: unless-stopped
-
-  migration-service:
-    build: { context: ., dockerfile: containers/migration-service/Dockerfile }
-    ports: ["3038:3038"]
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3038
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
-      - JWT_SECRET=${JWT_SECRET}
-      - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-    depends_on: [redis, rabbitmq]
-    networks: [coder-network]
-    restart: unless-stopped
-
-  performance-optimization:
-    build: { context: ., dockerfile: containers/performance-optimization/Dockerfile }
-    ports: ["3041:3041"]
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3041
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
-      - JWT_SECRET=${JWT_SECRET}
-      - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-    depends_on: [redis, rabbitmq]
-    networks: [coder-network]
-    restart: unless-stopped
-
-  security-service:
-    build: { context: ., dockerfile: containers/security-service/Dockerfile }
-    ports: ["3042:3042"]
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3042
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
-      - JWT_SECRET=${JWT_SECRET}
-      - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-    depends_on: [redis, rabbitmq]
-    networks: [coder-network]
-    restart: unless-stopped
-
-  compliance-service:
-    build: { context: ., dockerfile: containers/compliance-service/Dockerfile }
-    ports: ["3043:3043"]
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3043
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
-      - JWT_SECRET=${JWT_SECRET}
-      - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-    depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   multi-modal-service:
@@ -641,7 +577,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   ai-conversation:
@@ -657,7 +593,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   data-enrichment:
@@ -673,7 +609,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   risk-catalog:
@@ -689,7 +625,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   risk-analytics:
@@ -705,7 +641,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   recommendations:
@@ -721,7 +657,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   forecasting:
@@ -737,7 +673,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   workflow-orchestrator:
@@ -753,7 +689,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   integration-sync:
@@ -770,23 +706,7 @@ services:
       - RABBITMQ_URL=amqp://rabbitmq:5672
       - INTEGRATION_MANAGER_URL=http://integration-manager:3026
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
-    restart: unless-stopped
-
-  cache-management:
-    build: { context: ., dockerfile: containers/cache-management/Dockerfile }
-    ports: ["3053:3053"]
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3053
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
-      - JWT_SECRET=${JWT_SECRET}
-      - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-    depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   security-scanning:
@@ -802,23 +722,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
-    restart: unless-stopped
-
-  dashboard-analytics:
-    build: { context: ., dockerfile: containers/dashboard-analytics/Dockerfile }
-    ports: ["3055:3055"]
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3055
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
-      - JWT_SECRET=${JWT_SECRET}
-      - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-    depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   web-search:
@@ -834,39 +738,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
-    restart: unless-stopped
-
-  ai-analytics:
-    build: { context: ., dockerfile: containers/ai-analytics/Dockerfile }
-    ports: ["3057:3057"]
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3057
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
-      - JWT_SECRET=${JWT_SECRET}
-      - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-    depends_on: [redis, rabbitmq]
-    networks: [coder-network]
-    restart: unless-stopped
-
-  collaboration-intelligence:
-    build: { context: ., dockerfile: containers/collaboration-intelligence/Dockerfile }
-    ports: ["3058:3058"]
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3058
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
-      - JWT_SECRET=${JWT_SECRET}
-      - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-    depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   signal-intelligence:
@@ -882,7 +754,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   quality-monitoring:
@@ -898,7 +770,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   utility-services:
@@ -914,23 +786,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
-    restart: unless-stopped
-
-  llm-service:
-    build: { context: ., dockerfile: containers/llm-service/Dockerfile }
-    ports: ["3062:3062"]
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3062
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
-      - JWT_SECRET=${JWT_SECRET}
-      - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-    depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   learning-service:
@@ -946,7 +802,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   dashboard:
@@ -962,7 +818,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   pattern-recognition:
@@ -978,7 +834,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
   validation-engine:
@@ -994,27 +850,11 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://rabbitmq:5672
     depends_on: [redis, rabbitmq]
-    networks: [coder-network]
-    restart: unless-stopped
-
-  reasoning-engine:
-    build: { context: ., dockerfile: containers/reasoning-engine/Dockerfile }
-    ports: ["3145:3045"]
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3045
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
-      - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
-      - JWT_SECRET=${JWT_SECRET}
-      - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-    depends_on: [redis, rabbitmq]
-    networks: [coder-network]
+    networks: [castiel-network]
     restart: unless-stopped
 
 networks:
-  coder-network:
+  castiel-network:
     driver: bridge
 
 volumes:

@@ -62,30 +62,27 @@ This plan defines the complete container architecture, mapping legacy services t
 21. **template-service** - Template management, context templates, email/document templates
 22. **collaboration-service** - Real-time collaboration, conversations, messages, reactions
 
-### Analytics & Business Containers (5)
+### Analytics & Business Containers (4)
 
 23. **analytics-service** - General analytics, project analytics, AI analytics, API performance metrics
 24. **dashboard** - Dashboard CRUD, widget management, configuration, organization-scoped
 25. **pipeline-manager** ⭐ - Pipeline views, opportunity management, pipeline analytics, ML-enhanced revenue forecasting (integrates with ML Service)
-26. **compliance-service** - Standards compliance (WCAG, OWASP, ISO27001), regulatory compliance (GDPR, HIPAA, SOC2, PCI-DSS), policy management
-27. **security-service** - Secret scanning, vulnerability scanning, PII detection, SAST/DAST
 
 ### Development & Quality Containers (5)
 
-28. **bug-detection** - Anomaly detection, bug prediction, root cause analysis, auto-fix suggestions
-29. **pattern-recognition** - Pattern learning, style consistency, design pattern detection, anti-pattern detection
-30. **performance-optimization** - Code optimization, bundle optimization, query optimization, algorithm selection, memory optimization
-31. **validation-engine** - Syntax validation, semantic validation, architecture validation, security validation, performance validation
-32. **migration-service** - Migration management, step execution, rollback, version upgrades
+27. **bug-detection** - Anomaly detection, bug prediction, root cause analysis, auto-fix suggestions
+28. **pattern-recognition** - Pattern learning, style consistency, design pattern detection, anti-pattern detection
+29. **performance-optimization** - Code optimization, bundle optimization, query optimization, algorithm selection, memory optimization
+30. **validation-engine** - Syntax validation, semantic validation, architecture validation, security validation, performance validation
 
 ### Infrastructure Containers (2)
 
-33. **configuration-service** - Centralized configuration storage and retrieval
-34. **shared** - Shared utilities, types, database client (CosmosDBClient), cache (MultiLayerCache, RedisClient), events (EventPublisher, EventConsumer), middleware (auth, tenantEnforcement), services (ServiceClient, ServiceRegistry)
+32. **configuration-service** - Centralized configuration storage and retrieval
+33. **shared** - Shared utilities, types, database client (CosmosDBClient), cache (MultiLayerCache, RedisClient), events (EventPublisher, EventConsumer), middleware (auth, tenantEnforcement), services (ServiceClient, ServiceRegistry)
 
 ### UI Container (1)
 
-35. **ui** - Next.js 16 frontend application with React 19, TypeScript, Shadcn UI, Tailwind CSS
+34. **ui** - Next.js 16 frontend application with React 19, TypeScript, Shadcn UI, Tailwind CSS
 
 ### Specialized Containers (1)
 

@@ -4,7 +4,7 @@
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { load } from 'yaml';
+import { parse as parseYaml } from 'yaml';
 
 export interface ShardManagerConfig {
   module: {
@@ -39,7 +39,7 @@ export interface ShardManagerConfig {
 export function loadConfig(): ShardManagerConfig {
   const configPath = join(__dirname, '../../config/default.yaml');
   const configFile = readFileSync(configPath, 'utf-8');
-  const config = load(configFile) as ShardManagerConfig;
+  const config = parseYaml(configFile) as ShardManagerConfig;
   
   // Apply environment variable overrides
   if (process.env.PORT) {

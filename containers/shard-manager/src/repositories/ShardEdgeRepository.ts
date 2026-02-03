@@ -26,7 +26,7 @@ export class ShardEdgeRepository {
    * Get container instance
    */
   private async getContainer() {
-    return getContainer(this.containerName, '/tenantId');
+    return getContainer(this.containerName);
   }
 
   /**

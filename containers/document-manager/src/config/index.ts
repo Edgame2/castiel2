@@ -4,7 +4,7 @@
 
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { load } from 'yaml';
+import { parse as parseYaml } from 'yaml';
 
 export interface DocumentManagerConfig {
   module: {
@@ -19,6 +19,11 @@ export interface DocumentManagerConfig {
     endpoint: string;
     key: string;
     database_id: string;
+    containers?: {
+      documents?: string;
+      collections?: string;
+      templates?: string;
+    };
   };
   services: {
     logging: { url: string };
@@ -35,7 +40,7 @@ export interface DocumentManagerConfig {
 export function loadConfig(): DocumentManagerConfig {
   const configPath = join(__dirname, '../../config/default.yaml');
   const configFile = readFileSync(configPath, 'utf-8');
-  const config = load(configFile) as DocumentManagerConfig;
+  const config = parseYaml(configFile) as DocumentManagerConfig;
   
   // Apply environment variable overrides
   if (process.env.PORT) {

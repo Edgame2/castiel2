@@ -89,9 +89,7 @@ paths:
                 type: object
                 additionalProperties: { type: number }
         '403':
-          description: Forbidden (tenant mismatch)
-
-  /adaptive-learning/model-selection/{tenantId}:
+          description: Forbidden (tenant mismatch)  /adaptive-learning/model-selection/{tenantId}:
     get:
       tags: [CAIS]
       summary: Get model selection

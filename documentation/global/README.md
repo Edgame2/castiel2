@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory contains comprehensive global documentation for the Coder IDE system, covering the overall architecture, system purpose, module overviews, data flows, technology stack, and deployment architecture.
+This directory contains comprehensive global documentation for the Castiel platform, covering the overall architecture, system purpose, module overviews, data flows, technology stack, and deployment architecture.
 
 ## Documentation Files
 
@@ -19,7 +19,7 @@ Comprehensive architecture documentation covering:
 
 ### [SystemPurpose.md](./SystemPurpose.md)
 System purpose and goals:
-- What is Coder IDE?
+- What is Castiel?
 - Core mission and vision
 - Key capabilities
 - Target users and use cases
@@ -65,7 +65,7 @@ Deployment architecture:
 
 ## System at a Glance
 
-Coder IDE is an **AI-powered Integrated Development Environment** with:
+Castiel is an **AI-native business intelligence platform** with:
 
 - **Architecture**: Three-tier (Client, API Gateway, Microservices)
 - **Microservices**: 20+ independent services

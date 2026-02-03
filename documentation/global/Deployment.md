@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the deployment architecture for Coder IDE, including Docker Compose setup, service dependencies, port assignments, environment variables, and scaling considerations.
+This document describes the deployment architecture for Castiel, including Docker Compose setup, service dependencies, port assignments, environment variables, and scaling considerations.
 
 ## Deployment Architecture
 
@@ -46,7 +46,7 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: coder_ide
+      POSTGRES_DB: castiel
       POSTGRES_USER: coder
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
@@ -80,7 +80,7 @@ services:
       - rabbitmq
       - redis
     environment:
-      DATABASE_URL: postgresql://coder:${DB_PASSWORD}@postgres:5432/coder_ide
+      DATABASE_URL: postgresql://coder:${DB_PASSWORD}@postgres:5432/castiel
       RABBITMQ_URL: amqp://rabbitmq:5672
       REDIS_URL: redis://redis:6379
       PORT: 3000
@@ -103,7 +103,7 @@ Each microservice follows this pattern:
       - rabbitmq
       - secret-management
     environment:
-      DATABASE_URL: postgresql://coder:${DB_PASSWORD}@postgres:5432/coder_ide
+      DATABASE_URL: postgresql://coder:${DB_PASSWORD}@postgres:5432/castiel
       RABBITMQ_URL: amqp://rabbitmq:5672
       SECRET_SERVICE_URL: http://secret-management:3000
       PORT: PORT
@@ -197,7 +197,7 @@ graph TB
 
 ```env
 # Database
-DATABASE_URL=postgresql://coder:password@postgres:5432/coder_ide
+DATABASE_URL=postgresql://coder:password@postgres:5432/castiel
 
 # Message Queue
 RABBITMQ_URL=amqp://rabbitmq:5672

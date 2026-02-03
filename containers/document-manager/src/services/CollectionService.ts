@@ -50,7 +50,7 @@ export class CollectionService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(collection, {
+      const { resource } = await (container.items as any).create(collection, {
         partitionKey: input.tenantId,
       });
 
@@ -80,7 +80,7 @@ export class CollectionService {
       const { resource } = await container.item(collectionId, tenantId).read<DocumentCollection>();
 
       if (!resource) {
-        throw new NotFoundError(`Collection ${collectionId} not found`);
+        throw new NotFoundError('Collection', collectionId);
       }
 
       return resource;
@@ -89,7 +89,7 @@ export class CollectionService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Collection ${collectionId} not found`);
+        throw new NotFoundError('Collection', collectionId);
       }
       throw error;
     }
@@ -126,7 +126,7 @@ export class CollectionService {
       return resource as DocumentCollection;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Collection ${collectionId} not found`);
+        throw new NotFoundError('Collection', collectionId);
       }
       throw error;
     }

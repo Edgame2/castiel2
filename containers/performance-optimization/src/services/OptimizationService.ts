@@ -45,9 +45,9 @@ export class OptimizationService {
 
     try {
       const container = getContainer(this.containerName);
-      const { resource } = await container.items.create(optimization, {
+      const { resource } = await (container.items as any).create(optimization, {
         partitionKey: input.tenantId,
-      });
+      } as any);
 
       if (!resource) {
         throw new Error('Failed to create performance optimization');
@@ -75,7 +75,7 @@ export class OptimizationService {
       const { resource } = await container.item(optimizationId, tenantId).read<PerformanceOptimization>();
 
       if (!resource) {
-        throw new NotFoundError(`Performance optimization ${optimizationId} not found`);
+        throw new NotFoundError('Performance optimization', optimizationId);
       }
 
       return resource;
@@ -84,7 +84,7 @@ export class OptimizationService {
         throw error;
       }
       if (error.code === 404) {
-        throw new NotFoundError(`Performance optimization ${optimizationId} not found`);
+        throw new NotFoundError('Performance optimization', optimizationId);
       }
       throw error;
     }
@@ -118,7 +118,7 @@ export class OptimizationService {
       return resource as PerformanceOptimization;
     } catch (error: any) {
       if (error.code === 404) {
-        throw new NotFoundError(`Performance optimization ${optimizationId} not found`);
+        throw new NotFoundError('Performance optimization', optimizationId);
       }
       throw error;
     }

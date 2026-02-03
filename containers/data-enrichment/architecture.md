@@ -31,9 +31,10 @@ The Data Enrichment module provides AI-powered enrichment and vectorization pipe
    - Convert content to embeddings
    - Batch vectorization
 
-3. **ShardEmbeddingService** - Embedding management
-   - Store and retrieve embeddings
-   - Similarity search
+3. **ReembeddingSchedulerService** - Scheduled re-embedding
+   - Calls embeddings service `POST /api/v1/shard-embeddings/regenerate-type` for batch re-embedding by shard type
+
+Shard embedding generation (template-based) is owned by the **embeddings** service; data-enrichment runs enrichment then calls embeddings HTTP API for generate/regenerate.
 
 ### Enrichment Processors
 

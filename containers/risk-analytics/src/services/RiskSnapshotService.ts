@@ -5,7 +5,7 @@
  */
 
 import { getContainer } from '@coder/shared/database';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 export interface RiskSnapshotRow {
   id: string;

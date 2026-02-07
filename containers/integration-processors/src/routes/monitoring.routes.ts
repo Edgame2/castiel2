@@ -5,7 +5,7 @@
 
 import { FastifyInstance } from 'fastify';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
-import { MonitoringService } from '../services/MonitoringService';
+import { MonitoringService } from '../services/MonitoringService.js';
 
 export async function monitoringRoutes(
   app: FastifyInstance,

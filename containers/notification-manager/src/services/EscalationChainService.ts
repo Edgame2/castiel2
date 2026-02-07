@@ -24,7 +24,7 @@ export interface UpdateEscalationChainInput {
 }
 
 export class EscalationChainService {
-  private db = getDatabaseClient() as any;
+  private get db() { return getDatabaseClient() as any; }
 
   /**
    * Get escalation chain by ID

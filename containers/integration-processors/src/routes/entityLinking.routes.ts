@@ -7,8 +7,8 @@ import { FastifyInstance } from 'fastify';
 import { authenticateRequest, tenantEnforcementMiddleware, ServiceClient } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { v4 as uuidv4 } from 'uuid';
-import { log } from '../utils/logger';
-import { loadConfig } from '../config';
+import { log } from '../utils/logger.js';
+import { loadConfig } from '../config/index.js';
 
 /**
  * Entity linking settings interface

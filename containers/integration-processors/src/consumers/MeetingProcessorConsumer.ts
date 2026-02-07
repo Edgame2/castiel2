@@ -5,13 +5,13 @@
  */
 
 import { EventConsumer } from '@coder/shared';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { BaseConsumer, ConsumerDependencies } from './index';
-import { BlobStorageService } from '../services/BlobStorageService';
-import { DocumentDownloadService } from '../services/DocumentDownloadService';
-import { TranscriptionService } from '../services/TranscriptionService';
-import { MeetingAnalysisService } from '../services/MeetingAnalysisService';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { BaseConsumer, ConsumerDependencies } from './index.js';
+import { BlobStorageService } from '../services/BlobStorageService.js';
+import { DocumentDownloadService } from '../services/DocumentDownloadService.js';
+import { TranscriptionService } from '../services/TranscriptionService.js';
+import { MeetingAnalysisService } from '../services/MeetingAnalysisService.js';
 import { MeetingStructuredData } from '@coder/shared/types/shards';
 
 interface MeetingCompletedEvent {

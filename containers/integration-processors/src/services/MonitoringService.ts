@@ -4,9 +4,9 @@
  */
 
 import { ServiceClient } from '@coder/shared';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { rabbitmqQueueDepth, rabbitmqDlqDepth } from '../metrics';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { rabbitmqQueueDepth, rabbitmqDlqDepth } from '../metrics.js';
 
 export interface SystemHealthData {
   status: 'healthy' | 'degraded' | 'unhealthy';

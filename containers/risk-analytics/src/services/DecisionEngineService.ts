@@ -4,8 +4,8 @@
  */
 
 import { getContainer } from '@coder/shared/database';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import type {
   Decision,
   Rule,

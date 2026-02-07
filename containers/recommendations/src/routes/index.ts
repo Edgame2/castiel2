@@ -3,22 +3,22 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
-import { RecommendationsService } from '../services/RecommendationsService';
-import { rankMitigationActions } from '../services/MitigationRankingService';
+import { RecommendationsService } from '../services/RecommendationsService.js';
+import { rankMitigationActions } from '../services/MitigationRankingService.js';
 import {
   createWorkflow,
   getWorkflow,
   getWorkflowsByOpportunity,
   completeStep,
   cancelWorkflow,
-} from '../services/RemediationWorkflowService';
-import { FeedbackAction } from '../types/recommendations.types';
+} from '../services/RemediationWorkflowService.js';
+import { FeedbackAction } from '../types/recommendations.types.js';
 import { getContainer } from '@coder/shared';
-import { FeedbackService } from '../services/FeedbackService';
-import { TenantTemplateService } from '../services/TenantTemplateService';
+import { FeedbackService } from '../services/FeedbackService.js';
+import { TenantTemplateService } from '../services/TenantTemplateService.js';
 
 /**
  * Register all routes

@@ -5,11 +5,11 @@
  */
 
 import { EventConsumer } from '@coder/shared';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { BaseConsumer, ConsumerDependencies } from './index';
-import { BlobStorageService } from '../services/BlobStorageService';
-import { DocumentDownloadService } from '../services/DocumentDownloadService';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { BaseConsumer, ConsumerDependencies } from './index.js';
+import { BlobStorageService } from '../services/BlobStorageService.js';
+import { DocumentDownloadService } from '../services/DocumentDownloadService.js';
 import { EmailStructuredData } from '@coder/shared/types/shards';
 
 interface EmailReceivedEvent {

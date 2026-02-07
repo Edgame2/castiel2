@@ -17,7 +17,7 @@ import { VariableResolver } from './VariableResolver';
 import { DeliveryManager } from './DeliveryManager';
 import { DeduplicationService } from './DeduplicationService';
 import { RateLimiter } from './RateLimiter';
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export interface ProcessNotificationOptions {
   eventData: any;

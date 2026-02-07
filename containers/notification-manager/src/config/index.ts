@@ -104,29 +104,49 @@ export function loadConfig(): ModuleConfig {
   // Resolve environment variables
   const resolved = resolveEnvVars(mergedConfig);
 
+  // Coerce string env vars to boolean/number (YAML interpolation yields strings)
+  function coerceTypes(obj: any): any {
+    if (obj === null || obj === undefined) return obj;
+    if (typeof obj === 'string') {
+      if (obj === 'true') return true;
+      if (obj === 'false') return false;
+      const n = Number(obj);
+      if (!Number.isNaN(n) && obj.trim() !== '') return n;
+      return obj;
+    }
+    if (Array.isArray(obj)) return obj.map(coerceTypes);
+    if (typeof obj === 'object') {
+      const out: any = {};
+      for (const [k, v] of Object.entries(obj)) out[k] = coerceTypes(v);
+      return out;
+    }
+    return obj;
+  }
+  const coerced = coerceTypes(resolved);
+
   // Normalize port to number
-  if (typeof resolved.server.port === 'string') {
-    resolved.server.port = parseInt(resolved.server.port, 10);
+  if (typeof coerced.server?.port === 'string') {
+    coerced.server.port = parseInt(coerced.server.port, 10);
   }
 
   // Plan §8.5.2, §8.5.4: metrics with env METRICS_PATH, METRICS_REQUIRE_AUTH, METRICS_BEARER_TOKEN
-  resolved.metrics = resolved.metrics ?? { path: '/metrics', require_auth: false, bearer_token: '' };
-  if (typeof (resolved.metrics as any).require_auth === 'string') {
-    (resolved.metrics as any).require_auth = (resolved.metrics as any).require_auth === 'true';
+  coerced.metrics = coerced.metrics ?? { path: '/metrics', require_auth: false, bearer_token: '' };
+  if (typeof (coerced.metrics as any).require_auth === 'string') {
+    (coerced.metrics as any).require_auth = (coerced.metrics as any).require_auth === 'true';
   }
 
   // Validate against schema
   const ajv = new Ajv({ allErrors: true });
   const validate = ajv.compile(schema);
   
-  if (!validate(resolved)) {
+  if (!validate(coerced)) {
     const errors = validate.errors?.map(err => 
       `${err.instancePath} ${err.message}`
     ).join(', ');
     throw new Error(`Invalid config: ${errors}`);
   }
 
-  return resolved as unknown as ModuleConfig;
+  return coerced as unknown as ModuleConfig;
 }
 
 // Singleton config instance

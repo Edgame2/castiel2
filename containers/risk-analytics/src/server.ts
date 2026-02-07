@@ -3,7 +3,7 @@
  * Asynchronous risk evaluation and revenue analytics system (event-driven) with CAIS integration
  */
 
-import './instrumentation';
+import './instrumentation.js';
 
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
@@ -11,9 +11,9 @@ import { initializeDatabase, connectDatabase } from '@coder/shared';
 import { setupJWT } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import { loadConfig } from './config';
-import { log } from './utils/logger';
-import { httpRequestsTotal, httpRequestDurationSeconds, register } from './metrics';
+import { loadConfig } from './config/index.js';
+import { log } from './utils/logger.js';
+import { httpRequestsTotal, httpRequestDurationSeconds, register } from './metrics.js';
 
 let app: FastifyInstance | null = null;
 
@@ -109,9 +109,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   }
 
   try {
-    const { initializeEventPublisher } = await import('./events/publishers/RiskAnalyticsEventPublisher');
+    const { initializeEventPublisher } = await import('./events/publishers/RiskAnalyticsEventPublisher.js');
     await initializeEventPublisher();
-    const { initializeEventConsumer } = await import('./events/consumers/RiskAnalyticsEventConsumer');
+    const { initializeEventConsumer } = await import('./events/consumers/RiskAnalyticsEventConsumer.js');
     await initializeEventConsumer();
     log.info('Event publisher and consumer initialized', { service: 'risk-analytics' });
   } catch (error) {
@@ -119,7 +119,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   }
 
   try {
-    const { initializeBatchJobWorker } = await import('./events/consumers/BatchJobWorker');
+    const { initializeBatchJobWorker } = await import('./events/consumers/BatchJobWorker.js');
     await initializeBatchJobWorker();
   } catch (error) {
     log.warn('Failed to initialize batch job worker', { error, service: 'risk-analytics' });
@@ -170,11 +170,11 @@ export async function buildApp(): Promise<FastifyInstance> {
     });
   });
 
-  const { registerRoutes } = await import('./routes');
+  const { registerRoutes } = await import('./routes/index.js');
   await registerRoutes(fastify as any, config);
 
   fastify.get('/health', async () => {
-    const { getLastRiskSnapshotBackfillAt } = await import('./events/consumers/BatchJobWorker');
+    const { getLastRiskSnapshotBackfillAt } = await import('./events/consumers/BatchJobWorker.js');
     const last = getLastRiskSnapshotBackfillAt();
     let mlServiceReachable: 'ok' | 'unreachable' | 'not_configured' = 'not_configured';
     const mlUrl = config.services?.ml_service?.url;
@@ -250,15 +250,15 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   log.info(`${signal} received, shutting down gracefully`, { service: 'risk-analytics' });
   try {
-    const { closeBatchJobWorker } = await import('./events/consumers/BatchJobWorker');
+    const { closeBatchJobWorker } = await import('./events/consumers/BatchJobWorker.js');
     await closeBatchJobWorker();
   } catch (error) {
     log.error('Error closing batch job worker', error, { service: 'risk-analytics' });
   }
   try {
-    const { closeEventPublisher } = await import('./events/publishers/RiskAnalyticsEventPublisher');
+    const { closeEventPublisher } = await import('./events/publishers/RiskAnalyticsEventPublisher.js');
     await closeEventPublisher();
-    const { closeEventConsumer } = await import('./events/consumers/RiskAnalyticsEventConsumer');
+    const { closeEventConsumer } = await import('./events/consumers/RiskAnalyticsEventConsumer.js');
     await closeEventConsumer();
   } catch (error) {
     log.error('Error closing event handlers', error, { service: 'risk-analytics' });
@@ -277,9 +277,7 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   log.error('Unhandled promise rejection', reason as Error, { service: 'risk-analytics', promise: promise.toString() });
 });
 
-if (require.main === module) {
-  start().catch((error) => {
-    console.error('Fatal error starting server:', error);
-    process.exit(1);
-  });
-}
+start().catch((error) => {
+  console.error('Fatal error starting server:', error);
+  process.exit(1);
+});

@@ -3,11 +3,14 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { parse as parseYaml } from 'yaml';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 export interface RecommendationsConfig {
   application_insights?: { connection_string?: string; disable?: boolean };
@@ -75,7 +78,7 @@ export function loadConfig(): RecommendationsConfig {
   if (cachedConfig) return cachedConfig;
   
   const env = process.env.NODE_ENV || 'development';
-  const configDir = join(__dirname, '../../config');
+  const configDir = join(__dirname, '..', '..', 'config');
   const defaultPath = join(configDir, 'default.yaml');
   
   if (!existsSync(defaultPath)) {
@@ -99,11 +102,19 @@ export function loadConfig(): RecommendationsConfig {
   
   const config = deepMerge(defaultConfig, envConfig);
   const resolved = resolveEnvVars(config) as RecommendationsConfig;
-  
+  const toBool = (v: unknown): boolean => (v === true || v === 'true' || v === '1');
   if (typeof resolved.server.port === 'string') {
     resolved.server.port = parseInt(resolved.server.port, 10);
   }
-  
+  if (resolved.application_insights?.disable !== undefined) {
+    resolved.application_insights.disable = toBool(resolved.application_insights.disable);
+  }
+  if (resolved.metrics?.require_auth !== undefined) {
+    resolved.metrics.require_auth = toBool(resolved.metrics.require_auth);
+  }
+  if (resolved.recommendations_write_shards !== undefined) {
+    resolved.recommendations_write_shards = toBool(resolved.recommendations_write_shards);
+  }
   const ajv = new Ajv({ allErrors: true, useDefaults: true });
   addFormats(ajv);
   const validate = ajv.compile(schema);

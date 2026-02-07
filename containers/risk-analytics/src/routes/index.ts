@@ -3,36 +3,36 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import { authenticateRequest, tenantEnforcementMiddleware, ServiceClient, generateServiceToken } from '@coder/shared';
-import { RiskEvaluationService } from '../services/RiskEvaluationService';
-import { RiskCatalogService } from '../services/RiskCatalogService';
-import { RevenueAtRiskService } from '../services/RevenueAtRiskService';
-import { QuotaService, CreateQuotaInput, UpdateQuotaInput } from '../services/QuotaService';
-import { EarlyWarningService } from '../services/EarlyWarningService';
-import { BenchmarkingService } from '../services/BenchmarkingService';
-import { IndustryBenchmarkService } from '../services/IndustryBenchmarkService';
-import { SimulationService } from '../services/SimulationService';
-import { DataQualityService } from '../services/DataQualityService';
-import { TrustLevelService } from '../services/TrustLevelService';
-import { RiskAIValidationService } from '../services/RiskAIValidationService';
-import { RiskExplainabilityService } from '../services/RiskExplainabilityService';
-import { ExplainabilityService } from '../services/ExplainabilityService';
-import { getSnapshots } from '../services/RiskSnapshotService';
-import { listCompetitors, getCompetitorsForOpportunity, trackCompetitor, createCompetitor, updateCompetitor, deleteCompetitor, getDashboard, analyzeWinLossByCompetitor, recordWinLossReasons, getWinLossReasons, type CompetitiveIntelligenceShardContext, type CreateCompetitorInput } from '../services/CompetitiveIntelligenceService';
-import { getPrioritizedOpportunities } from '../services/PrioritizedOpportunitiesService';
-import { getTopAtRiskReasons } from '../services/AtRiskReasonsService';
-import { StakeholderGraphService } from '../services/StakeholderGraphService';
-import { executeQuickAction } from '../services/QuickActionsService';
-import { getAnomalies, runStatisticalDetection, persistAndPublishMLAnomaly, type RunStatisticalDetectionResult } from '../services/AnomalyDetectionService';
-import { getSentimentTrends } from '../services/SentimentTrendsService';
-import { ProductFitService } from '../services/ProductFitService';
-import { ProductService } from '../services/ProductService';
-import { LeadingIndicatorsService } from '../services/LeadingIndicatorsService';
-import { RiskClusteringService } from '../services/RiskClusteringService';
-import { AccountHealthService } from '../services/AccountHealthService';
-import { RiskPropagationService } from '../services/RiskPropagationService';
+import { RiskEvaluationService } from '../services/RiskEvaluationService.js';
+import { RiskCatalogService } from '../services/RiskCatalogService.js';
+import { RevenueAtRiskService } from '../services/RevenueAtRiskService.js';
+import { QuotaService, CreateQuotaInput, UpdateQuotaInput } from '../services/QuotaService.js';
+import { EarlyWarningService } from '../services/EarlyWarningService.js';
+import { BenchmarkingService } from '../services/BenchmarkingService.js';
+import { IndustryBenchmarkService } from '../services/IndustryBenchmarkService.js';
+import { SimulationService } from '../services/SimulationService.js';
+import { DataQualityService } from '../services/DataQualityService.js';
+import { TrustLevelService } from '../services/TrustLevelService.js';
+import { RiskAIValidationService } from '../services/RiskAIValidationService.js';
+import { RiskExplainabilityService } from '../services/RiskExplainabilityService.js';
+import { ExplainabilityService } from '../services/ExplainabilityService.js';
+import { getSnapshots } from '../services/RiskSnapshotService.js';
+import { listCompetitors, getCompetitorsForOpportunity, trackCompetitor, createCompetitor, updateCompetitor, deleteCompetitor, getDashboard, analyzeWinLossByCompetitor, recordWinLossReasons, getWinLossReasons, type CompetitiveIntelligenceShardContext, type CreateCompetitorInput } from '../services/CompetitiveIntelligenceService.js';
+import { getPrioritizedOpportunities } from '../services/PrioritizedOpportunitiesService.js';
+import { getTopAtRiskReasons } from '../services/AtRiskReasonsService.js';
+import { StakeholderGraphService } from '../services/StakeholderGraphService.js';
+import { executeQuickAction } from '../services/QuickActionsService.js';
+import { getAnomalies, runStatisticalDetection, persistAndPublishMLAnomaly, type RunStatisticalDetectionResult } from '../services/AnomalyDetectionService.js';
+import { getSentimentTrends } from '../services/SentimentTrendsService.js';
+import { ProductFitService } from '../services/ProductFitService.js';
+import { ProductService } from '../services/ProductService.js';
+import { LeadingIndicatorsService } from '../services/LeadingIndicatorsService.js';
+import { RiskClusteringService } from '../services/RiskClusteringService.js';
+import { AccountHealthService } from '../services/AccountHealthService.js';
+import { RiskPropagationService } from '../services/RiskPropagationService.js';
 import {
   publishJobTrigger,
   publishRiskPredictionGenerated,
@@ -44,7 +44,7 @@ import {
   publishActionExecutionRequested,
   publishActionExecutionCompleted,
   publishActionExecutionFailed,
-} from '../events/publishers/RiskAnalyticsEventPublisher';
+} from '../events/publishers/RiskAnalyticsEventPublisher.js';
 import { randomUUID } from 'crypto';
 import { getContainer } from '@coder/shared/database';
 import { CreateRiskInput, UpdateRiskInput, SetPonderationInput } from '../types/risk-catalog.types';
@@ -52,11 +52,11 @@ import type { ExplainPredictionRequest, ExplainBatchRequest } from '../types/exp
 import type { EvaluateDecisionRequest, ExecuteDecisionRequest, ApplyCatalogRulesRequest, MakeMethodologyDecisionRequest, Rule as RuleType } from '../types/decision.types';
 import type { MethodologyCard, UpsertSalesMethodologyBody } from '../types/sales-methodology.types';
 import type { UpsertTenantMLConfigBody } from '../types/tenant-ml-config.types';
-import { DecisionEngineService } from '../services/DecisionEngineService';
-import { ActionExecutor } from '../services/ActionExecutor';
-import { SalesMethodologyService } from '../services/SalesMethodologyService';
-import { TenantMLConfigService } from '../services/TenantMLConfigService';
-import { ReactivationService } from '../services/ReactivationService';
+import { DecisionEngineService } from '../services/DecisionEngineService.js';
+import { ActionExecutor } from '../services/ActionExecutor.js';
+import { SalesMethodologyService } from '../services/SalesMethodologyService.js';
+import { TenantMLConfigService } from '../services/TenantMLConfigService.js';
+import { ReactivationService } from '../services/ReactivationService.js';
 
 /**
  * Register all routes
@@ -307,8 +307,11 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           tags: ['Risk Evaluation'],
           security: [{ bearerAuth: [] }],
           querystring: {
-            from: { type: 'string', format: 'date' },
-            to: { type: 'string', format: 'date' },
+            type: 'object',
+            properties: {
+              from: { type: 'string', format: 'date' },
+              to: { type: 'string', format: 'date' },
+            },
           },
         },
       },

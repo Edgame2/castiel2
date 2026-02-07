@@ -5,8 +5,8 @@
 
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import {
   Conversation,
   CreateConversationInput,
@@ -17,8 +17,8 @@ import {
   MessageStatus,
   ConversationStatus,
   ConversationVisibility,
-} from '../types/conversation.types';
-import { publishConversationEvent } from '../events/publishers/ConversationEventPublisher';
+} from '../types/conversation.types.js';
+import { publishConversationEvent } from '../events/publishers/ConversationEventPublisher.js';
 import { v4 as uuidv4 } from 'uuid';
 import { FastifyInstance } from 'fastify';
 

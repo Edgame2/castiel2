@@ -3,9 +3,9 @@
  * Generates summaries of text (short/medium/long)
  */
 
-import { BaseProcessor } from './BaseProcessor';
-import { EnrichmentProcessorType, SummarizationResult } from '../../types/enrichment.types';
-import { log } from '../../utils/logger';
+import { BaseProcessor } from './BaseProcessor.js';
+import { EnrichmentProcessorType, SummarizationResult } from '../../types/enrichment.types.js';
+import { log } from '../../utils/logger.js';
 
 export class SummarizationProcessor extends BaseProcessor {
   getType(): EnrichmentProcessorType {

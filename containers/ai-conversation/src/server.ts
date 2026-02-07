@@ -3,14 +3,15 @@
  * Per ModuleImplementationGuide Section 3
  */
 
+import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
 import { initializeDatabase, connectDatabase } from '@coder/shared';
 import { setupJWT } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import { loadConfig } from './config';
-import { log } from './utils/logger';
+import { loadConfig } from './config/index.js';
+import { log } from './utils/logger.js';
 
 // Global instances
 let app: FastifyInstance | null = null;
@@ -125,9 +126,9 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Initialize event publisher and consumer
   try {
-    const { initializeEventPublisher } = await import('./events/publishers/ConversationEventPublisher');
+    const { initializeEventPublisher } = await import('./events/publishers/ConversationEventPublisher.js');
     await initializeEventPublisher();
-    const { initializeEventConsumer } = await import('./events/consumers/ConversationEventConsumer');
+    const { initializeEventConsumer } = await import('./events/consumers/ConversationEventConsumer.js');
     await initializeEventConsumer();
     log.info('Event publisher and consumer initialized', { service: 'ai-conversation' });
   } catch (error) {
@@ -188,7 +189,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   // Register routes
-  const { registerRoutes } = await import('./routes');
+  const { registerRoutes } = await import('./routes/index.js');
   await registerRoutes(fastify, config);
 
   // Health check endpoints (no auth required)
@@ -254,9 +255,9 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   log.info(`${signal} received, shutting down gracefully`, { service: 'ai-conversation' });
   try {
-    const { closeEventPublisher } = await import('./events/publishers/ConversationEventPublisher');
+    const { closeEventPublisher } = await import('./events/publishers/ConversationEventPublisher.js');
     await closeEventPublisher();
-    const { closeEventConsumer } = await import('./events/consumers/ConversationEventConsumer');
+    const { closeEventConsumer } = await import('./events/consumers/ConversationEventConsumer.js');
     await closeEventConsumer();
   } catch (error) {
     log.error('Error closing event handlers', error, { service: 'ai-conversation' });
@@ -289,7 +290,8 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
 });
 
 // Start server if this file is run directly
-if (require.main === module) {
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
   start().catch((error) => {
     console.error('Fatal error starting server:', error);
     process.exit(1);

@@ -9,10 +9,10 @@
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { Citation, VerifiedClaim } from './GroundingService';
-import { AssembledContext } from './ContextAssemblyService';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { Citation, VerifiedClaim } from './GroundingService.js';
+import { AssembledContext } from './ContextAssemblyService.js';
 import {
   CitationValidationResult,
   CitationIssue,
@@ -21,7 +21,7 @@ import {
   CitationQualityMetrics,
   CitationValidationConfig,
   SourceVerificationResult,
-} from '../types/citation-validation.types';
+} from '../types/citation-validation.types.js';
 
 /**
  * Default validation configuration

@@ -7,7 +7,7 @@
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
+import { loadConfig } from '../config/index.js';
 
 export type IndicatorStatus = 'ok' | 'warning' | 'critical' | 'unknown';
 

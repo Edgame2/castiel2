@@ -14,7 +14,9 @@ export interface ComplianceReportParams {
 }
 
 export class ComplianceService {
-  private db = getDatabaseClient() as any;
+  private get db() {
+    return getDatabaseClient() as any;
+  }
   
   /**
    * Generate compliance report

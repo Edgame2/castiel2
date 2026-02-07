@@ -13,7 +13,9 @@ import { AuditService } from '../AuditService';
 import { getUserRoles, isSuperAdmin } from './RoleService';
 
 export class AccessController {
-  private db = getDatabaseClient() as any;
+  private get db() {
+    return getDatabaseClient() as any;
+  }
   private auditService: AuditService;
   
   constructor() {

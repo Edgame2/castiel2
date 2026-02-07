@@ -6,9 +6,9 @@
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { publishEnrichmentEvent } from '../events/publishers/EnrichmentEventPublisher';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { publishEnrichmentEvent } from '../events/publishers/EnrichmentEventPublisher.js';
 import { v4 as uuidv4 } from 'uuid';
 import {
   VectorizationJob,
@@ -22,8 +22,8 @@ import {
   VectorizationErrorCode,
   VectorizationConfig,
   DEFAULT_VECTORIZATION_CONFIG,
-} from '../types/vectorization.types';
-import { extractTextFromShard } from '../utils/textExtraction';
+} from '../types/vectorization.types.js';
+import { extractTextFromShard } from '../utils/textExtraction.js';
 
 export class VectorizationService {
   private config: ReturnType<typeof loadConfig>;

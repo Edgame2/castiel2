@@ -8,8 +8,8 @@
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { FastifyInstance } from 'fastify';
 import { getContainer } from '@coder/shared/database';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import {
   RiskEvaluationRequest,
   RiskEvaluationResult,
@@ -21,12 +21,12 @@ import {
   RevenueAtRiskCalculation,
 } from '../types/risk-analytics.types';
 import { RiskCatalog, DetectedRisk } from '../types/risk-catalog.types';
-import { TenantMLConfigService } from './TenantMLConfigService';
+import { TenantMLConfigService } from './TenantMLConfigService.js';
 import { trace } from '@opentelemetry/api';
-import { publishRiskAnalyticsEvent, publishHitlApprovalRequested } from '../events/publishers/RiskAnalyticsEventPublisher';
-import { riskEvaluationsTotal } from '../metrics';
+import { publishRiskAnalyticsEvent, publishHitlApprovalRequested } from '../events/publishers/RiskAnalyticsEventPublisher.js';
+import { riskEvaluationsTotal } from '../metrics.js';
 import { v4 as uuidv4 } from 'uuid';
-import { getSentimentTrends } from './SentimentTrendsService';
+import { getSentimentTrends } from './SentimentTrendsService.js';
 
 // Default weights for fallback
 const DEFAULT_WEIGHTS: LearnedWeights = {

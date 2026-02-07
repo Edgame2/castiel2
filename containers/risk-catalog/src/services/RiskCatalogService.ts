@@ -7,8 +7,8 @@
 import { ServiceClient } from '@coder/shared';
 import { generateServiceToken } from '@coder/shared';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import {
   RiskCatalog,
   CreateRiskInput,
@@ -16,8 +16,8 @@ import {
   RiskPonderation,
   TenantCatalogView,
   RiskTemplateView,
-} from '../types/risk-catalog.types';
-import { publishRiskCatalogEvent } from '../events/publishers/RiskCatalogEventPublisher';
+} from '../types/risk-catalog.types.js';
+import { publishRiskCatalogEvent } from '../events/publishers/RiskCatalogEventPublisher.js';
 
 const RISK_CATALOG_SHARD_TYPE_NAME = 'risk_catalog';
 const SYSTEM_TENANT_ID = 'system';

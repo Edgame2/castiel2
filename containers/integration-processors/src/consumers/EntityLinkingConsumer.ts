@@ -6,9 +6,9 @@
 
 import { EventConsumer, EntityLinkingService, OpportunityEventDebouncer } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { BaseConsumer, ConsumerDependencies } from './index';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { BaseConsumer, ConsumerDependencies } from './index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 /**

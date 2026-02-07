@@ -86,7 +86,7 @@
       "properties": {
         "provider": { 
           "type": "string", 
-          "enum": ["postgres", "elasticsearch"] 
+          "enum": ["postgres", "elasticsearch", "cosmos"] 
         },
         "postgres": {
           "type": "object",

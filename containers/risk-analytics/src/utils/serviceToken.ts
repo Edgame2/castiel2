@@ -5,7 +5,7 @@
  */
 
 import jwt from 'jsonwebtoken';
-import { loadConfig } from '../config';
+import { loadConfig } from '../config/index.js';
 
 const SERVICE_ID = 'risk-analytics';
 const SERVICE_NAME = 'risk-analytics';

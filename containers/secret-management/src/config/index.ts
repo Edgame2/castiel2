@@ -178,6 +178,13 @@ export function loadConfig(): Config {
   // 4. Resolve environment variables
   const resolved = resolveEnvVars(merged) as Record<string, any>;
   
+  // Dev fallback: use 64-char masterKey when unset or wrong length (compose/local)
+  const key = resolved.encryption?.masterKey;
+  if (env === 'development' && (!key || typeof key !== 'string' || key.length !== 64)) {
+    resolved.encryption = resolved.encryption || {};
+    resolved.encryption.masterKey = '0'.repeat(64);
+  }
+  
   // 5. Validate against schema
   const schemaPath = join(configDir, 'schema.json');
   let schema: any;

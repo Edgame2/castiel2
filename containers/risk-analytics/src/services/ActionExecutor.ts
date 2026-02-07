@@ -3,8 +3,8 @@
  * Stub: logs action and returns success. Real implementation would call CRM, notification, task, etc. via config-driven URLs.
  */
 
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import type { Action } from '../types/decision.types';
 
 export class ActionExecutor {

@@ -7,7 +7,7 @@
 import { getDatabaseClient } from '@coder/shared';
 import { NotificationInput, NotificationChannel } from '../types/notification';
 import { NotificationEngine } from './NotificationEngine';
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export type DigestType = 'HOURLY' | 'DAILY' | 'WEEKLY';
 

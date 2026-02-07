@@ -3,9 +3,9 @@
  * Extracts named entities (persons, organizations, locations, dates, etc.) from text
  */
 
-import { BaseProcessor } from './BaseProcessor';
-import { EnrichmentProcessorType, ExtractedEntity } from '../../types/enrichment.types';
-import { log } from '../../utils/logger';
+import { BaseProcessor } from './BaseProcessor.js';
+import { EnrichmentProcessorType, ExtractedEntity } from '../../types/enrichment.types.js';
+import { log } from '../../utils/logger.js';
 
 export class EntityExtractionProcessor extends BaseProcessor {
   getType(): EnrichmentProcessorType {

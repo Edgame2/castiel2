@@ -276,9 +276,13 @@ export async function start(): Promise<void> {
     await setupJWT(app as any, { secret: process.env.JWT_SECRET || '' });
     log.info('JWT authentication configured');
     
-    // Connect to database
-    await prisma?.$connect();
-    log.info('Connected to database');
+    // Connect to database (skip when storage is Cosmos - Postgres not used)
+    if (config.storage?.provider !== 'cosmos' && prisma) {
+      await prisma.$connect();
+      log.info('Connected to database');
+    } else if (config.storage?.provider === 'cosmos') {
+      log.info('Skipping Postgres connect (storage is Cosmos)');
+    }
     
     // Start event consumer (if RabbitMQ is configured)
     if (config.rabbitmq.url && ingestionService) {

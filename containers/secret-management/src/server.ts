@@ -133,10 +133,18 @@ const start = async () => {
     // Connect to database
     await connectDatabase();
     
-    // Initialize encryption key (ensure active key exists)
-    const { KeyManager } = await import('./services/encryption/KeyManager');
-    const keyManager = new KeyManager();
-    await keyManager.getActiveKey();
+    // Initialize encryption key (ensure active key exists); skip in dev if DB not Prisma
+    try {
+      const { KeyManager } = await import('./services/encryption/KeyManager');
+      const keyManager = new KeyManager();
+      await keyManager.getActiveKey();
+    } catch (err: any) {
+      if (config.server.env === 'development') {
+        console.warn('KeyManager getActiveKey skipped (dev):', err?.message ?? err);
+      } else {
+        throw err;
+      }
+    }
     
     // Use port from config (no hardcoded default)
     await server.listen({ port: config.server.port, host: config.server.host });

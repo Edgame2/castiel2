@@ -3,7 +3,8 @@
  * Asynchronous forecasting and prediction services with CAIS integration
  */
 
-import './instrumentation';
+import { fileURLToPath } from 'url';
+import './instrumentation.js';
 
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
@@ -11,9 +12,9 @@ import { initializeDatabase, connectDatabase } from '@coder/shared';
 import { setupJWT } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import { loadConfig } from './config';
-import { log } from './utils/logger';
-import { httpRequestsTotal, httpRequestDurationSeconds, register } from './metrics';
+import { loadConfig } from './config/index.js';
+import { log } from './utils/logger.js';
+import { httpRequestsTotal, httpRequestDurationSeconds, register } from './metrics.js';
 
 let app: FastifyInstance | null = null;
 
@@ -93,9 +94,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   }
 
   try {
-    const { initializeEventPublisher } = await import('./events/publishers/ForecastEventPublisher');
+    const { initializeEventPublisher } = await import('./events/publishers/ForecastEventPublisher.js');
     await initializeEventPublisher();
-    const { initializeEventConsumer } = await import('./events/consumers/ForecastEventConsumer');
+    const { initializeEventConsumer } = await import('./events/consumers/ForecastEventConsumer.js');
     await initializeEventConsumer();
     log.info('Event publisher and consumer initialized', { service: 'forecasting' });
   } catch (error) {
@@ -147,7 +148,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     });
   });
 
-  const { registerRoutes } = await import('./routes');
+  const { registerRoutes } = await import('./routes/index.js');
   await registerRoutes(fastify as any, config);
 
   const metricsConf = config.metrics ?? { path: '/metrics', require_auth: false, bearer_token: '' };
@@ -210,9 +211,9 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   log.info(`${signal} received, shutting down gracefully`, { service: 'forecasting' });
   try {
-    const { closeEventPublisher } = await import('./events/publishers/ForecastEventPublisher');
+    const { closeEventPublisher } = await import('./events/publishers/ForecastEventPublisher.js');
     await closeEventPublisher();
-    const { closeEventConsumer } = await import('./events/consumers/ForecastEventConsumer');
+    const { closeEventConsumer } = await import('./events/consumers/ForecastEventConsumer.js');
     await closeEventConsumer();
   } catch (error) {
     log.error('Error closing event handlers', error, { service: 'forecasting' });
@@ -231,7 +232,8 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   log.error('Unhandled promise rejection', reason as Error, { service: 'forecasting', promise: promise.toString() });
 });
 
-if (require.main === module) {
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
   start().catch((error) => {
     console.error('Fatal error starting server:', error);
     process.exit(1);

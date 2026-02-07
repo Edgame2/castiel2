@@ -6,9 +6,9 @@
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { publishEnrichmentEvent } from '../events/publishers/EnrichmentEventPublisher';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { publishEnrichmentEvent } from '../events/publishers/EnrichmentEventPublisher.js';
 import { v4 as uuidv4 } from 'uuid';
 import {
   EnrichmentJob as EnrichmentJobType,
@@ -28,16 +28,16 @@ import {
   SummarizationResult,
   SentimentAnalysisResult,
   KeyPhrasesResult,
-} from '../types/enrichment.types';
-import { IEnrichmentProcessor } from './processors/IEnrichmentProcessor';
+} from '../types/enrichment.types.js';
+import { IEnrichmentProcessor } from './processors/IEnrichmentProcessor.js';
 import {
   EntityExtractionProcessor,
   ClassificationProcessor,
   SummarizationProcessor,
   SentimentAnalysisProcessor,
   KeyPhrasesProcessor,
-} from './processors';
-import { extractTextFromShard } from '../utils/textExtraction';
+} from './processors/index.js';
+import { extractTextFromShard } from '../utils/textExtraction.js';
 
 export interface EnrichmentJob {
   jobId: string;

@@ -5,7 +5,7 @@
  */
 
 import * as amqp from 'amqplib';
-import { log } from './logger';
+import { log } from './logger.js';
 
 export interface RetryConfig {
   maxRetries: number;

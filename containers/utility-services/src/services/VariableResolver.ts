@@ -7,7 +7,7 @@
 import { TemplateData } from '../types/notification';
 import { getDatabaseClient } from '@coder/shared';
 import { HttpClient } from '@coder/shared';
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export class VariableResolver {
   private userManagementClient: HttpClient;

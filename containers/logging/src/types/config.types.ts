@@ -45,7 +45,7 @@ export interface LoggingConfig {
   };
   
   storage: {
-    provider: 'postgres' | 'elasticsearch';
+    provider: 'postgres' | 'elasticsearch' | 'cosmos';
     postgres?: {
       partition_by: 'month' | 'week' | 'day';
     };

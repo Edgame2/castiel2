@@ -5,9 +5,9 @@
  */
 
 import { EventConsumer } from '@coder/shared';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { BaseConsumer, ConsumerDependencies } from './index';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { BaseConsumer, ConsumerDependencies } from './index.js';
 import { CalendarEventStructuredData } from '@coder/shared/types/shards';
 
 interface EventCreatedEvent {

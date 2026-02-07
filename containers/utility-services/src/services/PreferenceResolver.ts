@@ -7,7 +7,7 @@
 
 import { getDatabaseClient } from '@coder/shared';
 import { NotificationPreferences, PreferenceScope, ResolvedPreferences } from '../types/notification';
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export class PreferenceResolver {
   private db = getDatabaseClient() as any;

@@ -3,11 +3,14 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import { parse as parseYaml } from 'yaml';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 export interface IntegrationSyncConfig {
   module: { name: string; version: string };
@@ -125,11 +128,55 @@ export function loadConfig(): IntegrationSyncConfig {
   
   const config = deepMerge(defaultConfig, envConfig);
   const resolved = resolveEnvVars(config) as IntegrationSyncConfig;
-  
   if (typeof resolved.server.port === 'string') {
     resolved.server.port = parseInt(resolved.server.port, 10);
   }
-  
+  // Coerce string env values to number/boolean for schema validation
+  if (resolved.sync_scheduler) {
+    if (typeof resolved.sync_scheduler.enabled === 'string') {
+      resolved.sync_scheduler.enabled = resolved.sync_scheduler.enabled === 'true';
+    }
+    if (typeof resolved.sync_scheduler.interval_ms === 'string') {
+      resolved.sync_scheduler.interval_ms = parseInt(resolved.sync_scheduler.interval_ms, 10);
+    }
+    if (typeof resolved.sync_scheduler.batch_size === 'string') {
+      resolved.sync_scheduler.batch_size = parseInt(resolved.sync_scheduler.batch_size, 10);
+    }
+  }
+  if (resolved.token_refresh) {
+    if (typeof resolved.token_refresh.enabled === 'string') {
+      resolved.token_refresh.enabled = resolved.token_refresh.enabled === 'true';
+    }
+    if (typeof resolved.token_refresh.interval_ms === 'string') {
+      resolved.token_refresh.interval_ms = parseInt(resolved.token_refresh.interval_ms, 10);
+    }
+    if (typeof resolved.token_refresh.expiration_threshold_ms === 'string') {
+      resolved.token_refresh.expiration_threshold_ms = parseInt(resolved.token_refresh.expiration_threshold_ms, 10);
+    }
+  }
+  if (resolved.sync_limits) {
+    const n = (v: unknown) => (typeof v === 'string' ? parseInt(v, 10) : v);
+    resolved.sync_limits.max_records_per_sync = n(resolved.sync_limits.max_records_per_sync) as number;
+    resolved.sync_limits.min_interval_minutes = n(resolved.sync_limits.min_interval_minutes) as number;
+    resolved.sync_limits.max_concurrent_syncs_per_tenant = n(resolved.sync_limits.max_concurrent_syncs_per_tenant) as number;
+  }
+  if (resolved.mapping) {
+    const n = (v: unknown) => (typeof v === 'string' ? parseInt(v, 10) : v);
+    resolved.mapping.batch_size = n(resolved.mapping.batch_size) as number;
+    resolved.mapping.batch_threshold = n(resolved.mapping.batch_threshold) as number;
+    resolved.mapping.batch_concurrency = n(resolved.mapping.batch_concurrency) as number;
+    resolved.mapping.retry_attempts = n(resolved.mapping.retry_attempts) as number;
+    resolved.mapping.retry_backoff_ms = n(resolved.mapping.retry_backoff_ms) as number;
+    resolved.mapping.timeout_seconds = n(resolved.mapping.timeout_seconds) as number;
+    resolved.mapping.prefetch = n(resolved.mapping.prefetch) as number;
+    resolved.mapping.idempotency_ttl = n(resolved.mapping.idempotency_ttl) as number;
+    resolved.mapping.config_cache_ttl = n(resolved.mapping.config_cache_ttl) as number;
+    resolved.mapping.circuit_breaker_threshold = n(resolved.mapping.circuit_breaker_threshold) as number;
+    resolved.mapping.circuit_breaker_timeout = n(resolved.mapping.circuit_breaker_timeout) as number;
+    resolved.mapping.opportunity_batch_threshold = n(resolved.mapping.opportunity_batch_threshold) as number;
+    resolved.mapping.opportunity_batch_size = n(resolved.mapping.opportunity_batch_size) as number;
+  }
+
   const ajv = new Ajv({ allErrors: true, useDefaults: true });
   addFormats(ajv);
   const validate = ajv.compile(schema);

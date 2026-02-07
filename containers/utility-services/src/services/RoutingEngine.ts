@@ -18,7 +18,7 @@ import {
 import { PreferenceResolver } from './PreferenceResolver';
 import { PresenceTracker } from './PresenceTracker';
 import { QuietHoursService } from './QuietHoursService';
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export interface RoutingContext {
   userId: string;

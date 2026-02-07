@@ -6,7 +6,7 @@
  */
 
 import { ResolvedPreferences } from '../types/notification';
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export class QuietHoursService {
   private config = getConfig();

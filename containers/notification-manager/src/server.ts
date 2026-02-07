@@ -7,7 +7,7 @@ import { templateRoutes } from './routes/templates';
 import { httpRequestsTotal, httpRequestDurationSeconds, register } from './metrics';
 import { startEventConsumer } from './consumers/eventConsumer';
 import { ScheduledNotificationJob } from './jobs/ScheduledNotificationJob';
-import { loadConfig } from './config';
+import { loadConfig } from './config/index.js';
 
 const server = Fastify({
   logger: true,

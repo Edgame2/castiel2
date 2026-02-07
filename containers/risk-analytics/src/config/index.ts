@@ -3,11 +3,14 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { parse as parseYaml } from 'yaml';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 export interface RiskAnalyticsConfig {
   module: { name: string; version: string };
@@ -133,7 +136,7 @@ export function loadConfig(): RiskAnalyticsConfig {
   if (cachedConfig) return cachedConfig;
   
   const env = process.env.NODE_ENV || 'development';
-  const configDir = join(__dirname, '../../config');
+  const configDir = join(__dirname, '..', '..', 'config');
   const defaultPath = join(configDir, 'default.yaml');
   
   if (!existsSync(defaultPath)) {
@@ -191,6 +194,25 @@ export function loadConfig(): RiskAnalyticsConfig {
         typeof v === 'string' ? parseFloat(v) : v
       );
     }
+  }
+  const toBool = (v: unknown): boolean => (v === true || v === 'true' || v === '1');
+  const toNum = (v: unknown): number | undefined => (typeof v === 'string' ? parseInt(v, 10) : typeof v === 'number' ? v : undefined);
+  if (resolved.auto_evaluation && typeof resolved.auto_evaluation === 'object') {
+    const ae = resolved.auto_evaluation as Record<string, unknown>;
+    if (ae.enabled !== undefined) ae.enabled = toBool(ae.enabled);
+    if (ae.trigger_on_shard_update !== undefined) ae.trigger_on_shard_update = toBool(ae.trigger_on_shard_update);
+    if (ae.trigger_on_opportunity_update !== undefined) ae.trigger_on_opportunity_update = toBool(ae.trigger_on_opportunity_update);
+    if (ae.trigger_on_risk_catalog_update !== undefined) ae.trigger_on_risk_catalog_update = toBool(ae.trigger_on_risk_catalog_update);
+    if (ae.max_reevaluations_per_catalog_event !== undefined) ae.max_reevaluations_per_catalog_event = toNum(ae.max_reevaluations_per_catalog_event) ?? 10;
+  }
+  if (resolved.outcome_feedback && (resolved.outcome_feedback as Record<string, unknown>).publish_on_shard_update !== undefined) {
+    (resolved.outcome_feedback as Record<string, unknown>).publish_on_shard_update = toBool((resolved.outcome_feedback as Record<string, unknown>).publish_on_shard_update);
+  }
+  if (resolved.features && (resolved.features as Record<string, unknown>).competitors_use_shards !== undefined) {
+    (resolved.features as Record<string, unknown>).competitors_use_shards = toBool((resolved.features as Record<string, unknown>).competitors_use_shards);
+  }
+  if (resolved.batch_processing && (resolved.batch_processing as Record<string, unknown>).concurrency !== undefined) {
+    (resolved.batch_processing as Record<string, unknown>).concurrency = toNum((resolved.batch_processing as Record<string, unknown>).concurrency) ?? 5;
   }
 
   const ajv = new Ajv({ allErrors: true, useDefaults: true });

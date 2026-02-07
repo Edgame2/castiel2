@@ -3,10 +3,10 @@
  * Export all processors
  */
 
-export { IEnrichmentProcessor } from './IEnrichmentProcessor';
-export { BaseProcessor } from './BaseProcessor';
-export { EntityExtractionProcessor } from './EntityExtractionProcessor';
-export { ClassificationProcessor } from './ClassificationProcessor';
-export { SummarizationProcessor } from './SummarizationProcessor';
-export { SentimentAnalysisProcessor } from './SentimentAnalysisProcessor';
-export { KeyPhrasesProcessor } from './KeyPhrasesProcessor';
+export { IEnrichmentProcessor } from './IEnrichmentProcessor.js';
+export { BaseProcessor } from './BaseProcessor.js';
+export { EntityExtractionProcessor } from './EntityExtractionProcessor.js';
+export { ClassificationProcessor } from './ClassificationProcessor.js';
+export { SummarizationProcessor } from './SummarizationProcessor.js';
+export { SentimentAnalysisProcessor } from './SentimentAnalysisProcessor.js';
+export { KeyPhrasesProcessor } from './KeyPhrasesProcessor.js';

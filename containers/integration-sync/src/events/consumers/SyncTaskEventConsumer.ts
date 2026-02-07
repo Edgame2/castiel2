@@ -6,10 +6,10 @@
 import { EventConsumer } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../../config';
-import { log } from '../../utils/logger';
-import { IntegrationSyncService } from '../../services/IntegrationSyncService';
-import { TokenRefreshService } from '../../services/TokenRefreshService';
+import { loadConfig } from '../../config/index.js';
+import { log } from '../../utils/logger.js';
+import { IntegrationSyncService } from '../../services/IntegrationSyncService.js';
+import { TokenRefreshService } from '../../services/TokenRefreshService.js';
 
 /**
  * Find execution ID by sync task ID

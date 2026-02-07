@@ -151,6 +151,9 @@ export function loadConfig(): AIServiceConfig {
   if (typeof resolved.redis.db === 'string') {
     resolved.redis.db = parseInt(resolved.redis.db, 10);
   }
+  if (resolved.llm?.timeout_ms !== undefined && typeof resolved.llm.timeout_ms !== 'number') {
+    resolved.llm.timeout_ms = parseInt(String(resolved.llm.timeout_ms), 10) || 10000;
+  }
   
   const ajv = new Ajv({ allErrors: true, useDefaults: true });
   addFormats(ajv);

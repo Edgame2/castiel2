@@ -9,8 +9,8 @@ import { initializeDatabase, connectDatabase } from '@coder/shared';
 import { setupJWT } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import { loadConfig } from './config';
-import { log } from './utils/logger';
+import { loadConfig } from './config/index.js';
+import { log } from './utils/logger.js';
 
 let app: FastifyInstance | null = null;
 
@@ -84,7 +84,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   }
 
   try {
-    const { initializeEventPublisher } = await import('./events/publishers/UtilityServicesEventPublisher');
+    const { initializeEventPublisher } = await import('./events/publishers/UtilityServicesEventPublisher.js');
     await initializeEventPublisher();
     log.info('Event publisher initialized', { service: 'utility_services' });
   } catch (error) {
@@ -93,7 +93,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Start notification event consumer and scheduled job (from notification-manager)
   try {
-    const { startEventConsumer } = await import('./consumers/eventConsumer');
+    const { startEventConsumer } = await import('./consumers/eventConsumer.js');
     await startEventConsumer();
     log.info('Notification event consumer started', { service: 'utility_services' });
   } catch (error) {
@@ -101,7 +101,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   }
 
   try {
-    const { ScheduledNotificationJob } = await import('./jobs/ScheduledNotificationJob');
+    const { ScheduledNotificationJob } = await import('./jobs/ScheduledNotificationJob.js');
     const scheduledJob = new ScheduledNotificationJob();
     scheduledJob.start();
     log.info('Scheduled notification job started', { service: 'utility_services' });
@@ -151,7 +151,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     });
   });
 
-  const { registerRoutes } = await import('./routes');
+  const { registerRoutes } = await import('./routes/index.js');
   await registerRoutes(fastify, config);
 
   fastify.get('/health', async () => ({
@@ -201,7 +201,7 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   log.info(`${signal} received, shutting down gracefully`, { service: 'utility_services' });
   try {
-    const { closeEventPublisher } = await import('./events/publishers/UtilityServicesEventPublisher');
+    const { closeEventPublisher } = await import('./events/publishers/UtilityServicesEventPublisher.js');
     await closeEventPublisher();
   } catch (error) {
     log.error('Error closing event publisher', error, { service: 'utility_services' });
@@ -220,9 +220,7 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   log.error('Unhandled promise rejection', reason as Error, { service: 'utility_services', promise: promise.toString() });
 });
 
-if (require.main === module) {
-  start().catch((error) => {
-    console.error('Fatal error starting server:', error);
-    process.exit(1);
-  });
-}
+start().catch((error) => {
+  console.error('Fatal error starting server:', error);
+  process.exit(1);
+});

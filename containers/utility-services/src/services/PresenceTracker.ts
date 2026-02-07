@@ -5,7 +5,7 @@
  * Will be fully implemented in Phase 5
  */
 
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export class PresenceTracker {
   private config = getConfig();

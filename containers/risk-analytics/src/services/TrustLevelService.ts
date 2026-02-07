@@ -4,9 +4,9 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { DataQualityService } from './DataQualityService';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { DataQualityService } from './DataQualityService.js';
 import type { EvaluationDataQuality } from '../types/risk-analytics.types';
 
 export type TrustLevel = 'high' | 'medium' | 'low' | 'unreliable';

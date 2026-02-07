@@ -17,9 +17,10 @@ export function loadConfig(): TemplateServiceConfig {
   const configPath = join(__dirname, '../../config/default.yaml');
   const config = parseYaml(readFileSync(configPath, 'utf-8')) as TemplateServiceConfig;
   if (process.env.PORT) config.server.port = parseInt(process.env.PORT, 10);
-  if (process.env.HOST) config.server.host = process.env.HOST;
+  config.server.host = process.env.HOST || (config.server.host?.startsWith('${') ? '0.0.0.0' : config.server.host) || '0.0.0.0';
   if (process.env.COSMOS_DB_ENDPOINT) config.cosmos_db.endpoint = process.env.COSMOS_DB_ENDPOINT;
   if (process.env.COSMOS_DB_KEY) config.cosmos_db.key = process.env.COSMOS_DB_KEY;
+  if (process.env.RABBITMQ_URL) config.rabbitmq.url = process.env.RABBITMQ_URL;
   return config;
 }
 

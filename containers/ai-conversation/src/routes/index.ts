@@ -3,8 +3,8 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { AIConversationConfig } from '../types/config.types';
-import { log } from '../utils/logger';
+import { AIConversationConfig } from '../types/config.types.js';
+import { log } from '../utils/logger.js';
 
 /**
  * Register all routes
@@ -12,15 +12,15 @@ import { log } from '../utils/logger';
 export async function registerRoutes(fastify: FastifyInstance, config: AIConversationConfig): Promise<void> {
   try {
     // Register conversation routes
-    const { registerConversationRoutes } = await import('./conversations');
+    const { registerConversationRoutes } = await import('./conversations.js');
     await registerConversationRoutes(fastify, config);
     
     // Register message routes
-    const { registerMessageRoutes } = await import('./messages');
+    const { registerMessageRoutes } = await import('./messages.js');
     await registerMessageRoutes(fastify, config);
     
     // Register context routes
-    const { registerContextRoutes } = await import('./context');
+    const { registerContextRoutes } = await import('./context.js');
     await registerContextRoutes(fastify, config);
     
     log.info('All routes registered', { service: 'ai-conversation' });

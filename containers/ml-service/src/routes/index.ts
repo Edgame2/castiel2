@@ -2363,7 +2363,11 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       schema: {
         description: 'Select risk-scoring model: global or industry. Stub: industry when industryId and risk_scoring_industry endpoint; else global.',
         tags: ['Models'],
-        querystring: { industryId: { type: 'string' } },
+        querystring: {
+          type: 'object',
+          properties: { industryId: { type: 'string' } },
+          additionalProperties: true,
+        },
         response: {
           200: {
             type: 'object',

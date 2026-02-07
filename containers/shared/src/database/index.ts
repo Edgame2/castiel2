@@ -41,31 +41,39 @@ export function initializeDatabase(config: InitializeDatabaseConfig): void {
   containerMappings = config.containers || {};
 }
 
+/** True when COSMOS_DB_OPTIONAL is set (e.g. dev without Cosmos). */
+function isCosmosOptional(): boolean {
+  const v = process.env.COSMOS_DB_OPTIONAL;
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
 /**
  * Initialize database connection
  * Must be called before using getDatabaseClient()
  * Uses config from initializeDatabase() if available, otherwise falls back to environment variables
+ * When COSMOS_DB_OPTIONAL=1, connection failures are logged and startup continues without DB.
  */
 export async function connectDatabase(config?: CosmosDBConfig): Promise<void> {
   let cosmosConfig: CosmosDBConfig;
 
   if (config) {
-    // Use provided config
     cosmosConfig = config;
   } else if (dbConfig) {
-    // Use config from initializeDatabase()
     cosmosConfig = {
       endpoint: dbConfig.endpoint,
       key: dbConfig.key,
       databaseId: dbConfig.database,
     };
   } else {
-    // Fall back to environment variables
     const endpoint = process.env.COSMOS_DB_ENDPOINT;
     const key = process.env.COSMOS_DB_KEY;
     const databaseId = process.env.COSMOS_DB_DATABASE_ID || 'castiel';
 
     if (!endpoint || !key) {
+      if (isCosmosOptional()) {
+        console.warn('Cosmos DB optional: COSMOS_DB_ENDPOINT/KEY not set; running without database.');
+        return;
+      }
       throw new Error(
         'Cosmos DB configuration required. Call initializeDatabase() first, set COSMOS_DB_ENDPOINT and COSMOS_DB_KEY environment variables, or pass config to connectDatabase()'
       );
@@ -78,31 +86,40 @@ export async function connectDatabase(config?: CosmosDBConfig): Promise<void> {
     };
   }
 
-  dbClient = CosmosDBClient.getInstance(cosmosConfig);
-  await dbClient.connect();
+  const optional = isCosmosOptional();
+  try {
+    dbClient = CosmosDBClient.getInstance(cosmosConfig);
+    await dbClient.connect();
 
-  // Ensure all configured containers exist
-  // Note: Special handling for containers that need TTL or other options
-  if (Object.keys(containerMappings).length > 0) {
-    for (const logicalName in containerMappings) {
-      const physicalName = containerMappings[logicalName];
-      
-      // Special handling for suggested_links container (30 days TTL)
-      if (logicalName === 'suggested_links' || physicalName.includes('suggested_links')) {
-        await ensureContainer(physicalName, '/tenantId', {
-          defaultTtl: 2592000, // 30 days in seconds
-        });
-      } else {
-        await ensureContainer(physicalName, '/tenantId'); // Default partition key to /tenantId
+    if (Object.keys(containerMappings).length > 0) {
+      for (const logicalName in containerMappings) {
+        const physicalName = containerMappings[logicalName];
+        if (logicalName === 'suggested_links' || physicalName.includes('suggested_links')) {
+          await ensureContainer(physicalName, '/tenantId', {
+            defaultTtl: 2592000,
+          });
+        } else {
+          await ensureContainer(physicalName, '/tenantId');
+        }
       }
     }
-  }
 
-  // Initialize connection pool
-  connectionPoolInstance = ConnectionPool.getInstance({
-    maxConnections: parseInt(process.env.COSMOS_DB_MAX_CONNECTIONS || '50', 10),
-    perServiceLimit: parseInt(process.env.COSMOS_DB_PER_SERVICE_LIMIT || '10', 10),
-  });
+    connectionPoolInstance = ConnectionPool.getInstance({
+      maxConnections: parseInt(process.env.COSMOS_DB_MAX_CONNECTIONS || '50', 10),
+      perServiceLimit: parseInt(process.env.COSMOS_DB_PER_SERVICE_LIMIT || '10', 10),
+    });
+  } catch (err) {
+    if (optional) {
+      console.warn(
+        'Cosmos DB optional: connection failed, running without database.',
+        err instanceof Error ? err.message : err
+      );
+      dbClient = null;
+      connectionPoolInstance = null;
+      return;
+    }
+    throw err;
+  }
 }
 
 /**
@@ -156,6 +173,13 @@ export function getCosmosClient(): CosmosDBClient {
     throw new Error('Database not connected. Call connectDatabase() first.');
   }
   return dbClient;
+}
+
+/**
+ * Whether the database is connected (e.g. false when COSMOS_DB_OPTIONAL and connect failed).
+ */
+export function isDatabaseConnected(): boolean {
+  return dbClient != null;
 }
 
 /**

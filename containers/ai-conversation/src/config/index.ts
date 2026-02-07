@@ -4,12 +4,15 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import { parse as parseYaml } from 'yaml';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { AIConversationConfig } from '../types/config.types';
-import { log } from '../utils/logger';
+import { AIConversationConfig } from '../types/config.types.js';
+import { log } from '../utils/logger.js';
 
 let cachedConfig: AIConversationConfig | null = null;
 

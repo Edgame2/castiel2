@@ -3,7 +3,8 @@
  * Orchestrates asynchronous workflows for opportunity change events
  */
 
-import './instrumentation';
+import { fileURLToPath } from 'url';
+import './instrumentation.js';
 
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
@@ -11,9 +12,9 @@ import { initializeDatabase, connectDatabase } from '@coder/shared';
 import { setupJWT } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import { loadConfig } from './config';
-import { log } from './utils/logger';
-import { httpRequestsTotal, httpRequestDurationSeconds, register } from './metrics';
+import { loadConfig } from './config/index.js';
+import { log } from './utils/logger.js';
+import { httpRequestsTotal, httpRequestDurationSeconds, register } from './metrics.js';
 
 let app: FastifyInstance | null = null;
 
@@ -84,9 +85,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   }
 
   try {
-    const { initializeEventPublisher } = await import('./events/publishers/WorkflowEventPublisher');
+    const { initializeEventPublisher } = await import('./events/publishers/WorkflowEventPublisher.js');
     await initializeEventPublisher();
-    const { initializeEventConsumer } = await import('./events/consumers/WorkflowOrchestratorEventConsumer');
+    const { initializeEventConsumer } = await import('./events/consumers/WorkflowOrchestratorEventConsumer.js');
     await initializeEventConsumer();
     log.info('Event publisher and consumer initialized', { service: 'workflow-orchestrator' });
   } catch (error) {
@@ -94,7 +95,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   }
 
   try {
-    const { startBatchJobScheduler } = await import('./jobs/BatchJobScheduler');
+    const { startBatchJobScheduler } = await import('./jobs/BatchJobScheduler.js');
     await startBatchJobScheduler();
   } catch (error) {
     log.warn('Failed to start batch job scheduler', { error, service: 'workflow-orchestrator' });
@@ -145,7 +146,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     });
   });
 
-  const { registerRoutes } = await import('./routes');
+  const { registerRoutes } = await import('./routes/index.js');
   await registerRoutes(fastify as any, config);
 
   const metricsConf = config.metrics ?? { path: '/metrics', require_auth: false, bearer_token: '' };
@@ -208,15 +209,15 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   log.info(`${signal} received, shutting down gracefully`, { service: 'workflow-orchestrator' });
   try {
-    const { stopBatchJobScheduler } = await import('./jobs/BatchJobScheduler');
+    const { stopBatchJobScheduler } = await import('./jobs/BatchJobScheduler.js');
     stopBatchJobScheduler();
   } catch (error) {
     log.error('Error stopping batch job scheduler', error, { service: 'workflow-orchestrator' });
   }
   try {
-    const { closeEventPublisher } = await import('./events/publishers/WorkflowEventPublisher');
+    const { closeEventPublisher } = await import('./events/publishers/WorkflowEventPublisher.js');
     await closeEventPublisher();
-    const { closeEventConsumer } = await import('./events/consumers/WorkflowOrchestratorEventConsumer');
+    const { closeEventConsumer } = await import('./events/consumers/WorkflowOrchestratorEventConsumer.js');
     await closeEventConsumer();
   } catch (error) {
     log.error('Error closing event handlers', error, { service: 'workflow-orchestrator' });
@@ -235,7 +236,8 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   log.error('Unhandled promise rejection', reason as Error, { service: 'workflow-orchestrator', promise: promise.toString() });
 });
 
-if (require.main === module) {
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
   start().catch((error) => {
     console.error('Fatal error starting server:', error);
     process.exit(1);

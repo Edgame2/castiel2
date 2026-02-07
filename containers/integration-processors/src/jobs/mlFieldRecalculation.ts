@@ -6,7 +6,7 @@
 
 import cron from 'node-cron';
 import { ServiceClient, EventPublisher } from '@coder/shared';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 export class MLFieldRecalculationJob {
   private cronJob: cron.ScheduledTask | null = null;

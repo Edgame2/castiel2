@@ -3,9 +3,9 @@
  * Classifies text into categories with tags and subcategories
  */
 
-import { BaseProcessor } from './BaseProcessor';
-import { EnrichmentProcessorType, ClassificationResult } from '../../types/enrichment.types';
-import { log } from '../../utils/logger';
+import { BaseProcessor } from './BaseProcessor.js';
+import { EnrichmentProcessorType, ClassificationResult } from '../../types/enrichment.types.js';
+import { log } from '../../utils/logger.js';
 
 export class ClassificationProcessor extends BaseProcessor {
   getType(): EnrichmentProcessorType {

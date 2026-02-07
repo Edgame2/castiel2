@@ -4,8 +4,8 @@
 
 import { trace } from '@opentelemetry/api';
 import { EventPublisher } from '@coder/shared';
-import { loadConfig } from '../../config';
-import { log } from '../../utils/logger';
+import { loadConfig } from '../../config/index.js';
+import { log } from '../../utils/logger.js';
 
 let publisher: EventPublisher | null = null;
 

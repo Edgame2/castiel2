@@ -17,15 +17,15 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import * as parquet from 'parquetjs';
 import { trace } from '@opentelemetry/api';
 import { EventConsumer } from '@coder/shared';
-import { loadConfig } from '../../config';
-import { log } from '../../utils/logger';
-import { publishJobCompleted, publishJobFailed, publishOpportunityOutcomeRecorded } from '../publishers/RiskAnalyticsEventPublisher';
-import { batchJobDurationSeconds, rabbitmqMessagesConsumedTotal } from '../../metrics';
-import { upsertFromDataLakeRow } from '../../services/RiskSnapshotService';
-import { IndustryBenchmarkService } from '../../services/IndustryBenchmarkService';
-import { AccountHealthService } from '../../services/AccountHealthService';
-import { RiskClusteringService } from '../../services/RiskClusteringService';
-import { RiskPropagationService } from '../../services/RiskPropagationService';
+import { loadConfig } from '../../config/index.js';
+import { log } from '../../utils/logger.js';
+import { publishJobCompleted, publishJobFailed, publishOpportunityOutcomeRecorded } from '../publishers/RiskAnalyticsEventPublisher.js';
+import { batchJobDurationSeconds, rabbitmqMessagesConsumedTotal } from '../../metrics.js';
+import { upsertFromDataLakeRow } from '../../services/RiskSnapshotService.js';
+import { IndustryBenchmarkService } from '../../services/IndustryBenchmarkService.js';
+import { AccountHealthService } from '../../services/AccountHealthService.js';
+import { RiskClusteringService } from '../../services/RiskClusteringService.js';
+import { RiskPropagationService } from '../../services/RiskPropagationService.js';
 
 let consumer: EventConsumer | null = null;
 

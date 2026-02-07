@@ -3,9 +3,9 @@
  * Analyzes sentiment (positive/negative/neutral/mixed) of text
  */
 
-import { BaseProcessor } from './BaseProcessor';
-import { EnrichmentProcessorType, SentimentAnalysisResult } from '../../types/enrichment.types';
-import { log } from '../../utils/logger';
+import { BaseProcessor } from './BaseProcessor.js';
+import { EnrichmentProcessorType, SentimentAnalysisResult } from '../../types/enrichment.types.js';
+import { log } from '../../utils/logger.js';
 
 export class SentimentAnalysisProcessor extends BaseProcessor {
   getType(): EnrichmentProcessorType {

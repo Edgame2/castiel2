@@ -33,7 +33,9 @@ import { AuditService } from './AuditService';
 import { validateSecretValue, validateSecretName } from '../utils/validation';
 
 export class SecretService {
-  private db = getDatabaseClient() as any;
+  private get db() {
+    return getDatabaseClient() as any;
+  }
   private encryptionService: EncryptionService;
   private keyManager: KeyManager;
   private vaultService: VaultService;

@@ -6,7 +6,7 @@
  */
 
 import { getDatabaseClient } from '@coder/shared';
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 // Simple logger for email service
 const log = {

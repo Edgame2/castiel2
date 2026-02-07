@@ -4,8 +4,8 @@
  */
 
 import { getContainer } from '@coder/shared';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import {
   FeedbackType,
   GlobalFeedbackConfig,
@@ -23,8 +23,8 @@ import {
   FeedbackSentiment,
   PatternDetectionTestResult,
 } from '../types/feedback.types';
-import { FEEDBACK_TYPES_SEED, toFeedbackTypeDoc, GLOBAL_FEEDBACK_CONFIG_SEED } from '../constants/feedback-types-seed';
-import { publishRecommendationEvent } from '../events/publishers/RecommendationEventPublisher';
+import { FEEDBACK_TYPES_SEED, toFeedbackTypeDoc, GLOBAL_FEEDBACK_CONFIG_SEED } from '../constants/feedback-types-seed.js';
+import { publishRecommendationEvent } from '../events/publishers/RecommendationEventPublisher.js';
 
 const GLOBAL_TENANT_ID = '_global';
 

@@ -21,12 +21,16 @@ export interface JWTSetupOptions {
  * Setup JWT authentication on Fastify instance
  * Registers @fastify/jwt plugin with configured options
  */
+const DEV_JWT_SECRET = 'dev-jwt-secret-min-32-chars-for-local-compose';
+
 export async function setupJWT(
   server: FastifyInstance,
   options: JWTSetupOptions
 ): Promise<void> {
-  if (!options.secret) {
-    throw new Error('JWT secret is required');
+  const secret = options.secret || process.env.JWT_SECRET;
+  const effectiveSecret = secret || (process.env.NODE_ENV === 'development' ? DEV_JWT_SECRET : '');
+  if (!effectiveSecret) {
+    throw new Error('JWT secret is required (set JWT_SECRET in production)');
   }
 
   const jwtSignOptions: any = {
@@ -48,7 +52,7 @@ export async function setupJWT(
   }
 
   await server.register(fastifyJwt, {
-    secret: options.secret,
+    secret: effectiveSecret,
     sign: jwtSignOptions,
     verify: jwtVerifyOptions,
   });

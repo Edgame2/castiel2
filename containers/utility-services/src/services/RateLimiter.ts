@@ -5,7 +5,7 @@
  * Will be fully implemented in Phase 4 with Redis
  */
 
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export class RateLimiter {
   private config = getConfig();

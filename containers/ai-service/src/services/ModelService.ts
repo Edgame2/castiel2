@@ -1,7 +1,9 @@
 import { getDatabaseClient } from '@coder/shared';
 
 export class ModelService {
-  private db = getDatabaseClient();
+  private get db() {
+    return getDatabaseClient();
+  }
 
   async listModels() {
     // Return available models (can be extended to query database)

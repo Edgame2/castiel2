@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
 import { BlobServiceClient } from '@azure/storage-blob';
 import * as parquet from 'parquetjs';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 const ML_OUTCOMES_SCHEMA = new parquet.ParquetSchema({
   tenantId: { type: 'UTF8' },

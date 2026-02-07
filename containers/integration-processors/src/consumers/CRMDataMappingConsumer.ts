@@ -6,10 +6,10 @@
 
 import { EventConsumer, FieldMapperService, ShardValidator, OpportunityEventDebouncer, getCache } from '@coder/shared';
 import type { ValidationConfig, ShardValidationError } from '@coder/shared';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { BaseConsumer, ConsumerDependencies } from './index';
-import { PrefetchManager } from '../utils/prefetchManager';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { BaseConsumer, ConsumerDependencies } from './index.js';
+import { PrefetchManager } from '../utils/prefetchManager.js';
 import {
   integrationDataMappedTotal,
   integrationDataMappingFailedTotal,
@@ -20,7 +20,7 @@ import {
   shardOperationDurationSeconds,
   idempotencyChecksTotal,
   configCacheOperationsTotal,
-} from '../metrics';
+} from '../metrics.js';
 
 interface IntegrationDataRawEvent {
   integrationId: string;

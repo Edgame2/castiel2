@@ -9,8 +9,8 @@ import { initializeDatabase, connectDatabase } from '@coder/shared';
 import { setupJWT } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import { loadConfig } from './config';
-import { log } from './utils/logger';
+import { loadConfig } from './config/index.js';
+import { log } from './utils/logger.js';
 
 let app: FastifyInstance | null = null;
 
@@ -80,7 +80,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   }
 
   try {
-    const { initializeEventPublisher } = await import('./events/publishers/QualityMonitoringEventPublisher');
+    const { initializeEventPublisher } = await import('./events/publishers/QualityMonitoringEventPublisher.js');
     await initializeEventPublisher();
     log.info('Event publisher initialized', { service: 'quality_monitoring' });
   } catch (error) {
@@ -129,7 +129,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     });
   });
 
-  const { registerRoutes } = await import('./routes');
+  const { registerRoutes } = await import('./routes/index.js');
   await registerRoutes(fastify, config);
 
   fastify.get('/health', async () => ({
@@ -179,7 +179,7 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   log.info(`${signal} received, shutting down gracefully`, { service: 'quality_monitoring' });
   try {
-    const { closeEventPublisher } = await import('./events/publishers/QualityMonitoringEventPublisher');
+    const { closeEventPublisher } = await import('./events/publishers/QualityMonitoringEventPublisher.js');
     await closeEventPublisher();
   } catch (error) {
     log.error('Error closing event publisher', error, { service: 'quality_monitoring' });
@@ -198,9 +198,7 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   log.error('Unhandled promise rejection', reason as Error, { service: 'quality_monitoring', promise: promise.toString() });
 });
 
-if (require.main === module) {
-  start().catch((error) => {
-    console.error('Fatal error starting server:', error);
-    process.exit(1);
-  });
-}
+start().catch((error) => {
+  console.error('Fatal error starting server:', error);
+  process.exit(1);
+});

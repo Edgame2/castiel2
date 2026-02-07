@@ -5,7 +5,7 @@
  */
 
 import * as amqp from 'amqplib';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 /**
  * Queue definition with routing keys

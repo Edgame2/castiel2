@@ -5,7 +5,7 @@
 
 import { FastifyInstance } from 'fastify';
 import { authenticateRequest, tenantEnforcementMiddleware, getContainer } from '@coder/shared';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 /**
  * Document processing configuration

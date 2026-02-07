@@ -4,7 +4,7 @@
  */
 
 import { ServiceClient } from '@coder/shared';
-import { loadConfig } from '../config';
+import { loadConfig } from '../config/index.js';
 
 export interface ProductRule {
   type?: string;

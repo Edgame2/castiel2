@@ -4,7 +4,7 @@
  * @module integration-processors/utils/prefetchManager
  */
 
-import { log } from './logger';
+import { log } from './logger.js';
 
 export interface PrefetchConfig {
   min: number;

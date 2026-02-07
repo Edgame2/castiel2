@@ -6,11 +6,11 @@
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { RiskEvaluationService } from './RiskEvaluationService';
-import { publishRiskAnalyticsEvent } from '../events/publishers/RiskAnalyticsEventPublisher';
-import { getSnapshots } from './RiskSnapshotService';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { RiskEvaluationService } from './RiskEvaluationService.js';
+import { publishRiskAnalyticsEvent } from '../events/publishers/RiskAnalyticsEventPublisher.js';
+import { getSnapshots } from './RiskSnapshotService.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export type SignalType = 'stage_stagnation' | 'activity_drop' | 'stakeholder_churn' | 'risk_acceleration' | 'anomaly';

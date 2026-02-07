@@ -7,15 +7,15 @@
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { ContextAssemblyService } from './ContextAssemblyService';
-import { ConversationService } from './ConversationService';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { ContextAssemblyService } from './ContextAssemblyService.js';
+import { ConversationService } from './ConversationService.js';
 import {
   ContextRetrievalOptions,
   ContextRetrievalResult,
   SimilarConversation,
-} from '../types/conversation-context-retrieval.types';
+} from '../types/conversation-context-retrieval.types.js';
 
 export class ConversationContextRetrievalService {
   private config: ReturnType<typeof loadConfig>;

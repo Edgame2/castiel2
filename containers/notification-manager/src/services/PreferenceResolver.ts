@@ -10,7 +10,9 @@ import { NotificationPreferences, PreferenceScope, ResolvedPreferences } from '.
 import { getConfig } from '../config';
 
 export class PreferenceResolver {
-  private db = getDatabaseClient() as any;
+  private get db() {
+    return getDatabaseClient() as any;
+  }
   private config = getConfig();
 
   /**

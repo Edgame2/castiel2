@@ -15,7 +15,7 @@ import {
   publishRemediationWorkflowCreated,
   publishRemediationStepCompleted,
   publishRemediationWorkflowCompleted,
-} from '../events/publishers/RecommendationEventPublisher';
+} from '../events/publishers/RecommendationEventPublisher.js';
 
 const CONTAINER = 'recommendation_remediation_workflows';
 

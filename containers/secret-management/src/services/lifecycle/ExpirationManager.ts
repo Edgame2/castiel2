@@ -17,7 +17,9 @@ export interface ExpirationCheckResult {
 }
 
 export class ExpirationManager {
-  private db = getDatabaseClient() as any;
+  private get db() {
+    return getDatabaseClient() as any;
+  }
   
   /**
    * Check for expiring and expired secrets

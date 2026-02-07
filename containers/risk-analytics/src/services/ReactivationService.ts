@@ -6,12 +6,12 @@
 
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import {
   publishReactivationOpportunityIdentified,
   publishReactivationStrategyGenerated,
-} from '../events/publishers/RiskAnalyticsEventPublisher';
+} from '../events/publishers/RiskAnalyticsEventPublisher.js';
 
 export interface EvaluateReactivationOptions {
   minProbability?: number;

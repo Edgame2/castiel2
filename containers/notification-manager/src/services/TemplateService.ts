@@ -31,7 +31,7 @@ export interface UpdateTemplateInput {
 }
 
 export class TemplateService {
-  private db = getDatabaseClient() as any;
+  private get db() { return getDatabaseClient() as any; }
 
   /**
    * Get template by ID

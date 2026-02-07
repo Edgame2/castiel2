@@ -3,14 +3,15 @@
  * Integration synchronization and adapter management
  */
 
+import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
 import { initializeDatabase, connectDatabase } from '@coder/shared';
 import { setupJWT } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import { loadConfig } from './config';
-import { log } from './utils/logger';
+import { loadConfig } from './config/index.js';
+import { log } from './utils/logger.js';
 
 let app: FastifyInstance | null = null;
 let syncScheduler: any = null;
@@ -83,13 +84,13 @@ export async function buildApp(): Promise<FastifyInstance> {
   }
 
   try {
-    const { initializeEventPublisher } = await import('./events/publishers/IntegrationSyncEventPublisher');
+    const { initializeEventPublisher } = await import('./events/publishers/IntegrationSyncEventPublisher.js');
     await initializeEventPublisher();
-    const { initializeEventConsumer } = await import('./events/consumers/IntegrationSyncEventConsumer');
+    const { initializeEventConsumer } = await import('./events/consumers/IntegrationSyncEventConsumer.js');
     await initializeEventConsumer(fastify);
     
     // Initialize sync task event consumer (for scheduled syncs)
-    const { initializeEventConsumer: initializeSyncTaskConsumer } = await import('./events/consumers/SyncTaskEventConsumer');
+    const { initializeEventConsumer: initializeSyncTaskConsumer } = await import('./events/consumers/SyncTaskEventConsumer.js');
     await initializeSyncTaskConsumer(fastify);
     
     log.info('Event publisher and consumers initialized', { service: 'integration-sync' });
@@ -99,7 +100,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Initialize sync scheduler
   try {
-    const { SyncSchedulerService } = await import('./services/SyncSchedulerService');
+    const { SyncSchedulerService } = await import('./services/SyncSchedulerService.js');
     syncScheduler = new SyncSchedulerService(fastify);
     await syncScheduler.start();
     log.info('Sync scheduler initialized and started', { service: 'integration-sync' });
@@ -109,7 +110,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Initialize token refresh worker
   try {
-    const { TokenRefreshService } = await import('./services/TokenRefreshService');
+    const { TokenRefreshService } = await import('./services/TokenRefreshService.js');
     tokenRefreshService = new TokenRefreshService(fastify);
     await tokenRefreshService.start();
     log.info('Token refresh worker initialized and started', { service: 'integration-sync' });
@@ -159,7 +160,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     });
   });
 
-  const { registerRoutes } = await import('./routes');
+  const { registerRoutes } = await import('./routes/index.js');
   await registerRoutes(fastify, config);
 
   fastify.get('/health', async () => ({
@@ -221,11 +222,11 @@ async function gracefulShutdown(signal: string): Promise<void> {
     }
     
     // Close event handlers
-    const { closeEventPublisher } = await import('./events/publishers/IntegrationSyncEventPublisher');
+    const { closeEventPublisher } = await import('./events/publishers/IntegrationSyncEventPublisher.js');
     await closeEventPublisher();
-    const { closeEventConsumer } = await import('./events/consumers/IntegrationSyncEventConsumer');
+    const { closeEventConsumer } = await import('./events/consumers/IntegrationSyncEventConsumer.js');
     await closeEventConsumer();
-    const { closeEventConsumer: closeSyncTaskConsumer } = await import('./events/consumers/SyncTaskEventConsumer');
+    const { closeEventConsumer: closeSyncTaskConsumer } = await import('./events/consumers/SyncTaskEventConsumer.js');
     await closeSyncTaskConsumer();
   } catch (error) {
     log.error('Error during graceful shutdown', error, { service: 'integration-sync' });
@@ -244,7 +245,8 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
   log.error('Unhandled promise rejection', reason instanceof Error ? reason : new Error(String(reason)), { service: 'integration-sync', promise: String(promise) });
 });
 
-if (require.main === module) {
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
   start().catch((error) => {
     console.error('Fatal error starting server:', error);
     process.exit(1);

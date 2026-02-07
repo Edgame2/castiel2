@@ -4,9 +4,9 @@
  */
 
 import { getContainer } from '@coder/shared/database';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { AssembledContext } from './ContextAssemblyService';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { AssembledContext } from './ContextAssemblyService.js';
 
 export interface QualityAssessment {
   score: number;

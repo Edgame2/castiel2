@@ -29,7 +29,9 @@ export interface CompletionResponse {
 }
 
 export class CompletionService {
-  private db = getDatabaseClient();
+  private get db() {
+    return getDatabaseClient();
+  }
   private openaiClient: HttpClient | null = null;
 
   constructor() {

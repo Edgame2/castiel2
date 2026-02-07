@@ -5,9 +5,9 @@
 
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { FastifyInstance } from 'fastify';
-import { log } from '../../utils/logger';
-import { IEnrichmentProcessor } from './IEnrichmentProcessor';
-import { EnrichmentProcessorType } from '../../types/enrichment.types';
+import { log } from '../../utils/logger.js';
+import { IEnrichmentProcessor } from './IEnrichmentProcessor.js';
+import { EnrichmentProcessorType } from '../../types/enrichment.types.js';
 
 export abstract class BaseProcessor implements IEnrichmentProcessor {
   protected aiServiceClient: ServiceClient;

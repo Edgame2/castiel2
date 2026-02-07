@@ -4,7 +4,7 @@
  * Prevents cascading failures by opening circuit after threshold failures
  */
 
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export interface CircuitBreakerState {
   state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';

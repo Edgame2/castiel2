@@ -9,7 +9,7 @@
 
 import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 export interface RiskPropagationResult {
   opportunityId: string;

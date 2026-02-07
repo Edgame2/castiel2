@@ -4,7 +4,6 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import multipart from '@fastify/multipart';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { DocumentService } from '../services/DocumentService';
 import { CollectionService } from '../services/CollectionService';
@@ -23,12 +22,7 @@ export async function registerRoutes(
   app: FastifyInstance,
   config: any
 ): Promise<void> {
-  // Register multipart for file uploads
-  await app.register(multipart, {
-    limits: {
-      fileSize: 100 * 1024 * 1024, // 100MB default limit
-    },
-  });
+  // Multipart is registered in server.ts
 
   // Initialize blob storage service
   const blobStorageConfig: BlobStorageConfig = {

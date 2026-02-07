@@ -28,7 +28,7 @@ export interface UpdatePreferenceInput {
 }
 
 export class PreferenceService {
-  private db = getDatabaseClient() as any;
+  private get db() { return getDatabaseClient() as any; }
 
   /**
    * Get effective preferences for a scope

@@ -6,8 +6,8 @@
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import {
   RevenueAtRisk,
   PortfolioRevenueAtRisk,
@@ -15,8 +15,8 @@ import {
   TenantRevenueAtRisk,
   RiskEvaluationResult,
 } from '../types/risk-analytics.types';
-import { RiskEvaluationService } from './RiskEvaluationService';
-import { publishRiskAnalyticsEvent } from '../events/publishers/RiskAnalyticsEventPublisher';
+import { RiskEvaluationService } from './RiskEvaluationService.js';
+import { publishRiskAnalyticsEvent } from '../events/publishers/RiskAnalyticsEventPublisher.js';
 import { v4 as uuidv4 } from 'uuid';
 
 // Risk score thresholds

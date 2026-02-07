@@ -6,10 +6,10 @@
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { RevenueAtRiskService } from './RevenueAtRiskService';
-import { publishRiskAnalyticsEvent } from '../events/publishers/RiskAnalyticsEventPublisher';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { RevenueAtRiskService } from './RevenueAtRiskService.js';
+import { publishRiskAnalyticsEvent } from '../events/publishers/RiskAnalyticsEventPublisher.js';
 
 export type QuotaType = 'individual' | 'team' | 'tenant';
 export type QuotaPeriodType = 'monthly' | 'quarterly' | 'yearly';

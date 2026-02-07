@@ -4,7 +4,7 @@
  * Collects Prometheus metrics for notification delivery
  */
 
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 import { NotificationChannel, NotificationStatus } from '../types/notification';
 
 export class MetricsCollector {

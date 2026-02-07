@@ -5,12 +5,25 @@
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { z } from 'zod';
 
+/** Ensure exclusiveMinimum is number (Fastify expects number, not boolean) */
+function fixExclusiveMinimum(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (obj.exclusiveMinimum === true) {
+    obj.exclusiveMinimum = 0;
+  }
+  for (const key of Object.keys(obj)) {
+    fixExclusiveMinimum(obj[key]);
+  }
+  return obj;
+}
+
 /**
  * Convert a Zod schema to JSON Schema format for Fastify
  */
 export function zodToFastifySchema(zodSchema: z.ZodTypeAny): any {
   const opts = { target: 'openApi3', $refStrategy: 'none' as const };
-  return zodToJsonSchema(zodSchema as any, opts as any);
+  const schema = zodToJsonSchema(zodSchema as any, opts as any);
+  return fixExclusiveMinimum(schema);
 }
 
 

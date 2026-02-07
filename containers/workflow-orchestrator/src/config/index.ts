@@ -3,11 +3,14 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import { parse as parseYaml } from 'yaml';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 export interface WorkflowOrchestratorConfig {
   module: { name: string; version: string };
@@ -105,11 +108,20 @@ export function loadConfig(): WorkflowOrchestratorConfig {
   
   const config = deepMerge(defaultConfig, envConfig);
   const resolved = resolveEnvVars(config) as WorkflowOrchestratorConfig;
-  
   if (typeof resolved.server.port === 'string') {
     resolved.server.port = parseInt(resolved.server.port, 10);
   }
-  
+  const toBool = (v: unknown) => (typeof v === 'string' ? v === 'true' : v);
+  if (resolved.application_insights && typeof resolved.application_insights.disable !== 'undefined') {
+    resolved.application_insights.disable = toBool(resolved.application_insights.disable) as boolean;
+  }
+  if (resolved.metrics && typeof resolved.metrics.require_auth !== 'undefined') {
+    resolved.metrics.require_auth = toBool(resolved.metrics.require_auth) as boolean;
+  }
+  if (resolved.batch_jobs && typeof resolved.batch_jobs.enabled !== 'undefined') {
+    resolved.batch_jobs.enabled = toBool(resolved.batch_jobs.enabled) as boolean;
+  }
+
   const ajv = new Ajv({ allErrors: true, useDefaults: true });
   addFormats(ajv);
   const validate = ajv.compile(schema);

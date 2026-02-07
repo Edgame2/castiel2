@@ -9,8 +9,8 @@ import { initializeDatabase, connectDatabase } from '@coder/shared';
 import { setupJWT } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import { loadConfig } from './config';
-import { log } from './utils/logger';
+import { loadConfig } from './config/index.js';
+import { log } from './utils/logger.js';
 
 let app: FastifyInstance | null = null;
 
@@ -80,7 +80,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   }
 
   try {
-    const { initializeEventPublisher } = await import('./events/publishers/SignalIntelligenceEventPublisher');
+    const { initializeEventPublisher } = await import('./events/publishers/SignalIntelligenceEventPublisher.js');
     await initializeEventPublisher();
     log.info('Event publisher initialized', { service: 'signal_intelligence' });
   } catch (error) {
@@ -129,7 +129,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     });
   });
 
-  const { registerRoutes } = await import('./routes');
+  const { registerRoutes } = await import('./routes/index.js');
   await registerRoutes(fastify, config);
 
   fastify.get('/health', async () => ({
@@ -179,7 +179,7 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   log.info(`${signal} received, shutting down gracefully`, { service: 'signal_intelligence' });
   try {
-    const { closeEventPublisher } = await import('./events/publishers/SignalIntelligenceEventPublisher');
+    const { closeEventPublisher } = await import('./events/publishers/SignalIntelligenceEventPublisher.js');
     await closeEventPublisher();
   } catch (error) {
     log.error('Error closing event publisher', error, { service: 'signal_intelligence' });
@@ -198,9 +198,7 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   log.error('Unhandled promise rejection', reason as Error, { service: 'signal_intelligence', promise: promise.toString() });
 });
 
-if (require.main === module) {
-  start().catch((error) => {
-    console.error('Fatal error starting server:', error);
-    process.exit(1);
-  });
-}
+start().catch((error) => {
+  console.error('Fatal error starting server:', error);
+  process.exit(1);
+});

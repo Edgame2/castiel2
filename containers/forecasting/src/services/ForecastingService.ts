@@ -7,8 +7,8 @@
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import {
   ForecastRequest,
   ForecastResult,
@@ -22,10 +22,10 @@ import {
   TeamForecastAggregateResult,
   TenantForecastAggregateRequest,
   TenantForecastAggregateResult,
-} from '../types/forecasting.types';
-import { publishForecastEvent } from '../events/publishers/ForecastingEventPublisher';
+} from '../types/forecasting.types.js';
+import { publishForecastEvent } from '../events/publishers/ForecastingEventPublisher.js';
 import { v4 as uuidv4 } from 'uuid';
-import { ForecastAccuracyService } from './ForecastAccuracyService';
+import { ForecastAccuracyService } from './ForecastAccuracyService.js';
 
 export class ForecastingService {
   private config: ReturnType<typeof loadConfig>;

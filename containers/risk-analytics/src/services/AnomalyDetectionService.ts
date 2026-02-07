@@ -7,8 +7,8 @@
 
 import { randomUUID } from 'crypto';
 import { getContainer } from '@coder/shared/database';
-import { log } from '../utils/logger';
-import { publishAnomalyDetected } from '../events/publishers/RiskAnalyticsEventPublisher';
+import { log } from '../utils/logger.js';
+import { publishAnomalyDetected } from '../events/publishers/RiskAnalyticsEventPublisher.js';
 
 export interface AnomalyAlert {
   id: string;

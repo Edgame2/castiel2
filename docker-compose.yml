@@ -85,12 +85,14 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3021
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://localhost:5432/auth_placeholder}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on:
       - redis
       - rabbitmq
@@ -107,12 +109,14 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3022
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://localhost:5432/user_management_placeholder}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on:
       - redis
       - rabbitmq
@@ -130,11 +134,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3003
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - SECRET_MASTER_KEY=${SECRET_MASTER_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on:
       - redis
       - rabbitmq
@@ -151,11 +157,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3014
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://localhost:5432/logging_placeholder}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on:
       - redis
       - rabbitmq
@@ -172,11 +180,12 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3001
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on:
       - redis
       - rabbitmq
@@ -194,12 +203,13 @@ services:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3000
       - CONSUMER_TYPE=light
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
       - SHARD_MANAGER_URL=${SHARD_MANAGER_URL:-http://shard-manager:3023}
       - INTEGRATION_MANAGER_URL=${INTEGRATION_MANAGER_URL:-http://integration-manager:3012}
       - AUTH_URL=${AUTH_URL:-http://auth:3021}
@@ -236,12 +246,13 @@ services:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3000
       - CONSUMER_TYPE=heavy
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
       - SHARD_MANAGER_URL=${SHARD_MANAGER_URL:-http://shard-manager:3023}
       - INTEGRATION_MANAGER_URL=${INTEGRATION_MANAGER_URL:-http://integration-manager:3012}
       - AUTH_URL=${AUTH_URL:-http://auth:3021}
@@ -280,12 +291,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3006
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -296,12 +308,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3005
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -312,12 +325,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3023
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -328,12 +342,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3024
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -344,12 +359,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3025
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -360,12 +376,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3026
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -376,12 +393,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3027
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -392,12 +410,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3028
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -408,12 +427,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3029
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -424,12 +444,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3030
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -440,12 +461,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3031
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -456,12 +478,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3032
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
       - AI_SERVICE_URL=http://ai-service:3006
       - ML_SERVICE_URL=http://ml-service:3033
     depends_on: [redis, rabbitmq]
@@ -474,12 +497,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3033
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -490,12 +514,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3034
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -506,12 +531,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3034
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -522,12 +548,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3035
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -538,12 +565,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3036
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -554,12 +582,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3037
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -570,12 +599,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3044
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -586,12 +616,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3045
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -602,12 +633,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3046
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -618,12 +650,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3047
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -634,12 +667,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3048
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -650,12 +684,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3049
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -666,12 +701,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3050
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -682,12 +718,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3051
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -698,12 +735,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3052
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
       - INTEGRATION_MANAGER_URL=http://integration-manager:3026
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
@@ -715,12 +753,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3054
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -731,12 +770,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3056
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -747,12 +787,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3059
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -763,12 +804,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3060
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -779,12 +821,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3061
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -795,12 +838,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3063
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -811,12 +855,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3011
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -827,12 +872,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3037
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped
@@ -843,12 +889,13 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3036
-      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT}
-      - COSMOS_DB_KEY=${COSMOS_DB_KEY}
+      - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
+      - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}
       - COSMOS_DB_DATABASE_ID=${COSMOS_DB_DATABASE_ID:-castiel}
+      - COSMOS_DB_OPTIONAL=${COSMOS_DB_OPTIONAL:-1}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
-      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on: [redis, rabbitmq]
     networks: [castiel-network]
     restart: unless-stopped

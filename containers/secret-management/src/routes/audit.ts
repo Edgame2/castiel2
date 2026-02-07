@@ -19,7 +19,6 @@ const auditLogsSchema = z.object({
 });
 
 export async function auditRoutes(fastify: FastifyInstance) {
-  const db = getDatabaseClient() as any;
   const complianceService = new ComplianceService();
 
   // List audit logs
@@ -61,6 +60,7 @@ export async function auditRoutes(fastify: FastifyInstance) {
         where.organizationId = user.organizationId;
       }
       
+      const db = getDatabaseClient() as any;
       const logs = await db.secret_audit_logs.findMany({
         where,
         orderBy: {
@@ -81,6 +81,7 @@ export async function auditRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       
+      const db = getDatabaseClient() as any;
       const log = await db.secret_audit_logs.findUnique({
         where: { id },
       });

@@ -3,9 +3,9 @@
  * Extracts key phrases and topics from text
  */
 
-import { BaseProcessor } from './BaseProcessor';
-import { EnrichmentProcessorType, KeyPhrasesResult } from '../../types/enrichment.types';
-import { log } from '../../utils/logger';
+import { BaseProcessor } from './BaseProcessor.js';
+import { EnrichmentProcessorType, KeyPhrasesResult } from '../../types/enrichment.types.js';
+import { log } from '../../utils/logger.js';
 
 export class KeyPhrasesProcessor extends BaseProcessor {
   getType(): EnrichmentProcessorType {

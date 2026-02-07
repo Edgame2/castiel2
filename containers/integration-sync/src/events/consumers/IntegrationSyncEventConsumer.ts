@@ -5,9 +5,9 @@
 
 import { EventConsumer } from '@coder/shared';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../../config';
-import { log } from '../../utils/logger';
-import { IntegrationSyncService } from '../../services/IntegrationSyncService';
+import { loadConfig } from '../../config/index.js';
+import { log } from '../../utils/logger.js';
+import { IntegrationSyncService } from '../../services/IntegrationSyncService.js';
 
 let consumer: EventConsumer | null = null;
 let integrationSyncService: IntegrationSyncService | null = null;

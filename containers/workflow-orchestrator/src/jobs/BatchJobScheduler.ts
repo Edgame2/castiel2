@@ -10,10 +10,10 @@
  */
 
 import { schedule as cronSchedule, validate as cronValidate } from 'node-cron';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { publishJobTrigger } from '../events/publishers/WorkflowEventPublisher';
-import { batchJobTriggersTotal } from '../metrics';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { publishJobTrigger } from '../events/publishers/WorkflowEventPublisher.js';
+import { batchJobTriggersTotal } from '../metrics.js';
 
 type CronTask = ReturnType<typeof cronSchedule>;
 const cronJobs: CronTask[] = [];

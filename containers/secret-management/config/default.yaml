@@ -21,27 +21,28 @@ cosmos_db:
     audit_logs: secret_audit_logs
     encryption_keys: secret_encryption_keys
 
-# Legacy database.url for backward compatibility
+# Legacy database.url for backward compatibility (required by schema; use Cosmos in practice)
 database:
-  url: ${DATABASE_URL}
+  url: ${DATABASE_URL:-https://cosmos.placeholder.local}
 
 encryption:
-  masterKey: ${SECRET_MASTER_KEY}  # Required, 64 hex characters
+  # Required in production; 64 hex chars. Dev default only for schema/local.
+  masterKey: ${SECRET_MASTER_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
   algorithm: AES-256-GCM
   keyRotation:
     enabled: true
     intervalDays: 90
 
 service:
-  authToken: ${SERVICE_AUTH_TOKEN}  # Required
+  authToken: ${SERVICE_AUTH_TOKEN:-dev-auth-token}  # Required in production
 
 rabbitmq:
   url: ${RABBITMQ_URL}
   exchange: ${RABBITMQ_EXCHANGE:-coder_events}
 
 logging:
-  serviceUrl: ${LOGGING_SERVICE_URL}
-  enabled: ${LOGGING_ENABLED:-true}
+  serviceUrl: ${LOGGING_SERVICE_URL:-http://logging:3014}
+  enabled: true
   level: ${LOG_LEVEL:-info}
 
 # Secret Management specific settings

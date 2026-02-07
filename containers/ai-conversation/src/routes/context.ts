@@ -3,14 +3,14 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { AIConversationConfig } from '../types/config.types';
+import { AIConversationConfig } from '../types/config.types.js';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
-import { ConversationService } from '../services/ConversationService';
-import { ContextAssemblyService } from '../services/ContextAssemblyService';
-import { GroundingService } from '../services/GroundingService';
-import { IntentAnalyzerService } from '../services/IntentAnalyzerService';
-import { log } from '../utils/logger';
+import { ConversationService } from '../services/ConversationService.js';
+import { ContextAssemblyService } from '../services/ContextAssemblyService.js';
+import { GroundingService } from '../services/GroundingService.js';
+import { IntentAnalyzerService } from '../services/IntentAnalyzerService.js';
+import { log } from '../utils/logger.js';
 
 /**
  * Register context routes

@@ -6,7 +6,7 @@
  */
 
 import { NotificationCriticality } from '../types/notification';
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export class RetryService {
   private config = getConfig();

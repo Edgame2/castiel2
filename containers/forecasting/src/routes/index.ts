@@ -3,14 +3,14 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
-import { ForecastingService } from '../services/ForecastingService';
-import { ForecastAccuracyService } from '../services/ForecastAccuracyService';
+import { ForecastingService } from '../services/ForecastingService.js';
+import { ForecastAccuracyService } from '../services/ForecastAccuracyService.js';
 import { getContainer } from '@coder/shared/database';
-import type { ForecastType, TeamForecastAggregateRequest } from '../types/forecasting.types';
-import { forecastsGeneratedTotal } from '../metrics';
+import type { ForecastType, TeamForecastAggregateRequest } from '../types/forecasting.types.js';
+import { forecastsGeneratedTotal } from '../metrics.js';
 
 /**
  * Register all routes

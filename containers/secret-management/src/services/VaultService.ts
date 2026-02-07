@@ -41,7 +41,9 @@ export interface CreateVaultParams {
 }
 
 export class VaultService {
-  private db = getDatabaseClient() as any;
+  private get db() {
+    return getDatabaseClient() as any;
+  }
   private encryptionService: EncryptionService;
   private keyManager: KeyManager;
   private auditService: AuditService;

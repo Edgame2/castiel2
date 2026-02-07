@@ -4,19 +4,19 @@
  * Creates and configures NotificationEngine instance
  */
 
-import { NotificationEngine } from './NotificationEngine';
-import { RoutingEngine } from './RoutingEngine';
-import { PreferenceResolver } from './PreferenceResolver';
-import { TemplateEngine } from './TemplateEngine';
-import { VariableResolver } from './VariableResolver';
-import { DeliveryManager } from './DeliveryManager';
-import { PresenceTracker } from './PresenceTracker';
-import { QuietHoursService } from './QuietHoursService';
-import { DeliveryTracker } from './DeliveryTracker';
-import { RetryService } from './RetryService';
-import { DeduplicationService } from './DeduplicationService';
-import { RateLimiter } from './RateLimiter';
-import { getConfig } from '../config';
+import { NotificationEngine } from './NotificationEngine.js';
+import { RoutingEngine } from './RoutingEngine.js';
+import { PreferenceResolver } from './PreferenceResolver.js';
+import { TemplateEngine } from './TemplateEngine.js';
+import { VariableResolver } from './VariableResolver.js';
+import { DeliveryManager } from './DeliveryManager.js';
+import { PresenceTracker } from './PresenceTracker.js';
+import { QuietHoursService } from './QuietHoursService.js';
+import { DeliveryTracker } from './DeliveryTracker.js';
+import { RetryService } from './RetryService.js';
+import { DeduplicationService } from './DeduplicationService.js';
+import { RateLimiter } from './RateLimiter.js';
+import { getConfig } from '../config/index.js';
 
 let engineInstance: NotificationEngine | null = null;
 

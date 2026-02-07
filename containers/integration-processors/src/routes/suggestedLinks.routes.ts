@@ -6,8 +6,8 @@
 import { FastifyInstance } from 'fastify';
 import { authenticateRequest, tenantEnforcementMiddleware, ServiceClient } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
-import { log } from '../utils/logger';
-import { loadConfig } from '../config';
+import { log } from '../utils/logger.js';
+import { loadConfig } from '../config/index.js';
 
 /**
  * Map shard type to relationship type for entity linking

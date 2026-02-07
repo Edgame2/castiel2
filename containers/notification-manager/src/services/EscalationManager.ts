@@ -26,7 +26,7 @@ export interface EscalationChain {
 }
 
 export class EscalationManager {
-  private db = getDatabaseClient() as any;
+  private get db() { return getDatabaseClient() as any; }
   private config = getConfig();
   private notificationEngine: NotificationEngine;
 

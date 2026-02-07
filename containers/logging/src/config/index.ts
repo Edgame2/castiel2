@@ -127,6 +127,14 @@ export function loadConfig(): LoggingConfig {
     resolved.server.port = parseInt(resolved.server.port, 10);
   }
   
+  // Coerce boolean env vars (YAML interpolation yields strings)
+  if (resolved.application_insights && typeof resolved.application_insights.disable === 'string') {
+    resolved.application_insights.disable = resolved.application_insights.disable === 'true';
+  }
+  if (resolved.metrics && typeof resolved.metrics.require_auth === 'string') {
+    resolved.metrics.require_auth = resolved.metrics.require_auth === 'true';
+  }
+  
   // Validate against schema
   const ajv = new Ajv({ allErrors: true, useDefaults: true });
   addFormats(ajv);

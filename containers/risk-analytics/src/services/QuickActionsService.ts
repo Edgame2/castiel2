@@ -5,8 +5,8 @@
  * integration-manager, or recommendations (start_remediation when POST /remediation-workflows exists).
  */
 
-import { publishOpportunityQuickActionRequested } from '../events/publishers/RiskAnalyticsEventPublisher';
-import { log } from '../utils/logger';
+import { publishOpportunityQuickActionRequested } from '../events/publishers/RiskAnalyticsEventPublisher.js';
+import { log } from '../utils/logger.js';
 
 export type QuickActionType = 'create_task' | 'log_activity' | 'start_remediation';
 

@@ -3,11 +3,11 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
-import { QualityMonitoringService } from '../services/QualityMonitoringService';
+import { QualityMonitoringService } from '../services/QualityMonitoringService.js';
 
 /**
  * Register all routes

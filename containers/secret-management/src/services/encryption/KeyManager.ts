@@ -22,17 +22,22 @@ export interface EncryptionKey {
 }
 
 export class KeyManager {
-  private db = getDatabaseClient() as any;
+  private get db() {
+    return getDatabaseClient() as any;
+  }
   private masterKey: Buffer;
   
   constructor() {
-    // Get master key from environment
-    const masterKeyEnv = process.env.SECRET_MASTER_KEY;
-    if (!masterKeyEnv) {
-      throw new Error('SECRET_MASTER_KEY environment variable is required');
+    // Get master key from environment (dev fallback: 64 hex zeros when unset)
+    let masterKeyEnv = process.env.SECRET_MASTER_KEY;
+    if (!masterKeyEnv || masterKeyEnv.length !== 64) {
+      if (process.env.NODE_ENV === 'development') {
+        masterKeyEnv = '0'.repeat(64);
+      } else {
+        if (!masterKeyEnv) throw new Error('SECRET_MASTER_KEY environment variable is required');
+        throw new Error('SECRET_MASTER_KEY must be 64 hex characters (32 bytes)');
+      }
     }
-    
-    // Master key should be 32 bytes (256 bits) for AES-256
     this.masterKey = Buffer.from(masterKeyEnv, 'hex');
     if (this.masterKey.length !== 32) {
       throw new Error('SECRET_MASTER_KEY must be 64 hex characters (32 bytes)');

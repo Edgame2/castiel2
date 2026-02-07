@@ -9,7 +9,7 @@ import { getDatabaseClient } from '@coder/shared';
 import { NotificationChannel } from '../types/notification';
 
 export class DeliveryTracker {
-  private db = getDatabaseClient() as any;
+  private get db() { return getDatabaseClient() as any; }
 
   /**
    * Track a delivery attempt

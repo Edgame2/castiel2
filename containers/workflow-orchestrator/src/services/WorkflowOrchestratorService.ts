@@ -5,13 +5,13 @@
  */
 
 import { getContainer } from '@coder/shared/database';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 import {
   Workflow,
   WorkflowResults,
   WorkflowStepType,
-} from '../types/workflow.types';
-import { publishWorkflowEvent } from '../events/publishers/WorkflowOrchestratorEventPublisher';
+} from '../types/workflow.types.js';
+import { publishWorkflowEvent } from '../events/publishers/WorkflowOrchestratorEventPublisher.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class WorkflowOrchestratorService {

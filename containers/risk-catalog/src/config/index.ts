@@ -3,11 +3,14 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import { parse as parseYaml } from 'yaml';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 export interface RiskCatalogConfig {
   module: { name: string; version: string };
@@ -58,7 +61,7 @@ export function loadConfig(): RiskCatalogConfig {
   if (cachedConfig) return cachedConfig;
   
   const env = process.env.NODE_ENV || 'development';
-  const configDir = join(__dirname, '../../config');
+  const configDir = join(__dirname, '..', '..', 'config');
   const defaultPath = join(configDir, 'default.yaml');
   
   if (!existsSync(defaultPath)) {

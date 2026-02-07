@@ -5,16 +5,16 @@
  */
 
 import { ServiceClient, EventPublisher } from '@coder/shared';
-import { log } from '../utils/logger';
-import { CRMDataMappingConsumer } from './CRMDataMappingConsumer';
-import { MLFieldAggregationConsumer } from './MLFieldAggregationConsumer';
-import { EntityLinkingConsumer } from './EntityLinkingConsumer';
-import { DocumentProcessorConsumer } from './DocumentProcessorConsumer';
-import { EmailProcessorConsumer } from './EmailProcessorConsumer';
-import { MessageProcessorConsumer } from './MessageProcessorConsumer';
-import { EventProcessorConsumer } from './EventProcessorConsumer';
-import { MeetingProcessorConsumer } from './MeetingProcessorConsumer';
-import { ActivityAggregationConsumer } from './ActivityAggregationConsumer';
+import { log } from '../utils/logger.js';
+import { CRMDataMappingConsumer } from './CRMDataMappingConsumer.js';
+import { MLFieldAggregationConsumer } from './MLFieldAggregationConsumer.js';
+import { EntityLinkingConsumer } from './EntityLinkingConsumer.js';
+import { DocumentProcessorConsumer } from './DocumentProcessorConsumer.js';
+import { EmailProcessorConsumer } from './EmailProcessorConsumer.js';
+import { MessageProcessorConsumer } from './MessageProcessorConsumer.js';
+import { EventProcessorConsumer } from './EventProcessorConsumer.js';
+import { MeetingProcessorConsumer } from './MeetingProcessorConsumer.js';
+import { ActivityAggregationConsumer } from './ActivityAggregationConsumer.js';
 
 export interface ConsumerDependencies {
   shardManager: ServiceClient;

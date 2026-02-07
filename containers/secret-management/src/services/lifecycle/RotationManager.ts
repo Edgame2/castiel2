@@ -19,7 +19,9 @@ export interface RotationResult {
 }
 
 export class RotationManager {
-  private db = getDatabaseClient() as any;
+  private get db() {
+    return getDatabaseClient() as any;
+  }
   private secretService: SecretService;
   private auditService: AuditService;
   

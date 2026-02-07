@@ -5,7 +5,7 @@
 
 import { FastifyInstance } from 'fastify';
 import { ServiceClient } from '@coder/shared';
-import { loadConfig } from '../config';
+import { loadConfig } from '../config/index.js';
 
 const config = loadConfig();
 

@@ -3,18 +3,18 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
+import { loadConfig } from '../config/index.js';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
-import { FeedbackLearningService } from '../services/FeedbackLearningService';
+import { FeedbackLearningService } from '../services/FeedbackLearningService.js';
 import {
   publishFeedbackRecorded,
   publishOutcomeRecorded,
   publishFeedbackTrendAlert,
-} from '../events/publishers/FeedbackLearningEventPublisher';
+} from '../events/publishers/FeedbackLearningEventPublisher.js';
 import type {
   RecordFeedbackRequest,
   RecordOutcomeRequest,
-} from '../types/feedback-learning.types';
+} from '../types/feedback-learning.types.js';
 
 const feedbackBodySchema = {
   type: 'object',

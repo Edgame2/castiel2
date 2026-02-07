@@ -3,11 +3,11 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { AIConversationConfig } from '../types/config.types';
+import { AIConversationConfig } from '../types/config.types.js';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
-import { ConversationService } from '../services/ConversationService';
-import { CreateConversationInput, ConversationVisibility, ConversationStatus } from '../types/conversation.types';
-import { log } from '../utils/logger';
+import { ConversationService } from '../services/ConversationService.js';
+import { CreateConversationInput, ConversationVisibility, ConversationStatus } from '../types/conversation.types.js';
+import { log } from '../utils/logger.js';
 
 /**
  * Register conversation routes

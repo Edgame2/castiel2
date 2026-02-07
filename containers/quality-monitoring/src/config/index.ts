@@ -3,11 +3,14 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { parse as parseYaml } from 'yaml';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 export interface QualityMonitoringConfig {
   module: { name: string; version: string };

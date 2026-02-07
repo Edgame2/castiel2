@@ -55,7 +55,7 @@ export class UserManagementClient {
         return []; // Fail-secure: return no roles on error
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as { roles?: UserRole[] };
       return data.roles || [];
     } catch (error) {
       log.error('Error fetching user roles from User Management', error, { 
@@ -91,7 +91,7 @@ export class UserManagementClient {
         return []; // Fail-secure
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as { roles?: UserRole[] };
       return data.roles || [];
     } catch (error) {
       log.error('Error fetching organization user roles from User Management', error, { 

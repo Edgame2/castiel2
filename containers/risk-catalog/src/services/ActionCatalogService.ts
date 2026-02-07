@@ -6,8 +6,8 @@
 
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import {
   ActionCatalogEntry,
   ActionCatalogCategory,
@@ -20,7 +20,7 @@ import {
   CreateActionCatalogCategoryInput,
   UpdateActionCatalogCategoryInput,
   CreateActionCatalogRelationshipInput,
-} from '../types/action-catalog.types';
+} from '../types/action-catalog.types.js';
 
 const ACTION_CATALOG_SHARD_TYPE_NAME = 'action_catalog';
 const ACTION_CATALOG_CATEGORY_SHARD_TYPE_NAME = 'action_catalog_category';

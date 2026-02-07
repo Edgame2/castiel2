@@ -4,11 +4,11 @@
  * Background job to process scheduled notifications and batches
  */
 
-import { getNotificationEngine } from '../services/NotificationEngineFactory';
-import { BatchProcessor } from '../services/BatchProcessor';
-import { EscalationManager } from '../services/EscalationManager';
+import { getNotificationEngine } from '../services/NotificationEngineFactory.js';
+import { BatchProcessor } from '../services/BatchProcessor.js';
+import { EscalationManager } from '../services/EscalationManager.js';
 import { getDatabaseClient } from '@coder/shared';
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export class ScheduledNotificationJob {
   private db = getDatabaseClient() as any;

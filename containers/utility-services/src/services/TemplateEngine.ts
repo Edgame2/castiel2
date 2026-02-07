@@ -7,7 +7,7 @@
 import Handlebars from 'handlebars';
 import { getDatabaseClient } from '@coder/shared';
 import { TemplateData } from '../types/notification';
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export interface RenderedTemplate {
   subject?: string;

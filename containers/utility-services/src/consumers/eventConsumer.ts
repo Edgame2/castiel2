@@ -1,8 +1,8 @@
 import { EventConsumer } from '@coder/shared';
-import { loadConfig } from '../config';
-import { getNotificationEngine } from '../services/NotificationEngineFactory';
-import { mapEventToNotificationInput } from './eventMapper';
-import { NotificationService } from '../services/NotificationService';
+import { loadConfig } from '../config/index.js';
+import { getNotificationEngine } from '../services/NotificationEngineFactory.js';
+import { mapEventToNotificationInput } from './eventMapper.js';
+import { NotificationService } from '../services/NotificationService.js';
 
 const notificationService = new NotificationService();
 const notificationEngine = getNotificationEngine();

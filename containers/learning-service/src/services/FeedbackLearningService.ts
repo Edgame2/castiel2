@@ -5,7 +5,7 @@
 
 import { randomUUID } from 'crypto';
 import { getContainer } from '@coder/shared/database';
-import { loadConfig } from '../config';
+import { loadConfig } from '../config/index.js';
 import type {
   UserFeedback,
   Outcome,
@@ -13,7 +13,7 @@ import type {
   RecordOutcomeRequest,
   FeedbackSummary,
   FeedbackTrends,
-} from '../types/feedback-learning.types';
+} from '../types/feedback-learning.types.js';
 
 export class FeedbackLearningService {
   private feedbackContainerName: string;

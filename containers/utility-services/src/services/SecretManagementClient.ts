@@ -5,7 +5,7 @@
  */
 
 import { HttpClient } from '@coder/shared';
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export interface SecretValueResponse {
   value: string | Record<string, any>;

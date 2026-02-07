@@ -120,12 +120,45 @@ export function loadConfig(): AuthConfig {
   
   // Resolve environment variables
   const resolved = resolveEnvVars(config) as AuthConfig;
-  
-  // Convert port to number if string
   if (typeof resolved.server.port === 'string') {
     resolved.server.port = parseInt(resolved.server.port, 10);
   }
-  
+  const toBool = (v: unknown) => (typeof v === 'string' ? v === 'true' : v);
+  const toInt = (v: unknown) => (typeof v === 'string' ? parseInt(v, 10) : v);
+  if (resolved.oauth?.google) resolved.oauth.google.enabled = toBool(resolved.oauth.google.enabled) as boolean;
+  if (resolved.oauth?.github) resolved.oauth.github.enabled = toBool(resolved.oauth.github.enabled) as boolean;
+  if (resolved.sso) {
+    resolved.sso.enabled = toBool(resolved.sso.enabled) as boolean;
+    if (resolved.sso.saml) resolved.sso.saml.enabled = toBool(resolved.sso.saml.enabled) as boolean;
+  }
+  if (resolved.session) {
+    resolved.session.max_sessions_per_user = toInt(resolved.session.max_sessions_per_user) as number;
+    resolved.session.session_timeout = toInt(resolved.session.session_timeout) as number;
+    resolved.session.cleanup_interval = toInt(resolved.session.cleanup_interval) as number;
+  }
+  if (resolved.password) {
+    resolved.password.min_length = toInt(resolved.password.min_length) as number;
+    resolved.password.require_uppercase = toBool(resolved.password.require_uppercase) as boolean;
+    resolved.password.require_lowercase = toBool(resolved.password.require_lowercase) as boolean;
+    resolved.password.require_numbers = toBool(resolved.password.require_numbers) as boolean;
+    resolved.password.require_symbols = toBool(resolved.password.require_symbols) as boolean;
+    resolved.password.history_count = toInt(resolved.password.history_count) as number;
+    resolved.password.max_age_days = toInt(resolved.password.max_age_days) as number;
+  }
+  if (resolved.security) {
+    resolved.security.max_login_attempts = toInt(resolved.security.max_login_attempts) as number;
+    resolved.security.lockout_duration_ms = toInt(resolved.security.lockout_duration_ms) as number;
+    resolved.security.require_email_verification = toBool(resolved.security.require_email_verification) as boolean;
+  }
+  if (resolved.features) {
+    resolved.features.oauth_google = toBool(resolved.features.oauth_google) as boolean;
+    resolved.features.oauth_github = toBool(resolved.features.oauth_github) as boolean;
+    resolved.features.saml_sso = toBool(resolved.features.saml_sso) as boolean;
+    resolved.features.password_reset = toBool(resolved.features.password_reset) as boolean;
+    resolved.features.email_verification = toBool(resolved.features.email_verification) as boolean;
+    resolved.features.multi_factor_auth = toBool(resolved.features.multi_factor_auth) as boolean;
+  }
+
   // Validate against schema
   const ajv = new Ajv({ allErrors: true, useDefaults: true });
   addFormats(ajv);

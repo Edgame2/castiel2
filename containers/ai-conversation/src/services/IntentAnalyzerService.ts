@@ -6,15 +6,15 @@
 
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import {
   InsightType,
   IntentAnalysisResult,
   ExtractedEntity,
   ContextScope,
   ConversationMessage,
-} from '../types/intent.types';
+} from '../types/intent.types.js';
 
 // Intent classification patterns
 const INTENT_PATTERNS: Record<InsightType, RegExp[]> = {

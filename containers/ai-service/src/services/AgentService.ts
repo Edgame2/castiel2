@@ -18,7 +18,9 @@ export interface ExecuteAgentInput {
 }
 
 export class AgentService {
-  private db = getDatabaseClient();
+  private get db() {
+    return getDatabaseClient();
+  }
 
   async listAgents(input: ListAgentsInput) {
     const where: any = {};

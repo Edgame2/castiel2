@@ -5,9 +5,9 @@
 
 import { randomUUID } from 'crypto';
 import { getContainer } from '@coder/shared/database';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { publishHitlApprovalCompleted } from '../events/publishers/WorkflowEventPublisher';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { publishHitlApprovalCompleted } from '../events/publishers/WorkflowEventPublisher.js';
 
 const CONTAINER_KEY = 'hitl_approvals';
 

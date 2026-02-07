@@ -5,11 +5,11 @@
 
 import { EventConsumer } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
-import { loadConfig } from '../../config';
-import { log } from '../../utils/logger';
-import { generateServiceTokenForConsumer } from '../../utils/serviceToken';
-import { publishOpportunityOutcomeRecorded } from '../publishers/RiskAnalyticsEventPublisher';
-import { RiskEvaluationService } from '../../services/RiskEvaluationService';
+import { loadConfig } from '../../config/index.js';
+import { log } from '../../utils/logger.js';
+import { generateServiceTokenForConsumer } from '../../utils/serviceToken.js';
+import { publishOpportunityOutcomeRecorded } from '../publishers/RiskAnalyticsEventPublisher.js';
+import { RiskEvaluationService } from '../../services/RiskEvaluationService.js';
 
 let consumer: EventConsumer | null = null;
 let riskEvaluationService: RiskEvaluationService | null = null;
@@ -564,7 +564,7 @@ export async function initializeEventConsumer(): Promise<void> {
     consumer.on('risk.catalog.disabled', (e) => handleRiskCatalogEvent(e, 'risk.catalog.disabled'));
 
     // RiskSnapshotService: on risk.evaluated → upsert risk_snapshots (Plan §9.1, FIRST_STEPS §2)
-    const { upsertFromEvent } = await import('../../services/RiskSnapshotService');
+    const { upsertFromEvent } = await import('../../services/RiskSnapshotService.js');
     consumer.on('risk.evaluated', async (event) => {
       try {
         await upsertFromEvent(event);

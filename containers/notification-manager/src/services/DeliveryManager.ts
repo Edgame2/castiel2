@@ -25,7 +25,7 @@ export interface DeliveryResult {
 }
 
 export class DeliveryManager {
-  private db = getDatabaseClient() as any;
+  private get db() { return getDatabaseClient() as any; }
   private config = getConfig();
   private deliveryTracker?: DeliveryTracker;
   private retryService?: RetryService;

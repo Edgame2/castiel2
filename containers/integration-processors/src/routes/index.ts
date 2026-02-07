@@ -4,13 +4,13 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { healthRoutes } from './health.routes';
-import { metricsRoutes } from './metrics.routes';
-import { suggestedLinksRoutes } from './suggestedLinks.routes';
-import { entityLinkingRoutes } from './entityLinking.routes';
-import { processingRoutes } from './processing.routes';
-import { monitoringRoutes } from './monitoring.routes';
-import { MonitoringService } from '../services/MonitoringService';
+import { healthRoutes } from './health.routes.js';
+import { metricsRoutes } from './metrics.routes.js';
+import { suggestedLinksRoutes } from './suggestedLinks.routes.js';
+import { entityLinkingRoutes } from './entityLinking.routes.js';
+import { processingRoutes } from './processing.routes.js';
+import { monitoringRoutes } from './monitoring.routes.js';
+import { MonitoringService } from '../services/MonitoringService.js';
 
 export async function registerRoutes(
   app: FastifyInstance,

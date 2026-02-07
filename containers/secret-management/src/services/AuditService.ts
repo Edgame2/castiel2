@@ -13,7 +13,9 @@ import {
 import { SecretAuditEventType, AuditCategory } from '../types/audit.types';
 
 export class AuditService {
-  private db = getDatabaseClient() as any;
+  private get db() {
+    return getDatabaseClient() as any;
+  }
   
   /**
    * Map event type to category

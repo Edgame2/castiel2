@@ -15,7 +15,7 @@ import { ProviderRegistry } from './providers/email/ProviderRegistry';
 import { DeliveryTracker } from './DeliveryTracker';
 import { RetryService } from './RetryService';
 import { SecretManagementClient } from './SecretManagementClient';
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export interface DeliveryResult {
   channel: NotificationChannel;

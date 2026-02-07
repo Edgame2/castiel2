@@ -3,11 +3,11 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
-import { IntegrationSyncService } from '../services/IntegrationSyncService';
-import { SyncDirection, ConflictResolutionStrategy } from '../types/integration-sync.types';
+import { IntegrationSyncService } from '../services/IntegrationSyncService.js';
+import { SyncDirection, ConflictResolutionStrategy } from '../types/integration-sync.types.js';
 
 /**
  * Register all routes

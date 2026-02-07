@@ -4,10 +4,10 @@
  */
 
 import { EventConsumer } from '@coder/shared';
-import { loadConfig } from '../../config';
-import { log } from '../../utils/logger';
-import { WorkflowOrchestratorService } from '../../services/WorkflowOrchestratorService';
-import { createFromEvent } from '../../services/HitlApprovalService';
+import { loadConfig } from '../../config/index.js';
+import { log } from '../../utils/logger.js';
+import { WorkflowOrchestratorService } from '../../services/WorkflowOrchestratorService.js';
+import { createFromEvent } from '../../services/HitlApprovalService.js';
 
 let consumer: EventConsumer | null = null;
 let workflowOrchestratorService: WorkflowOrchestratorService | null = null;

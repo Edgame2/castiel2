@@ -26,7 +26,7 @@ export interface ProcessNotificationOptions {
 }
 
 export class NotificationEngine {
-  private db = getDatabaseClient() as any;
+  private get db() { return getDatabaseClient() as any; }
   private config = getConfig();
   private routingEngine: RoutingEngine;
   private preferenceResolver: PreferenceResolver;

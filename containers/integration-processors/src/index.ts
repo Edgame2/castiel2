@@ -13,13 +13,13 @@ import {
   ServiceClient,
   EventPublisher,
 } from '@coder/shared';
-import { loadConfig } from './config';
-import { log } from './utils/logger';
-import { registerRoutes } from './routes';
-import { ensureQueues } from './startup/ensureQueues';
-import { startConsumers, ConsumerDependencies, BaseConsumer } from './consumers';
-import { MLFieldRecalculationJob } from './jobs/mlFieldRecalculation';
-import { MonitoringService } from './services/MonitoringService';
+import { loadConfig } from './config/index.js';
+import { log } from './utils/logger.js';
+import { registerRoutes } from './routes/index.js';
+import { ensureQueues } from './startup/ensureQueues.js';
+import { startConsumers, ConsumerDependencies, BaseConsumer } from './consumers/index.js';
+import { MLFieldRecalculationJob } from './jobs/mlFieldRecalculation.js';
+import { MonitoringService } from './services/MonitoringService.js';
 
 /**
  * Wait for a service to be ready

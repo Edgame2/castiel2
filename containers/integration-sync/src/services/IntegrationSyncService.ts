@@ -7,8 +7,8 @@ import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { EventPublisher } from '@coder/shared';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import {
   SyncTask,
   SyncExecution,
@@ -16,8 +16,8 @@ import {
   Webhook,
   SyncDirection,
   ConflictResolutionStrategy,
-} from '../types/integration-sync.types';
-import { publishIntegrationSyncEvent } from '../events/publishers/IntegrationSyncEventPublisher';
+} from '../types/integration-sync.types.js';
+import { publishIntegrationSyncEvent } from '../events/publishers/IntegrationSyncEventPublisher.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class IntegrationSyncService {

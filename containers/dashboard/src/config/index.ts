@@ -32,10 +32,32 @@ export interface DashboardConfig {
   };
 }
 
+function resolveEnvVars(obj: unknown): unknown {
+  if (typeof obj === 'string') {
+    return obj.replace(/\$\{([^}]+)\}/g, (_m, expr) => {
+      const [varName, defaultValue] = expr.split(':-');
+      const v = process.env[varName];
+      return v !== undefined ? v : (defaultValue ?? '');
+    });
+  }
+  if (Array.isArray(obj)) return obj.map(resolveEnvVars);
+  if (obj && typeof obj === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj)) out[k] = resolveEnvVars(v);
+    return out;
+  }
+  return obj;
+}
+
 export function loadConfig(): DashboardConfig {
   const configPath = join(__dirname, '../../config/default.yaml');
-  const config = parseYaml(readFileSync(configPath, 'utf-8')) as DashboardConfig;
+  const raw = parseYaml(readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
+  const config = resolveEnvVars(raw) as DashboardConfig;
   
+  // Coerce numeric fields
+  if (typeof config.server?.port === 'string') config.server.port = parseInt(config.server.port, 10);
+  if (typeof config.redis?.port === 'string') config.redis.port = parseInt(config.redis.port, 10);
+  if (typeof config.redis?.db === 'string') config.redis.db = parseInt(config.redis.db, 10);
   // Override with environment variables if provided
   if (process.env.PORT) config.server.port = parseInt(process.env.PORT, 10);
   if (process.env.HOST) config.server.host = process.env.HOST;

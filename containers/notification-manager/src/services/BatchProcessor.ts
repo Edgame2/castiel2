@@ -12,7 +12,7 @@ import { getConfig } from '../config';
 export type DigestType = 'HOURLY' | 'DAILY' | 'WEEKLY';
 
 export class BatchProcessor {
-  private db = getDatabaseClient() as any;
+  private get db() { return getDatabaseClient() as any; }
   private config = getConfig();
   private notificationEngine: NotificationEngine;
 

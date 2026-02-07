@@ -4,9 +4,9 @@
  */
 
 import { EventConsumer } from '@coder/shared';
-import { loadConfig } from '../../config';
-import { log } from '../../utils/logger';
-import { RecommendationsService } from '../../services/RecommendationsService';
+import { loadConfig } from '../../config/index.js';
+import { log } from '../../utils/logger.js';
+import { RecommendationsService } from '../../services/RecommendationsService.js';
 
 let consumer: EventConsumer | null = null;
 let recommendationsService: RecommendationsService | null = null;

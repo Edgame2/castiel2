@@ -3,12 +3,12 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
-import { RiskCatalogService } from '../services/RiskCatalogService';
-import { ActionCatalogService } from '../services/ActionCatalogService';
-import { CreateRiskInput, UpdateRiskInput, SetPonderationInput } from '../types/risk-catalog.types';
+import { RiskCatalogService } from '../services/RiskCatalogService.js';
+import { ActionCatalogService } from '../services/ActionCatalogService.js';
+import { CreateRiskInput, UpdateRiskInput, SetPonderationInput } from '../types/risk-catalog.types.js';
 import {
   CreateActionCatalogEntryInput,
   UpdateActionCatalogEntryInput,
@@ -17,7 +17,7 @@ import {
   CreateActionCatalogCategoryInput,
   UpdateActionCatalogCategoryInput,
   CreateActionCatalogRelationshipInput,
-} from '../types/action-catalog.types';
+} from '../types/action-catalog.types.js';
 
 /**
  * Register all routes

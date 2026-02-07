@@ -5,10 +5,10 @@
  */
 
 import { EventConsumer } from '@coder/shared';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { BaseConsumer, ConsumerDependencies } from './index';
-import { ActivityAggregationService, SourceShardData } from '../services/ActivityAggregationService';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { BaseConsumer, ConsumerDependencies } from './index.js';
+import { ActivityAggregationService, SourceShardData } from '../services/ActivityAggregationService.js';
 
 interface ShardCreatedEvent {
   shardId: string;

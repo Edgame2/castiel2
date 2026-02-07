@@ -3,10 +3,10 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
-import { SignalIntelligenceService } from '../services/SignalIntelligenceService';
+import { SignalIntelligenceService } from '../services/SignalIntelligenceService.js';
 
 /**
  * Register all routes

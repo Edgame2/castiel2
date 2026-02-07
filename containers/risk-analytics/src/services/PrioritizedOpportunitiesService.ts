@@ -5,7 +5,7 @@
  */
 
 import { getContainer } from '@coder/shared/database';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 const MAX_OPPORTUNITIES = 20;
 const MAX_RAW_ROWS = 1000;

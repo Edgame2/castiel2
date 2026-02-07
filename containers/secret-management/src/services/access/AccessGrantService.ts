@@ -22,7 +22,9 @@ import { getLoggingClient } from '../logging/LoggingClient';
 import { AuditService } from '../AuditService';
 
 export class AccessGrantService {
-  private db = getDatabaseClient() as any;
+  private get db() {
+    return getDatabaseClient() as any;
+  }
   private accessController: AccessController;
   private auditService: AuditService;
   

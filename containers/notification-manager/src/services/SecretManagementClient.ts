@@ -18,8 +18,10 @@ export class SecretManagementClient {
 
   constructor() {
     const config = getConfig();
-    const serviceAuthToken = process.env.SERVICE_AUTH_TOKEN;
-    
+    let serviceAuthToken = process.env.SERVICE_AUTH_TOKEN;
+    if (!serviceAuthToken && process.env.NODE_ENV === 'development') {
+      serviceAuthToken = 'dev-service-token';
+    }
     if (!serviceAuthToken) {
       throw new Error('SERVICE_AUTH_TOKEN environment variable is required');
     }

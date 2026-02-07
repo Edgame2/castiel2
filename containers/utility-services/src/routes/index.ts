@@ -3,13 +3,13 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
-import { UtilityService } from '../services/UtilityService';
-import { NotificationService } from '../services/NotificationService';
-import { PreferenceService } from '../services/PreferenceService';
-import { TemplateService } from '../services/TemplateService';
+import { UtilityService } from '../services/UtilityService.js';
+import { NotificationService } from '../services/NotificationService.js';
+import { PreferenceService } from '../services/PreferenceService.js';
+import { TemplateService } from '../services/TemplateService.js';
 import { PreferenceScope, NotificationChannel } from '../types/notification';
 
 /**

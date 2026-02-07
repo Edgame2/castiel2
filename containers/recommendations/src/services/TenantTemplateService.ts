@@ -4,10 +4,10 @@
  */
 
 import { getContainer } from '@coder/shared';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import { TenantTemplate, TenantTemplateFeedbackSnapshot } from '../types/feedback.types';
-import { FeedbackService } from './FeedbackService';
+import { FeedbackService } from './FeedbackService.js';
 
 const GLOBAL_PARTITION = '_global';
 const ID_PREFIX = 'tenant_template_';

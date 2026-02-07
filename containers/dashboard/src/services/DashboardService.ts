@@ -25,7 +25,9 @@ export interface WidgetCache {
 }
 
 export class DashboardService {
-  private db = getDatabaseClient() as any;
+  private get db() {
+    return getDatabaseClient() as any;
+  }
   private config: ReturnType<typeof loadConfig>;
   private analyticsServiceClient: ServiceClient;
   private cacheServiceClient: ServiceClient;

@@ -3,20 +3,20 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
-import { EnrichmentService } from '../services/EnrichmentService';
-import { VectorizationService } from '../services/VectorizationService';
+import { EnrichmentService } from '../services/EnrichmentService.js';
+import { VectorizationService } from '../services/VectorizationService.js';
 import {
   EnrichShardRequest,
   BulkEnrichmentRequest,
   EnrichmentProcessorType,
-} from '../types/enrichment.types';
+} from '../types/enrichment.types.js';
 import {
   VectorizeShardRequest,
   BatchVectorizeRequest,
-} from '../types/vectorization.types';
+} from '../types/vectorization.types.js';
 
 /**
  * Register all routes

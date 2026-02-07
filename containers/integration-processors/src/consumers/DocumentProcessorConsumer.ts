@@ -5,12 +5,12 @@
  */
 
 import { EventConsumer } from '@coder/shared';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
-import { BaseConsumer, ConsumerDependencies } from './index';
-import { BlobStorageService } from '../services/BlobStorageService';
-import { DocumentDownloadService } from '../services/DocumentDownloadService';
-import { TextExtractionService } from '../services/TextExtractionService';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
+import { BaseConsumer, ConsumerDependencies } from './index.js';
+import { BlobStorageService } from '../services/BlobStorageService.js';
+import { DocumentDownloadService } from '../services/DocumentDownloadService.js';
+import { TextExtractionService } from '../services/TextExtractionService.js';
 import { DocumentStructuredData } from '@coder/shared/types/shards';
 
 interface DocumentDetectedEvent {

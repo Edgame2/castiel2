@@ -3,7 +3,7 @@
  * Phase 3.2: Citation Validation System
  */
 
-import type { Citation } from '../services/GroundingService';
+import type { Citation } from '../services/GroundingService.js';
 
 /**
  * Verified claim from grounding service

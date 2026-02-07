@@ -3,11 +3,14 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 import { parse as parseYaml } from 'yaml';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 export interface IntegrationProcessorsConfig {
   module: { name: string; version: string };
@@ -131,7 +134,7 @@ export function loadConfig(): IntegrationProcessorsConfig {
   if (cachedConfig) return cachedConfig;
   
   const env = process.env.NODE_ENV || 'development';
-  const configDir = join(__dirname, '../../config');
+  const configDir = join(__dirname, '..', '..', 'config');
   const defaultPath = join(configDir, 'default.yaml');
   
   if (!existsSync(defaultPath)) {
@@ -164,6 +167,48 @@ export function loadConfig(): IntegrationProcessorsConfig {
   
   if (typeof resolved.server.port === 'string') {
     resolved.server.port = parseInt(resolved.server.port, 10);
+  }
+
+  // Coerce env-derived strings to schema types before validation
+  const toNum = (v: unknown) => (typeof v === 'string' ? parseInt(v, 10) : typeof v === 'number' ? v : undefined);
+  const toBool = (v: unknown): boolean | undefined => { if (v === true || v === 'true' || v === '1') return true; if (v === false || v === 'false' || v === '0') return false; return undefined; };
+  if (resolved.mapping) {
+    const m = resolved.mapping as Record<string, unknown>;
+    if (m.prefetch !== undefined) m.prefetch = toNum(m.prefetch) ?? 20;
+    if (m.prefetch_auto_adjust !== undefined) m.prefetch_auto_adjust = toBool(m.prefetch_auto_adjust) ?? true;
+    if (m.prefetch_min !== undefined) m.prefetch_min = toNum(m.prefetch_min) ?? 1;
+    if (m.prefetch_max !== undefined) m.prefetch_max = toNum(m.prefetch_max) ?? 100;
+    if (m.prefetch_adjustment_interval_ms !== undefined) m.prefetch_adjustment_interval_ms = toNum(m.prefetch_adjustment_interval_ms) ?? 60000;
+    if (m.prefetch_target_processing_time_ms !== undefined) m.prefetch_target_processing_time_ms = toNum(m.prefetch_target_processing_time_ms) ?? 1000;
+    if (m.prefetch_min_samples !== undefined) m.prefetch_min_samples = toNum(m.prefetch_min_samples) ?? 10;
+    if (m.opportunity_batch_threshold !== undefined) m.opportunity_batch_threshold = toNum(m.opportunity_batch_threshold) ?? 100;
+    if (m.opportunity_batch_timeout_ms !== undefined) m.opportunity_batch_timeout_ms = toNum(m.opportunity_batch_timeout_ms) ?? 5000;
+    if (m.batch_concurrency !== undefined) m.batch_concurrency = toNum(m.batch_concurrency) ?? 10;
+    if (m.config_cache_ttl !== undefined) m.config_cache_ttl = toNum(m.config_cache_ttl) ?? 600;
+    if (m.config_cache_use_redis !== undefined) m.config_cache_use_redis = toBool(m.config_cache_use_redis) ?? true;
+    const retry = m.retry as Record<string, unknown> | undefined;
+    if (retry) {
+      if (retry.max_retries !== undefined) retry.max_retries = toNum(retry.max_retries) ?? 3;
+      if (retry.initial_backoff_ms !== undefined) retry.initial_backoff_ms = toNum(retry.initial_backoff_ms) ?? 1000;
+      if (retry.max_backoff_ms !== undefined) retry.max_backoff_ms = toNum(retry.max_backoff_ms) ?? 10000;
+      if (retry.backoff_multiplier !== undefined) retry.backoff_multiplier = toNum(retry.backoff_multiplier) ?? 2;
+    }
+    const cb = m.circuit_breaker as Record<string, unknown> | undefined;
+    if (cb) {
+      if (cb.enabled !== undefined) cb.enabled = toBool(cb.enabled) ?? true;
+      if (cb.threshold !== undefined) cb.threshold = toNum(cb.threshold) ?? 5;
+      if (cb.timeout_ms !== undefined) cb.timeout_ms = toNum(cb.timeout_ms) ?? 60000;
+    }
+    const idem = m.idempotency as Record<string, unknown> | undefined;
+    if (idem) {
+      if (idem.enabled !== undefined) idem.enabled = toBool(idem.enabled) ?? true;
+      if (idem.ttl_seconds !== undefined) idem.ttl_seconds = toNum(idem.ttl_seconds) ?? 86400;
+      if (idem.use_redis !== undefined) idem.use_redis = toBool(idem.use_redis) ?? true;
+      if (idem.fallback_to_memory !== undefined) idem.fallback_to_memory = toBool(idem.fallback_to_memory) ?? true;
+    }
+  }
+  if (resolved.metrics && (resolved.metrics as Record<string, unknown>).require_auth !== undefined) {
+    (resolved.metrics as Record<string, unknown>).require_auth = toBool((resolved.metrics as Record<string, unknown>).require_auth) ?? false;
   }
   
   const ajv = new Ajv({ allErrors: true, useDefaults: true });

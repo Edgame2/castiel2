@@ -9,8 +9,8 @@ import { initializeDatabase, connectDatabase } from '@coder/shared';
 import { setupJWT } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import { loadConfig } from './config';
-import { log } from './utils/logger';
+import { loadConfig } from './config/index.js';
+import { log } from './utils/logger.js';
 
 let app: FastifyInstance | null = null;
 
@@ -85,7 +85,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   }
 
   try {
-    const { initializeEventPublisher } = await import('./events/publishers/EnrichmentEventPublisher');
+    const { initializeEventPublisher } = await import('./events/publishers/EnrichmentEventPublisher.js');
     await initializeEventPublisher();
     const { initializeEventConsumer } = await import('./events/consumers/EnrichmentEventConsumer');
     await initializeEventConsumer(fastify);
@@ -145,7 +145,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     });
   });
 
-  const { registerRoutes } = await import('./routes');
+  const { registerRoutes } = await import('./routes/index.js');
   await registerRoutes(fastify as any, config);
 
   fastify.get('/health', async () => ({
@@ -196,9 +196,9 @@ export async function start(): Promise<void> {
 async function gracefulShutdown(signal: string): Promise<void> {
   log.info(`${signal} received, shutting down gracefully`, { service: 'data-enrichment' });
   try {
-    const { closeEventPublisher } = await import('./events/publishers/EnrichmentEventPublisher');
+    const { closeEventPublisher } = await import('./events/publishers/EnrichmentEventPublisher.js');
     await closeEventPublisher();
-    const { closeEventConsumer } = await import('./events/consumers/EnrichmentEventConsumer');
+    const { closeEventConsumer } = await import('./events/consumers/EnrichmentEventConsumer.js');
     await closeEventConsumer();
     const sched = app && (app as any).reembeddingScheduler;
     if (sched && typeof sched.stop === 'function') await sched.stop();
@@ -219,9 +219,7 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
   log.error('Unhandled promise rejection', reason instanceof Error ? reason : new Error(String(reason)), { service: 'data-enrichment', promise: String(promise) });
 });
 
-if (require.main === module) {
-  start().catch((error) => {
-    console.error('Fatal error starting server:', error);
-    process.exit(1);
-  });
-}
+start().catch((error) => {
+  console.error('Fatal error starting server:', error);
+  process.exit(1);
+});

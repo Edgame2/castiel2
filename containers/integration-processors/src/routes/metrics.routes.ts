@@ -5,8 +5,8 @@
 
 import { FastifyInstance } from 'fastify';
 import { collectDefaultMetrics } from 'prom-client';
-import { register } from '../metrics';
-import { loadConfig } from '../config';
+import { register } from '../metrics.js';
+import { loadConfig } from '../config/index.js';
 
 // Collect default metrics (CPU, memory, etc.)
 collectDefaultMetrics({ register });

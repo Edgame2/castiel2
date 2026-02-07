@@ -6,7 +6,7 @@
 
 import { getNotificationEngine } from './NotificationEngineFactory';
 import { NotificationInput, EventCategory, NotificationCriticality } from '../types/notification';
-import { getConfig } from '../config';
+import { getConfig } from '../config/index.js';
 
 export interface WebhookPayload {
   type: string;

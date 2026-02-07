@@ -4,7 +4,7 @@
  */
 
 import { FastifyInstance } from 'fastify';
-import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
+import { authenticateRequest, tenantEnforcementMiddleware, isDatabaseConnected } from '@coder/shared';
 import { ShardService } from '../services/ShardService';
 import { ShardTypeService } from '../services/ShardTypeService';
 import { ShardRelationshipService } from '../services/ShardRelationshipService';
@@ -34,9 +34,11 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
   const linkingService = new ShardLinkingService(shardService);
   const aclService = new ACLService(shardService);
   
-  // Initialize services
-  await relationshipService.initialize();
-  await linkingService.initialize();
+  // Initialize services (skip when DB not connected, e.g. COSMOS_DB_OPTIONAL)
+  if (isDatabaseConnected()) {
+    await relationshipService.initialize();
+    await linkingService.initialize();
+  }
 
   // Bootstrap system shard types (Phase 1.1: c_competitor, c_opportunity_competitor, c_product, product_fit, c_recommendation)
   const bootstrap = config?.bootstrap;

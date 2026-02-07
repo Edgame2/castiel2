@@ -8,7 +8,7 @@
 import { getContainer } from '@coder/shared';
 import { RankedMitigationAction, RankedMitigationResponse } from '../types/recommendations.types';
 import { v4 as uuidv4 } from 'uuid';
-import { log } from '../utils/logger';
+import { log } from '../utils/logger.js';
 
 const CONTAINER = 'recommendation_mitigation_actions';
 

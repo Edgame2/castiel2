@@ -13,7 +13,9 @@ import { getLoggingClient } from '../logging/LoggingClient';
 import { AuditService } from '../AuditService';
 
 export class VersionManager {
-  private db = getDatabaseClient() as any;
+  private get db() {
+    return getDatabaseClient() as any;
+  }
   private encryptionService: EncryptionService;
   private keyManager: KeyManager;
   private auditService: AuditService;

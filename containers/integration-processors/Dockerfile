@@ -16,6 +16,7 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 COPY --from=builder /app/containers/integration-processors/dist ./containers/integration-processors/dist
+COPY --from=builder /app/containers/integration-processors/config ./containers/integration-processors/config
 COPY --from=builder /app/containers/integration-processors/node_modules ./containers/integration-processors/node_modules
 COPY --from=builder /app/containers/integration-processors/package.json ./containers/integration-processors/
 COPY --from=builder /app/containers/shared ./containers/shared

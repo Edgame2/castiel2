@@ -11,7 +11,7 @@ import { getDatabaseClient } from '@coder/shared';
 import { getConfig } from '../config';
 
 export class ScheduledNotificationJob {
-  private db = getDatabaseClient() as any;
+  private get db() { return getDatabaseClient() as any; }
   private config = getConfig();
   private batchProcessor: BatchProcessor;
   private escalationManager: EscalationManager;

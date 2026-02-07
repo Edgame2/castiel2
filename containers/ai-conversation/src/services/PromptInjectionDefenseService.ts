@@ -4,8 +4,8 @@
  */
 
 import { ServiceClient } from '@coder/shared';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 
 export interface InjectionDetection {
   detected: boolean;

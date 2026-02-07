@@ -7,8 +7,8 @@
 import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared';
 import { FastifyInstance } from 'fastify';
-import { loadConfig } from '../config';
-import { log } from '../utils/logger';
+import { loadConfig } from '../config/index.js';
+import { log } from '../utils/logger.js';
 import {
   Recommendation,
   RecommendationRequest,
@@ -17,9 +17,9 @@ import {
   LearnedWeights,
   ModelSelection,
 } from '../types/recommendations.types';
-import { publishRecommendationEvent } from '../events/publishers/RecommendationEventPublisher';
+import { publishRecommendationEvent } from '../events/publishers/RecommendationEventPublisher.js';
 import { v4 as uuidv4 } from 'uuid';
-import { FeedbackService } from './FeedbackService';
+import { FeedbackService } from './FeedbackService.js';
 import type { RecommendationFeedbackRecord } from '../types/feedback.types';
 
 // Default weights for fallback

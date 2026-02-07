@@ -3,7 +3,6 @@
  */
 
 import { IPushProvider, SendPushOptions, BulkPushOptions, SendPushResult, BulkPushResult, HealthCheckResult } from './IPushProvider';
-import { SecretManagementClient } from '../../SecretManagementClient';
 
 export interface FCMConfig {
   serviceAccountKey: string | Record<string, any>;

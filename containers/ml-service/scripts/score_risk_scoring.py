@@ -11,7 +11,7 @@ train_risk_scoring REQUIRED (minus target_risk). Model path: AZUREML_MODEL_DIR o
 import json
 import os
 
-# Must match train_risk_scoring.py REQUIRED minus target_risk (same order as select_dtypes)
+# Must match train_risk_scoring.py REQUIRED minus target_risk (same order as select_dtypes). Phase 2: sentiment_score; Phase 3: product_fit_score.
 FEATURE_ORDER = [
     "amount",
     "probability",
@@ -21,6 +21,8 @@ FEATURE_ORDER = [
     "days_since_last_activity",
     "activity_count_30d",
     "stakeholder_count",
+    "sentiment_score",
+    "product_fit_score",
 ]
 
 _model = None
@@ -59,7 +61,8 @@ def run(raw_data):
     if not rows:
         return {"riskScore": 0.5}
     row = rows[0] if isinstance(rows[0], dict) else {}
-    vec = np.array([[float(row.get(f, 0)) for f in FEATURE_ORDER]], dtype=np.float32)
+    defaults = {"sentiment_score": 0.0, "product_fit_score": 0.5}
+    vec = np.array([[float(row.get(f, defaults.get(f, 0))) for f in FEATURE_ORDER]], dtype=np.float32)
     import xgboost as xgb
     d = xgb.DMatrix(vec, feature_names=FEATURE_ORDER)
     pred = float(_model.predict(d)[0])

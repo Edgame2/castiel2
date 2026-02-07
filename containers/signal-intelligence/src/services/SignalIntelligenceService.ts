@@ -23,8 +23,8 @@ export interface Signal {
 export class SignalIntelligenceService {
   private config: ReturnType<typeof loadConfig>;
   private aiServiceClient: ServiceClient;
-  private analyticsServiceClient: ServiceClient;
-  private integrationManagerClient: ServiceClient;
+  private _analyticsServiceClient: ServiceClient;
+  private _integrationManagerClient: ServiceClient;
 
   constructor() {
     this.config = loadConfig();
@@ -36,14 +36,14 @@ export class SignalIntelligenceService {
       circuitBreaker: { enabled: true },
     });
 
-    this.analyticsServiceClient = new ServiceClient({
+    this._analyticsServiceClient = new ServiceClient({
       baseURL: this.config.services.analytics_service?.url || '',
       timeout: 30000,
       retries: 3,
       circuitBreaker: { enabled: true },
     });
 
-    this.integrationManagerClient = new ServiceClient({
+    this._integrationManagerClient = new ServiceClient({
       baseURL: this.config.services.integration_manager?.url || '',
       timeout: 30000,
       retries: 3,
@@ -171,7 +171,7 @@ export class SignalIntelligenceService {
         signalRecord.analyzed = false;
       }
 
-      const container = getContainer('signal_communications');
+      const container = getContainer('signal_communications') as any;
       await container.items.create(signalRecord, { partitionKey: tenantId });
 
       return signalRecord;

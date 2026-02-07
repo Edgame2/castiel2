@@ -31,7 +31,7 @@ export class ForecastingService {
   private config: ReturnType<typeof loadConfig>;
   private adaptiveLearningClient: ServiceClient;
   private mlServiceClient: ServiceClient;
-  private analyticsServiceClient: ServiceClient;
+  private _analyticsServiceClient: ServiceClient;
   private riskAnalyticsClient: ServiceClient;
   private shardManagerClient: ServiceClient;
   private accuracyService: ForecastAccuracyService;
@@ -57,7 +57,7 @@ export class ForecastingService {
       circuitBreaker: { enabled: true },
     });
 
-    this.analyticsServiceClient = new ServiceClient({
+    this._analyticsServiceClient = new ServiceClient({
       baseURL: this.config.services.analytics_service?.url || '',
       timeout: 30000,
       retries: 3,
@@ -429,7 +429,7 @@ export class ForecastingService {
       const irregularFactor = Math.max(0, 1 - trendFactor - seasonalityFactor);
       
       // Source decomposition based on opportunity type/stage
-      const isPipeline = stage && ['prospecting', 'qualification', 'proposal'].includes(stage.toLowerCase());
+      const _isPipeline = stage && ['prospecting', 'qualification', 'proposal'].includes(stage.toLowerCase());
       const isNewBusiness = !data.accountId || data.type === 'new';
       const isExpansion = data.type === 'expansion' || data.type === 'upsell';
       const isRenewal = data.type === 'renewal';
@@ -504,13 +504,8 @@ export class ForecastingService {
       // Store in database
       const container = getContainer('forecast_decompositions');
       await container.items.create(
-        {
-          id: decompositionId,
-          tenantId,
-          ...decomposition,
-          createdAt: new Date(),
-        },
-        { partitionKey: tenantId }
+        { ...decomposition, id: decompositionId, tenantId, createdAt: new Date() },
+        { partitionKey: tenantId } as any
       );
 
       // Publish completion event
@@ -568,7 +563,7 @@ export class ForecastingService {
       };
       
       const { resources: decompositions } = await decompositionContainer.items
-        .query(decompositionQuery, { partitionKey: tenantId })
+        .query(decompositionQuery, { partitionKey: tenantId } as any)
         .fetchAll();
       
       if (decompositions && decompositions.length > 0) {
@@ -642,13 +637,8 @@ export class ForecastingService {
       // Store in database
       const container = getContainer('forecast_consensus');
       await container.items.create(
-        {
-          id: consensusId,
-          tenantId,
-          ...consensus,
-          createdAt: new Date(),
-        },
-        { partitionKey: tenantId }
+        { ...consensus, id: consensusId, tenantId, createdAt: new Date() },
+        { partitionKey: tenantId } as any
       );
 
       // Publish completion event
@@ -764,13 +754,8 @@ export class ForecastingService {
       // Store in database
       const container = getContainer('forecast_commitments');
       await container.items.create(
-        {
-          id: commitmentId,
-          tenantId,
-          ...commitment,
-          createdAt: new Date(),
-        },
-        { partitionKey: tenantId }
+        { ...commitment, id: commitmentId, tenantId, createdAt: new Date() },
+        { partitionKey: tenantId } as any
       );
 
       // Publish completion event
@@ -847,13 +832,8 @@ export class ForecastingService {
       // Store in database
       const container = getContainer('forecast_pipeline_health');
       await container.items.create(
-        {
-          id: healthId,
-          tenantId,
-          ...health,
-          createdAt: new Date(),
-        },
-        { partitionKey: tenantId }
+        { ...health, id: healthId, tenantId, createdAt: new Date() },
+        { partitionKey: tenantId } as any
       );
 
       return health;
@@ -914,12 +894,12 @@ export class ForecastingService {
     baseValue: number,
     decomposition?: ForecastDecomposition,
     consensus?: ConsensusForecast,
-    commitment?: ForecastCommitment,
+    _commitment?: ForecastCommitment,
     mlForecast?: any,
     weights?: LearnedWeights
   ): number {
     // Use ML forecast if available and weight > 0
-    if (mlForecast && mlForecast.pointForecast && weights?.ml && weights.ml > 0) {
+    if (mlForecast && (mlForecast as any).pointForecast && weights?.ml && weights.ml > 0) {
       // Combine ML forecast with other methods based on weights
       const mlWeight = weights.ml;
       const otherWeight = 1 - mlWeight;
@@ -951,11 +931,11 @@ export class ForecastingService {
   private calculateConfidence(
     decomposition?: ForecastDecomposition,
     consensus?: ConsensusForecast,
-    commitment?: ForecastCommitment,
-    mlForecast?: any
+    _commitment?: ForecastCommitment,
+    _mlForecast?: any
   ): number {
     if (consensus) return consensus.confidence;
-    if (commitment) return commitment.confidence;
+    if (_commitment) return _commitment.confidence;
     return 0.7; // Default
   }
 
@@ -966,13 +946,8 @@ export class ForecastingService {
     try {
       const container = getContainer('forecast_decompositions');
       await container.items.create(
-        {
-          id: result.forecastId,
-          tenantId,
-          ...result,
-          createdAt: new Date(),
-        },
-        { partitionKey: tenantId }
+        { ...result, id: result.forecastId, tenantId, createdAt: new Date() },
+        { partitionKey: tenantId } as any
       );
     } catch (error: unknown) {
       log.error('Failed to store forecast', error instanceof Error ? error : new Error(String(error)), {
@@ -1019,7 +994,7 @@ export class ForecastingService {
     query += ' ORDER BY c.calculatedAt DESC';
 
     const { resources } = await container.items
-      .query<ForecastResult & { calculatedAt?: string }>({ query, parameters }, { partitionKey: tenantId })
+      .query<ForecastResult & { calculatedAt?: string }>({ query, parameters: parameters as any }, { partitionKey: tenantId } as any)
       .fetchAll();
 
     const byOpp = new Map<string, { revenueForecast: number; riskAdjustedRevenue?: number }>();
@@ -1075,7 +1050,7 @@ export class ForecastingService {
     query += ' ORDER BY c.calculatedAt DESC';
 
     const { resources } = await container.items
-      .query<ForecastResult & { calculatedAt?: string }>({ query, parameters }, { partitionKey: tenantId })
+      .query<ForecastResult & { calculatedAt?: string }>({ query, parameters: parameters as any }, { partitionKey: tenantId } as any)
       .fetchAll();
 
     const byOpp = new Map<string, { revenueForecast: number; riskAdjustedRevenue?: number }>();

@@ -33,7 +33,7 @@ graph TB
     end
     
     subgraph Gateway["API Gateway"]
-        GatewaySvc[Fastify Gateway<br/>Port 3001]
+        GatewaySvc[Fastify Gateway<br/>Port 3002]
     end
     
     NextJS -->|Direct API Calls| GatewaySvc
@@ -44,10 +44,10 @@ graph TB
 
 ### 2. API Gateway Layer
 
-**Main Application (Port 3001)**
+**Main Application (API Gateway Port 3002)**
 
 - **Technology**: Fastify
-- **Port**: 3001 (configurable via `PORT` environment variable)
+- **Port**: 3002 (API Gateway; configurable via `PORT` environment variable)
 - **Responsibilities**:
   - Request routing to microservices
   - Authentication and authorization
@@ -111,7 +111,7 @@ graph TB
         NextJS[Next.js Web App<br/>React 19<br/>Port 3000]
     end
     
-    subgraph Gateway["API Gateway (Port 3001)"]
+    subgraph Gateway["API Gateway (Port 3002)"]
         Auth[Authentication]
         UserMgmt[User Management]
         Proxy[Request Proxy]
@@ -220,7 +220,7 @@ Castiel uses a **Compound AI System (CAIS)** architecture that orchestrates mult
 
 | Service | Port | Purpose | Communication |
 |---------|------|---------|---------------|
-| **API Gateway** | 3001 | Request routing, authentication, authorization | REST + WebSocket |
+| **API Gateway** | 3002 | Request routing, authentication, authorization | REST + WebSocket |
 | **Notification Manager** | 3001 | Notification system | REST + RabbitMQ (consumer) |
 | **Secret Management** | 3003 | Centralized secrets | REST |
 | **Usage Tracking** | 3004 | Usage metering | REST + RabbitMQ (consumer) |
@@ -264,7 +264,7 @@ The Next.js application uses a **hybrid communication pattern**:
 #### Direct API Calls (Primary Pattern)
 - **Purpose**: Most CRUD operations, queries, data fetching
 - **Implementation**: Axios client (`apiClient`) configured with base URL
-- **Target**: API Gateway (Port 3001) or microservices directly
+- **Target**: API Gateway (Port 3002) or microservices directly
 - **Authentication**: JWT tokens via Authorization header
 - **Benefits**: 
   - Lower latency (no extra hop)
@@ -301,7 +301,7 @@ const response = await fetch('/api/auth/token');
 - **Protocol**: HTTP/HTTPS
 - **Format**: JSON
 - **Authentication**: JWT tokens
-- **Routing**: Via API Gateway (Port 3001)
+- **Routing**: Via API Gateway (Port 3002)
 
 ### 3. RabbitMQ (Asynchronous)
 

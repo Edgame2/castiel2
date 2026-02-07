@@ -119,7 +119,7 @@ export class SyncSchedulerService {
       // Note: We need to query all tenants, but we'll do it in batches
       // For now, we'll query integrations that have nextSyncAt set
       const now = new Date();
-      const batchSize = this.config.sync_scheduler?.batch_size || 100;
+      const _batchSize = this.config.sync_scheduler?.batch_size || 100;
 
       // Query integrations from integration-manager
       // Since we don't have a direct way to query all tenants, we'll need to

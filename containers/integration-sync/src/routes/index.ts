@@ -12,7 +12,7 @@ import { SyncDirection, ConflictResolutionStrategy } from '../types/integration-
 /**
  * Register all routes
  */
-export async function registerRoutes(fastify: FastifyInstance, config: ReturnType<typeof loadConfig>): Promise<void> {
+export async function registerRoutes(fastify: FastifyInstance, _config: ReturnType<typeof loadConfig>): Promise<void> {
   try {
     const integrationSyncService = new IntegrationSyncService(fastify);
 
@@ -30,7 +30,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { taskId } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const task = await integrationSyncService.getSyncTask(taskId, tenantId);
 
@@ -70,7 +70,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { integrationId, direction, entityType, filters } = request.body;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           // Create sync task
           const task = await integrationSyncService.createSyncTask(
@@ -117,8 +117,8 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
         try {
           const { conflictId } = request.params;
           const { resolution } = request.body;
-          const tenantId = request.user!.tenantId;
-          const userId = request.user!.id;
+          const tenantId = (request as any).user!.tenantId;
+          const userId = (request as any).user!.id;
 
           const conflict = await integrationSyncService.resolveConflict(
             conflictId,
@@ -156,7 +156,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { integrationId, url, events, secret } = request.body;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const webhook = await integrationSyncService.createWebhook(
             tenantId,
@@ -192,7 +192,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { webhookId } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const webhook = await integrationSyncService.getWebhook(webhookId, tenantId);
 
@@ -232,7 +232,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { integrationId } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const webhooks = await integrationSyncService.listWebhooks(integrationId, tenantId);
 
@@ -262,7 +262,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { webhookId } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const webhook = await integrationSyncService.updateWebhook(webhookId, tenantId, request.body);
 
@@ -292,7 +292,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { webhookId } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           await integrationSyncService.deleteWebhook(webhookId, tenantId);
 

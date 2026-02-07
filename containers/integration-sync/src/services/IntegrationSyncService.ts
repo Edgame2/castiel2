@@ -14,7 +14,6 @@ import {
   SyncExecution,
   SyncConflict,
   Webhook,
-  SyncTaskStatus,
   SyncDirection,
   ConflictResolutionStrategy,
 } from '../types/integration-sync.types';
@@ -96,6 +95,27 @@ export class IntegrationSyncService {
   }
 
   /**
+   * Get integration details from integration-manager (for sync config / entity mappings).
+   */
+  async getIntegration(integrationId: string, tenantId: string): Promise<{ syncConfig?: { entityMappings?: Array<{ externalEntity: string; enabled?: boolean }> } } | null> {
+    try {
+      const token = this.getServiceToken(tenantId);
+      const res = await this.integrationManagerClient.get<any>(
+        `/api/v1/integrations/${integrationId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'X-Tenant-ID': tenantId,
+          },
+        }
+      );
+      return res?.data ?? res ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Create sync task
    */
   async createSyncTask(
@@ -131,13 +151,8 @@ export class IntegrationSyncService {
       // Store in database
       const container = getContainer('integration_sync_tasks');
       await container.items.create(
-        {
-          id: taskId,
-          tenantId,
-          ...task,
-          createdAt: new Date(),
-        },
-        { partitionKey: tenantId }
+        { ...task, id: taskId, tenantId, createdAt: new Date() },
+        { partitionKey: tenantId } as any
       );
 
       // Publish sync started event
@@ -246,14 +261,8 @@ export class IntegrationSyncService {
 
       const executionContainer = getContainer('integration_executions');
       await executionContainer.items.create(
-        {
-          id: executionId,
-          tenantId,
-          ...execution,
-          integrationId: task.integrationId,
-          createdAt: new Date(),
-        },
-        { partitionKey: tenantId }
+        { ...execution, id: executionId, tenantId, integrationId: task.integrationId, createdAt: new Date() },
+        { partitionKey: tenantId } as any
       );
 
       // Execute actual sync logic
@@ -284,10 +293,10 @@ export class IntegrationSyncService {
       // Note: IntegrationSyncService should use connection-based credential retrieval
       // For now, we'll use credentialSecretName if available, otherwise skip credential retrieval
       // (credentials will be retrieved by integration-manager adapter when fetching)
-      let credentials: any = null;
+      let _credentials: any = null;
       if (integration.credentialSecretName) {
         try {
-          credentials = await this.secretManagementClient.get<any>(
+          _credentials = await this.secretManagementClient.get<any>(
             `/api/v1/secrets/${integration.credentialSecretName}/value`,
             {
               headers: {
@@ -297,7 +306,8 @@ export class IntegrationSyncService {
             }
           );
         } catch (error: any) {
-          log.warn('Failed to get integration credentials (will be retrieved by adapter)', error, {
+          log.warn('Failed to get integration credentials (will be retrieved by adapter)', {
+            error,
             secretName: integration.credentialSecretName,
             tenantId,
             service: 'integration-sync',
@@ -477,9 +487,9 @@ export class IntegrationSyncService {
 
       // Update execution
       await executionContainer.item(executionId, tenantId).replace({
+        ...execution,
         id: executionId,
         tenantId,
-        ...execution,
         integrationId: task.integrationId,
         updatedAt: new Date(),
       });
@@ -822,7 +832,7 @@ export class IntegrationSyncService {
   /**
    * Find shard by external ID
    */
-  private async findShardByExternalId(
+  private async _findShardByExternalId(
     externalId: string,
     entityType: string,
     tenantId: string,
@@ -876,15 +886,12 @@ export class IntegrationSyncService {
 
       const container = getContainer('integration_conflicts');
       await container.items.create(
-        {
-          id: conflict.conflictId,
-          tenantId,
-          ...conflict,
-        },
-        { partitionKey: tenantId }
+        { ...conflict, id: conflict.conflictId, tenantId },
+        { partitionKey: tenantId } as any
       );
-    } catch (error: any) {
-      log.error('Failed to store conflict', error, {
+    } catch (_error: any) {
+      log.error('Failed to store conflict', {
+        error: _error,
         taskId,
         tenantId,
         service: 'integration-sync',
@@ -1010,9 +1017,9 @@ export class IntegrationSyncService {
     try {
       const container = getContainer('integration_sync_tasks');
       await container.item(task.taskId, tenantId).replace({
+        ...task,
         id: task.taskId,
         tenantId,
-        ...task,
         updatedAt: new Date(),
       });
     } catch (error: any) {
@@ -1047,9 +1054,9 @@ export class IntegrationSyncService {
       conflict.resolvedBy = resolvedBy;
 
       await container.item(conflictId, tenantId).replace({
+        ...conflict,
         id: conflictId,
         tenantId,
-        ...conflict,
         updatedAt: new Date(),
       });
 
@@ -1090,12 +1097,8 @@ export class IntegrationSyncService {
 
       const container = getContainer('integration_webhooks');
       await container.items.create(
-        {
-          id: webhookId,
-          tenantId,
-          ...webhook,
-        },
-        { partitionKey: tenantId }
+        { ...webhook, id: webhookId, tenantId },
+        { partitionKey: tenantId } as any
       );
 
       return webhook;
@@ -1176,9 +1179,9 @@ export class IntegrationSyncService {
 
       const container = getContainer('integration_webhooks');
       await container.item(webhookId, tenantId).replace({
+        ...updated,
         id: webhookId,
         tenantId,
-        ...updated,
       });
 
       return updated;

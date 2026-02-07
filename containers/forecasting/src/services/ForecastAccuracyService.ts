@@ -50,7 +50,7 @@ export class ForecastAccuracyService {
     };
     try {
       const container = getContainer(this.containerName);
-      await container.items.create(doc, { partitionKey: params.tenantId });
+      await container.items.create(doc, { partitionKey: params.tenantId } as any);
       return doc;
     } catch (error: unknown) {
       const err = error as Error;
@@ -148,7 +148,7 @@ export class ForecastAccuracyService {
       }
 
       const { resources } = await container.items
-        .query<ForecastPrediction>({ query, parameters }, { partitionKey: tenantId })
+        .query<ForecastPrediction>({ query, parameters }, { partitionKey: tenantId } as any)
         .fetchAll();
 
       const pairs = (resources || []).filter(

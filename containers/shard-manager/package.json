@@ -7,6 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "ensure-containers": "tsx scripts/ensure-platform-containers-and-shard-types.ts",
     "test": "vitest run",
     "lint": "eslint src --ext .ts",
     "test:unit": "vitest run tests/unit",

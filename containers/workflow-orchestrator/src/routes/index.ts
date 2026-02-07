@@ -20,7 +20,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
     fastify.get<{ Params: { workflowId: string } }>(
       '/api/v1/workflows/:workflowId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get workflow status',
           tags: ['Workflows'],
@@ -37,7 +37,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       async (request, reply) => {
         try {
           const { workflowId } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const workflow = await workflowOrchestratorService.getWorkflow(workflowId, tenantId);
 
@@ -67,7 +67,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
     fastify.get<{ Querystring: { opportunityId: string } }>(
       '/api/v1/workflows',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get workflows for opportunity',
           tags: ['Workflows'],
@@ -84,7 +84,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       async (request, reply) => {
         try {
           const { opportunityId } = request.query;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const workflows = await workflowOrchestratorService.getWorkflowsForOpportunity(opportunityId, tenantId);
 
@@ -108,7 +108,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
     fastify.get<{ Params: { id: string } }>(
       '/api/v1/hitl/approvals/:id',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get HITL approval by id',
           tags: ['HITL'],
@@ -118,7 +118,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       },
       async (request, reply) => {
         const { id } = request.params;
-        const tenantId = request.user!.tenantId;
+        const tenantId = (request as any).user!.tenantId;
         const approval = await HitlApprovalService.getById(id, tenantId);
         if (!approval) return reply.status(404).send({ error: { code: 'HITL_APPROVAL_NOT_FOUND', message: 'HITL approval not found' } });
         return reply.send(approval);
@@ -128,7 +128,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
     fastify.post<{ Params: { id: string }; Body: { decidedBy: string; comment?: string } }>(
       '/api/v1/hitl/approvals/:id/approve',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Approve HITL request (Plan §972)',
           tags: ['HITL'],
@@ -140,7 +140,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       async (request, reply) => {
         try {
           const { id } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const body = request.body ?? {};
           if (!body.decidedBy) return reply.status(400).send({ error: { code: 'VALIDATION_ERROR', message: 'decidedBy is required' } });
           const approval = await HitlApprovalService.approve(id, tenantId, { decidedBy: body.decidedBy, comment: body.comment });
@@ -158,7 +158,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
     fastify.post<{ Params: { id: string }; Body: { decidedBy: string; comment?: string } }>(
       '/api/v1/hitl/approvals/:id/reject',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Reject HITL request (Plan §972)',
           tags: ['HITL'],
@@ -170,7 +170,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       async (request, reply) => {
         try {
           const { id } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const body = request.body ?? {};
           if (!body.decidedBy) return reply.status(400).send({ error: { code: 'VALIDATION_ERROR', message: 'decidedBy is required' } });
           const approval = await HitlApprovalService.reject(id, tenantId, { decidedBy: body.decidedBy, comment: body.comment });
@@ -189,7 +189,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
     fastify.post<{ Params: { workflowId: string } }>(
       '/api/v1/workflows/:workflowId/retry',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Retry failed workflow',
           tags: ['Workflows'],
@@ -206,7 +206,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       async (request, reply) => {
         try {
           const { workflowId } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const workflow = await workflowOrchestratorService.retryWorkflow(workflowId, tenantId);
 

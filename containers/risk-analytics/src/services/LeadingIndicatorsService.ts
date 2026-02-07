@@ -65,7 +65,7 @@ export class LeadingIndicatorsService {
     let hasActivityData = false;
     try {
       if (this.config.services?.shard_manager?.url && this.app) {
-        const token = generateServiceToken(this.app, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
+        const token = generateServiceToken(this.app as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
         const related = await this.shardManagerClient.get<Array<{ edge?: unknown; shard?: unknown }>>(
           `/api/v1/shards/${encodeURIComponent(opportunityId)}/related?limit=100`,
           { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId } }

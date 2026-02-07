@@ -21,6 +21,8 @@ REQUIRED = [
     "days_since_last_activity",
     "activity_count_30d",
     "stakeholder_count",
+    "sentiment_score",
+    "product_fit_score",
     "target_risk",
 ]
 
@@ -60,6 +62,10 @@ def main() -> int:
         print("Input is empty; cannot train. Provide Parquet with required columns.", file=sys.stderr)
         return 1
 
+    if "sentiment_score" not in df.columns:
+        df["sentiment_score"] = 0
+    if "product_fit_score" not in df.columns:
+        df["product_fit_score"] = 0.5
     for c in REQUIRED:
         if c not in df.columns:
             print(f"Missing required column: {c}. Need: {REQUIRED}", file=sys.stderr)

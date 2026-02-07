@@ -23,7 +23,7 @@ export async function initializeEventConsumer(app?: FastifyInstance): Promise<vo
       url: config.rabbitmq.url,
       exchange: config.rabbitmq.exchange || 'coder_events',
       queue: config.rabbitmq.queue,
-      bindings: config.rabbitmq.bindings,
+      routingKeys: (config.rabbitmq as { bindings?: string[] }).bindings ?? ['#'],
     });
 
     // Handle shard creation (2.4 Embedding Processor)

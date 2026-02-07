@@ -58,6 +58,8 @@ services:
     url: ${SHARD_MANAGER_URL:-http://localhost:3002}
   adaptive_learning:
     url: ${ADAPTIVE_LEARNING_URL:-http://localhost:3032}
+  risk_analytics:
+    url: ${RISK_ANALYTICS_URL:-http://localhost:3048}
   analytics_service:
     url: ${ANALYTICS_SERVICE_URL:-http://localhost:3010}
 
@@ -74,5 +76,6 @@ rabbitmq:
     - "shard.updated"
     - "workflow.recommendation.requested"
 
-# Feature Flags
+# Feature Flags. Phase 4: dual-write recommendations to shard-manager as c_recommendation.
 features: {}
+recommendations_write_shards: ${RECOMMENDATIONS_WRITE_SHARDS:-false}

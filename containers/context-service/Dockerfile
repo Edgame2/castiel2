@@ -1,6 +1,7 @@
 FROM node:20-alpine
 WORKDIR /app
 COPY package*.json ./
+COPY tsconfig.json ./
 COPY containers/shared/package*.json ./containers/shared/
 RUN npm install
 COPY containers/context-service ./containers/context-service

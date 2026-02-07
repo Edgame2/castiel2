@@ -86,7 +86,7 @@ export class RoutingEngine {
     }
 
     // Presence-aware routing (if enabled)
-    if (this.config.notification.features?.presence_aware && this.presenceTracker) {
+    if (this.config.notification?.features?.presence_aware && this.presenceTracker) {
       const isOnline = await this.presenceTracker.isUserOnline(context.userId);
       
       if (isOnline) {
@@ -140,7 +140,7 @@ export class RoutingEngine {
         quietHours: this.quietHoursService 
           ? await this.quietHoursService.isInQuietHours(context.userId, preferences)
           : false,
-        presenceAware: this.config.notification.features?.presence_aware || false,
+        presenceAware: !!this.config.notification?.features?.presence_aware,
       },
     };
   }

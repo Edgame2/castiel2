@@ -78,6 +78,8 @@
         "exchange": { "type": "string" },
         "queue": { "type": "string" }
       }
-    }
+    },
+    "features": { "type": "object", "additionalProperties": { "type": "boolean" } },
+    "recommendations_write_shards": { "type": "boolean", "description": "Phase 4: when true, dual-write recommendations to shard-manager as c_recommendation" }
   }
 }

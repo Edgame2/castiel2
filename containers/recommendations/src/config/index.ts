@@ -32,6 +32,8 @@ export interface RecommendationsConfig {
   services: { [key: string]: { url: string } };
   rabbitmq: { url: string; exchange: string; queue: string; bindings: string[] };
   features: { [key: string]: boolean };
+  /** Phase 4: when true, dual-write recommendations to shard-manager as c_recommendation */
+  recommendations_write_shards?: boolean;
 }
 
 let cachedConfig: RecommendationsConfig | null = null;

@@ -37,8 +37,8 @@ export async function createEmailProvider(
   secretClient?: SecretManagementClient
 ): Promise<IEmailProvider> {
   const appConfig = getConfig();
-  const defaultFrom = config.from_address || appConfig.notification.providers.email?.from_address || 'noreply@castiel';
-  const defaultFromName = config.from_name || appConfig.notification.providers.email?.from_name || 'Castiel';
+  const defaultFrom = config.from_address || appConfig.notification?.providers?.email?.from_address || 'noreply@castiel';
+  const defaultFromName = config.from_name || appConfig.notification?.providers?.email?.from_name || 'Castiel';
 
   switch (config.provider) {
     case 'sendgrid': {

@@ -37,7 +37,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
         try {
           const { jobId } = request.params;
           const { jobType } = request.query;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const job = await utilityService.getJobStatus(jobId, tenantId, jobType);
 
@@ -77,7 +77,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { importType, data } = request.body;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const job = await utilityService.createImportJob(tenantId, importType, data);
 
@@ -108,7 +108,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { exportType, filters } = request.body;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const job = await utilityService.createExportJob(tenantId, exportType, filters);
 

@@ -45,7 +45,7 @@ export async function closeEventPublisher(): Promise<void> {
       await publisher.close();
       log.info('Event publisher closed', { service: 'ai-conversation' });
     } catch (error) {
-      log.warn('Error closing event publisher', error, { service: 'ai-conversation' });
+      log.warn('Error closing event publisher', { error, service: 'ai-conversation' });
     } finally {
       publisher = null;
     }

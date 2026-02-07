@@ -15,8 +15,8 @@ export class RetryService {
    * Calculate retry delay with exponential backoff
    */
   calculateRetryDelay(attempt: number, criticality: NotificationCriticality): number {
-    const baseDelay = this.config.notification.defaults.retry_delay_ms || 1000;
-    const maxDelay = this.config.notification.defaults.max_retry_delay_ms || 30000;
+    const baseDelay = this.config.notification?.defaults?.retry_delay_ms || 1000;
+    const maxDelay = this.config.notification?.defaults?.max_retry_delay_ms || 30000;
     
     // Critical notifications retry faster
     const multiplier = criticality === 'CRITICAL' ? 1.5 : 2;
@@ -33,7 +33,7 @@ export class RetryService {
    * Check if should retry based on attempt count and criticality
    */
   shouldRetry(attempt: number, criticality: NotificationCriticality): boolean {
-    const maxAttempts = this.config.notification.defaults.retry_attempts || 3;
+    const maxAttempts = this.config.notification?.defaults?.retry_attempts || 3;
     
     // Critical notifications get more retries
     const adjustedMaxAttempts = criticality === 'CRITICAL' 

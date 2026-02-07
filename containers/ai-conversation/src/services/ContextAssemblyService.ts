@@ -162,7 +162,7 @@ export class ContextAssemblyService {
 
       // Store context
       const container = getContainer('conversation_contexts');
-      await container.items.create(context, { partitionKey: tenantId });
+      await container.items.create(context, { partitionKey: tenantId } as any);
 
       return context;
     } catch (error: any) {

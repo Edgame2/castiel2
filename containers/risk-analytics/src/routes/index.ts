@@ -20,13 +20,15 @@ import { RiskAIValidationService } from '../services/RiskAIValidationService';
 import { RiskExplainabilityService } from '../services/RiskExplainabilityService';
 import { ExplainabilityService } from '../services/ExplainabilityService';
 import { getSnapshots } from '../services/RiskSnapshotService';
-import { listCompetitors, getCompetitorsForOpportunity, trackCompetitor, getDashboard, analyzeWinLossByCompetitor, recordWinLossReasons, getWinLossReasons } from '../services/CompetitiveIntelligenceService';
+import { listCompetitors, getCompetitorsForOpportunity, trackCompetitor, createCompetitor, updateCompetitor, deleteCompetitor, getDashboard, analyzeWinLossByCompetitor, recordWinLossReasons, getWinLossReasons, type CompetitiveIntelligenceShardContext, type CreateCompetitorInput } from '../services/CompetitiveIntelligenceService';
 import { getPrioritizedOpportunities } from '../services/PrioritizedOpportunitiesService';
 import { getTopAtRiskReasons } from '../services/AtRiskReasonsService';
 import { StakeholderGraphService } from '../services/StakeholderGraphService';
 import { executeQuickAction } from '../services/QuickActionsService';
 import { getAnomalies, runStatisticalDetection, persistAndPublishMLAnomaly, type RunStatisticalDetectionResult } from '../services/AnomalyDetectionService';
 import { getSentimentTrends } from '../services/SentimentTrendsService';
+import { ProductFitService } from '../services/ProductFitService';
+import { ProductService } from '../services/ProductService';
 import { LeadingIndicatorsService } from '../services/LeadingIndicatorsService';
 import { RiskClusteringService } from '../services/RiskClusteringService';
 import { AccountHealthService } from '../services/AccountHealthService';
@@ -64,7 +66,11 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     const salesMethodologyService = new SalesMethodologyService();
     const tenantMLConfigService = new TenantMLConfigService();
     const riskCatalogService = new RiskCatalogService(fastify);
-    const riskEvaluationService = new RiskEvaluationService(fastify, tenantMLConfigService, riskCatalogService);
+    const getTokenForService = (tenantId: string) =>
+      generateServiceToken(fastify as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
+    const productFitService = new ProductFitService(getTokenForService);
+    const productService = new ProductService(getTokenForService);
+    const riskEvaluationService = new RiskEvaluationService(fastify, tenantMLConfigService, riskCatalogService, productFitService);
     const revenueAtRiskService = new RevenueAtRiskService(fastify, riskEvaluationService);
     const quotaService = new QuotaService(fastify, revenueAtRiskService);
     const earlyWarningService = new EarlyWarningService(fastify, riskEvaluationService);
@@ -76,6 +82,16 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     const riskAIValidationService = new RiskAIValidationService(fastify);
     const riskExplainabilityService = new RiskExplainabilityService(fastify);
     const explainabilityService = new ExplainabilityService();
+    const competitorShardClient =
+      config.features?.competitors_use_shards && config.services?.shard_manager?.url
+        ? new ServiceClient({
+            baseURL: config.services.shard_manager.url,
+            timeout: 15000,
+            retries: 2,
+            circuitBreaker: { enabled: true },
+          })
+        : null;
+
     const mlServiceClientForMethodology = config.services?.ml_service?.url
       ? new ServiceClient({
           baseURL: config.services.ml_service.url,
@@ -85,7 +101,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       : null;
     const getMethodologyFeatures = mlServiceClientForMethodology
       ? async (tenantId: string, opportunityId: string) => {
-          const token = generateServiceToken(fastify, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
+          const token = generateServiceToken(fastify as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
           try {
             const res = await mlServiceClientForMethodology.get<import('../types/decision.types').MethodologyFeaturesInput>(
               `/api/v1/ml/features/methodology?opportunityId=${encodeURIComponent(opportunityId)}`,
@@ -122,7 +138,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { evaluationId: string } }>(
       '/api/v1/risk/evaluations/:evaluationId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get risk evaluation by ID',
           tags: ['Risk Evaluation'],
@@ -162,7 +178,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/risk/opportunities/:opportunityId/latest-evaluation',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get latest risk evaluation for an opportunity (e.g. for risk-adjusted revenue forecast)',
           tags: ['Risk Evaluation'],
@@ -203,7 +219,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/risk-explainability',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Top drivers for risk score (topDrivers: feature, contribution, direction). Derived from latest evaluation detectedRisks.',
           tags: ['Risk Evaluation'],
@@ -285,7 +301,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string }; Querystring: { from?: string; to?: string } }>(
       '/api/v1/opportunities/:opportunityId/risk-snapshots',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get risk snapshots for an opportunity in a date range (YYYY-MM-DD)',
           tags: ['Risk Evaluation'],
@@ -324,7 +340,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/win-probability',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get win probability for an opportunity (proxies to ml-service)',
           tags: ['Risk Evaluation'],
@@ -343,7 +359,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
               error: { code: 'ML_SERVICE_UNAVAILABLE', message: 'ml-service URL not configured' },
             });
           }
-          const token = generateServiceToken(fastify, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
+          const token = generateServiceToken(fastify as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
           const res = await mlServiceClient.post<{ probability: number }>(
             '/api/v1/ml/win-probability/predict',
             { opportunityId },
@@ -365,7 +381,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/win-probability/explain',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Top drivers for win-probability (proxies to ml-service POST /api/v1/ml/win-probability/explain). Plan §905.',
           tags: ['Risk Evaluation'],
@@ -401,7 +417,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
               error: { code: 'ML_SERVICE_UNAVAILABLE', message: 'ml-service URL not configured' },
             });
           }
-          const token = generateServiceToken(fastify, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
+          const token = generateServiceToken(fastify as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
           const res = await mlServiceClient.post<{ topDrivers: { feature: string; contribution: number; direction: string }[] }>(
             '/api/v1/ml/win-probability/explain',
             { opportunityId },
@@ -423,7 +439,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string }; Querystring: { from?: string; to?: string } }>(
       '/api/v1/opportunities/:opportunityId/win-probability/trend',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Historical win-probability points (proxies to ml-service GET /api/v1/ml/win-probability/:opportunityId/trend). On 503 or missing ml_service URL returns { points: [] }.',
           tags: ['Risk Evaluation'],
@@ -459,7 +475,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           if (!base) {
             return reply.send({ points: [] });
           }
-          const token = generateServiceToken(fastify, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
+          const token = generateServiceToken(fastify as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
           const qs = new URLSearchParams();
           if (from) qs.set('from', from);
           if (to) qs.set('to', to);
@@ -485,7 +501,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/risk-predictions',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get 30/60/90-day risk predictions (EarlyWarningService.predictRiskTrajectory). Returns stored prediction or stub when none.',
           tags: ['Risk Evaluation'],
@@ -534,7 +550,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/risk-predictions/generate',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Trigger generation of 30/60/90-day risk predictions (EarlyWarningService.generatePredictions). Rules-based; LSTM later. Writes to risk_predictions.',
           tags: ['Risk Evaluation'],
@@ -591,7 +607,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/risk-velocity',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get risk velocity and acceleration from risk_snapshots (EarlyWarningService.calculateRiskVelocity)',
           tags: ['Risk Evaluation'],
@@ -630,7 +646,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/stakeholder-graph',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get stakeholder graph for an opportunity. Nodes: opportunity + contacts; edges: has_contact/has_stakeholder (opp→contact), reports_to (contact→contact). Centrality: Phase 2 (Azure ML).',
           tags: ['Risk Evaluation'],
@@ -680,7 +696,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/anomalies',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get anomalies for an opportunity from risk_anomaly_alerts. Detection (statistical, Isolation Forest) to be wired; returns stored alerts.',
           tags: ['Risk Evaluation'],
@@ -727,7 +743,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/anomalies/detect',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Run statistical (Z-score) anomaly detection; when ml_service.url and feature_flags.anomaly_detection, also runs ML (Isolation Forest) via ml-service. Persists to risk_anomaly_alerts and publishes anomaly.detected on detection.',
           tags: ['Risk Evaluation'],
@@ -763,7 +779,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           let ownerId: string | undefined;
           if (config.services?.shard_manager?.url) {
             try {
-              const token = generateServiceToken(fastify, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
+              const token = generateServiceToken(fastify as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
               const shard = await shardManagerClient.get<{ structuredData?: { OwnerId?: string } }>(
                 `/api/v1/shards/${opportunityId}`,
                 { headers: { 'X-Tenant-ID': tenantId, Authorization: `Bearer ${token}` } }
@@ -777,7 +793,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           let resultML: RunStatisticalDetectionResult | undefined;
           if (config.services?.ml_service?.url && config.feature_flags?.anomaly_detection) {
             try {
-              const token = generateServiceToken(fastify, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
+              const token = generateServiceToken(fastify as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
               const res = await mlServiceClient.post<{ isAnomaly: number; anomalyScore: number }>(
                 '/api/v1/ml/anomaly/predict',
                 { opportunityId },
@@ -808,7 +824,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/sentiment-trends',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get sentiment trends for an opportunity. Data from risk_sentiment_trends; ai-insights or data-enrichment to populate.',
           tags: ['Risk Evaluation'],
@@ -851,11 +867,258 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       }
     );
 
+    // Product-fit (Phase 3): evaluate and get product-fit for opportunity
+    fastify.post<{ Params: { opportunityId: string } }>(
+      '/api/v1/opportunities/:opportunityId/product-fit/evaluate',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+        schema: {
+          description: 'Run product-fit evaluation for an opportunity and persist product_fit shards.',
+          tags: ['Risk Evaluation'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { opportunityId: { type: 'string' } }, required: ['opportunityId'] },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                opportunityId: { type: 'string' },
+                assessments: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      productId: { type: 'string' },
+                      productName: { type: 'string' },
+                      score: { type: 'number' },
+                      dimensions: { type: 'object' },
+                    },
+                  },
+                },
+                evaluatedAt: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { opportunityId } = request.params;
+          const tenantId = request.user!.tenantId;
+          const result = await productFitService.evaluate(tenantId, opportunityId);
+          return reply.send(result);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Product-fit evaluate failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
+            error: { code: 'PRODUCT_FIT_EVALUATE_FAILED', message: msg || 'Failed to evaluate product fit' },
+          });
+        }
+      }
+    );
+
+    fastify.get<{ Params: { opportunityId: string } }>(
+      '/api/v1/opportunities/:opportunityId/product-fit',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+        schema: {
+          description: 'Get product-fit assessments for an opportunity (from product_fit shards).',
+          tags: ['Risk Evaluation'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { opportunityId: { type: 'string' } }, required: ['opportunityId'] },
+          response: {
+            200: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  productId: { type: 'string' },
+                  productName: { type: 'string' },
+                  score: { type: 'number' },
+                  dimensions: { type: 'object' },
+                },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const { opportunityId } = request.params;
+          const tenantId = request.user!.tenantId;
+          const assessments = await productFitService.getProductFit(tenantId, opportunityId);
+          return reply.send(assessments);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Product-fit get failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
+            error: { code: 'PRODUCT_FIT_GET_FAILED', message: msg || 'Failed to get product fit' },
+          });
+        }
+      }
+    );
+
+    // Products (c_product) CRUD – Plan Full UI
+    fastify.get<{ Querystring?: Record<string, never> }>(
+      '/api/v1/products',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+        schema: {
+          description: 'List products (c_product shards).',
+          tags: ['Products'],
+          security: [{ bearerAuth: [] }],
+          response: { 200: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' }, description: { type: 'string' }, category: { type: 'string' }, status: { type: 'string' } } } } },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const tenantId = request.user!.tenantId;
+          const list = await productService.list(tenantId);
+          return reply.send(list);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('List products failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
+            error: { code: 'LIST_PRODUCTS_FAILED', message: msg || 'Failed to list products' },
+          });
+        }
+      }
+    );
+
+    fastify.get<{ Params: { id: string } }>(
+      '/api/v1/products/:id',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+        schema: {
+          description: 'Get a product by id.',
+          tags: ['Products'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+          response: { 200: { type: 'object' } },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const tenantId = request.user!.tenantId;
+          const product = await productService.getById(tenantId, request.params.id);
+          if (!product) return (reply as { status: (code: number) => typeof reply }).status(404).send({ error: { code: 'NOT_FOUND', message: 'Product not found' } });
+          return reply.send(product);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Get product failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
+            error: { code: 'GET_PRODUCT_FAILED', message: msg || 'Failed to get product' },
+          });
+        }
+      }
+    );
+
+    fastify.post<{ Body: import('../services/ProductService').CreateProductInput }>(
+      '/api/v1/products',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+        schema: {
+          description: 'Create a product (c_product shard).',
+          tags: ['Products'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+              name: { type: 'string' },
+              description: { type: 'string' },
+              category: { type: 'string' },
+              status: { type: 'string' },
+              goodFitIf: { type: 'array', items: { type: 'object' } },
+              badFitIf: { type: 'array', items: { type: 'object' } },
+            },
+          },
+          response: { 201: { type: 'object' } },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const tenantId = request.user!.tenantId;
+          const userId = request.user!.id ?? 'system';
+          const created = await productService.create(tenantId, request.body, userId);
+          return (reply as { code: (n: number) => typeof reply }).code(201).send(created);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Create product failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
+            error: { code: 'CREATE_PRODUCT_FAILED', message: msg || 'Failed to create product' },
+          });
+        }
+      }
+    );
+
+    fastify.put<{ Params: { id: string }; Body: Partial<import('../services/ProductService').CreateProductInput> }>(
+      '/api/v1/products/:id',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+        schema: {
+          description: 'Update a product.',
+          tags: ['Products'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+          body: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' }, category: { type: 'string' }, status: { type: 'string' }, goodFitIf: { type: 'array' }, badFitIf: { type: 'array' } } },
+          response: { 200: { type: 'object' } },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const tenantId = request.user!.tenantId;
+          const userId = request.user!.id ?? 'system';
+          await productService.update(tenantId, request.params.id, request.body, userId);
+          return reply.send({ ok: true });
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Update product failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
+            error: { code: 'UPDATE_PRODUCT_FAILED', message: msg || 'Failed to update product' },
+          });
+        }
+      }
+    );
+
+    fastify.delete<{ Params: { id: string } }>(
+      '/api/v1/products/:id',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+        schema: {
+          description: 'Delete a product.',
+          tags: ['Products'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+          response: { 200: { type: 'object' } },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const tenantId = request.user!.tenantId;
+          await productService.delete(tenantId, request.params.id);
+          return reply.send({ ok: true });
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Delete product failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
+            error: { code: 'DELETE_PRODUCT_FAILED', message: msg || 'Failed to delete product' },
+          });
+        }
+      }
+    );
+
     // Leading indicators (Gap 5, Plan §4). LeadingIndicatorsService.getLeadingIndicators.
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/leading-indicators',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Leading-indicator status for an opportunity (LeadingIndicatorsCard). From risk_snapshots, risk_evaluations, early-warnings, shard-manager.',
           tags: ['Risk Evaluation'],
@@ -904,7 +1167,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Params: { opportunityId: string }; Body: { action: string; payload?: Record<string, unknown> } }>(
       '/api/v1/opportunities/:opportunityId/quick-actions',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Quick actions from EarlyWarningCard, AnomalyCard: create_task, log_activity, start_remediation. Publishes opportunity.quick_action.requested for async handling.',
           tags: ['Risk Evaluation'],
@@ -949,7 +1212,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/similar-won-deals',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Peer deal comparison: deals similar by industry and size band. Returns count, winRate, medianCycleTimeDays, p25CloseAmount. Uses shard-manager c_opportunity (Plan §11.12).',
           tags: ['Risk Evaluation'],
@@ -990,7 +1253,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { industryId: string }; Querystring: { period?: string } }>(
       '/api/v1/industries/:industryId/benchmarks',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get industry benchmark (Plan §953). Optional query period (YYYY-MM). From analytics_industry_benchmarks.',
           tags: ['Risk Evaluation'],
@@ -1019,7 +1282,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/benchmark-comparison',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Compare opportunity to industry benchmark (Plan §953). Uses shard-manager and analytics_industry_benchmarks.',
           tags: ['Risk Evaluation'],
@@ -1048,7 +1311,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Querystring?: Record<string, string> }>(
       '/api/v1/risk-clustering/clusters',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get risk clusters (Plan §4.1, §915). Reads from risk_clusters. Cached or on-demand.',
           tags: ['Risk Evaluation'],
@@ -1073,7 +1336,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Querystring?: Record<string, string> }>(
       '/api/v1/risk-clustering/association-rules',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get association rules (Plan §4.1, §915). Reads from risk_association_rules.',
           tags: ['Risk Evaluation'],
@@ -1098,7 +1361,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post(
       '/api/v1/risk-clustering/trigger',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Trigger risk-clustering batch job on-demand (Plan §4.1, §915). Publishes workflow.job.trigger; BatchJobWorker consumes from bi_batch_jobs.',
           tags: ['Risk Evaluation'],
@@ -1124,7 +1387,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { id: string } }>(
       '/api/v1/accounts/:id/health',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get account health (Plan §4.1, §917). Reads from risk_account_health. 404 when batch has not run for this account.',
           tags: ['Risk Evaluation'],
@@ -1156,7 +1419,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { id: string } }>(
       '/api/v1/risk-propagation/opportunities/:id',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Analyze risk propagation from one opportunity (Plan §4.1, §916). RiskPropagationService.analyzeRiskPropagation. Stub until graph + Azure ML batch wired.',
           tags: ['Risk Evaluation'],
@@ -1195,7 +1458,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Querystring?: Record<string, never> }>(
       '/api/v1/competitors',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'List competitors in the tenant catalog (for CompetitorSelectModal and settings).',
           tags: ['Competitive Intelligence'],
@@ -1224,7 +1487,16 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const tenantId = request.user!.tenantId;
-          const competitors = await listCompetitors(tenantId);
+          const ctx: CompetitiveIntelligenceShardContext | undefined = competitorShardClient
+            ? {
+                useShards: true,
+                shardManagerClient: competitorShardClient,
+                getToken: (t: string) => generateServiceToken(fastify as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId: t }),
+                bootstrapTenantId: 'system',
+                systemUserId: 'system',
+              }
+            : undefined;
+          const competitors = await listCompetitors(tenantId, ctx);
           return reply.send({ competitors });
         } catch (error: unknown) {
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
@@ -1237,11 +1509,151 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       }
     );
 
+    // Create competitor (Plan Full UI: CRUD when competitors_use_shards)
+    fastify.post<{ Body: CreateCompetitorInput }>(
+      '/api/v1/competitors',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+        schema: {
+          description: 'Create a competitor in the catalog (requires competitors_use_shards).',
+          tags: ['Competitive Intelligence'],
+          security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+              name: { type: 'string' },
+              segment: { type: 'string' },
+              strengths: { type: 'array', items: { type: 'string' } },
+              weaknesses: { type: 'array', items: { type: 'string' } },
+              differentiation: { type: 'string' },
+              website: { type: 'string' },
+              region: { type: 'string' },
+              industry: { type: 'string' },
+            },
+          },
+          response: { 201: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' } } } },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const tenantId = request.user!.tenantId;
+          const ctx = competitorShardClient
+            ? {
+                useShards: true,
+                shardManagerClient: competitorShardClient,
+                getToken: (t: string) => generateServiceToken(fastify as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId: t }),
+                bootstrapTenantId: 'system',
+                systemUserId: request.user!.id ?? 'system',
+              }
+            : undefined;
+          const created = await createCompetitor(tenantId, request.body, ctx);
+          return (reply as { code: (n: number) => typeof reply }).code(201).send(created);
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Create competitor failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
+            error: { code: 'CREATE_COMPETITOR_FAILED', message: msg || 'Failed to create competitor' },
+          });
+        }
+      }
+    );
+
+    // Update competitor (Plan Full UI)
+    fastify.put<{ Params: { id: string }; Body: Partial<CreateCompetitorInput> }>(
+      '/api/v1/competitors/:id',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+        schema: {
+          description: 'Update a competitor (requires competitors_use_shards).',
+          tags: ['Competitive Intelligence'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+          body: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              segment: { type: 'string' },
+              strengths: { type: 'array', items: { type: 'string' } },
+              weaknesses: { type: 'array', items: { type: 'string' } },
+              differentiation: { type: 'string' },
+              website: { type: 'string' },
+              region: { type: 'string' },
+              industry: { type: 'string' },
+            },
+          },
+          response: { 200: { type: 'object', description: 'Updated' } },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const tenantId = request.user!.tenantId;
+          const ctx = competitorShardClient
+            ? {
+                useShards: true,
+                shardManagerClient: competitorShardClient,
+                getToken: (t: string) => generateServiceToken(fastify as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId: t }),
+                bootstrapTenantId: 'system',
+                systemUserId: request.user!.id ?? 'system',
+              }
+            : undefined;
+          await updateCompetitor(tenantId, request.params.id, request.body, ctx);
+          return reply.send({ ok: true });
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Update competitor failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
+            error: { code: 'UPDATE_COMPETITOR_FAILED', message: msg || 'Failed to update competitor' },
+          });
+        }
+      }
+    );
+
+    // Delete competitor (Plan Full UI)
+    fastify.delete<{ Params: { id: string } }>(
+      '/api/v1/competitors/:id',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+        schema: {
+          description: 'Delete a competitor (requires competitors_use_shards).',
+          tags: ['Competitive Intelligence'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+          response: { 200: { type: 'object', description: 'Deleted' } },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const tenantId = request.user!.tenantId;
+          const ctx = competitorShardClient
+            ? {
+                useShards: true,
+                shardManagerClient: competitorShardClient,
+                getToken: (t: string) => generateServiceToken(fastify as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId: t }),
+                bootstrapTenantId: 'system',
+                systemUserId: request.user!.id ?? 'system',
+              }
+            : undefined;
+          await deleteCompetitor(tenantId, request.params.id, ctx);
+          return reply.send({ ok: true });
+        } catch (error: unknown) {
+          const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
+          const msg = error instanceof Error ? error.message : String(error);
+          log.error('Delete competitor failed', error instanceof Error ? error : new Error(msg), { service: 'risk-analytics' });
+          return (reply as { status: (code: number) => typeof reply }).status(statusCode).send({
+            error: { code: 'DELETE_COMPETITOR_FAILED', message: msg || 'Failed to delete competitor' },
+          });
+        }
+      }
+    );
+
     // Track competitor on opportunity (Plan §10 Phase 1, §3.1.1–3.1.2)
     fastify.post<{ Params: { id: string }; Body: { opportunityId: string; competitorName?: string; mentionCount?: number; sentiment?: number; winLikelihood?: number } }>(
       '/api/v1/competitors/:id/track',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Track a competitor on an opportunity (upsert risk_competitor_tracking). :id = competitorId.',
           tags: ['Competitive Intelligence'],
@@ -1282,13 +1694,22 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const competitorId = request.params.id;
           const { opportunityId, competitorName, mentionCount, sentiment, winLikelihood } = request.body;
           const tenantId = request.user!.tenantId;
+          const ctx: CompetitiveIntelligenceShardContext | undefined = competitorShardClient
+            ? {
+                useShards: true,
+                shardManagerClient: competitorShardClient,
+                getToken: (t: string) => generateServiceToken(fastify as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId: t }),
+                bootstrapTenantId: 'system',
+                systemUserId: request.user!.id ?? 'system',
+              }
+            : undefined;
           const out = await trackCompetitor(tenantId, competitorId, {
             opportunityId,
             competitorName,
             mentionCount,
             sentiment,
             winLikelihood,
-          });
+          }, ctx);
           return reply.status(201).send(out);
         } catch (error: unknown) {
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
@@ -1305,7 +1726,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/competitors',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get competitors tracked for an opportunity (CompetitiveIntelligenceService, risk_competitor_tracking)',
           tags: ['Competitive Intelligence'],
@@ -1339,7 +1760,16 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
         try {
           const { opportunityId } = request.params;
           const tenantId = request.user!.tenantId;
-          const competitors = await getCompetitorsForOpportunity(tenantId, opportunityId);
+          const ctx: CompetitiveIntelligenceShardContext | undefined = competitorShardClient
+            ? {
+                useShards: true,
+                shardManagerClient: competitorShardClient,
+                getToken: (t: string) => generateServiceToken(fastify as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId: t }),
+                bootstrapTenantId: 'system',
+                systemUserId: 'system',
+              }
+            : undefined;
+          const competitors = await getCompetitorsForOpportunity(tenantId, opportunityId, ctx);
           return reply.send({ competitors });
         } catch (error: unknown) {
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
@@ -1356,7 +1786,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.put<{ Params: { opportunityId: string }; Body: { lossReason?: string; winReason?: string; competitorId?: string } }>(
       '/api/v1/opportunities/:opportunityId/win-loss-reasons',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Record win/loss reasons for an opportunity (Plan §11.8, §943). Upserts risk_win_loss_reasons. Feeds win/loss analytics.',
           tags: ['Competitive Intelligence'],
@@ -1393,7 +1823,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/win-loss-reasons',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get win/loss reasons for an opportunity (Plan §11.8, §943).',
           tags: ['Competitive Intelligence'],
@@ -1424,7 +1854,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get(
       '/api/v1/competitive-intelligence/dashboard',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get competitive intelligence dashboard: totalOpportunitiesWithCompetitors, totalMentions, topCompetitorsByMentions, recentMentionCount, winLoss. winLoss from risk_win_loss_reasons (Plan §11.8, §943): wins=# with winReason, losses=# with lossReason.',
           tags: ['Competitive Intelligence'],
@@ -1480,7 +1910,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get(
       '/api/v1/analytics/competitive-win-loss',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Win/loss by competitor. byCompetitor (competitorId, competitorName, wins, losses, winRate); totalWins, totalLosses, overallWinRate. From risk_win_loss_reasons (Plan §11.8, §943): losses per competitorId where lossReason set; totalWins/totalLosses from winReason/lossReason counts.',
           tags: ['Competitive Intelligence'],
@@ -1530,7 +1960,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: { opportunityId: string; options?: any } }>(
       '/api/v1/risk/evaluations',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Trigger risk evaluation for an opportunity',
           tags: ['Risk Evaluation'],
@@ -1573,7 +2003,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/risk-analysis/opportunities/:opportunityId/revenue-at-risk',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Calculate revenue at risk for opportunity',
           tags: ['Revenue'],
@@ -1608,7 +2038,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { userId: string } }>(
       '/api/v1/risk-analysis/portfolio/:userId/revenue-at-risk',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Calculate revenue at risk for user portfolio',
           tags: ['Revenue'],
@@ -1643,7 +2073,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { teamId: string } }>(
       '/api/v1/risk-analysis/teams/:teamId/revenue-at-risk',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Calculate revenue at risk for team',
           tags: ['Revenue'],
@@ -1675,7 +2105,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get(
       '/api/v1/risk-analysis/tenant/revenue-at-risk',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Calculate revenue at risk for tenant',
           tags: ['Revenue'],
@@ -1706,7 +2136,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get(
       '/api/v1/risk-analysis/tenant/prioritized-opportunities',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get prioritized opportunities for tenant. Rank by revenue-at-risk × risk × early-warning; suggestedAction from mitigation-ranking (Phase 2).',
           tags: ['Revenue'],
@@ -1755,7 +2185,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Querystring: { limit?: number } }>(
       '/api/v1/risk-analysis/tenant/top-at-risk-reasons',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Top at-risk reasons for tenant. Aggregates atRiskReasons from risk_evaluations for "Top at-risk reasons" widget in manager/executive dashboard.',
           tags: ['Revenue'],
@@ -1805,7 +2235,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Params: { opportunityId: string } }>(
       '/api/v1/risk-analysis/opportunities/:opportunityId/early-warnings',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Detect early warning signals for opportunity',
           tags: ['Early Warning'],
@@ -1836,7 +2266,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/risk-analysis/opportunities/:opportunityId/early-warnings',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get early warning signals for opportunity',
           tags: ['Early Warning'],
@@ -1866,7 +2296,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Params: { warningId: string } }>(
       '/api/v1/risk-analysis/early-warnings/:warningId/acknowledge',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Acknowledge early warning signal',
           tags: ['Early Warning'],
@@ -1899,7 +2329,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { tenantId: string }; Querystring: { industryId?: string } }>(
       '/api/v1/risk-catalog/catalog/:tenantId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get applicable risk catalog for tenant',
           tags: ['Risk Catalog'],
@@ -1927,7 +2357,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: CreateRiskInput }>(
       '/api/v1/risk-catalog/risks',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Create custom risk (global, industry, or tenant-specific based on role)',
           tags: ['Risk Catalog'],
@@ -1958,7 +2388,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.put<{ Params: { riskId: string }; Body: UpdateRiskInput }>(
       '/api/v1/risk-catalog/risks/:riskId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Update risk catalog entry',
           tags: ['Risk Catalog'],
@@ -1989,7 +2419,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.delete<{ Params: { riskId: string } }>(
       '/api/v1/risk-catalog/risks/:riskId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Delete tenant-specific risk',
           tags: ['Risk Catalog'],
@@ -2022,7 +2452,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     }>(
       '/api/v1/risk-catalog/risks/:riskId/duplicate',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Duplicate risk (global/industry → tenant-specific)',
           tags: ['Risk Catalog'],
@@ -2060,7 +2490,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.put<{ Params: { riskId: string }; Body: { catalogType: 'global' | 'industry'; industryId?: string } }>(
       '/api/v1/risk-catalog/risks/:riskId/enable',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Enable risk for tenant',
           tags: ['Risk Catalog'],
@@ -2091,7 +2521,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.put<{ Params: { riskId: string }; Body: { catalogType: 'global' | 'industry'; industryId?: string } }>(
       '/api/v1/risk-catalog/risks/:riskId/disable',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Disable risk for tenant',
           tags: ['Risk Catalog'],
@@ -2122,7 +2552,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { riskId: string }; Querystring: { industryId?: string; opportunityType?: string } }>(
       '/api/v1/risk-catalog/risks/:riskId/ponderation',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get risk weights (ponderation)',
           tags: ['Risk Catalog'],
@@ -2152,7 +2582,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.put<{ Params: { riskId: string }; Body: SetPonderationInput }>(
       '/api/v1/risk-catalog/risks/:riskId/ponderation',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Set risk weights (ponderation)',
           tags: ['Risk Catalog'],
@@ -2185,7 +2615,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: CreateQuotaInput }>(
       '/api/v1/quotas',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Create a new quota',
           tags: ['Quotas'],
@@ -2213,7 +2643,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { quotaId: string } }>(
       '/api/v1/quotas/:quotaId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get quota by ID',
           tags: ['Quotas'],
@@ -2244,7 +2674,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.put<{ Params: { quotaId: string }; Body: UpdateQuotaInput }>(
       '/api/v1/quotas/:quotaId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Update quota',
           tags: ['Quotas'],
@@ -2273,7 +2703,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Params: { quotaId: string } }>(
       '/api/v1/quotas/:quotaId/performance',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Calculate quota performance',
           tags: ['Quotas'],
@@ -2304,7 +2734,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Params: { opportunityId: string }; Body: { scenarioName?: string; modifications?: any } }>(
       '/api/v1/simulations/opportunities/:opportunityId/run',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Run risk simulation for opportunity',
           tags: ['Simulations'],
@@ -2337,7 +2767,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Params: { opportunityId: string }; Body: { scenarios: Array<{ scenarioName?: string; modifications?: any }> } }>(
       '/api/v1/simulations/opportunities/:opportunityId/compare',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Compare multiple simulation scenarios',
           tags: ['Simulations'],
@@ -2377,7 +2807,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/simulations/opportunities/:opportunityId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get simulations for opportunity',
           tags: ['Simulations'],
@@ -2407,7 +2837,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Querystring: { industryId?: string; opportunityType?: string } }>(
       '/api/v1/benchmarks/win-rates',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get win rate benchmarks',
           tags: ['Benchmarks'],
@@ -2438,7 +2868,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Querystring: { industryId?: string; opportunityType?: string } }>(
       '/api/v1/benchmarks/closing-times',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get closing time benchmarks',
           tags: ['Benchmarks'],
@@ -2469,7 +2899,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Querystring: { industryId?: string; opportunityType?: string } }>(
       '/api/v1/benchmarks/deal-sizes',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get deal size benchmarks',
           tags: ['Benchmarks'],
@@ -2502,7 +2932,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/risk/opportunities/:opportunityId/data-quality',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Evaluate data quality for opportunity',
           tags: ['Data Quality'],
@@ -2532,7 +2962,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Params: { opportunityId: string }; Body: { modelConfidence?: number; dataCompleteness?: number; historicalAccuracy?: number } }>(
       '/api/v1/risk/opportunities/:opportunityId/trust-level',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Calculate trust level for risk evaluation. When latest evaluation has dataQuality, it is used for dataQuality and dataCompleteness factors.',
           tags: ['Trust Level'],
@@ -2580,7 +3010,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Params: { evaluationId: string } }>(
       '/api/v1/risk/evaluations/:evaluationId/validate',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Validate AI-generated risk evaluation',
           tags: ['AI Validation'],
@@ -2620,7 +3050,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Params: { evaluationId: string } }>(
       '/api/v1/risk/evaluations/:evaluationId/explainability',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Generate explainability for risk evaluation',
           tags: ['Explainability'],
@@ -2665,7 +3095,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: ExplainPredictionRequest }>(
       '/api/v1/explain/prediction',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Generate or retrieve explanation for a prediction (evaluationId or predictionId).',
           tags: ['Explainability'],
@@ -2726,7 +3156,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { modelId: string } }>(
       '/api/v1/explain/feature-importance/:modelId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get global feature importance for a model.',
           tags: ['Explainability'],
@@ -2778,7 +3208,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { predictionId: string } }>(
       '/api/v1/explain/factors/:predictionId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get factors (positive and negative) for a prediction.',
           tags: ['Explainability'],
@@ -2820,7 +3250,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: ExplainBatchRequest }>(
       '/api/v1/explain/batch',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Batch generate or retrieve explanations (evaluationIds or predictionIds).',
           tags: ['Explainability'],
@@ -2863,7 +3293,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: EvaluateDecisionRequest }>(
       '/api/v1/decisions/evaluate',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Evaluate rules and create a decision for an opportunity (Plan W5 Layer 6).',
           tags: ['Decision Engine'],
@@ -2905,7 +3335,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: ApplyCatalogRulesRequest }>(
       '/api/v1/decisions/apply-catalog-rules',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Apply risk catalog–driven rules (W7 Gap 1 FR-6.5). Maps detected risks to catalog, gets rules for catalog risks, evaluates and returns decision.',
           tags: ['Decision Engine'],
@@ -2950,7 +3380,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: MakeMethodologyDecisionRequest }>(
       '/api/v1/decisions/methodology',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'W8 Layer 6: Make methodology-based decisions (stage requirements, duration anomaly, MEDDIC). Fetches methodology features from ml-service.',
           tags: ['Decision Engine'],
@@ -2989,7 +3419,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: ExecuteDecisionRequest }>(
       '/api/v1/decisions/execute',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Execute actions for a decision (Plan W5 Layer 6).',
           tags: ['Decision Engine'],
@@ -3056,7 +3486,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get(
       '/api/v1/decisions/templates',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'List rule templates (Super Admin §6.2).',
           tags: ['Decision Engine'],
@@ -3083,7 +3513,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get(
       '/api/v1/decisions/conflicts',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Detect rule conflicts (priority, overlapping conditions). Super Admin §6.3.',
           tags: ['Decision Engine'],
@@ -3164,7 +3594,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Querystring: { all?: string } }>(
       '/api/v1/decisions/rules',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'List rules for tenant (Plan W5 Layer 6). Default: enabled only. Query ?all=true for all rules (§6.1.1).',
           tags: ['Decision Engine'],
@@ -3195,7 +3625,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: RuleType }>(
       '/api/v1/decisions/rules',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Create a rule (Plan W5 Layer 6). Body: name, enabled, priority, conditions, conditionLogic, actions, createdBy.',
           tags: ['Decision Engine'],
@@ -3234,7 +3664,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.put<{ Params: { ruleId: string }; Body: RuleType }>(
       '/api/v1/decisions/rules/:ruleId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Update a rule (Plan W5 Layer 6).',
           tags: ['Decision Engine'],
@@ -3274,7 +3704,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.delete<{ Params: { ruleId: string } }>(
       '/api/v1/decisions/rules/:ruleId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Delete a rule (§6.1.1).',
           tags: ['Decision Engine'],
@@ -3310,7 +3740,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Params: { ruleId: string }; Body: { riskScore?: number; opportunityId: string } }>(
       '/api/v1/decisions/rules/:ruleId/test',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Test a rule against sample data (Plan W5 Layer 6). Body: riskScore?, opportunityId.',
           tags: ['Decision Engine'],
@@ -3349,7 +3779,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get(
       '/api/v1/sales-methodology',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get tenant sales methodology (stages, requirements, exit criteria, MEDDIC). Returns 404 if not configured.',
           tags: ['Sales Methodology'],
@@ -3387,7 +3817,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.put<{ Body: UpsertSalesMethodologyBody }>(
       '/api/v1/sales-methodology',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Create or update tenant sales methodology. Body: methodologyType, stages, requiredFields, risks; §3.1.2 optional name, displayName, description, isActive, isDefault. tenantId from X-Tenant-ID.',
           tags: ['Sales Methodology'],
@@ -3451,7 +3881,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get(
       '/api/v1/sales-methodology/templates',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'List methodology templates for View All Methodologies (§3.1.1). Returns standard + Custom cards; tenantsUsing from DB; activeOpportunities/avgComplianceScore when available.',
           tags: ['Sales Methodology'],
@@ -3500,7 +3930,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get(
       '/api/v1/tenant-ml-config',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get tenant ML configuration (risk tolerance, decision preferences, model preferences, custom features). 404 if not configured.',
           tags: ['Tenant ML Config'],
@@ -3538,7 +3968,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.put<{ Body: UpsertTenantMLConfigBody }>(
       '/api/v1/tenant-ml-config',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Create or update tenant ML configuration. Body: riskTolerance, decisionPreferences, modelPreferences, customFeatures?. Tenant from X-Tenant-ID.',
           tags: ['Tenant ML Config'],
@@ -3609,7 +4039,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     }>(
       '/api/v1/reactivation/evaluate',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'W9 Layer 6: Evaluate opportunities for reactivation. Calls ml-service for dormant features and prediction, optionally llm-service for strategy. Publishes reactivation.opportunity.identified and reactivation.strategy.generated.',
           tags: ['Reactivation'],

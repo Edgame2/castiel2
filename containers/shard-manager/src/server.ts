@@ -95,6 +95,21 @@ export async function buildApp(): Promise<FastifyInstance> {
     throw error;
   }
 
+  // Ensure all platform Cosmos containers from central manifest (optional bootstrap)
+  const bootstrap = config?.bootstrap;
+  if (bootstrap?.ensure_cosmos_containers && bootstrap?.cosmos_containers_manifest_path) {
+    try {
+      const { ensureCosmosContainers } = await import('./startup/ensureCosmosContainers.js');
+      await ensureCosmosContainers(bootstrap.cosmos_containers_manifest_path);
+      fastify.log.info(
+        { manifestPath: bootstrap.cosmos_containers_manifest_path },
+        'Bootstrap: ensured all Cosmos containers from manifest'
+      );
+    } catch (err) {
+      fastify.log.warn({ err, service: 'shard-manager' }, 'Bootstrap ensure Cosmos containers failed');
+    }
+  }
+
   // Initialize event publisher
   try {
     const { initializeEventPublisher } = await import('./events/publishers/ShardEventPublisher.js');

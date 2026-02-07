@@ -23,8 +23,10 @@ export class IntegrationCatalogRepository {
    */
   async createCatalogEntry(input: CreateIntegrationCatalogInput): Promise<IntegrationCatalogEntry> {
     const now = new Date();
+    const id = uuidv4();
     const entry: IntegrationCatalogEntry = {
-      id: uuidv4(),
+      id,
+      integrationId: input.integrationId || id,
       category: input.category,
       provider: input.provider,
       name: input.name,
@@ -87,7 +89,7 @@ export class IntegrationCatalogRepository {
     const container = getContainer('integration_catalog');
     const { resources } = await container.items
       .query<IntegrationCatalogEntry>({
-        query: 'SELECT * FROM c WHERE c.integrationId = @integrationId OR c.provider = @integrationId LIMIT 1',
+        query: 'SELECT * FROM c WHERE c.id = @integrationId OR c.integrationId = @integrationId OR c.provider = @integrationId LIMIT 1',
         parameters: [{ name: '@integrationId', value: integrationId }],
       })
       .fetchNext();

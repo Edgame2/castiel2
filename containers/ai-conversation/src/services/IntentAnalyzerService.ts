@@ -182,8 +182,11 @@ export class IntentAnalyzerService {
       const multiIntentResult = await this.detectMultiIntent(processedQuery, tenantId, historyStrings);
       const llmResult =
         multiIntentResult || (await this.classifyIntentWithLLM(processedQuery, tenantId, historyStrings));
-      const { type, confidence, isMultiIntent, secondaryIntents } =
-        llmResult || this.classifyInsightType(processedQuery, historyStrings);
+      const classificationResult = llmResult || this.classifyInsightType(processedQuery, historyStrings);
+      const type = classificationResult.type;
+      const confidence = classificationResult.confidence;
+      const isMultiIntent = (classificationResult as { isMultiIntent?: boolean; secondaryIntents?: unknown[] }).isMultiIntent;
+      const secondaryIntents = (classificationResult as { isMultiIntent?: boolean; secondaryIntents?: unknown[] }).secondaryIntents;
 
       // 2. Extract entities
       const entities = await this.extractEntities(processedQuery, tenantId);
@@ -204,7 +207,7 @@ export class IntentAnalyzerService {
         insightType: type,
         confidence,
         isMultiIntent: isMultiIntent || false,
-        secondaryIntents: secondaryIntents || undefined,
+        secondaryIntents: (secondaryIntents as { type: InsightType; confidence: number; query?: string }[] | undefined) ?? undefined,
         entities: resolvedEntities,
         scope,
         suggestedTemplateId,

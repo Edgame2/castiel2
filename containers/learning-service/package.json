@@ -14,7 +14,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@coder/shared": "workspace:*",
+    "@coder/shared": "file:../shared",
     "@fastify/swagger": "^9.1.0",
     "@fastify/swagger-ui": "^5.0.0",
     "ajv": "^8.17.1",

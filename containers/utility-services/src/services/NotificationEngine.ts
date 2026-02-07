@@ -26,7 +26,7 @@ export interface ProcessNotificationOptions {
 }
 
 export class NotificationEngine {
-  private db = getDatabaseClient();
+  private db = getDatabaseClient() as any;
   private config = getConfig();
   private routingEngine: RoutingEngine;
   private preferenceResolver: PreferenceResolver;
@@ -59,7 +59,7 @@ export class NotificationEngine {
    */
   async processNotification(
     input: NotificationInput,
-    options: ProcessNotificationOptions = {}
+    options: ProcessNotificationOptions = { eventData: {} }
   ): Promise<string> {
     // Check deduplication
     if (!options.skipDeduplication && this.deduplicationService && input.deduplicationKey) {

@@ -25,7 +25,7 @@ export interface DeliveryResult {
 }
 
 export class DeliveryManager {
-  private db = getDatabaseClient();
+  private db = getDatabaseClient() as any;
   private config = getConfig();
   private deliveryTracker?: DeliveryTracker;
   private retryService?: RetryService;
@@ -230,8 +230,8 @@ export class DeliveryManager {
    */
   private async deliverSMS(notification: NotificationInput): Promise<DeliveryResult> {
     try {
-      const smsConfig = this.config.notification.providers.sms;
-      if (!smsConfig?.enabled || !smsConfig.secret_id) {
+      const smsConfig = (this.config.notification as any)?.providers?.sms as { enabled?: boolean; secret_id?: string } | undefined;
+      if (!smsConfig?.enabled || !smsConfig?.secret_id) {
         return {
           channel: 'SMS',
           success: false,
@@ -283,8 +283,8 @@ export class DeliveryManager {
    */
   private async deliverWhatsApp(notification: NotificationInput): Promise<DeliveryResult> {
     try {
-      const whatsappConfig = this.config.notification.providers.whatsapp;
-      if (!whatsappConfig?.enabled || !whatsappConfig.secret_id) {
+      const whatsappConfig = (this.config.notification as any)?.providers?.whatsapp as { enabled?: boolean; secret_id?: string } | undefined;
+      if (!whatsappConfig?.enabled || !whatsappConfig?.secret_id) {
         return {
           channel: 'WHATSAPP',
           success: false,
@@ -336,8 +336,8 @@ export class DeliveryManager {
    */
   private async deliverVoice(notification: NotificationInput): Promise<DeliveryResult> {
     try {
-      const voiceConfig = this.config.notification.providers.voice;
-      if (!voiceConfig?.enabled || !voiceConfig.secret_id) {
+      const voiceConfig = (this.config.notification as any)?.providers?.voice as { enabled?: boolean; secret_id?: string } | undefined;
+      if (!voiceConfig?.enabled || !voiceConfig?.secret_id) {
         return {
           channel: 'VOICE',
           success: false,
@@ -345,7 +345,7 @@ export class DeliveryManager {
         };
       }
 
-      const secret = await this.secretClient.getSecretValue(voiceConfig.secret_id);
+      const secret = await this.secretClient.getSecretValue(voiceConfig!.secret_id!);
       const twilioConfig = typeof secret === 'object' 
         ? secret 
         : JSON.parse(secret as string);

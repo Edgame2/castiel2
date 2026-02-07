@@ -50,6 +50,7 @@ Third-party integrations and webhook management service for Castiel.
 | GET | `/api/v1/integrations/:id` | Get integration |
 | PUT | `/api/v1/integrations/:id` | Update integration |
 | DELETE | `/api/v1/integrations/:id` | Delete integration |
+| POST | `/api/v1/integrations/:integrationId/fetch` | Fetch records from external system (sync; uses adapter and pullFilters) |
 | GET | `/api/v1/webhooks` | List webhooks |
 | POST | `/api/v1/webhooks` | Create webhook |
 | GET | `/api/v1/sync-tasks` | List sync tasks |
@@ -65,6 +66,14 @@ Third-party integrations and webhook management service for Castiel.
 - `webhook.delivered` - Webhook delivered
 - `webhook.failed` - Webhook delivery failed
 - `sync.task.completed` - Sync task completed
+
+## Google Workspace integration
+
+The **Google Workspace** provider (Calendar, Drive, Gmail) uses **domain-wide delegation** with a **service account**. No OAuth client env vars are required; credentials are per-connection (SA JSON stored in secret-management).
+
+- **Setup**: Create a Google Cloud project, create a service account, enable Calendar/Drive/Gmail APIs. In **Google Admin Console** → Security → API Controls → Domain-wide delegation, grant the SA the scopes: `calendar.readonly`, `drive.readonly`, `gmail.readonly`. Paste or upload the SA JSON when connecting in the UI.
+- **Entity/field mappings and pull filters**: [docs/google-workspace-to-shard-mapping.md](./docs/google-workspace-to-shard-mapping.md).
+- **Catalog entry**: [docs/google-workspace-catalog-entry.md](./docs/google-workspace-catalog-entry.md). Seed with `pnpm run seed:google-workspace`.
 
 ## BI Sales Risk – Field Mapping
 

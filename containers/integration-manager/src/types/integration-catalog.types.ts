@@ -9,6 +9,8 @@ import { IntegrationProvider } from './integration.types';
  * Integration catalog entry (extends provider with catalog-specific fields)
  */
 export interface IntegrationCatalogEntry extends IntegrationProvider {
+  /** Stable id for lookup (same as id or provider); used by getCatalogEntryByIntegrationId */
+  integrationId?: string;
   // Visibility & Access Control
   visibility: 'public' | 'superadmin_only';
   requiresApproval: boolean;

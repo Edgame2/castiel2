@@ -437,7 +437,7 @@ graph TB
     end
     
     subgraph Gateway["API Gateway"]
-        GatewaySvc[Fastify Gateway<br/>Port 3001]
+        GatewaySvc[Fastify Gateway<br/>Port 3002]
     end
     
     subgraph Services["Microservices"]
@@ -458,7 +458,7 @@ graph TB
 
 1. **Direct API Calls (90% of operations)**
    - Axios client (`apiClient`) configured with base URL
-   - Calls API Gateway (Port 3001) or microservices directly
+   - Calls API Gateway (Port 3002) or microservices directly
    - JWT tokens via Authorization header
    - Used for: CRUD operations, data fetching, queries
 
@@ -531,7 +531,7 @@ containers/ui/
 PORT=3000
 
 # API Gateway URL
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3002
 
 # Other environment variables
 NEXT_PUBLIC_APP_NAME=Castiel
@@ -540,7 +540,7 @@ NEXT_PUBLIC_APP_NAME=Castiel
 ### Port Configuration Recommendation
 
 - **UI Container**: Port 3000 (Next.js app)
-- **API Gateway**: Port 3001 (Fastify)
+- **API Gateway**: Port 3002 (Fastify)
 - **Microservices**: Ports 3002-3046
 
 This separation allows:

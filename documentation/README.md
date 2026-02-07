@@ -10,7 +10,7 @@ Castiel is a three-tier application architecture:
 2. **Fastify API Server** - RESTful API with microservices architecture
 3. **Cosmos DB NoSQL Database** - Shared database with containers per module
 
-The system has been refactored into a microservices architecture with 38+ independent services communicating via REST APIs and RabbitMQ event bus.
+The system has been refactored into a microservices architecture with **~45–50** substantive service containers (under `containers/`; excludes minimal stubs) communicating via REST APIs and RabbitMQ event bus.
 
 ## Critical ML Enhancement
 
@@ -32,7 +32,7 @@ graph TB
         NextJS[Next.js Web App<br/>React 19]
     end
     
-    subgraph MainApp["Main Application (Port 3001)"]
+    subgraph MainApp["Main Application (API Gateway Port 3002)"]
         Gateway[API Gateway]
         Auth[Authentication]
         UserMgmt[User Management]

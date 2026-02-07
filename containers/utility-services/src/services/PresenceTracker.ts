@@ -12,8 +12,8 @@ export class PresenceTracker {
   private redisEnabled: boolean;
 
   constructor() {
-    this.redisEnabled = this.config.redis?.enabled !== false && 
-                       this.config.notification.features?.presence_aware === true;
+    this.redisEnabled = this.config.redis?.enabled !== false &&
+                       this.config.notification?.features?.presence_aware === true;
   }
 
   /**

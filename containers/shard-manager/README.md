@@ -35,9 +35,27 @@ cp config/default.yaml config/local.yaml
 # Edit config/local.yaml with your settings
 ```
 
+### Platform bootstrap (Cosmos containers and shard types)
+
+Shard-manager can ensure **all platform Cosmos DB containers** and **all shard types** at startup. This is the single place for platform bootstrap.
+
+| Config | Default | Description |
+|--------|---------|-------------|
+| `bootstrap.ensure_cosmos_containers` | false | If true, ensure every container in `config/cosmos-containers.yaml` exists (partition key `/tenantId`, optional TTL). |
+| `bootstrap.cosmos_containers_manifest_path` | config/cosmos-containers.yaml | Path to the central container manifest (relative to shard-manager root). |
+| `bootstrap.enabled` | false | If true, seed system and platform shard types for `bootstrap.tenant_id` (created by `bootstrap.created_by`). |
+
+**Order of operations for new environments:**
+
+1. Start shard-manager with bootstrap enabled (e.g. `BOOTSTRAP_ENSURE_COSMOS_CONTAINERS=true` and `BOOTSTRAP_SHARD_TYPES=true` and `BOOTSTRAP_TENANT_ID`, `BOOTSTRAP_CREATED_BY` set). This creates all Cosmos containers from the central manifest and seeds all shard types.
+2. Optionally run recommendations migrations 001 and 002 from `containers/recommendations` (feedback containers and feedback-type seed data). See `containers/recommendations/migrations/README.md`.
+3. Start other services (integration-processors, recommendations, etc.). They rely on shard-manager having already run bootstrap.
+
+**Optional script (containers only):** From `containers/shard-manager`, run `pnpm run ensure-containers` to ensure all Cosmos containers from the central manifest without starting the server. Requires `COSMOS_DB_ENDPOINT`, `COSMOS_DB_KEY`. Shard type seeding is not performed; start the server with `bootstrap.enabled` for that.
+
 ### Database Setup
 
-The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers). Ensure the following containers exist:
+The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers). When bootstrap is not used, ensure the following containers exist:
 
 - `shard_shards` - Main shard documents (partition key: `/tenantId`)
 - `shard_types` - ShardType definitions (partition key: `/tenantId`)

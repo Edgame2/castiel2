@@ -34,6 +34,13 @@ export interface ShardManagerConfig {
     exchange: string;
     queue: string;
   };
+  bootstrap?: {
+    enabled?: boolean;
+    tenant_id?: string;
+    created_by?: string;
+    ensure_cosmos_containers?: boolean;
+    cosmos_containers_manifest_path?: string;
+  };
 }
 
 export function loadConfig(): ShardManagerConfig {

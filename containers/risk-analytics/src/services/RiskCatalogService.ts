@@ -72,7 +72,7 @@ export class RiskCatalogService {
     if (!this.app) {
       throw new Error('Fastify app not initialized');
     }
-    return generateServiceToken(this.app, {
+    return generateServiceToken(this.app as any, {
       serviceId: 'risk-catalog',
       serviceName: 'risk-catalog',
       tenantId: tenantId || SYSTEM_TENANT_ID,

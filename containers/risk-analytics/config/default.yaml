@@ -149,12 +149,15 @@ feature_flags:
   prescriptive_remediation: ${PRESCRIPTIVE_REMEDIATION_ENABLED:-true}
   executive_dashboards: ${EXECUTIVE_DASHBOARDS_ENABLED:-true}
   hitl_approvals: ${HITL_APPROVALS_ENABLED:-false}
+  declining_sentiment_risk: ${DECLINING_SENTIMENT_RISK_ENABLED:-false}
+  poor_product_fit_risk: ${POOR_PRODUCT_FIT_RISK_ENABLED:-false}
 
 thresholds:
   early_warning_days_inactivity: [7, 14, 21]
   risk_velocity_alert: 0.15
   hitl_risk_min: 0.8
   hitl_deal_min: 1000000
+  product_fit_risk_threshold: ${PRODUCT_FIT_RISK_THRESHOLD:-0.4}
 
 # Plan §11.11, §944: map atRiskReasons to mitigation playbooks. reason (string) -> playbook/action id or label.
 # Example: "No executive sponsor": "exec-alignment", "Competitor mentioned": "competitor-battlecard"
@@ -164,5 +167,6 @@ at_risk_reasons_mitigation: {}
 batch_processing:
   concurrency: ${BATCH_PROCESSING_CONCURRENCY:-10}  # Parallel processing limit for batch events
 
-# Legacy; feature_flags preferred (Plan §8.1)
-features: {}
+# Legacy; feature_flags preferred (Plan §8.1). Phase 1.2: competitors in shards (new data only).
+features:
+  competitors_use_shards: ${COMPETITORS_USE_SHARDS:-false}

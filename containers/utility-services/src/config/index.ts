@@ -27,9 +27,20 @@ export interface UtilityServicesConfig {
   };
   };
   jwt: { secret: string };
-  services: { [key: string]: { url: string } };
+  services: { [key: string]: { url: string; timeout?: number } };
   rabbitmq: { url: string; exchange: string; queue: string; bindings: string[] };
   features: { [key: string]: boolean };
+  notification?: {
+    providers?: {
+      inapp?: { exchange?: string };
+      email?: { from_address?: string; from_name?: string; enabled?: boolean; provider?: string; secret_id?: string };
+      [key: string]: unknown;
+    };
+    features?: { presence_aware?: boolean; [key: string]: unknown };
+    defaults?: { rate_limit?: number; rate_limit_per_user?: number; rate_limit_per_org?: number; retry_max_attempts?: number; retry_delay_ms?: number; max_retry_delay_ms?: number; retry_attempts?: number; deduplication_ttl_seconds?: number; [key: string]: unknown };
+  };
+  app?: Record<string, unknown>;
+  redis?: { url?: string; enabled?: boolean; [key: string]: unknown };
 }
 
 let cachedConfig: UtilityServicesConfig | null = null;

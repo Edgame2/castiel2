@@ -3,7 +3,7 @@
  * Manages AI conversations with context assembly and grounding
  */
 
-import { ServiceClient } from '@coder/shared';
+import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { loadConfig } from '../config';
 import { log } from '../utils/logger';
@@ -16,6 +16,7 @@ import {
   MessageRole,
   MessageStatus,
   ConversationStatus,
+  ConversationVisibility,
 } from '../types/conversation.types';
 import { publishConversationEvent } from '../events/publishers/ConversationEventPublisher';
 import { v4 as uuidv4 } from 'uuid';
@@ -28,7 +29,7 @@ export class ConversationService {
   private shardManagerClient: ServiceClient;
   private aiServiceClient: ServiceClient;
   private contextServiceClient: ServiceClient;
-  private embeddingsClient: ServiceClient;
+  private _embeddingsClient: ServiceClient;
   private app: FastifyInstance | null = null;
 
   constructor(app?: FastifyInstance) {
@@ -56,7 +57,7 @@ export class ConversationService {
       circuitBreaker: { enabled: true },
     });
 
-    this.embeddingsClient = new ServiceClient({
+    this._embeddingsClient = new ServiceClient({
       baseURL: this.config.services.embeddings?.url || '',
       timeout: 30000,
       retries: 3,
@@ -423,7 +424,7 @@ export class ConversationService {
   private async generateAIResponse(
     conversationId: string,
     tenantId: string,
-    userId: string,
+    _userId: string,
     modelId?: string
   ): Promise<void> {
     try {

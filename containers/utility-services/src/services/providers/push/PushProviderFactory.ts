@@ -3,9 +3,8 @@
  */
 
 import { IPushProvider } from './IPushProvider';
-import { FCMProvider, FCMConfig } from './FCMProvider';
+import { FCMProvider } from './FCMProvider';
 import { SecretManagementClient } from '../../SecretManagementClient';
-import { getConfig } from '../../../config';
 
 export interface PushProviderConfig {
   provider: 'firebase' | 'onesignal';

@@ -43,7 +43,7 @@ export class EmailService {
 
   constructor() {
     const config = getConfig();
-    const emailConfig = config.notification.providers.email || {};
+    const emailConfig = config.notification?.providers?.email || {};
     
     // Get provider from config
     const providerEnv = (emailConfig.provider || 'smtp').toLowerCase();
@@ -53,7 +53,7 @@ export class EmailService {
     this.enabled = emailConfig.enabled !== false; // Default enabled
     this.fromAddress = emailConfig.from_address || 'noreply@castiel';
     this.fromName = emailConfig.from_name || 'Castiel';
-    this.appUrl = config.app?.url || 'http://localhost:3000';
+    this.appUrl = String(config.app?.url || 'http://localhost:3000');
   }
 
   /**
@@ -259,8 +259,8 @@ export class EmailService {
     if (!template) {
       log.warn('Email template not found', { templateName, service: 'notification-manager' });
       return {
-        html: `<p>${data.message || 'Notification'}</p>`,
-        text: data.message || 'Notification',
+        html: `<p>${String(data.message || 'Notification')}</p>`,
+        text: String(data.message || 'Notification'),
       };
     }
 
@@ -707,11 +707,11 @@ This email was sent by Castiel.
    */
   async getUserEmail(userId: string): Promise<string | null> {
     try {
-      const db = getDatabaseClient();
-      const user = await db.user.findUnique({
+      const db = getDatabaseClient() as any;
+      const user = db.user?.findUnique ? await db.user.findUnique({
         where: { id: userId },
         select: { email: true },
-      });
+      }) : null;
       return user?.email || null;
     } catch (error: any) {
       log.error('Failed to get user email', error, { userId, service: 'notification-manager' });

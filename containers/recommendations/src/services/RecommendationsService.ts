@@ -37,6 +37,7 @@ export class RecommendationsService {
   private mlServiceClient: ServiceClient;
   private embeddingsClient: ServiceClient;
   private shardManagerClient: ServiceClient;
+  private riskAnalyticsClient: ServiceClient | null = null;
   private recommendationCache = new Map<string, { batch: RecommendationBatch; expiresAt: number }>();
   private readonly CACHE_TTL = 30 * 60 * 1000; // 30 minutes
   private app: FastifyInstance | null = null;
@@ -46,6 +47,15 @@ export class RecommendationsService {
     this.config = loadConfig();
     
     // Initialize service clients
+    const riskAnalyticsUrl = this.config.services?.risk_analytics?.url;
+    if (riskAnalyticsUrl) {
+      this.riskAnalyticsClient = new ServiceClient({
+        baseURL: riskAnalyticsUrl,
+        timeout: 15000,
+        retries: 2,
+        circuitBreaker: { enabled: true },
+      });
+    }
     this.adaptiveLearningClient = new ServiceClient({
       baseURL: this.config.services.adaptive_learning?.url || '',
       timeout: 30000,
@@ -223,8 +233,46 @@ export class RecommendationsService {
         metadata.mlCount = mlRecs.length;
       }
 
+      // Phase 3: product-fit as signal – fetch and optionally add / boost recommendations
+      let productFitMaxScore: number | null = null;
+      if (request.opportunityId && this.riskAnalyticsClient) {
+        try {
+          const token = this.getServiceToken(request.tenantId);
+          const pf = await this.riskAnalyticsClient.get<Array<{ score?: number }>>(
+            `/api/v1/opportunities/${request.opportunityId}/product-fit`,
+            {
+              headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': request.tenantId },
+            }
+          );
+          const arr = Array.isArray(pf) ? pf : [];
+          if (arr.length > 0) {
+            productFitMaxScore = Math.max(...arr.map((a) => (typeof a?.score === 'number' ? a.score : 0.5)));
+            if (productFitMaxScore < 0.5) {
+              allRecommendations.push({
+                id: uuidv4(),
+                tenantId: request.tenantId,
+                opportunityId: request.opportunityId,
+                userId: request.userId ?? '',
+                type: 'action',
+                source: 'content',
+                title: 'Improve product fit',
+                description: 'Review product fit for this opportunity; current fit is below threshold.',
+                explanation: 'Product-fit signal: low score suggests improving alignment with product criteria.',
+                confidence: 0.75,
+                score: 0.8,
+                status: 'active',
+                createdAt: new Date(),
+                metadata: { productFitMaxScore },
+              });
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       // Step 3: Merge and score recommendations
-      const merged = this.mergeAndScoreRecommendations(allRecommendations, weights);
+      const merged = this.mergeAndScoreRecommendations(allRecommendations, weights, productFitMaxScore);
       
       // Step 4: Apply limit and sort
       const sorted = merged
@@ -809,21 +857,28 @@ export class RecommendationsService {
    */
   private mergeAndScoreRecommendations(
     recommendations: Recommendation[],
-    weights: LearnedWeights
+    weights: LearnedWeights,
+    productFitMaxScore?: number | null
   ): Recommendation[] {
     // Deduplicate by ID
     const uniqueMap = new Map<string, Recommendation>();
-    
+    const lowProductFit = productFitMaxScore != null && productFitMaxScore < 0.5;
+
     for (const rec of recommendations) {
       const existing = uniqueMap.get(rec.id);
       if (existing) {
         // Merge scores based on weights
-        const sourceWeight = weights[rec.source] || 0;
+        const sourceWeight = weights[rec.source as keyof LearnedWeights] || 0;
         existing.score = (existing.score + rec.score * sourceWeight) / 2;
       } else {
         // Apply source weight to score
-        const sourceWeight = weights[rec.source] || 0;
-        rec.score = rec.score * sourceWeight;
+        const sourceWeight = weights[rec.source as keyof LearnedWeights] || 0;
+        let score = rec.score * sourceWeight;
+        // Phase 3: boost "improve fit" / "better product" when product fit is low
+        if (lowProductFit && (/\b(fit|product)\b/i.test(rec.title ?? '') || /\b(fit|product)\b/i.test(rec.description ?? ''))) {
+          score = Math.min(1, score * 1.2);
+        }
+        rec.score = score;
         uniqueMap.set(rec.id, rec);
       }
     }
@@ -874,7 +929,7 @@ export class RecommendationsService {
   }
 
   /**
-   * Store recommendations in database
+   * Store recommendations in database. Phase 4: when recommendations_write_shards is true, also write each to shard-manager as c_recommendation.
    */
   private async storeRecommendations(batch: RecommendationBatch, tenantId: string): Promise<void> {
     try {
@@ -892,6 +947,63 @@ export class RecommendationsService {
           },
           createOptions
         );
+      }
+
+      // Phase 4: dual-write to shard-manager as c_recommendation when enabled
+      if (this.config.recommendations_write_shards && this.shardManagerClient) {
+        const token = this.getServiceToken(tenantId);
+        const headers = { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId };
+        let cRecommendationTypeId: string | null = null;
+        try {
+          const types = await this.shardManagerClient.get<Array<{ id: string; name: string }>>(
+            '/api/v1/shard-types?limit=100',
+            { headers }
+          );
+          const arr = Array.isArray(types) ? types : [];
+          cRecommendationTypeId = arr.find((t) => t.name === 'c_recommendation')?.id ?? null;
+        } catch (e) {
+          log.warn('Failed to resolve c_recommendation shard type', { tenantId, error: (e as Error)?.message, service: 'recommendations' });
+        }
+        if (cRecommendationTypeId) {
+          for (const rec of batch.recommendations) {
+            if (!rec.opportunityId) continue;
+            try {
+              await this.shardManagerClient.post(
+                '/api/v1/shards',
+                {
+                  shardTypeId: cRecommendationTypeId,
+                  structuredData: {
+                    tenantId: rec.tenantId,
+                    opportunityId: rec.opportunityId,
+                    userId: rec.userId,
+                    type: rec.type,
+                    source: rec.source,
+                    title: rec.title,
+                    description: rec.description,
+                    explanation: rec.explanation,
+                    confidence: rec.confidence,
+                    score: rec.score,
+                    status: rec.status,
+                    createdAt: rec.createdAt instanceof Date ? rec.createdAt.toISOString() : rec.createdAt,
+                    expiresAt: rec.expiresAt instanceof Date ? rec.expiresAt?.toISOString() : rec.expiresAt,
+                    metadata: rec.metadata,
+                    recommendationId: rec.id,
+                  },
+                  internal_relationships: [{ shardId: rec.opportunityId, relationshipType: 'for_opportunity' }],
+                  source: 'api',
+                },
+                { headers }
+              );
+            } catch (err) {
+              log.warn('Failed to write c_recommendation shard', {
+                recommendationId: rec.id,
+                tenantId,
+                error: err instanceof Error ? err.message : String(err),
+                service: 'recommendations',
+              });
+            }
+          }
+        }
       }
     } catch (error: any) {
       log.error('Failed to store recommendations', error, {

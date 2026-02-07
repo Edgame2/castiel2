@@ -80,8 +80,9 @@ vi.mock('yaml', () => ({
   }),
 }));
 
-// Mock @coder/shared database (fetchNext for list/getByName)
+// Mock @coder/shared database (fetchNext for list/getByName, ensureContainer for bootstrap)
 vi.mock('@coder/shared/database', () => ({
+  ensureContainer: vi.fn().mockResolvedValue(undefined),
   getContainer: vi.fn(() => ({
     items: {
       create: vi.fn().mockImplementation((doc: any) => Promise.resolve({ resource: { ...doc, id: doc?.id || 'created-id' } })),

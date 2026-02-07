@@ -57,9 +57,9 @@ export class EnrichmentService {
   private config: ReturnType<typeof loadConfig>;
   private shardManagerClient: ServiceClient;
   private embeddingsClient: ServiceClient;
-  private aiServiceClient: ServiceClient;
+  private _aiServiceClient: ServiceClient;
   private processors = new Map<EnrichmentProcessorType, IEnrichmentProcessor>();
-  private runningJobs = new Set<string>();
+  private _runningJobs = new Set<string>();
   private app: FastifyInstance | null = null;
 
   constructor(app?: FastifyInstance) {
@@ -80,7 +80,7 @@ export class EnrichmentService {
       circuitBreaker: { enabled: true },
     });
 
-    this.aiServiceClient = new ServiceClient({
+    this._aiServiceClient = new ServiceClient({
       baseURL: this.config.services.ai_service?.url || '',
       timeout: 30000,
       retries: 3,
@@ -89,11 +89,11 @@ export class EnrichmentService {
 
     // Register built-in processors
     const aiServiceUrl = this.config.services.ai_service?.url;
-    this.registerProcessor(new EntityExtractionProcessor(app, aiServiceUrl));
-    this.registerProcessor(new ClassificationProcessor(app, aiServiceUrl));
-    this.registerProcessor(new SummarizationProcessor(app, aiServiceUrl));
-    this.registerProcessor(new SentimentAnalysisProcessor(app, aiServiceUrl));
-    this.registerProcessor(new KeyPhrasesProcessor(app, aiServiceUrl));
+    this.registerProcessor(new EntityExtractionProcessor(app as any, aiServiceUrl));
+    this.registerProcessor(new ClassificationProcessor(app as any, aiServiceUrl));
+    this.registerProcessor(new SummarizationProcessor(app as any, aiServiceUrl));
+    this.registerProcessor(new SentimentAnalysisProcessor(app as any, aiServiceUrl));
+    this.registerProcessor(new KeyPhrasesProcessor(app as any, aiServiceUrl));
   }
 
   /**
@@ -115,7 +115,7 @@ export class EnrichmentService {
       // If app not available, return empty - will be handled by gateway/service mesh
       return '';
     }
-    return generateServiceToken(this.app, {
+    return generateServiceToken(this.app as any, {
       serviceId: 'data-enrichment',
       serviceName: 'data-enrichment',
       tenantId,
@@ -178,7 +178,7 @@ export class EnrichmentService {
         updatedAt: new Date(),
       };
 
-      await container.items.create(defaultConfig, { partitionKey: tenantId });
+      await container.items.create(defaultConfig, { partitionKey: tenantId } as any);
       return defaultConfig;
     } catch (error: any) {
       log.error('Failed to get default config', error, { tenantId, service: 'data-enrichment' });
@@ -255,7 +255,7 @@ export class EnrichmentService {
 
       // Store job
       const container = getContainer('enrichment_jobs');
-      await container.items.create(job, { partitionKey: request.tenantId });
+      await container.items.create(job, { partitionKey: request.tenantId } as any);
 
       // Process asynchronously
       this.processJobWithProcessors(job, config, shard).catch((error) => {
@@ -481,9 +481,9 @@ export class EnrichmentService {
     try {
       const container = getContainer('enrichment_jobs');
       await container.item(job.id, job.tenantId).replace({
+        ...job,
         id: job.id,
         tenantId: job.tenantId,
-        ...job,
         updatedAt: new Date(),
       });
     } catch (error: any) {
@@ -618,7 +618,7 @@ export class EnrichmentService {
 
         jobs.push(job);
         const container = getContainer('enrichment_jobs');
-        await container.items.create(job, { partitionKey: request.tenantId });
+        await container.items.create(job, { partitionKey: request.tenantId } as any);
 
         // Process asynchronously
         this.processJobWithProcessors(job, config, shard).catch((error) => {

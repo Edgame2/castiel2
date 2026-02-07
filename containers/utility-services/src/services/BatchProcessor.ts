@@ -12,7 +12,7 @@ import { getConfig } from '../config';
 export type DigestType = 'HOURLY' | 'DAILY' | 'WEEKLY';
 
 export class BatchProcessor {
-  private db = getDatabaseClient();
+  private db = getDatabaseClient() as any;
   private config = getConfig();
   private notificationEngine: NotificationEngine;
 
@@ -126,7 +126,6 @@ export class BatchProcessor {
         bodyHtml: digestContent.html,
         criticality: 'LOW',
         channelsRequested: ['EMAIL', 'IN_APP'],
-        batchId: batchId,
       };
 
       await this.notificationEngine.processNotification(digestInput, {

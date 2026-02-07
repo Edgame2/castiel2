@@ -32,10 +32,12 @@ export class InAppProvider {
   private config = getConfig();
 
   constructor() {
-    this.exchange = this.config.notification.providers.inapp?.exchange || 'notification.inapp.deliver';
-    this.publisher = new EventPublisher({
-      exchange: this.exchange,
-    });
+    this.exchange = this.config.notification?.providers?.inapp?.exchange || 'notification.inapp.deliver';
+    const rabbitmq = (this.config as { rabbitmq?: { url?: string; exchange?: string } }).rabbitmq;
+    this.publisher = new EventPublisher(
+      { url: rabbitmq?.url || '', exchange: this.exchange },
+      'utility-services'
+    );
   }
 
   /**
@@ -62,7 +64,8 @@ export class InAppProvider {
         },
       };
 
-      await this.publisher.publish('notification.inapp.delivered', event.data);
+      const tenantId = options.organizationId || '';
+      await this.publisher.publish('notification.inapp.delivered', tenantId, event.data);
 
       return {
         success: true,

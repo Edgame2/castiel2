@@ -1,34 +1,31 @@
 /**
- * Shard type definitions
- * All shard types that need to be created/updated on startup
- * @module integration-processors/startup/shardTypeDefinitions
+ * Platform shard type definitions (CRM + integration).
+ * Single source of truth for all non-system shard types; used by bootstrap.
+ * @module shard-manager/startup/shardTypeDefinitions
  */
 
-export interface ShardTypeDefinition {
+export interface PlatformShardTypeDefinition {
   id: string;
   name: string;
   description: string;
-  category: 'crm' | 'integration' | 'analytics';
-  schema: any; // JSON Schema
+  schema: Record<string, unknown>;
   schemaVersion: string;
+  isSystem: false;
 }
 
 /**
- * Shard type definitions
- * These will be created/updated on service startup via ensureShardTypes()
+ * CRM and integration shard types. System types (c_competitor, c_product, etc.) remain in bootstrapShardTypes.
  */
-export const shardTypeDefinitions: ShardTypeDefinition[] = [
-  // CRM Shards (updates)
+export const PLATFORM_SHARD_TYPE_DEFINITIONS: PlatformShardTypeDefinition[] = [
   {
     id: 'opportunity',
     name: 'Opportunity',
     description: 'Sales opportunity with ML fields and integration tracking',
-    category: 'crm',
     schemaVersion: '1.1',
+    isSystem: false,
     schema: {
       type: 'object',
       properties: {
-        // Core fields
         id: { type: 'string' },
         name: { type: 'string' },
         amount: { type: 'number' },
@@ -40,7 +37,6 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
         createdDate: { type: 'string', format: 'date-time' },
         ownerId: { type: 'string' },
         accountId: { type: 'string' },
-        // ML fields (optional)
         daysInStage: { type: 'number' },
         daysSinceLastActivity: { type: 'number' },
         dealVelocity: { type: 'number' },
@@ -50,12 +46,10 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
         emailCount: { type: 'number' },
         meetingCount: { type: 'number' },
         callCount: { type: 'number' },
-        // Integration tracking
         integrationSource: { type: 'string' },
         externalId: { type: 'string' },
         lastSyncedAt: { type: 'string', format: 'date-time' },
         syncStatus: { type: 'string' },
-        // Additional BI Sales Risk fields
         lastActivityDate: { type: 'string', format: 'date-time' },
         industry: { type: 'string' },
         industryId: { type: 'string' },
@@ -69,8 +63,8 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
     id: 'account',
     name: 'Account',
     description: 'Account with integration tracking and ML fields',
-    category: 'crm',
     schemaVersion: '1.0',
+    isSystem: false,
     schema: {
       type: 'object',
       properties: {
@@ -83,11 +77,9 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
         website: { type: 'string' },
         type: { type: 'string' },
         ownerId: { type: 'string' },
-        // Integration tracking
         integrationSource: { type: 'string' },
         externalId: { type: 'string' },
         lastSyncedAt: { type: 'string', format: 'date-time' },
-        // Historical performance (for ML)
         historicalWinRate: { type: 'number' },
         historicalDealCount: { type: 'number' },
         historicalRevenue: { type: 'number' },
@@ -98,8 +90,8 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
     id: 'contact',
     name: 'Contact',
     description: 'Contact with integration tracking and engagement fields',
-    category: 'crm',
     schemaVersion: '1.0',
+    isSystem: false,
     schema: {
       type: 'object',
       properties: {
@@ -110,11 +102,9 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
         phone: { type: 'string' },
         title: { type: 'string' },
         accountId: { type: 'string' },
-        // Integration tracking
         integrationSource: { type: 'string' },
         externalId: { type: 'string' },
         lastSyncedAt: { type: 'string', format: 'date-time' },
-        // Engagement tracking (for ML)
         emailInteractionCount: { type: 'number' },
         meetingAttendanceCount: { type: 'number' },
         lastInteractionDate: { type: 'string', format: 'date-time' },
@@ -126,8 +116,8 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
     id: 'lead',
     name: 'Lead',
     description: 'Lead with integration tracking',
-    category: 'crm',
     schemaVersion: '1.0',
+    isSystem: false,
     schema: {
       type: 'object',
       properties: {
@@ -139,20 +129,18 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
         company: { type: 'string' },
         title: { type: 'string' },
         status: { type: 'string' },
-        // Integration tracking
         integrationSource: { type: 'string' },
         externalId: { type: 'string' },
         lastSyncedAt: { type: 'string', format: 'date-time' },
       },
     },
   },
-  // Multi-Modal Shards (new - will be fully defined in later phases)
   {
     id: 'document',
     name: 'Document',
     description: 'Document from integrations (Google Drive, SharePoint, etc.)',
-    category: 'integration',
     schemaVersion: '1.0',
+    isSystem: false,
     schema: {
       type: 'object',
       properties: {
@@ -162,50 +150,41 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
         documentType: { type: 'string', enum: ['pdf', 'docx', 'xlsx', 'pptx', 'txt', 'html', 'image', 'other'] },
         mimeType: { type: 'string' },
         size: { type: 'number' },
-        // Source information
         integrationSource: { type: 'string', enum: ['google_drive', 'sharepoint', 'dropbox', 'onedrive', 'box'] },
         externalId: { type: 'string' },
         externalUrl: { type: 'string' },
         sourcePath: { type: 'string' },
         parentFolderId: { type: 'string' },
         parentFolderName: { type: 'string' },
-        // Storage
         blobStorageUrl: { type: 'string' },
         blobStorageContainer: { type: 'string' },
         blobStoragePath: { type: 'string' },
-        // Content extraction
         extractedText: { type: 'string' },
         extractedTextLength: { type: 'number' },
         pageCount: { type: 'number' },
         wordCount: { type: 'number' },
         language: { type: 'string' },
-        // Content analysis
         summary: { type: 'string' },
         keyTopics: { type: 'array', items: { type: 'string' } },
         keyPhrases: { type: 'array', items: { type: 'string' } },
         entities: { type: 'array' },
         sentiment: { type: 'object' },
-        // Document classification
         category: { type: 'string', enum: ['proposal', 'contract', 'presentation', 'report', 'email_attachment', 'other'] },
         confidenceLevel: { type: 'string', enum: ['public', 'internal', 'confidential', 'restricted'] },
         containsPII: { type: 'boolean' },
-        // Entity linking
         linkedOpportunityIds: { type: 'array', items: { type: 'string' } },
         linkedAccountIds: { type: 'array', items: { type: 'string' } },
         linkedContactIds: { type: 'array', items: { type: 'string' } },
         autoLinkingConfidence: { type: 'object' },
-        // Timestamps
         createdAt: { type: 'string', format: 'date-time' },
         modifiedAt: { type: 'string', format: 'date-time' },
         lastAccessedAt: { type: 'string', format: 'date-time' },
         createdBy: { type: 'string' },
         modifiedBy: { type: 'string' },
         ownerId: { type: 'string' },
-        // Sync tracking
         lastSyncedAt: { type: 'string', format: 'date-time' },
         syncStatus: { type: 'string', enum: ['synced', 'pending', 'error'] },
         syncError: { type: 'string' },
-        // Processing status
         processingStatus: { type: 'string', enum: ['pending', 'processing', 'completed', 'failed'] },
         processingError: { type: 'string' },
         textExtractionCompleted: { type: 'boolean' },
@@ -218,8 +197,8 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
     id: 'email',
     name: 'Email',
     description: 'Email from integrations (Gmail, Outlook)',
-    category: 'integration',
     schemaVersion: '1.0',
+    isSystem: false,
     schema: {
       type: 'object',
       properties: {
@@ -227,23 +206,18 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
         subject: { type: 'string' },
         threadId: { type: 'string' },
         messageId: { type: 'string' },
-        // Source
         integrationSource: { type: 'string', enum: ['gmail', 'outlook', 'exchange'] },
         externalId: { type: 'string' },
-        // Participants
         from: { type: 'object' },
         to: { type: 'array' },
         cc: { type: 'array' },
         bcc: { type: 'array' },
-        // Content
         bodyHtml: { type: 'string' },
         bodyPlainText: { type: 'string' },
         snippet: { type: 'string' },
-        // Attachments
         hasAttachments: { type: 'boolean' },
         attachmentCount: { type: 'number' },
         attachments: { type: 'array' },
-        // Email metadata
         isRead: { type: 'boolean' },
         isImportant: { type: 'boolean' },
         isFlagged: { type: 'boolean' },
@@ -251,25 +225,20 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
         inReplyTo: { type: 'string' },
         labels: { type: 'array', items: { type: 'string' } },
         categories: { type: 'array', items: { type: 'string' } },
-        // Content analysis
         sentiment: { type: 'object' },
         topics: { type: 'array', items: { type: 'string' } },
         keyPhrases: { type: 'array', items: { type: 'string' } },
         actionItems: { type: 'array' },
         containsPII: { type: 'boolean' },
-        // Classification
         emailType: { type: 'string', enum: ['intro', 'proposal', 'negotiation', 'follow_up', 'internal', 'other'] },
         importance: { type: 'string', enum: ['low', 'normal', 'high'] },
-        // Entity linking
         linkedOpportunityIds: { type: 'array', items: { type: 'string' } },
         linkedAccountIds: { type: 'array', items: { type: 'string' } },
         linkedContactIds: { type: 'array', items: { type: 'string' } },
         autoLinkingConfidence: { type: 'object' },
-        // Timestamps
         sentAt: { type: 'string', format: 'date-time' },
         receivedAt: { type: 'string', format: 'date-time' },
         lastSyncedAt: { type: 'string', format: 'date-time' },
-        // Sync tracking
         syncStatus: { type: 'string', enum: ['synced', 'pending', 'error'] },
         processingStatus: { type: 'string', enum: ['pending', 'processing', 'completed', 'failed'] },
       },
@@ -279,8 +248,8 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
     id: 'message',
     name: 'Message',
     description: 'Message from Slack/Teams',
-    category: 'integration',
     schemaVersion: '1.0',
+    isSystem: false,
     schema: {
       type: 'object',
       properties: {
@@ -288,50 +257,38 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
         messageId: { type: 'string' },
         threadId: { type: 'string' },
         parentMessageId: { type: 'string' },
-        // Source
         integrationSource: { type: 'string', enum: ['slack', 'teams', 'discord'] },
         externalId: { type: 'string' },
-        // Channel/Chat context
         channelId: { type: 'string' },
         channelName: { type: 'string' },
         channelType: { type: 'string', enum: ['dm', 'group_dm', 'public_channel', 'private_channel'] },
         workspaceId: { type: 'string' },
         workspaceName: { type: 'string' },
-        // Sender
         from: { type: 'object' },
-        // Content
         text: { type: 'string' },
         formattedText: { type: 'string' },
-        // Mentions and reactions
         mentions: { type: 'array' },
         mentionedChannels: { type: 'array', items: { type: 'string' } },
         reactions: { type: 'array' },
-        // Attachments
         hasAttachments: { type: 'boolean' },
         attachments: { type: 'array' },
-        // Message metadata
         isEdited: { type: 'boolean' },
         editedAt: { type: 'string', format: 'date-time' },
         isDeleted: { type: 'boolean' },
         deletedAt: { type: 'string', format: 'date-time' },
         isPinned: { type: 'boolean' },
         threadReplyCount: { type: 'number' },
-        // Content analysis
         sentiment: { type: 'object' },
         topics: { type: 'array', items: { type: 'string' } },
         containsPII: { type: 'boolean' },
-        // Classification
         messageType: { type: 'string', enum: ['question', 'announcement', 'discussion', 'decision', 'action_item'] },
         importance: { type: 'string', enum: ['low', 'normal', 'high'] },
-        // Entity linking
         linkedOpportunityIds: { type: 'array', items: { type: 'string' } },
         linkedAccountIds: { type: 'array', items: { type: 'string' } },
         linkedContactIds: { type: 'array', items: { type: 'string' } },
         autoLinkingConfidence: { type: 'object' },
-        // Timestamps
         sentAt: { type: 'string', format: 'date-time' },
         lastSyncedAt: { type: 'string', format: 'date-time' },
-        // Sync tracking
         syncStatus: { type: 'string', enum: ['synced', 'pending', 'error'] },
         processingStatus: { type: 'string', enum: ['pending', 'processing', 'completed', 'failed'] },
       },
@@ -341,8 +298,8 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
     id: 'meeting',
     name: 'Meeting',
     description: 'Meeting recording and transcript from Zoom, Teams, Google Meet, Gong',
-    category: 'integration',
     schemaVersion: '1.0',
+    isSystem: false,
     schema: {
       type: 'object',
       properties: {
@@ -350,53 +307,41 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
         meetingId: { type: 'string' },
         title: { type: 'string' },
         description: { type: 'string' },
-        // Source
         integrationSource: { type: 'string', enum: ['zoom', 'teams', 'google_meet', 'gong', 'chorus'] },
         externalId: { type: 'string' },
         externalUrl: { type: 'string' },
-        // Schedule
         startTime: { type: 'string', format: 'date-time' },
         endTime: { type: 'string', format: 'date-time' },
         duration: { type: 'number' },
         timezone: { type: 'string' },
-        // Participants
         organizer: { type: 'object' },
         participants: { type: 'array' },
         participantCount: { type: 'number' },
         internalParticipantCount: { type: 'number' },
         externalParticipantCount: { type: 'number' },
-        // Recording
         hasRecording: { type: 'boolean' },
         recordingUrl: { type: 'string' },
         recordingBlobUrl: { type: 'string' },
         recordingDuration: { type: 'number' },
         recordingSize: { type: 'number' },
-        // Transcript
         hasTranscript: { type: 'boolean' },
         transcriptUrl: { type: 'string' },
         transcriptBlobUrl: { type: 'string' },
         fullTranscript: { type: 'string' },
         transcriptSegments: { type: 'array' },
-        // Meeting intelligence
         meetingType: { type: 'string', enum: ['discovery', 'demo', 'negotiation', 'follow_up', 'closing', 'internal'] },
         topics: { type: 'array', items: { type: 'string' } },
         keyMoments: { type: 'array' },
-        // Action items
         actionItems: { type: 'array' },
-        // Objections and commitments
         objections: { type: 'array' },
         commitments: { type: 'array' },
-        // Engagement metrics
         engagementMetrics: { type: 'object' },
-        // Entity linking
         linkedOpportunityIds: { type: 'array', items: { type: 'string' } },
         linkedAccountIds: { type: 'array', items: { type: 'string' } },
         linkedContactIds: { type: 'array', items: { type: 'string' } },
         autoLinkingConfidence: { type: 'object' },
-        // Timestamps
         createdAt: { type: 'string', format: 'date-time' },
         lastSyncedAt: { type: 'string', format: 'date-time' },
-        // Sync tracking
         syncStatus: { type: 'string', enum: ['synced', 'pending', 'error'] },
         processingStatus: { type: 'string', enum: ['pending', 'processing', 'completed', 'failed'] },
       },
@@ -406,8 +351,8 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
     id: 'calendarevent',
     name: 'CalendarEvent',
     description: 'Calendar event from integrations (Google Calendar, Outlook)',
-    category: 'integration',
     schemaVersion: '1.0',
+    isSystem: false,
     schema: {
       type: 'object',
       properties: {
@@ -415,35 +360,27 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
         eventId: { type: 'string' },
         title: { type: 'string' },
         description: { type: 'string' },
-        // Source
         integrationSource: { type: 'string', enum: ['google_calendar', 'outlook', 'exchange'] },
         externalId: { type: 'string' },
         externalUrl: { type: 'string' },
-        // Schedule
         startTime: { type: 'string', format: 'date-time' },
         endTime: { type: 'string', format: 'date-time' },
         duration: { type: 'number' },
         timezone: { type: 'string' },
         isAllDay: { type: 'boolean' },
         recurrence: { type: 'object' },
-        // Location
         location: { type: 'string' },
         locationType: { type: 'string', enum: ['in_person', 'online', 'phone'] },
         meetingUrl: { type: 'string' },
-        // Organizer and attendees
         organizer: { type: 'object' },
         attendees: { type: 'array' },
         attendeeCount: { type: 'number' },
-        // Meeting link
         meetingShardId: { type: 'string' },
-        // Entity linking
         linkedOpportunityIds: { type: 'array', items: { type: 'string' } },
         linkedAccountIds: { type: 'array', items: { type: 'string' } },
         linkedContactIds: { type: 'array', items: { type: 'string' } },
-        // Timestamps
         createdAt: { type: 'string', format: 'date-time' },
         lastSyncedAt: { type: 'string', format: 'date-time' },
-        // Sync tracking
         syncStatus: { type: 'string', enum: ['synced', 'pending', 'error'] },
       },
     },
@@ -452,8 +389,8 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
     id: 'activity',
     name: 'Activity',
     description: 'Unified activity tracking across all interaction types',
-    category: 'integration',
     schemaVersion: '1.0',
+    isSystem: false,
     schema: {
       type: 'object',
       properties: {
@@ -493,8 +430,8 @@ export const shardTypeDefinitions: ShardTypeDefinition[] = [
     id: 'interaction',
     name: 'Interaction',
     description: 'Track interactions between people for relationship graph',
-    category: 'integration',
     schemaVersion: '1.0',
+    isSystem: false,
     schema: {
       type: 'object',
       properties: {

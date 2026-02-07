@@ -66,3 +66,12 @@ validation:
   strict_schema_validation: ${STRICT_SCHEMA_VALIDATION:-true}
   allow_unknown_fields: ${ALLOW_UNKNOWN_FIELDS:-false}
 
+# Bootstrap: ensure Cosmos containers and/or system shard types on startup
+bootstrap:
+  enabled: ${BOOTSTRAP_SHARD_TYPES:-false}
+  tenant_id: ${BOOTSTRAP_TENANT_ID:-system}
+  created_by: ${BOOTSTRAP_CREATED_BY:-system}
+  # Ensure all platform Cosmos containers exist (from central manifest)
+  ensure_cosmos_containers: ${BOOTSTRAP_ENSURE_COSMOS_CONTAINERS:-false}
+  cosmos_containers_manifest_path: ${BOOTSTRAP_COSMOS_MANIFEST_PATH:-config/cosmos-containers.yaml}
+

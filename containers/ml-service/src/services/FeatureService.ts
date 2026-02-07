@@ -463,6 +463,38 @@ export class FeatureService {
       } catch { /* use defaults */ }
     }
 
+    // 4b. Sentiment for risk-scoring (Phase 2: Plan §921 sentiment-trends)
+    let sentimentScore = 0;
+    if (purpose === 'risk-scoring' && this.riskAnalyticsClient) {
+      try {
+        const res = await this.riskAnalyticsClient.get<{ trends?: Array<{ period?: string; score?: number; sampleSize?: number }> }>(
+          `/api/v1/opportunities/${opportunityId}/sentiment-trends`,
+          { headers }
+        );
+        const arr = res?.trends ?? [];
+        if (arr.length > 0) {
+          const latest = arr[0];
+          sentimentScore = typeof latest?.score === 'number' ? Math.max(-1, Math.min(1, latest.score)) : 0;
+        }
+      } catch { /* keep 0 */ }
+    }
+
+    // 4c. Product-fit for risk-scoring (Phase 3): aggregate or best product score
+    let productFitScore = 0.5;
+    if (purpose === 'risk-scoring' && this.riskAnalyticsClient) {
+      try {
+        const pf = await this.riskAnalyticsClient.get<Array<{ score?: number }>>(
+          `/api/v1/opportunities/${opportunityId}/product-fit`,
+          { headers }
+        );
+        const arr = Array.isArray(pf) ? pf : [];
+        if (arr.length > 0) {
+          const scores = arr.map((a) => (typeof a?.score === 'number' ? a.score : 0.5));
+          productFitScore = Math.max(...scores);
+        }
+      } catch { /* keep 0.5 */ }
+    }
+
     // 5. Compute features (FEATURE_PIPELINE_SPEC §3)
     const stageLabels = this.config.feature_pipeline?.stage_labels ?? DEFAULT_STAGE_LABELS;
     const industryLabels = this.config.feature_pipeline?.industry_labels ?? DEFAULT_INDUSTRY_LABELS;
@@ -530,6 +562,8 @@ export class FeatureService {
       risk_score_latest: riskScoreLatest,
       risk_velocity: riskVelocity,
       risk_acceleration: riskAcceleration,
+      sentiment_score: sentimentScore,
+      product_fit_score: productFitScore,
     };
 
     if (purpose === 'forecasting') {

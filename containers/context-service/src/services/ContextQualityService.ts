@@ -4,7 +4,6 @@
  * Tracks tokens, truncation, sources, relevance, and completeness
  */
 
-import { log } from '@coder/shared/utils/logger';
 import {
   ContextQuality,
   MinimumContextRequirements,

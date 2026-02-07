@@ -90,6 +90,16 @@
         "strict_schema_validation": { "type": "boolean", "default": true },
         "allow_unknown_fields": { "type": "boolean", "default": false }
       }
+    },
+    "bootstrap": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "tenant_id": { "type": "string", "default": "system" },
+        "created_by": { "type": "string", "default": "system" },
+        "ensure_cosmos_containers": { "type": "boolean", "default": false },
+        "cosmos_containers_manifest_path": { "type": "string", "default": "config/cosmos-containers.yaml" }
+      }
     }
   }
 }

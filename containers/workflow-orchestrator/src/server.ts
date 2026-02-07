@@ -61,7 +61,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     transformStaticCSP: (header) => header,
   });
   
-  await setupJWT(fastify, { secret: config.jwt.secret });
+  await setupJWT(fastify as any, { secret: config.jwt.secret });
   
   initializeDatabase({
     endpoint: config.cosmos_db.endpoint,
@@ -146,7 +146,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   const { registerRoutes } = await import('./routes');
-  await registerRoutes(fastify, config);
+  await registerRoutes(fastify as any, config);
 
   const metricsConf = config.metrics ?? { path: '/metrics', require_auth: false, bearer_token: '' };
   fastify.get(metricsConf.path || '/metrics', async (request, reply) => {

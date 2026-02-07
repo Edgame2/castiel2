@@ -133,6 +133,29 @@ export default function IntegrationsPage() {
     }
   };
 
+  const handleServiceAccountConnect = async (type: IntegrationType, serviceAccountJson: string) => {
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/connect-service-account`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          integrationType: type.integrationId,
+          serviceAccountJson,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
+      }
+      await fetchIntegrations();
+      setShowConnectModal(false);
+      setSelectedType(null);
+    } catch (e) {
+      alert(`Failed to connect: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
   const handleDisconnect = async (id: string) => {
     if (!confirm('Are you sure you want to disconnect this integration?')) {
       return;
@@ -323,6 +346,7 @@ export default function IntegrationsPage() {
           selectedType={selectedType}
           onOAuthConnect={handleOAuthConnect}
           onApiKeyConnect={handleApiKeyConnect}
+          onServiceAccountConnect={handleServiceAccountConnect}
           onClose={() => {
             setShowConnectModal(false);
             setSelectedType(null);
@@ -338,6 +362,7 @@ interface ConnectIntegrationModalProps {
   selectedType: IntegrationType | null;
   onOAuthConnect: (type: IntegrationType) => void;
   onApiKeyConnect: (type: IntegrationType, apiKey: string, apiSecret?: string, instanceUrl?: string) => void;
+  onServiceAccountConnect: (type: IntegrationType, serviceAccountJson: string) => void;
   onClose: () => void;
 }
 
@@ -346,15 +371,23 @@ function ConnectIntegrationModal({
   selectedType: initialSelectedType,
   onOAuthConnect,
   onApiKeyConnect,
+  onServiceAccountConnect,
   onClose,
 }: ConnectIntegrationModalProps) {
   const [selectedType, setSelectedType] = useState<IntegrationType | null>(initialSelectedType);
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
   const [instanceUrl, setInstanceUrl] = useState('');
-  const [authMethod, setAuthMethod] = useState<'oauth' | 'apikey'>('oauth');
+  const [serviceAccountJson, setServiceAccountJson] = useState('');
+  const [authMethod, setAuthMethod] = useState<'oauth' | 'apikey' | 'serviceaccount'>('oauth');
 
   const type = selectedType || (availableTypes.length > 0 ? availableTypes[0] : null);
+
+  useEffect(() => {
+    if (type?.authMethods.includes('serviceaccount') && !type.authMethods.includes('oauth')) {
+      setAuthMethod('serviceaccount');
+    }
+  }, [type?.id]);
 
   if (!type) {
     return null;
@@ -362,6 +395,7 @@ function ConnectIntegrationModal({
 
   const supportsOAuth = type.authMethods.includes('oauth');
   const supportsApiKey = type.authMethods.includes('apikey') || type.authMethods.includes('api_key');
+  const supportsServiceAccount = type.authMethods.includes('serviceaccount');
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -420,6 +454,19 @@ function ConnectIntegrationModal({
                 API Key
               </label>
             )}
+            {supportsServiceAccount && (
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="authMethod"
+                  value="serviceaccount"
+                  checked={authMethod === 'serviceaccount'}
+                  onChange={() => setAuthMethod('serviceaccount')}
+                  className="mr-2"
+                />
+                Service Account
+              </label>
+            )}
           </div>
         </div>
 
@@ -473,6 +520,27 @@ function ConnectIntegrationModal({
             <button
               onClick={() => onApiKeyConnect(type, apiKey, apiSecret || undefined, instanceUrl || undefined)}
               disabled={!apiKey}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Connect
+            </button>
+          </div>
+        )}
+
+        {authMethod === 'serviceaccount' && supportsServiceAccount && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Paste the contents of your service account JSON key file (e.g. Google Workspace domain-wide delegation).
+            </p>
+            <textarea
+              value={serviceAccountJson}
+              onChange={(e) => setServiceAccountJson(e.target.value)}
+              className="w-full px-3 py-2 border rounded font-mono text-sm min-h-[120px]"
+              placeholder='{"type": "service_account", "project_id": "...", ...}'
+            />
+            <button
+              onClick={() => onServiceAccountConnect(type, serviceAccountJson)}
+              disabled={!serviceAccountJson.trim()}
               className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Connect

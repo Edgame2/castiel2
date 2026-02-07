@@ -2,13 +2,30 @@
 
 Track services that come up successfully (upy) vs failing. Update after each `docker compose up` or `docker compose build --no-cache [services]`.
 
-**Build status:** 53 buildable (compliance-service removed). ui was failing (fixed).
+**Build status:** 53 buildable services (compliance-service removed).
 
-## Upy (start successfully)
-- TBD (run `docker compose up -d` after ui build completes; full build can take 10+ min for ui)
+## Upy (build verified)
+- **ui, embeddings, context-service, integration-manager, signal-intelligence** – as before. Build OK.
+- **ai-conversation** – tsconfig bundler, events/routes/services TS fixes. Build OK.
+- **utility-services** – config, EventPublisher/Consumer, optional deps, db casts. Build OK.
+- **integration-sync** – tsconfig bundler, SyncTaskStatus 'processing', routes request.user, duplicate id/tenantId, Cosmos partitionKey as any, log args, unused vars. Build OK.
+- **workflow-orchestrator** – preHandler/registerRoutes/setupJWT cast to any, request.user→(request as any).user. Build OK.
+- **data-enrichment** – tsconfig bundler + noImplicitAny false, EventConsumer routingKeys, routes preHandler/request.user, server/reembedding/setupJWT/registerRoutes casts, EnrichmentService/VectorizationService/BaseProcessor/ReembeddingSchedulerService generateServiceToken(app as any), duplicate id/tenantId, partitionKey as any, unused vars. Build OK.
+- **recommendations** – Build OK (cached).
+- **web-search** – Dockerfile repo-root pattern (containers/web-search + shared), npm install --legacy-peer-deps; tsconfig bundler, routes _config/preHandler/request.user, WebSearchService unused clients/partitionKey as any, uuid.d.ts. Build OK.
+- **quality-monitoring** – Dockerfile repo-root pattern; tsconfig bundler, routes _config/preHandler/request.user/partitionKey as any, QualityMonitoringService unused clients/partitionKey as any. Build OK.
+- **security-scanning** – Dockerfile repo-root pattern; tsconfig/routes/services fixes; SecurityScanningService partitionKey as any (lines 113, 326). Build OK.
+- **learning-service** – package.json workspace→file:../shared; Dockerfile repo-root pattern. Build OK.
+- **risk-catalog** – Dockerfile repo-root pattern. Build OK.
+- **forecasting** – Dockerfile repo-root; tsconfig bundler/noImplicitAny/noUnused; ForecastEventConsumer routingKeys; routes/server/services (request.user, registerRoutes, partitionKey, parameters, duplicate tenantId, _commitment/_mlForecast, uuid.d.ts). Build OK.
+- **risk-analytics** – Dockerfile repo-root; generateServiceToken(app/fastify as any), setupJWT/registerRoutes(fastify as any), preHandler as any. Build OK.
 
-## Failing (build or runtime errors)
-- **ui** – Fixed: Dockerfile failed on `COPY --from=builder /app/public ./public` because `/app/public` did not exist. Added `RUN mkdir -p /app/public` in builder stage. Rebuild with `docker compose build --no-cache ui` then `docker compose up -d`. (Build timed out in environment; run locally to verify.)
+## Failing (build errors)
+- (none)
 
 ## Last updates
-- docker compose up -d failed on **ui**: "/app/public" not found in builder. Fixed containers/ui/Dockerfile: `RUN mkdir -p /app/public` after `npm run build` in builder stage. compliance-service removed (53 buildable).
+- **compose-up:** RabbitMQ host ports set to `${RABBITMQ_PORT:-5673}:5672` and `${RABBITMQ_MGMT_PORT:-15673}:15672` to avoid conflict when 5672/15672 in use. `docker compose up -d` succeeds.
+- All 53 buildable services build OK; no failing.
+
+## Health count
+- **Containers healthy:** 2 out of 55 total (redis, rabbitmq). Many app containers Restarting (runtime/config e.g. Cosmos).

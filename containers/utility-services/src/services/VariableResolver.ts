@@ -77,8 +77,8 @@ export class VariableResolver {
   } | null> {
     try {
       // Try to get from database first (faster)
-      const db = getDatabaseClient();
-      const user = await db.user.findUnique({
+      const db = getDatabaseClient() as any;
+      const user = db.user?.findUnique ? await db.user.findUnique({
         where: { id: userId },
         select: {
           name: true,
@@ -87,7 +87,7 @@ export class VariableResolver {
           email: true,
           phoneNumber: true,
         },
-      });
+      }) : null;
 
       if (user) {
         return user;

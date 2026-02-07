@@ -75,7 +75,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     transformStaticCSP: (header) => header,
   });
   
-  await setupJWT(fastify, { secret: config.jwt.secret });
+  await setupJWT(fastify as any, { secret: config.jwt.secret });
   
   initializeDatabase({
     endpoint: config.cosmos_db.endpoint,
@@ -171,7 +171,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   const { registerRoutes } = await import('./routes');
-  await registerRoutes(fastify, config);
+  await registerRoutes(fastify as any, config);
 
   fastify.get('/health', async () => {
     const { getLastRiskSnapshotBackfillAt } = await import('./events/consumers/BatchJobWorker');

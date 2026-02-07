@@ -2,6 +2,11 @@
 
 All notable changes to this module will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- **Shard type seeding**: Removed `ensureShardTypes()` and local shard type definitions. Shard types (system and platform) are now seeded only by shard-manager bootstrap. Start shard-manager with `bootstrap.enabled` (and optionally `bootstrap.ensure_cosmos_containers`) before starting integration-processors.
+
 ## [1.0.0] - 2026-01-28
 
 ### Added

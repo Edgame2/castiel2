@@ -59,7 +59,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     transformStaticCSP: (header) => header,
   });
   
-  await setupJWT(fastify, { secret: config.jwt.secret });
+  await setupJWT(fastify as any, { secret: config.jwt.secret });
   
   initializeDatabase({
     endpoint: config.cosmos_db.endpoint,
@@ -96,7 +96,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   try {
     const { ReembeddingSchedulerService } = await import('./services/ReembeddingSchedulerService');
-    const reembeddingScheduler = new ReembeddingSchedulerService(fastify);
+    const reembeddingScheduler = new ReembeddingSchedulerService(fastify as any);
     await reembeddingScheduler.start();
     (fastify as any).reembeddingScheduler = reembeddingScheduler;
   } catch (error) {
@@ -146,7 +146,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   const { registerRoutes } = await import('./routes');
-  await registerRoutes(fastify, config);
+  await registerRoutes(fastify as any, config);
 
   fastify.get('/health', async () => ({
     status: 'healthy',

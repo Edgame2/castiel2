@@ -36,8 +36,8 @@ export async function registerMessageRoutes(fastify: FastifyInstance, config: AI
     async (request, reply) => {
       try {
         const { conversationId } = request.params;
-        const tenantId = request.user!.tenantId;
-        const userId = request.user!.id;
+        const tenantId = (request as any).user!.tenantId;
+        const userId = (request as any).user!.id;
         const input = request.body as SendMessageInput;
 
         const message = await conversationService.sendMessage(conversationId, tenantId, userId, input);
@@ -84,7 +84,7 @@ export async function registerMessageRoutes(fastify: FastifyInstance, config: AI
       try {
         const { conversationId } = request.params;
         const { limit, offset } = request.query;
-        const tenantId = request.user!.tenantId;
+        const tenantId = (request as any).user!.tenantId;
 
         const conversation = await conversationService.getConversation(conversationId, tenantId, {
           includeMessages: true,

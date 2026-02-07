@@ -1,0 +1,387 @@
+# Central Cosmos DB container manifest for platform bootstrap.
+# All containers use partition key /tenantId unless overridden.
+# Consumed by shard-manager bootstrap when bootstrap.ensure_cosmos_containers is true.
+containers:
+  - id: shard_shards
+    partitionKey: /tenantId
+  - id: shard_shard_types
+    partitionKey: /tenantId
+  - id: shard_relationships
+    partitionKey: /tenantId
+  - id: shard_links
+    partitionKey: /tenantId
+  - id: auth_sessions
+    partitionKey: /tenantId
+  - id: auth_tokens
+    partitionKey: /tenantId
+  - id: auth_providers
+    partitionKey: /tenantId
+  - id: auth_password_resets
+    partitionKey: /tenantId
+  - id: auth_email_verifications
+    partitionKey: /tenantId
+  - id: auth_login_attempts
+    partitionKey: /tenantId
+  - id: auth_sso_configs
+    partitionKey: /tenantId
+  - id: auth_oauth2_clients
+    partitionKey: /tenantId
+  - id: auth_mfa_secrets
+    partitionKey: /tenantId
+  - id: user_users
+    partitionKey: /tenantId
+  - id: user_organizations
+    partitionKey: /tenantId
+  - id: user_teams
+    partitionKey: /tenantId
+  - id: user_roles
+    partitionKey: /tenantId
+  - id: user_permissions
+    partitionKey: /tenantId
+  - id: user_invitations
+    partitionKey: /tenantId
+  - id: user_memberships
+    partitionKey: /tenantId
+  - id: user_api_keys
+    partitionKey: /tenantId
+  - id: risk_evaluations
+    partitionKey: /tenantId
+  - id: risk_snapshots
+    partitionKey: /tenantId
+  - id: risk_predictions
+    partitionKey: /tenantId
+  - id: risk_revenue_at_risk
+    partitionKey: /tenantId
+  - id: risk_quotas
+    partitionKey: /tenantId
+  - id: risk_warnings
+    partitionKey: /tenantId
+  - id: risk_simulations
+    partitionKey: /tenantId
+  - id: risk_competitor_tracking
+    partitionKey: /tenantId
+  - id: competitors
+    partitionKey: /tenantId
+  - id: risk_anomaly_alerts
+    partitionKey: /tenantId
+  - id: risk_sentiment_trends
+    partitionKey: /tenantId
+  - id: risk_win_loss_reasons
+    partitionKey: /tenantId
+  - id: analytics_industry_benchmarks
+    partitionKey: /tenantId
+  - id: risk_clusters
+    partitionKey: /tenantId
+  - id: risk_association_rules
+    partitionKey: /tenantId
+  - id: risk_account_health
+    partitionKey: /tenantId
+  - id: risk_explanations
+    partitionKey: /tenantId
+  - id: risk_global_feature_importance
+    partitionKey: /tenantId
+  - id: risk_decisions
+    partitionKey: /tenantId
+  - id: risk_rules
+    partitionKey: /tenantId
+  - id: risk_sales_methodology
+    partitionKey: /tenantId
+  - id: risk_tenant_ml_config
+    partitionKey: /tenantId
+  - id: recommendation_recommendations
+    partitionKey: /tenantId
+  - id: recommendation_feedback
+    partitionKey: /tenantId
+  - id: recommendation_feedback_aggregation
+    partitionKey: /tenantId
+  - id: recommendation_config
+    partitionKey: /tenantId
+  - id: recommendation_metrics
+    partitionKey: /tenantId
+  - id: recommendation_remediation_workflows
+    partitionKey: /tenantId
+  - id: recommendation_mitigation_actions
+    partitionKey: /tenantId
+  - id: workflow_workflows
+    partitionKey: /tenantId
+  - id: workflow_steps
+    partitionKey: /tenantId
+  - id: workflow_executions
+    partitionKey: /tenantId
+  - id: hitl_approvals
+    partitionKey: /tenantId
+  - id: forecast_decompositions
+    partitionKey: /tenantId
+  - id: forecast_consensus
+    partitionKey: /tenantId
+  - id: forecast_commitments
+    partitionKey: /tenantId
+  - id: forecast_pipeline_health
+    partitionKey: /tenantId
+  - id: forecast_predictions
+    partitionKey: /tenantId
+  - id: integration_sync_tasks
+    partitionKey: /tenantId
+  - id: integration_executions
+    partitionKey: /tenantId
+  - id: integration_conflicts
+    partitionKey: /tenantId
+  - id: integration_webhooks
+    partitionKey: /tenantId
+  - id: enrichment_jobs
+    partitionKey: /tenantId
+  - id: enrichment_results
+    partitionKey: /tenantId
+  - id: enrichment_configurations
+    partitionKey: /tenantId
+  - id: enrichment_history
+    partitionKey: /tenantId
+  - id: vectorization_jobs
+    partitionKey: /tenantId
+  - id: shard_acls
+    partitionKey: /tenantId
+  - id: conversation_conversations
+    partitionKey: /tenantId
+  - id: conversation_messages
+    partitionKey: /tenantId
+  - id: conversation_contexts
+    partitionKey: /tenantId
+  - id: conversation_citations
+    partitionKey: /tenantId
+  - id: conversation_citation_configs
+    partitionKey: /tenantId
+  - id: integration_suggested_links
+    partitionKey: /tenantId
+    defaultTtl: 2592000
+  - id: integration_entity_linking_settings
+    partitionKey: /tenantId
+  - id: integration_linking_rules
+    partitionKey: /tenantId
+  - id: integration_processing_settings
+    partitionKey: /tenantId
+  - id: integration_providers
+    partitionKey: /tenantId
+  - id: integration_integrations
+    partitionKey: /tenantId
+  - id: integration_catalog
+    partitionKey: /tenantId
+  - id: integration_visibility
+    partitionKey: /tenantId
+  - id: integration_connections
+    partitionKey: /tenantId
+  - id: integration_sync_conflicts
+    partitionKey: /tenantId
+  - id: content_generation_jobs
+    partitionKey: /tenantId
+  - id: content_templates
+    partitionKey: /tenantId
+  - id: template_templates
+    partitionKey: /tenantId
+  - id: template_versions
+    partitionKey: /tenantId
+  - id: template_context_templates
+    partitionKey: /tenantId
+  - id: template_email_templates
+    partitionKey: /tenantId
+  - id: system_settings
+    partitionKey: /tenantId
+  - id: dashboard_dashboards
+    partitionKey: /tenantId
+  - id: dashboard_widgets
+    partitionKey: /tenantId
+  - id: dashboard_admin_data
+    partitionKey: /tenantId
+  - id: dashboard_widget_cache
+    partitionKey: /tenantId
+  - id: validation_rules
+    partitionKey: /tenantId
+  - id: validation_runs
+    partitionKey: /tenantId
+  - id: validation_results
+    partitionKey: /tenantId
+  - id: ai_models
+    partitionKey: /tenantId
+  - id: ai_completions
+    partitionKey: /tenantId
+  - id: ai_agents
+    partitionKey: /tenantId
+  - id: ai_insights
+    partitionKey: /tenantId
+  - id: ai_proactive_insights
+    partitionKey: /tenantId
+  - id: ai_collaborative_insights
+    partitionKey: /tenantId
+  - id: ai_risk_analysis
+    partitionKey: /tenantId
+  - id: reasoning_tasks
+    partitionKey: /tenantId
+  - id: prompt_prompts
+    partitionKey: /tenantId
+  - id: prompt_versions
+    partitionKey: /tenantId
+  - id: prompt_ab_tests
+    partitionKey: /tenantId
+  - id: prompt_analytics
+    partitionKey: /tenantId
+  - id: llm_outputs
+    partitionKey: /tenantId
+  - id: embedding_embeddings
+    partitionKey: /tenantId
+  - id: embedding_documents
+    partitionKey: /tenantId
+  - id: utility_imports
+    partitionKey: /tenantId
+  - id: utility_exports
+    partitionKey: /tenantId
+  - id: utility_migrations
+    partitionKey: /tenantId
+  - id: notification_notifications
+    partitionKey: /tenantId
+  - id: notification_batches
+    partitionKey: /tenantId
+  - id: notification_preferences
+    partitionKey: /tenantId
+  - id: notification_templates
+    partitionKey: /tenantId
+  - id: ml_models
+    partitionKey: /tenantId
+  - id: ml_features
+    partitionKey: /tenantId
+  - id: ml_feature_snapshots
+    partitionKey: /tenantId
+  - id: ml_feature_metadata
+    partitionKey: /tenantId
+  - id: ml_training_jobs
+    partitionKey: /tenantId
+  - id: ml_evaluations
+    partitionKey: /tenantId
+  - id: ml_predictions
+    partitionKey: /tenantId
+  - id: multimodal_jobs
+    partitionKey: /tenantId
+  - id: ml_win_probability_predictions
+    partitionKey: /tenantId
+  - id: ml_drift_metrics
+    partitionKey: /tenantId
+  - id: ml_improvement_opportunity
+    partitionKey: /tenantId
+  - id: ml_alert_rules
+    partitionKey: /tenantId
+  - id: user_feedback
+    partitionKey: /tenantId
+  - id: outcome
+    partitionKey: /tenantId
+  - id: analytics_events
+    partitionKey: /tenantId
+  - id: analytics_metrics
+    partitionKey: /tenantId
+  - id: analytics_reports
+    partitionKey: /tenantId
+  - id: quality_metrics
+    partitionKey: /tenantId
+  - id: quality_anomalies
+    partitionKey: /tenantId
+  - id: ai_analytics_events
+    partitionKey: /tenantId
+  - id: ai_analytics_models
+    partitionKey: /tenantId
+  - id: signal_intelligence_signals
+    partitionKey: /tenantId
+  - id: analytics_usage_ml
+    partitionKey: /tenantId
+  - id: context_contexts
+    partitionKey: /tenantId
+  - id: context_assemblies
+    partitionKey: /tenantId
+  - id: context_dependency_trees
+    partitionKey: /tenantId
+  - id: context_call_graphs
+    partitionKey: /tenantId
+  - id: context_analyses
+    partitionKey: /tenantId
+  - id: configuration_settings
+    partitionKey: /tenantId
+  - id: migration_migrations
+    partitionKey: /tenantId
+  - id: migration_steps
+    partitionKey: /tenantId
+  - id: migration_plans
+    partitionKey: /tenantId
+  - id: collaboration_conversations
+    partitionKey: /tenantId
+  - id: collaboration_messages
+    partitionKey: /tenantId
+  - id: collaboration_insights
+    partitionKey: /tenantId
+  - id: cache_metrics
+    partitionKey: /tenantId
+  - id: cache_strategies
+    partitionKey: /tenantId
+  - id: search_queries
+    partitionKey: /tenantId
+  - id: search_analytics
+    partitionKey: /tenantId
+  - id: web_search_cache
+    partitionKey: /tenantId
+  - id: quality_explanations
+    partitionKey: /tenantId
+  - id: security_scans
+    partitionKey: /tenantId
+  - id: security_pii_detections
+    partitionKey: /tenantId
+  - id: security_device_tracking
+    partitionKey: /tenantId
+  - id: secret_secrets
+    partitionKey: /tenantId
+  - id: secret_vaults
+    partitionKey: /tenantId
+  - id: secret_audit_logs
+    partitionKey: /tenantId
+  - id: secret_encryption_keys
+    partitionKey: /tenantId
+  - id: document_documents
+    partitionKey: /tenantId
+  - id: document_collections
+    partitionKey: /tenantId
+  - id: document_templates
+    partitionKey: /tenantId
+  - id: pipeline_opportunities
+    partitionKey: /tenantId
+  - id: pipeline_views
+    partitionKey: /tenantId
+  - id: pattern_patterns
+    partitionKey: /tenantId
+  - id: pattern_scans
+    partitionKey: /tenantId
+  - id: pattern_matches
+    partitionKey: /tenantId
+  - id: pattern_libraries
+    partitionKey: /tenantId
+  - id: signal_communications
+    partitionKey: /tenantId
+  - id: signal_calendar
+    partitionKey: /tenantId
+  - id: signal_social
+    partitionKey: /tenantId
+  - id: ai_analytics_feedback
+    partitionKey: /tenantId
+  - id: web_search_results
+    partitionKey: /tenantId
+  - id: adaptive_learning_paths
+    partitionKey: /tenantId
+  - id: adaptive_progress
+    partitionKey: /tenantId
+  - id: adaptive_skills
+    partitionKey: /tenantId
+  - id: adaptive_assessments
+    partitionKey: /tenantId
+  - id: adaptive_assessment_results
+    partitionKey: /tenantId
+  - id: adaptive_outcomes
+    partitionKey: /tenantId
+  - id: adaptive_weights
+    partitionKey: /tenantId
+  - id: adaptive_model_selections
+    partitionKey: /tenantId
+  - id: adaptive_tenant_config
+    partitionKey: /tenantId

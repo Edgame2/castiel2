@@ -12,7 +12,7 @@ export async function shardEmbeddingRoutes(server: FastifyInstance): Promise<voi
 
   server.post<{ Body: { shardId: string; forceRegenerate?: boolean } }>(
     '/generate',
-    { preHandler, schema: { description: 'Generate embeddings for a shard using template', tags: ['Shard Embeddings'] } },
+    { preHandler, schema: { description: 'Generate embeddings for a shard using template', tags: ['Shard Embeddings'] } as any },
     async (request, reply) => {
       try {
         const { shardId, forceRegenerate } = request.body;
@@ -30,7 +30,7 @@ export async function shardEmbeddingRoutes(server: FastifyInstance): Promise<voi
 
   server.post<{ Body: { shardIds: string[]; forceRegenerate?: boolean; concurrency?: number } }>(
     '/batch',
-    { preHandler, schema: { description: 'Batch generate embeddings for multiple shards', tags: ['Shard Embeddings'] } },
+    { preHandler, schema: { description: 'Batch generate embeddings for multiple shards', tags: ['Shard Embeddings'] } as any },
     async (request, reply) => {
       try {
         const { shardIds, forceRegenerate, concurrency } = request.body;
@@ -51,7 +51,7 @@ export async function shardEmbeddingRoutes(server: FastifyInstance): Promise<voi
 
   server.post<{ Body: { shardTypeId: string; forceRegenerate?: boolean } }>(
     '/regenerate-type',
-    { preHandler, schema: { description: 'Regenerate embeddings for all shards of a type', tags: ['Shard Embeddings'] } },
+    { preHandler, schema: { description: 'Regenerate embeddings for all shards of a type', tags: ['Shard Embeddings'] } as any },
     async (request, reply) => {
       try {
         const { shardTypeId, forceRegenerate } = request.body;
@@ -71,7 +71,7 @@ export async function shardEmbeddingRoutes(server: FastifyInstance): Promise<voi
 
   server.get(
     '/statistics',
-    { preHandler, schema: { description: 'Get embedding statistics for tenant', tags: ['Shard Embeddings'] } },
+    { preHandler, schema: { description: 'Get embedding statistics for tenant', tags: ['Shard Embeddings'] } as any },
     async (request, reply) => {
       try {
         const tenantId = (request as any).user?.tenantId;

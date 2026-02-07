@@ -12,7 +12,7 @@ import { QualityMonitoringService } from '../services/QualityMonitoringService';
 /**
  * Register all routes
  */
-export async function registerRoutes(fastify: FastifyInstance, config: ReturnType<typeof loadConfig>): Promise<void> {
+export async function registerRoutes(fastify: FastifyInstance, _config: ReturnType<typeof loadConfig>): Promise<void> {
   try {
     const qualityMonitoringService = new QualityMonitoringService();
 
@@ -20,7 +20,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Querystring: { metricType?: string } }>(
       '/api/v1/quality/metrics',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get quality metrics',
           tags: ['Quality Monitoring'],
@@ -29,7 +29,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       },
       async (request, reply) => {
         try {
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const { metricType } = request.query;
 
           // Get metrics from database
@@ -45,7 +45,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           query += ' ORDER BY c.measuredAt DESC';
 
           const { resources: metrics } = await container.items
-            .query({ query, parameters }, { partitionKey: tenantId })
+            .query({ query, parameters }, { partitionKey: tenantId } as any)
             .fetchAll();
 
           return reply.send({ metrics: metrics || [] });
@@ -64,7 +64,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: { metricType: string; value: number; threshold: number; status: 'normal' | 'warning' | 'critical' } }>(
       '/api/v1/quality/metrics',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Record quality metric',
           tags: ['Quality Monitoring'],
@@ -74,7 +74,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { metricType, value, threshold, status } = request.body;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           await qualityMonitoringService.recordMetric(tenantId, {
             metricType,
@@ -99,7 +99,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: { metricType: string; value: number } }>(
       '/api/v1/quality/anomalies/detect',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Detect quality anomaly',
           tags: ['Quality Monitoring'],
@@ -109,7 +109,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { metricType, value } = request.body;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const anomaly = await qualityMonitoringService.detectAnomaly(tenantId, { metricType, value });
 
@@ -134,7 +134,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Querystring: { resolved?: string; severity?: string } }>(
       '/api/v1/quality/anomalies',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get quality anomalies',
           tags: ['Quality Monitoring'],
@@ -143,7 +143,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       },
       async (request, reply) => {
         try {
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const { resolved, severity } = request.query;
 
           const container = getContainer('quality_anomalies');
@@ -163,7 +163,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           query += ' ORDER BY c.detectedAt DESC';
 
           const { resources: anomalies } = await container.items
-            .query({ query, parameters }, { partitionKey: tenantId })
+            .query({ query, parameters }, { partitionKey: tenantId } as any)
             .fetchAll();
 
           return reply.send({ anomalies: anomalies || [] });

@@ -99,9 +99,9 @@ export class CitationValidationService {
     try {
       const container = getContainer('conversation_citation_configs');
       await container.items.upsert({
+        ...newConfig,
         id: tenantId,
         tenantId,
-        ...newConfig,
       });
     } catch (error: any) {
       log.warn('Failed to persist citation validation config', {
@@ -585,7 +585,18 @@ export class CitationValidationService {
     const result = await this.validateCitation(
       citation,
       [],
-      { sources: [], totalTokens: 0 },
+      {
+        id: '',
+        tenantId,
+        query: '',
+        sources: [],
+        topics: [],
+        clusters: [],
+        qualityScore: 0,
+        qualityLevel: 'low',
+        tokenCount: 0,
+        createdAt: new Date().toISOString(),
+      },
       config,
       tenantId
     );

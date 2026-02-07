@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-The deep review document is **largely accurate** but **outdated in several important areas**. The current implementation has added **feature versioning**, **feature quality/drift monitoring**, and **model monitoring (PSI/Brier/MAE)** in ml-service since the review. The review’s critical findings on **SHAP**, **automated retraining**, **referenced docs**, and **port conflicts** remain valid.
+The deep review document is **largely accurate** but **outdated in several important areas**. The current implementation has added **feature versioning**, **feature quality/drift monitoring**, and **model monitoring (PSI/Brier/MAE)** in ml-service since the review. The review’s critical findings on **SHAP** and **automated retraining** remain valid; **referenced docs** and **port conflicts** have been addressed (see §2.5, §2.6).
 
 | Category | Review Claim | Current Reality |
 |----------|--------------|-----------------|
@@ -16,7 +16,7 @@ The deep review document is **largely accurate** but **outdated in several impor
 | Feature drift | ❌ Not implemented | ✅ **Implemented** (FeatureQualityMonitor: drift, missing rate, outliers) |
 | SHAP explainability | ❌ Missing | ✅ **Still missing** (SHAP-like structure in risk-analytics only; no SHAP library) |
 | Automated retraining | ❌ Missing | ✅ **Still missing** (ContinuousLearningService suggests only; no workflow) |
-| Referenced docs | Missing | ✅ **Still missing** (CAIS_ARCHITECTURE.md, ML_OPERATIONAL_STANDARDS.md) |
+| Referenced docs | Missing | ✅ **Resolved** (index + stubs in documentation/review/) |
 | Port conflicts | 3034 conflict | ✅ **Confirmed** (context-service & configuration-service both default 3034; others too) |
 | DataLakeCollector / MLAuditConsumer | ✅ Present | ✅ **Confirmed** (logging service) |
 | Model-monitoring location | In risk-analytics? | **Clarified:** Trigger in risk-analytics BatchJobWorker; **execution in ml-service** (POST /api/v1/ml/model-monitoring/run) |
@@ -92,19 +92,17 @@ The deep review document is **largely accurate** but **outdated in several impor
 - ml-service `config/default.yaml`: `azure_ml.endpoints` use empty strings or env vars (e.g. `AZURE_ML_ENDPOINT_*`); no evidence of deployed endpoints in repo.
 - **Verdict:** Review correct: **deployment status unclear**; config is placeholder/env-driven.
 
-### 2.5 Referenced Documentation Missing
+### 2.5 Referenced Documentation — **RESOLVED**
 
 - Referenced in project/docs: `CAIS_ARCHITECTURE.md`, `ML_OPERATIONAL_STANDARDS.md`, `IMPLEMENTATION_STATUS_AND_PLAN.md`, `COMPREHENSIVE_LAYER_REQUIREMENTS_SUMMARY.md`.
-- **Found in `documentation/global/`:** Architecture.md, CAIS_OVERVIEW.md, DataFlow.md, Deployment.md, Infrastructure.md, ModuleImplementationGuide.md, ModuleOverview.md, README.md, SystemPurpose.md, TechnologyStack.md.
-- **Verdict:** **CAIS_ARCHITECTURE.md** and **ML_OPERATIONAL_STANDARDS.md** are **not present**; other layer/implementation docs may live under different names or paths.
+- **Resolution:** (1) **DOCUMENTATION_STATUS.md** includes a “Referenced Document Names” table mapping each name to the canonical doc (e.g. CAIS_ARCHITECTURE → global/Architecture.md, IMPLEMENTATION_STATUS_AND_PLAN → repo root IMPLEMENTATION_STATUS.md). (2) **Stub files** in `documentation/review/` with these exact names redirect to the canonical locations so links from the deep review resolve.
+- **Verdict:** **Referenced docs are linked/resolved** via the index and review stubs; no standalone CAIS_ARCHITECTURE or ML_OPERATIONAL_STANDARDS file existed before; equivalents (Architecture.md, ModuleImplementationGuide.md, etc.) are now discoverable.
 
-### 2.6 Port Default Conflicts
+### 2.6 Port Default Conflicts — **RESOLVED**
 
-- **context-service** and **configuration-service:** both `port: ${PORT:-3034}` in `config/default.yaml`.
-- **reasoning-engine** and **ai-conversation:** both default **3045**.
-- **validation-engine** and **prompt-service:** both default **3036**.
-- **template-service** and **pattern-recognition:** both default **3037**.
-- **Verdict:** Review correct: **default port conflicts exist** in config; in docker-compose each service gets its own `PORT=` so runtime conflict is avoided when only one instance per service runs.
+- **Previously:** context-service and configuration-service (3034); reasoning-engine and ai-conversation (3045); validation-engine and prompt-service (3036); template-service and pattern-recognition (3037); api-gateway and notification-manager (3001); integration-processors and ui (3000).
+- **Resolution (config defaults):** configuration-service → 3038; reasoning-engine → 3040; prompt-service → 3039; pattern-recognition → 3041; api-gateway → 3002 (UI api.base_url → 3002); integration-processors → 3064. context-service (3034), ai-conversation (3045), validation-engine (3036), template-service (3037), notification-manager (3001), ui (3000) unchanged.
+- **Verdict:** **Default port conflicts have been resolved**; each service has a unique default in `config/default.yaml`. Runtime remains correct when `PORT` is set per service (e.g. docker-compose).
 
 ### 2.7 Service Count
 
@@ -147,8 +145,8 @@ The deep review document is **largely accurate** but **outdated in several impor
 | Automated retraining | Missing | **Missing** |
 | DataLakeCollector / MLAuditConsumer | Present | **Present** (logging) |
 | Model-monitoring ownership | Unclear / in risk-analytics | **Trigger** in risk-analytics, **execution** in ml-service |
-| Referenced docs | Missing | **CAIS_ARCHITECTURE.md, ML_OPERATIONAL_STANDARDS.md** still missing |
-| Port conflicts | 3034 | **Confirmed** (3034, 3036, 3037, 3045) |
+| Referenced docs | Missing | **Resolved** (index in DOCUMENTATION_STATUS.md + stubs in documentation/review/) |
+| Port conflicts | 3034 | **Resolved** (unique defaults: 3038, 3040, 3039, 3041, 3002, 3064) |
 | Service count ~48 vs 100+ | Overstated | **Confirmed** (~45–50 substantive containers) |
 | buildVectorForOpportunity | Exists in ml-service | **Confirmed** |
 | Learning-service events | feedback/outcome/trend | **Confirmed** |
@@ -181,13 +179,13 @@ The following list is derived from the deep review and verification. Items alrea
 
 | # | Item | Description | Owner | Effort |
 |---|------|-------------|--------|--------|
-| 9 | **Port default conflicts** | Resolve duplicate default ports in config: context-service vs configuration-service (3034); reasoning-engine vs ai-conversation (3045); validation-engine vs prompt-service (3036); template-service vs pattern-recognition (3037). Assign unique defaults per service. | Backend / DevOps | ~0.5 week |
+| 9 | **Port default conflicts** | ~~Resolve duplicate default ports~~ **Done.** Unique defaults assigned: configuration-service 3038, reasoning-engine 3040, prompt-service 3039, pattern-recognition 3041, api-gateway 3002 (UI→3002), integration-processors 3064. | Backend / DevOps | — |
 | 10 | **Shard update debouncing** | Debounce or batch `shard.updated` handling to avoid thundering herd when many services react; optional priority queue for critical vs non-critical updates; add metrics for event volume. | Backend Engineer | ~2 weeks |
 | 11 | **Prediction result caching** | Cache ML prediction results (e.g. Redis) by (tenantId, opportunityId, modelId, featureVersion) to reduce latency and Azure ML load; document TTL and invalidation. | Backend / ML Engineer | ~1 week |
 | 12 | **Shard-manager read cache** | Read-through or cache layer for shard-manager to reduce hot partition risk and latency for high-read scenarios. | Backend Engineer | ~1–2 weeks |
 | 13 | **Data governance** | Data retention policies at data layer (e.g. shard-manager); optional data lineage beyond shards; PII detection integration (e.g. security-scanning on shard write); data quality SLA checks in pipelines. | Backend + Security | ~2–3 weeks |
-| 14 | **Missing referenced docs** | Add or link: `CAIS_ARCHITECTURE.md`, `ML_OPERATIONAL_STANDARDS.md`; align `IMPLEMENTATION_STATUS_AND_PLAN.md`, `COMPREHENSIVE_LAYER_REQUIREMENTS_SUMMARY.md` if referenced elsewhere. | Tech Writer + Architect | ~1 week |
-| 15 | **Service count and docs** | Align project description with actual count (~45–50 containers); document methodology; fix any port/docs inconsistencies. | Tech Writer | ~0.5 week |
+| 14 | **Missing referenced docs** | ~~Add or link~~ **Done.** DOCUMENTATION_STATUS.md has a “Referenced Document Names” table; stubs in documentation/review/ (CAIS_ARCHITECTURE.md, ML_OPERATIONAL_STANDARDS.md, IMPLEMENTATION_STATUS_AND_PLAN.md, COMPREHENSIVE_LAYER_REQUIREMENTS_SUMMARY.md) redirect to canonical docs. | Tech Writer + Architect | — |
+| 15 | **Service count and docs** | ~~Align project description~~ **Done.** documentation/README.md: service count set to ~45–50 with methodology; API Gateway default port 3002 reflected in documentation/README.md, containers/README.md, containers/api-gateway.md, CONTAINER_PURPOSE_AND_INTEGRATION.md, CURRENT_STATE.md, containers/ui.md, gap-analysis, reorg copy. | Tech Writer | — |
 
 ### 5.4 Lower priority / optional
 
@@ -219,7 +217,7 @@ Estimated order of magnitude to address critical + high: **~12–16 weeks** with
    - Clarify that **model-monitoring execution** is in **ml-service** (`ModelMonitoringService`, `POST /api/v1/ml/model-monitoring/run`); risk-analytics BatchJobWorker only **triggers** it.
 
 3. **Keep as-is:**  
-   - SHAP (missing), automated retraining (missing), referenced docs (missing), port default conflicts, service count, Azure ML deployment status, and Data Lake / learning-service / shard flows.
+   - SHAP (missing), automated retraining (missing), service count, Azure ML deployment status, and Data Lake / learning-service / shard flows. (Referenced docs and port conflicts are now resolved.)
 
 4. **Optional:**  
    - Add a short “Implementation changes since review” section listing feature versioning, feature quality/drift, and model-monitoring clarification.

@@ -12,7 +12,7 @@ Single entry point for all client requests. Validates JWT, extracts tenantId and
 
 Main entries from `config/default.yaml`:
 
-- **server:** `port` (default 3001), `host` (0.0.0.0)
+- **server:** `port` (default 3002), `host` (0.0.0.0)
 - **jwt:** `secret` (required, from env)
 - **services:** `auth.url`, `user_management.url`, `secret_management.url`, `logging.url`, `notification.url`, `ai_service.url`, `embeddings.url`, `dashboard.url`, `risk_analytics.url`, `risk_catalog.url`, `recommendations.url`, `integration_manager.url`, `shard_manager.url`, `integration_processors.url`, `ml_service.url`, `configuration_service.url`, `adaptive_learning.url` (all override via env, e.g. `AUTH_URL`, `USER_MANAGEMENT_URL`)
 - **rate_limit:** `max`, `timeWindow` (ms)
@@ -63,7 +63,7 @@ None (gateway is stateless).
 
 ## 3. Deployment
 
-- **Port:** 3001 (host and container in docker-compose).
+- **Port:** 3002 (default; host and container in docker-compose when PORT=3002).
 - **Health:** Typically `/health` or root; confirm in container server.
 - **Scaling:** Stateless; scale horizontally.
 - **Docker Compose service name:** `api-gateway`.

@@ -6,7 +6,7 @@ Single source of truth for all runtime containers: purpose, integration, and lin
 
 ## 1. Integration Overview
 
-- **Entry point:** All client traffic goes through the **API Gateway** (port 3001). The gateway validates JWT, enforces tenant (X-Tenant-ID), applies rate limiting, and routes requests to backend services using **config-driven URLs** (no hardcoded addresses).
+- **Entry point:** All client traffic goes through the **API Gateway** (default port 3002). The gateway validates JWT, enforces tenant (X-Tenant-ID), applies rate limiting, and routes requests to backend services using **config-driven URLs** (no hardcoded addresses).
 - **Service-to-service:** Containers call each other via HTTP using **ServiceClient** from `@coder/shared`, with URLs from `config/default.yaml` or environment variables. Circuit breakers and retries are used where applicable.
 - **Events:** **RabbitMQ** is the only message broker. Containers publish and consume domain events (e.g. `risk.evaluation.completed`, `shard.updated`, `workflow.job.trigger`). Event payloads include `tenantId`, `source`, and `data`.
 - **Data:** Azure Cosmos DB (shared database `castiel`) with **tenantId** as partition key for tenant isolation. Redis is used for caching and sessions where configured.
@@ -24,7 +24,7 @@ Single source of truth for all runtime containers: purpose, integration, and lin
 | ai-insights | 3027 | `containers/ai-insights/` | [ai-insights.md](./ai-insights.md) |
 | ai-service | 3006 | `containers/ai-service/` | [ai-service.md](./ai-service.md) |
 | analytics-service | 3030 | `containers/analytics-service/` | [analytics-service.md](./analytics-service.md) |
-| api-gateway | 3001 | `containers/api-gateway/` | [api-gateway.md](./api-gateway.md) |
+| api-gateway | 3002 | `containers/api-gateway/` | [api-gateway.md](./api-gateway.md) |
 | auth | 3021 | `containers/auth/` | [auth.md](./auth.md) |
 | cache-service | 3035 | `containers/cache-service/` | [cache-service.md](./cache-service.md) |
 | collaboration-service | 3031 | `containers/collaboration-service/` | [collaboration-service.md](./collaboration-service.md) |

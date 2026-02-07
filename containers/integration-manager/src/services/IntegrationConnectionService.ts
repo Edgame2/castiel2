@@ -490,7 +490,7 @@ export class IntegrationConnectionService {
     integration: Integration
   ): Promise<IntegrationConnection> {
     const scope = integration.userScoped ? 'user' : 'tenant';
-    const connectionId = uuidv4();
+    const connectionId = input.connectionId ?? uuidv4();
 
     // Store credentials in secret management
     const token = this.getServiceToken(input.tenantId);
@@ -599,6 +599,40 @@ export class IntegrationConnectionService {
         return null;
       }
       throw error;
+    }
+  }
+
+  /**
+   * Get credentials for a connection (for use by adapters).
+   * Returns the stored credential payload (e.g. service account JSON, api_key, or oauth tokens).
+   */
+  async getCredentialsForConnection(
+    connectionId: string,
+    integrationId: string,
+    tenantId: string
+  ): Promise<Record<string, unknown> | null> {
+    const connection = await this.getConnection(connectionId, integrationId, tenantId);
+    if (!connection?.credentialSecretName) {
+      return null;
+    }
+    const token = this.getServiceToken(tenantId);
+    try {
+      const res = await this.secretManagementClient.get<{ value?: string }>(
+        `/api/v1/secrets/${connection.credentialSecretName}/value`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'X-Tenant-ID': tenantId,
+          },
+        }
+      );
+      const value = (res as { data?: { value?: string }; value?: string })?.data?.value ?? (res as { value?: string })?.value;
+      if (typeof value === 'string') {
+        return JSON.parse(value) as Record<string, unknown>;
+      }
+      return value != null ? (value as Record<string, unknown>) : null;
+    } catch {
+      return null;
     }
   }
 
@@ -762,6 +796,7 @@ export class IntegrationConnectionService {
           apiKey,
         },
         displayName,
+        connectionId: integrationId,
       },
       integration
     );
@@ -794,6 +829,46 @@ export class IntegrationConnectionService {
           password,
         },
         displayName,
+        connectionId: integrationId,
+      },
+      integration
+    );
+  }
+
+  /**
+   * Connect with service account (e.g. Google Workspace domain-wide delegation).
+   * Stores the service account JSON key in secret-management.
+   */
+  async connectWithServiceAccount(
+    integrationId: string,
+    tenantId: string,
+    userId: string,
+    serviceAccountJson: string | Record<string, any>,
+    displayName?: string
+  ): Promise<IntegrationConnection> {
+    const integration = await this.integrationService.getById(integrationId, tenantId);
+    if (!integration) {
+      throw new Error('Integration not found');
+    }
+    if (integration.authMethod !== 'serviceaccount') {
+      throw new Error('Integration does not support service account auth');
+    }
+    const data =
+      typeof serviceAccountJson === 'string' ? (JSON.parse(serviceAccountJson) as Record<string, any>) : serviceAccountJson;
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid service account JSON');
+    }
+    return this.createOrUpdateConnection(
+      {
+        integrationId,
+        tenantId,
+        userId,
+        credentials: {
+          type: 'service_account',
+          data,
+        },
+        displayName,
+        connectionId: integrationId,
       },
       integration
     );

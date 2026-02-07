@@ -21,7 +21,7 @@ export interface OAuthTokens {
 }
 
 export interface ConnectionCredentials {
-  type: 'oauth2' | 'api_key' | 'basic' | 'custom';
+  type: 'oauth2' | 'api_key' | 'basic' | 'custom' | 'service_account';
   accessToken?: string;
   refreshToken?: string;
   expiresAt?: Date;
@@ -29,6 +29,7 @@ export interface ConnectionCredentials {
   apiKey?: string;
   username?: string;
   password?: string;
+  /** For service_account: JSON key object (client_email, private_key, etc.) */
   data?: Record<string, any>;
 }
 
@@ -61,6 +62,8 @@ export interface CreateConnectionInput {
   userId: string;
   credentials: ConnectionCredentials;
   displayName?: string;
+  /** When set (e.g. to integration.id), connection document uses this id so adapter can resolve by integrationId */
+  connectionId?: string;
 }
 
 export interface UpdateConnectionInput {

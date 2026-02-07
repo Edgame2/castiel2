@@ -22,7 +22,7 @@ export class ProviderRegistry {
     }
 
     const config = getConfig();
-    const emailConfig = config.notification.providers.email;
+    const emailConfig = config.notification?.providers?.email;
 
     if (!emailConfig || !emailConfig.enabled) {
       throw new Error('Email provider is not enabled in configuration');
@@ -31,7 +31,7 @@ export class ProviderRegistry {
     const secretClient = this.getSecretClient();
     
     const providerConfig: EmailProviderConfig = {
-      provider: emailConfig.provider || 'smtp',
+      provider: (emailConfig.provider as 'sendgrid' | 'ses' | 'smtp') || 'smtp',
       secret_id: emailConfig.secret_id || undefined,
       from_address: emailConfig.from_address,
       from_name: emailConfig.from_name,

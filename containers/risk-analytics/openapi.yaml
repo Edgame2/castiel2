@@ -30,6 +30,8 @@ tags:
     description: W9 Layer 6 reactivation evaluation and events
   - name: Tenant ML Config
     description: W10 tenant ML configuration (risk tolerance, decision/model preferences)
+  - name: Products
+    description: Product catalog (c_product) and product-fit (Considerations plan Phase 3)
 paths:
   /risk/opportunities/{opportunityId}/latest-evaluation:
     get:
@@ -1134,6 +1136,71 @@ paths:
                         sampleSize: { type: number }
         '500':
           $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/product-fit/evaluate:
+    post:
+      tags:
+        - Risk Evaluation
+      summary: Run product-fit evaluation (Phase 3)
+      description: Evaluates c_product goodFitIf/badFitIf rules for the opportunity and persists product_fit shards. Requires services.shard_manager.url.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: opportunityId, assessments (productId, productName?, score, dimensions?), evaluatedAt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  opportunityId: { type: string }
+                  assessments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        productId: { type: string }
+                        productName: { type: string }
+                        score: { type: number }
+                        dimensions: { type: object }
+                  evaluatedAt: { type: string, format: date-time }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /opportunities/{opportunityId}/product-fit:
+    get:
+      tags:
+        - Risk Evaluation
+      summary: Get product-fit for opportunity (Phase 3)
+      description: Returns product-fit assessments from product_fit shards for the opportunity.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Array of productId, productName?, score, dimensions?
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    productId: { type: string }
+                    productName: { type: string }
+                    score: { type: number }
+                    dimensions: { type: object }
+        '500':
+          $ref: '#/components/responses/InternalError'
   /opportunities/{opportunityId}/leading-indicators:
     get:
       tags:
@@ -1173,7 +1240,7 @@ paths:
       tags:
         - Competitive Intelligence
       summary: List competitors (Plan Gap 4)
-      description: List competitors in the tenant catalog for CompetitorSelectModal and settings.
+      description: List competitors in the tenant catalog for CompetitorSelectModal and settings. When features.competitors_use_shards is enabled, the list merges legacy competitors container with c_competitor shards from shard-manager.
       security:
         - bearerAuth: []
       responses:
@@ -1195,12 +1262,110 @@ paths:
                         industry: { type: string }
         '500':
           $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Competitive Intelligence
+      summary: Create competitor (Full UI; requires competitors_use_shards)
+      description: Creates a c_competitor shard. Requires features.competitors_use_shards and shard-manager.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                segment: { type: string }
+                strengths: { type: array, items: { type: string } }
+                weaknesses: { type: array, items: { type: string } }
+                differentiation: { type: string }
+                website: { type: string }
+                region: { type: string }
+                industry: { type: string }
+      responses:
+        '201':
+          description: Created competitor id and name
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /competitors/{id}:
+    put:
+      tags:
+        - Competitive Intelligence
+      summary: Update competitor (Full UI; requires competitors_use_shards)
+      description: Updates c_competitor shard by id.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                segment: { type: string }
+                strengths: { type: array, items: { type: string } }
+                weaknesses: { type: array, items: { type: string } }
+                differentiation: { type: string }
+                website: { type: string }
+                region: { type: string }
+                industry: { type: string }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Competitive Intelligence
+      summary: Delete competitor (Full UI; requires competitors_use_shards)
+      description: Deletes c_competitor shard by id.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        '500':
+          $ref: '#/components/responses/InternalError'
   /competitors/{competitorId}/track:
     post:
       tags:
         - Competitive Intelligence
       summary: Track competitor on opportunity (Plan §10 Phase 1)
-      description: Upsert risk_competitor_tracking. Links competitor to opportunity; increments mentionCount, sets lastMentionDate=now. Resolves competitorName from competitors container when omitted.
+      description: Upsert risk_competitor_tracking. Links competitor to opportunity; increments mentionCount, sets lastMentionDate=now. Resolves competitorName from competitors container when omitted. When features.competitors_use_shards is enabled, also creates or updates c_competitor and c_opportunity_competitor shards (new data).
       security:
         - bearerAuth: []
       parameters:
@@ -1313,7 +1478,7 @@ paths:
       tags:
         - Competitive Intelligence
       summary: Get competitors for opportunity (Plan §10 Phase 1)
-      description: Returns competitors linked to the opportunity from risk_competitor_tracking. Plan §3.1.1, §3.1.2.
+      description: Returns competitors linked to the opportunity from risk_competitor_tracking. When features.competitors_use_shards is enabled, also merges c_opportunity_competitor shards for this opportunity. Plan §3.1.1, §3.1.2.
       security:
         - bearerAuth: []
       parameters:
@@ -1342,6 +1507,164 @@ paths:
                         lastMentionDate: { type: string }
                         sentiment: { type: number }
                         winLikelihood: { type: number }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /products:
+    get:
+      tags:
+        - Products
+      summary: List products (Phase 3)
+      description: List c_product shards for the tenant. Requires services.shard_manager.url.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Array of products (id, name, description?, category?, status?, goodFitIf?, badFitIf?)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    name: { type: string }
+                    description: { type: string }
+                    category: { type: string }
+                    status: { type: string }
+                    goodFitIf: { type: array, items: { type: object } }
+                    badFitIf: { type: array, items: { type: object } }
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - Products
+      summary: Create product (Phase 3)
+      description: Creates a c_product shard. Requires services.shard_manager.url.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                category: { type: string }
+                status: { type: string }
+                goodFitIf: { type: array, items: { type: object } }
+                badFitIf: { type: array, items: { type: object } }
+      responses:
+        '201':
+          description: Created product
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+                  description: { type: string }
+                  category: { type: string }
+                  status: { type: string }
+                  goodFitIf: { type: array }
+                  badFitIf: { type: array }
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get product by id (Phase 3)
+      description: Returns a single c_product shard. 404 if not found.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+                  description: { type: string }
+                  category: { type: string }
+                  status: { type: string }
+                  goodFitIf: { type: array }
+                  badFitIf: { type: array }
+        '404':
+          description: Product not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags:
+        - Products
+      summary: Update product (Phase 3)
+      description: Updates c_product shard by id.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                category: { type: string }
+                status: { type: string }
+                goodFitIf: { type: array }
+                badFitIf: { type: array }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - Products
+      summary: Delete product (Phase 3)
+      description: Deletes c_product shard by id.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
         '500':
           $ref: '#/components/responses/InternalError'
   /opportunities/{opportunityId}/win-loss-reasons:

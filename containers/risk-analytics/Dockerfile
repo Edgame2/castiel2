@@ -1,14 +1,15 @@
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
 FROM node:20-alpine
 WORKDIR /app
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
+COPY package.json ./
+COPY containers/shared/package*.json ./containers/shared/
+RUN npm install
+COPY containers/risk-analytics ./containers/risk-analytics
+COPY containers/shared ./containers/shared
+WORKDIR /app/containers/shared
+RUN npm install
+RUN npm run build
+WORKDIR /app/containers/risk-analytics
+RUN npm install --legacy-peer-deps
+RUN npm run build
 EXPOSE 3048
-CMD ["node", "dist/server.js"]
+CMD ["npm", "start"]

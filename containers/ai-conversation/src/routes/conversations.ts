@@ -36,8 +36,8 @@ export async function registerConversationRoutes(fastify: FastifyInstance, confi
     },
     async (request, reply) => {
       try {
-        const tenantId = request.user!.tenantId;
-        const userId = request.user!.id;
+        const tenantId = (request as any).user!.tenantId;
+        const userId = (request as any).user!.id;
         const { limit, offset, status } = request.query;
 
         const result = await conversationService.listConversations(tenantId, userId, {
@@ -88,7 +88,7 @@ export async function registerConversationRoutes(fastify: FastifyInstance, confi
       try {
         const { conversationId } = request.params;
         const { includeMessages, messageLimit } = request.query;
-        const tenantId = request.user!.tenantId;
+        const tenantId = (request as any).user!.tenantId;
 
         const conversation = await conversationService.getConversation(conversationId, tenantId, {
           includeMessages,
@@ -130,8 +130,8 @@ export async function registerConversationRoutes(fastify: FastifyInstance, confi
     },
     async (request, reply) => {
       try {
-        const tenantId = request.user!.tenantId;
-        const userId = request.user!.id;
+        const tenantId = (request as any).user!.tenantId;
+        const userId = (request as any).user!.id;
         const input = request.body as CreateConversationInput;
 
         const conversation = await conversationService.createConversation(tenantId, userId, input);
@@ -166,7 +166,7 @@ export async function registerConversationRoutes(fastify: FastifyInstance, confi
     async (request, reply) => {
       try {
         const { conversationId } = request.params;
-        const tenantId = request.user!.tenantId;
+        const tenantId = (request as any).user!.tenantId;
         const updates = request.body;
 
         const conversation = await conversationService.updateConversation(conversationId, tenantId, updates);

@@ -11,7 +11,7 @@ import { WebSearchService } from '../services/WebSearchService';
 /**
  * Register all routes
  */
-export async function registerRoutes(fastify: FastifyInstance, config: ReturnType<typeof loadConfig>): Promise<void> {
+export async function registerRoutes(fastify: FastifyInstance, _config: ReturnType<typeof loadConfig>): Promise<void> {
   try {
     const webSearchService = new WebSearchService();
 
@@ -19,7 +19,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: { query: string; limit?: number; useCache?: boolean } }>(
       '/api/v1/web-search',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Perform web search',
           tags: ['Web Search'],
@@ -29,7 +29,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { query, limit, useCache } = request.body;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const result = await webSearchService.search(tenantId, query, { limit, useCache });
 

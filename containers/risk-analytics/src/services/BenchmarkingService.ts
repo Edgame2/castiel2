@@ -84,7 +84,7 @@ export class BenchmarkingService {
     if (!this.app) {
       return '';
     }
-    return generateServiceToken(this.app, {
+    return generateServiceToken(this.app as any, {
       serviceId: 'risk-analytics',
       serviceName: 'risk-analytics',
       tenantId,

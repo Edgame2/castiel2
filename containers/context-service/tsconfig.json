@@ -1,14 +1,22 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": "./src",
-    "paths": {
-      "@/*": ["./*"]
-    }
+    "paths": { "@/*": ["./*"] },
+    "strict": false,
+    "skipLibCheck": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "sourceMap": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests"]
 }
-

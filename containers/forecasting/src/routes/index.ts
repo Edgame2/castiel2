@@ -15,7 +15,7 @@ import { forecastsGeneratedTotal } from '../metrics';
 /**
  * Register all routes
  */
-export async function registerRoutes(fastify: FastifyInstance, config: ReturnType<typeof loadConfig>): Promise<void> {
+export async function registerRoutes(fastify: FastifyInstance, _config: ReturnType<typeof loadConfig>): Promise<void> {
   try {
     const forecastingService = new ForecastingService(fastify);
     const accuracyService = new ForecastAccuracyService();
@@ -50,7 +50,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { period } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const out = await forecastingService.getScenarioForecast(tenantId, period);
           return reply.send(out);
         } catch (error: unknown) {
@@ -92,7 +92,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { period } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const out = await forecastingService.getRiskAdjustedForecast(tenantId, period);
           return reply.send(out);
         } catch (error: unknown) {
@@ -136,7 +136,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { period } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const out = await forecastingService.getMLForecast(tenantId, period);
           return reply.send(out);
         } catch (error: unknown) {
@@ -164,7 +164,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { forecastId } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const container = getContainer('forecast_decompositions');
           const { resource } = await container.item(forecastId, tenantId).read();
@@ -211,7 +211,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { opportunityId } = request.query;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const container = getContainer('forecast_decompositions');
           const { resources } = await container.items
@@ -253,8 +253,8 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { opportunityId, includeDecomposition, includeConsensus, includeCommitment } = request.body;
-          const tenantId = request.user!.tenantId;
-          const userId = request.user!.id;
+          const tenantId = (request as any).user!.tenantId;
+          const userId = (request as any).user!.id;
 
           const forecast = await forecastingService.generateForecast({
             opportunityId,
@@ -308,7 +308,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       },
       async (request, reply) => {
         try {
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const body = request.body;
           const updated = await accuracyService.recordActual(tenantId, {
             opportunityId: body.opportunityId,
@@ -355,7 +355,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       },
       async (request, reply) => {
         try {
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const result = await forecastingService.aggregateTeamForecast(tenantId, request.body);
           return reply.send(result);
         } catch (error: unknown) {
@@ -385,7 +385,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       },
       async (request, reply) => {
         try {
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const result = await forecastingService.aggregateTenantForecast(tenantId, {
             startDate: request.query.startDate,
             endDate: request.query.endDate,
@@ -423,7 +423,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       },
       async (request, reply) => {
         try {
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const { forecastType, startDate, endDate } = request.query;
           const metrics = await accuracyService.getAccuracyMetrics(tenantId, {
             forecastType,

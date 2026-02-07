@@ -10,6 +10,7 @@ import { IntegrationService } from '../services/IntegrationService';
 import { IntegrationCatalogService } from '../services/IntegrationCatalogService';
 import { IntegrationConnectionService } from '../services/IntegrationConnectionService';
 import { AdapterManagerService } from '../services/AdapterManagerService';
+import { fetchIntegrationRecords } from '../services/IntegrationFetchHandler';
 import { WebhookService } from '../services/WebhookService';
 import { SyncTaskService } from '../services/SyncTaskService';
 import { ContentGenerationService } from '../services/ContentGenerationService';
@@ -55,6 +56,7 @@ import {
   ResolveConflictInput,
 } from '../types/bidirectional-sync.types';
 import { BidirectionalSyncService } from '../services/BidirectionalSyncService';
+import { createGoogleWorkspaceAdapter } from '../adapters/GoogleWorkspaceAdapter';
 import { log } from '../utils/logger';
 import {
   UpdateSystemSettingsInput,
@@ -100,6 +102,10 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     integrationService,
     app
   );
+  adapterManagerService.registerAdapter('google_workspace', {
+    create: (monitoring, connectionService, tenantId, connectionId) =>
+      createGoogleWorkspaceAdapter(monitoring, connectionService, tenantId, connectionId),
+  });
   const bidirectionalSyncService = new BidirectionalSyncService();
   const webhookService = new WebhookService(secretManagementUrl);
   const syncTaskService = new SyncTaskService();
@@ -682,6 +688,101 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   );
 
   /**
+   * Connect integration with service account (e.g. Google Workspace domain-wide delegation)
+   * POST /api/v1/integrations/connect-service-account
+   */
+  app.post<{
+    Body: {
+      integrationType: string;
+      serviceAccountJson: string;
+      displayName?: string;
+    };
+  }>(
+    '/api/v1/integrations/connect-service-account',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Connect integration with service account JSON key',
+        tags: ['Integrations', 'Connections'],
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          required: ['integrationType', 'serviceAccountJson'],
+          properties: {
+            integrationType: { type: 'string' },
+            serviceAccountJson: { type: 'string' },
+            displayName: { type: 'string' },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            properties: {
+              integration: { type: 'object' },
+              success: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const tenantId = request.user!.tenantId;
+        const userId = request.user!.id;
+        const { integrationType, serviceAccountJson, displayName } = request.body as {
+          integrationType: string;
+          serviceAccountJson: string;
+          displayName?: string;
+        };
+
+        const catalogEntry = await integrationCatalogService.getIntegration(integrationType);
+        if (!catalogEntry) {
+          return reply.status(404).send({
+            error: {
+              code: 'INTEGRATION_TYPE_NOT_FOUND',
+              message: 'Integration type not found',
+            },
+          });
+        }
+
+        const integration = await integrationService.create({
+          integrationId: catalogEntry.id,
+          name: displayName || catalogEntry.displayName,
+          tenantId,
+          userId,
+          credentialSecretName: '',
+          authMethod: AuthMethod.SERVICE_ACCOUNT,
+        });
+
+        await integrationConnectionService.connectWithServiceAccount(
+          integration.id,
+          tenantId,
+          userId,
+          serviceAccountJson,
+          displayName
+        );
+
+        await integrationService.update(integration.id, tenantId, {
+          status: IntegrationStatus.CONNECTED,
+          connectionStatus: ConnectionStatus.ACTIVE,
+        });
+
+        return reply.status(201).send({
+          integration,
+          success: true,
+        });
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'SERVICE_ACCOUNT_CONNECTION_FAILED',
+            message: error.message || 'Failed to connect integration with service account',
+          },
+        });
+      }
+    }
+  );
+
+  /**
    * List integrations
    * GET /api/v1/integrations
    */
@@ -774,6 +875,81 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           error: {
             code: 'SYNC_CONFIG_RETRIEVAL_FAILED',
             message: error.message || 'Failed to get sync configuration',
+          },
+        });
+      }
+    }
+  );
+
+  /**
+   * Fetch records from external system via adapter
+   * POST /api/v1/integrations/:integrationId/fetch
+   * Used by integration-sync to pull data; passes pullFilters from syncConfig and body into adapter FetchOptions.filters.
+   */
+  app.post<{
+    Params: { integrationId: string };
+    Body: {
+      direction?: string;
+      entityType?: string;
+      filters?: Record<string, any>;
+      limit?: number;
+      offset?: number;
+    };
+  }>(
+    '/api/v1/integrations/:integrationId/fetch',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Fetch records from external integration via adapter',
+        tags: ['Integrations', 'Sync'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: {
+            integrationId: { type: 'string', format: 'uuid' },
+          },
+        },
+        body: {
+          type: 'object',
+          properties: {
+            direction: { type: 'string' },
+            entityType: { type: 'string' },
+            filters: { type: 'object' },
+            limit: { type: 'number' },
+            offset: { type: 'number' },
+          },
+        },
+        response: {
+          200: {
+            type: 'array',
+            description: 'Array of records from external system',
+          },
+          501: {
+            type: 'object',
+            description: 'Adapter not registered for this provider',
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { integrationId } = request.params;
+        const tenantId = request.user!.tenantId;
+        const userId = request.user!.id;
+        const body = (request.body as { direction?: string; entityType?: string; filters?: Record<string, any>; limit?: number; offset?: number }) || {};
+        const { records } = await fetchIntegrationRecords(integrationService, adapterManagerService, {
+          integrationId,
+          tenantId,
+          userId,
+          body: { entityType: body.entityType, filters: body.filters, limit: body.limit, offset: body.offset },
+        });
+        return reply.send(records);
+      } catch (error: any) {
+        log.error('Fetch from integration failed', error, { integrationId: request.params.integrationId, tenantId: request.user!.tenantId, service: 'integration-manager' });
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'INTEGRATION_FETCH_FAILED',
+            message: error.message || 'Failed to fetch data from integration',
           },
         });
       }
@@ -3395,6 +3571,54 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           userId,
           username,
           password,
+          displayName
+        );
+        return reply.status(201).send(connection);
+      } catch (error: any) {
+        return reply.status(error.statusCode || 500).send({
+          error: {
+            code: 'CONNECTION_CREATION_FAILED',
+            message: error.message || 'Failed to create connection',
+          },
+        });
+      }
+    }
+  );
+
+  // Connect with service account (e.g. Google Workspace domain-wide delegation)
+  app.post<{
+    Params: { integrationId: string };
+    Body: { serviceAccountJson: string; displayName?: string };
+  }>(
+    '/api/v1/integrations/:integrationId/connections/service-account',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Connect integration with service account JSON key',
+        tags: ['Integrations', 'Connections'],
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          required: ['serviceAccountJson'],
+          properties: {
+            serviceAccountJson: { type: 'string', description: 'JSON string of service account key' },
+            displayName: { type: 'string' },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const { integrationId } = request.params;
+        const tenantId = request.user!.tenantId;
+        const userId = request.user!.id;
+        const { serviceAccountJson, displayName } = request.body;
+
+        const connection = await integrationConnectionService.connectWithServiceAccount(
+          integrationId,
+          tenantId,
+          userId,
+          serviceAccountJson,
           displayName
         );
         return reply.status(201).send(connection);

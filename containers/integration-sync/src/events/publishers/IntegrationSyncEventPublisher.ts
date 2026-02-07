@@ -27,7 +27,7 @@ export async function initializeEventPublisher(): Promise<void> {
     );
     log.info('Event publisher initialized', { service: 'integration-sync' });
   } catch (error) {
-    log.error('Failed to initialize event publisher', error, { service: 'integration-sync' });
+    log.error('Failed to initialize event publisher', { error, service: 'integration-sync' });
     throw error;
   }
 }
@@ -52,6 +52,6 @@ export async function publishIntegrationSyncEvent(
   try {
     await publisher.publish(eventType, tenantId, data, metadata);
   } catch (error) {
-    log.error('Failed to publish event', error, { eventType, service: 'integration-sync' });
+    log.error('Failed to publish event', { error, eventType, service: 'integration-sync' });
   }
 }

@@ -1,11 +1,27 @@
 /**
  * Competitive Intelligence Service
  * CRUD and tracking for competitors and risk_competitor_tracking. Plan §3.1.1, §3.1.2, §10 Phase 1.
+ * Phase 1.2: optional shard path (competitors_use_shards); new data written to c_competitor and c_opportunity_competitor shards.
  */
 
 import { getContainer } from '@coder/shared/database';
+import type { ServiceClient } from '@coder/shared';
 
 const WIN_LOSS_REASONS_CONTAINER = 'risk_win_loss_reasons';
+
+/** Optional context for dual-source competitors (shards + legacy containers). */
+export interface CompetitiveIntelligenceShardContext {
+  useShards: boolean;
+  shardManagerClient: ServiceClient;
+  getToken: (tenantId: string) => string;
+  /** Tenant id where shard types are registered (e.g. system). Defaults to tenantId when listing. */
+  bootstrapTenantId?: string;
+  /** User id for creating shards (e.g. system or request user). */
+  systemUserId?: string;
+  /** Resolved on first use if missing */
+  cCompetitorTypeId?: string;
+  cOpportunityCompetitorTypeId?: string;
+}
 
 export interface CompetitorTrackingRow {
   id: string;
@@ -58,11 +74,37 @@ export interface CompetitorCatalogItem {
   industry?: string;
 }
 
+/** Resolve shard type ids for c_competitor and c_opportunity_competitor (bootstrap tenant). */
+async function ensureCompetitorShardTypeIds(
+  ctx: CompetitiveIntelligenceShardContext,
+  tenantId: string
+): Promise<void> {
+  if (ctx.cCompetitorTypeId && ctx.cOpportunityCompetitorTypeId) return;
+  const typeTenantId = ctx.bootstrapTenantId ?? tenantId;
+  try {
+    const list = await ctx.shardManagerClient.get<Array<{ id: string; name: string }>>(
+      '/api/v1/shard-types?limit=100',
+      { headers: { 'X-Tenant-ID': typeTenantId, Authorization: `Bearer ${ctx.getToken(typeTenantId)}` } }
+    );
+    const arr = Array.isArray(list) ? list : [];
+    const cCompetitor = arr.find((t) => t.name === 'c_competitor');
+    const cOppComp = arr.find((t) => t.name === 'c_opportunity_competitor');
+    if (cCompetitor) (ctx as { cCompetitorTypeId?: string }).cCompetitorTypeId = cCompetitor.id;
+    if (cOppComp) (ctx as { cOpportunityCompetitorTypeId?: string }).cOpportunityCompetitorTypeId = cOppComp.id;
+  } catch {
+    // ignore; type ids stay undefined and create will fail
+  }
+}
+
 /**
  * List competitors in the tenant catalog (Plan Gap 4: for CompetitorSelectModal).
- * Queries the competitors container; partition key tenantId.
+ * Queries the competitors container; when ctx.useShards, merges with c_competitor shards from shard-manager.
  */
-export async function listCompetitors(tenantId: string): Promise<CompetitorCatalogItem[]> {
+export async function listCompetitors(
+  tenantId: string,
+  ctx?: CompetitiveIntelligenceShardContext
+): Promise<CompetitorCatalogItem[]> {
+  const fromContainer: CompetitorCatalogItem[] = [];
   try {
     const container = getContainer('competitors');
     const { resources } = await container.items
@@ -71,54 +113,120 @@ export async function listCompetitors(tenantId: string): Promise<CompetitorCatal
         { partitionKey: tenantId }
       )
       .fetchAll();
-    return (resources ?? []).map((r) => ({
-      id: r.id,
-      name: r.name ?? 'Unknown',
-      ...(Array.isArray(r.aliases) && r.aliases.length > 0 && { aliases: r.aliases }),
-      ...(typeof r.industry === 'string' && r.industry && { industry: r.industry }),
-    }));
-  } catch (e) {
-    return [];
+    fromContainer.push(
+      ...(resources ?? []).map((r) => ({
+        id: r.id,
+        name: r.name ?? 'Unknown',
+        ...(Array.isArray(r.aliases) && r.aliases.length > 0 && { aliases: r.aliases }),
+        ...(typeof r.industry === 'string' && r.industry && { industry: r.industry }),
+      }))
+    );
+  } catch {
+    // ignore
   }
+
+  if (ctx?.useShards && ctx.shardManagerClient) {
+    try {
+      const res = await ctx.shardManagerClient.get<{ items: Array<{ id: string; structuredData?: { name?: string; industry?: string } }> }>(
+        '/api/v1/shards?shardTypeName=c_competitor&status=active&limit=1000',
+        { headers: { 'X-Tenant-ID': tenantId, Authorization: `Bearer ${ctx.getToken(tenantId)}` } }
+      );
+      const items = res?.items ?? [];
+      const fromContainerIds = new Set(fromContainer.map((c) => c.id));
+      for (const s of items) {
+        if (!fromContainerIds.has(s.id)) {
+          fromContainerIds.add(s.id);
+          fromContainer.push({
+            id: s.id,
+            name: s.structuredData?.name ?? 'Unknown',
+            ...(typeof s.structuredData?.industry === 'string' && s.structuredData.industry && { industry: s.structuredData.industry }),
+          });
+        }
+      }
+    } catch {
+      // fallback to container only
+    }
+  }
+  return fromContainer;
 }
 
 /**
  * Get competitors linked to an opportunity from risk_competitor_tracking.
- * Enriches name from competitors container when available.
+ * When ctx.useShards, merges with c_opportunity_competitor shards (filtered by opportunityId).
  */
 export async function getCompetitorsForOpportunity(
   tenantId: string,
-  opportunityId: string
+  opportunityId: string,
+  ctx?: CompetitiveIntelligenceShardContext
 ): Promise<CompetitorForOpportunity[]> {
+  const out: CompetitorForOpportunity[] = [];
   const container = getContainer('risk_competitor_tracking');
-  const { resources } = await container.items
-    .query<CompetitorTrackingRow>(
-      {
-        query:
-          'SELECT * FROM c WHERE c.tenantId = @tenantId AND c.opportunityId = @opportunityId ORDER BY c.mentionCount DESC, c.lastMentionDate DESC',
-        parameters: [
-          { name: '@tenantId', value: tenantId },
-          { name: '@opportunityId', value: opportunityId },
-        ],
-      },
-      { partitionKey: tenantId }
-    )
-    .fetchAll();
-
-  if (!resources || resources.length === 0) {
-    return [];
+  try {
+    const { resources } = await container.items
+      .query<CompetitorTrackingRow>(
+        {
+          query:
+            'SELECT * FROM c WHERE c.tenantId = @tenantId AND c.opportunityId = @opportunityId ORDER BY c.mentionCount DESC, c.lastMentionDate DESC',
+          parameters: [
+            { name: '@tenantId', value: tenantId },
+            { name: '@opportunityId', value: opportunityId },
+          ],
+        },
+        { partitionKey: tenantId }
+      )
+      .fetchAll();
+    for (const r of resources ?? []) {
+      out.push({
+        competitorId: r.competitorId,
+        competitorName: r.competitorName || 'Unknown',
+        ...(r.detectedDate && { detectedDate: r.detectedDate }),
+        ...(typeof r.mentionCount === 'number' && { mentionCount: r.mentionCount }),
+        ...(r.lastMentionDate && { lastMentionDate: r.lastMentionDate }),
+        ...(typeof r.sentiment === 'number' && { sentiment: r.sentiment }),
+        ...(typeof r.winLikelihood === 'number' && { winLikelihood: r.winLikelihood }),
+      });
+    }
+  } catch {
+    // ignore
   }
 
-  const out: CompetitorForOpportunity[] = resources.map((r) => ({
-    competitorId: r.competitorId,
-    competitorName: r.competitorName || 'Unknown',
-    ...(r.detectedDate && { detectedDate: r.detectedDate }),
-    ...(typeof r.mentionCount === 'number' && { mentionCount: r.mentionCount }),
-    ...(r.lastMentionDate && { lastMentionDate: r.lastMentionDate }),
-    ...(typeof r.sentiment === 'number' && { sentiment: r.sentiment }),
-    ...(typeof r.winLikelihood === 'number' && { winLikelihood: r.winLikelihood }),
-  }));
-  return out;
+  if (ctx?.useShards && ctx.shardManagerClient) {
+    try {
+      const res = await ctx.shardManagerClient.get<{ items: Array<{ id: string; structuredData?: Record<string, unknown> }> }>(
+        '/api/v1/shards?shardTypeName=c_opportunity_competitor&status=active&limit=1000',
+        { headers: { 'X-Tenant-ID': tenantId, Authorization: `Bearer ${ctx.getToken(tenantId)}` } }
+      );
+      const items = (res?.items ?? []).filter((s) => s.structuredData?.opportunityId === opportunityId);
+      const seen = new Set(out.map((o) => o.competitorId));
+      for (const s of items) {
+        const competitorId = String(s.structuredData?.competitorId ?? '');
+        if (!competitorId || seen.has(competitorId)) continue;
+        seen.add(competitorId);
+        let competitorName = 'Unknown';
+        try {
+          const comp = await ctx.shardManagerClient.get<{ structuredData?: { name?: string } }>(
+            `/api/v1/shards/${competitorId}`,
+            { headers: { 'X-Tenant-ID': tenantId, Authorization: `Bearer ${ctx.getToken(tenantId)}` } }
+          );
+          competitorName = comp?.structuredData?.name ?? competitorName;
+        } catch {
+          // keep Unknown
+        }
+        out.push({
+          competitorId,
+          competitorName,
+          ...(s.structuredData?.detectedAt != null ? { detectedDate: String(s.structuredData.detectedAt) } : {}),
+          ...(typeof s.structuredData?.mentionCount === 'number' ? { mentionCount: s.structuredData.mentionCount } : {}),
+          ...(s.structuredData?.lastMentionDate != null ? { lastMentionDate: String(s.structuredData.lastMentionDate) } : {}),
+          ...(typeof s.structuredData?.sentiment === 'number' ? { sentiment: s.structuredData.sentiment } : {}),
+          ...(typeof s.structuredData?.winLikelihood === 'number' ? { winLikelihood: s.structuredData.winLikelihood } : {}),
+        });
+      }
+    } catch {
+      // fallback to container only
+    }
+  }
+  return out.sort((a, b) => (b.mentionCount ?? 0) - (a.mentionCount ?? 0));
 }
 
 /**
@@ -136,12 +244,14 @@ async function resolveCompetitorName(tenantId: string, competitorId: string): Pr
 
 /**
  * Track a competitor on an opportunity: upsert risk_competitor_tracking.
+ * When ctx.useShards, also create/update c_competitor and c_opportunity_competitor shards.
  * Id = {tenantId}_{opportunityId}_{competitorId}. Increments mentionCount, sets lastMentionDate=now.
  */
 export async function trackCompetitor(
   tenantId: string,
   competitorId: string,
-  input: TrackCompetitorInput
+  input: TrackCompetitorInput,
+  ctx?: CompetitiveIntelligenceShardContext
 ): Promise<TrackCompetitorResult> {
   const now = new Date().toISOString();
   const competitorName =
@@ -175,11 +285,73 @@ export async function trackCompetitor(
     ...(typeof input.sentiment === 'number' && { sentiment: input.sentiment }),
     ...(typeof input.winLikelihood === 'number' && { winLikelihood: input.winLikelihood }),
   };
-  // Preserve existing sentiment/winLikelihood when not overridden
   if (typeof input.sentiment !== 'number' && typeof existing?.sentiment === 'number') doc.sentiment = existing.sentiment;
   if (typeof input.winLikelihood !== 'number' && typeof existing?.winLikelihood === 'number') doc.winLikelihood = existing.winLikelihood;
 
   await container.items.upsert(doc);
+
+  if (ctx?.useShards && ctx.shardManagerClient) {
+    await ensureCompetitorShardTypeIds(ctx, tenantId);
+  }
+  if (ctx?.useShards && ctx.shardManagerClient && ctx.cCompetitorTypeId && ctx.cOpportunityCompetitorTypeId) {
+    try {
+      const typeIdComp = ctx.cCompetitorTypeId;
+      const typeIdOppComp = ctx.cOpportunityCompetitorTypeId;
+      const userId = ctx.systemUserId ?? 'system';
+      const headers = { 'X-Tenant-ID': tenantId, Authorization: `Bearer ${ctx.getToken(tenantId)}` };
+      let competitorShardId = competitorId;
+      if (typeIdComp) {
+        try {
+          await ctx.shardManagerClient.get(`/api/v1/shards/${competitorId}`, { headers });
+        } catch {
+          const createComp = await ctx.shardManagerClient.post<{ id: string }>(
+            '/api/v1/shards',
+            {
+              shardTypeId: typeIdComp,
+              structuredData: { name: competitorName },
+              userId,
+              source: 'api',
+            },
+            { headers }
+          );
+          competitorShardId = createComp?.id ?? competitorId;
+        }
+      }
+      if (typeIdOppComp) {
+        const listRes = await ctx.shardManagerClient.get<{ items: Array<{ id: string; structuredData?: Record<string, unknown> }> }>(
+          '/api/v1/shards?shardTypeName=c_opportunity_competitor&status=active&limit=500',
+          { headers }
+        );
+        const items = (listRes?.items ?? []).filter(
+          (s) => s.structuredData?.opportunityId === input.opportunityId && s.structuredData?.competitorId === competitorId
+        );
+        const body = {
+          opportunityId: input.opportunityId,
+          competitorId: competitorShardId,
+          mentionCount,
+          detectedAt: detectedDate,
+          lastMentionDate: now,
+          ...(typeof doc.sentiment === 'number' && { sentiment: doc.sentiment }),
+          ...(typeof doc.winLikelihood === 'number' && { winLikelihood: doc.winLikelihood }),
+        };
+        const internal_relationships = [
+          { shardId: input.opportunityId, relationshipType: 'for_opportunity' },
+          { shardId: competitorShardId, relationshipType: 'competitor' },
+        ];
+        if (items.length > 0) {
+          await ctx.shardManagerClient.put(`/api/v1/shards/${items[0].id}`, { structuredData: body, internal_relationships }, { headers });
+        } else {
+          await ctx.shardManagerClient.post(
+            '/api/v1/shards',
+            { shardTypeId: typeIdOppComp, structuredData: body, userId, internal_relationships, source: 'api' },
+            { headers }
+          );
+        }
+      }
+    } catch {
+      // shard write best-effort; container already updated
+    }
+  }
 
   const result: TrackCompetitorResult = {
     id: doc.id,
@@ -194,6 +366,85 @@ export async function trackCompetitor(
   if (typeof doc.sentiment === 'number') result.sentiment = doc.sentiment;
   if (typeof doc.winLikelihood === 'number') result.winLikelihood = doc.winLikelihood;
   return result;
+}
+
+/** Input for creating a competitor (c_competitor shard). Plan Full UI: CRUD for competitor master when using shards. */
+export interface CreateCompetitorInput {
+  name: string;
+  segment?: string;
+  strengths?: string[];
+  weaknesses?: string[];
+  differentiation?: string;
+  website?: string;
+  region?: string;
+  industry?: string;
+}
+
+/** Create a competitor in the catalog. When ctx.useShards, creates c_competitor shard; otherwise not supported. */
+export async function createCompetitor(
+  tenantId: string,
+  input: CreateCompetitorInput,
+  ctx?: CompetitiveIntelligenceShardContext
+): Promise<{ id: string; name: string }> {
+  if (!ctx?.useShards || !ctx.shardManagerClient) {
+    throw new Error('Competitor catalog create requires competitors_use_shards and shard-manager');
+  }
+  await ensureCompetitorShardTypeIds(ctx, tenantId);
+  if (!ctx.cCompetitorTypeId) throw new Error('c_competitor shard type not found');
+  const userId = ctx.systemUserId ?? 'system';
+  const headers = { 'X-Tenant-ID': tenantId, Authorization: `Bearer ${ctx.getToken(tenantId)}` };
+  const created = await ctx.shardManagerClient.post<{ id: string; structuredData?: { name?: string } }>(
+    '/api/v1/shards',
+    {
+      shardTypeId: ctx.cCompetitorTypeId,
+      structuredData: {
+        name: input.name,
+        ...(input.segment && { segment: input.segment }),
+        ...(Array.isArray(input.strengths) && { strengths: input.strengths }),
+        ...(Array.isArray(input.weaknesses) && { weaknesses: input.weaknesses }),
+        ...(input.differentiation && { differentiation: input.differentiation }),
+        ...(input.website && { website: input.website }),
+        ...(input.region && { region: input.region }),
+        ...(input.industry && { industry: input.industry }),
+      },
+      userId,
+      source: 'api',
+    },
+    { headers }
+  );
+  return { id: created?.id ?? '', name: created?.structuredData?.name ?? input.name };
+}
+
+/** Update a competitor. When ctx.useShards, updates c_competitor shard. */
+export async function updateCompetitor(
+  tenantId: string,
+  id: string,
+  input: Partial<CreateCompetitorInput>,
+  ctx?: CompetitiveIntelligenceShardContext
+): Promise<void> {
+  if (!ctx?.useShards || !ctx.shardManagerClient) {
+    throw new Error('Competitor catalog update requires competitors_use_shards and shard-manager');
+  }
+  const headers = { 'X-Tenant-ID': tenantId, Authorization: `Bearer ${ctx.getToken(tenantId)}` };
+  const existing = await ctx.shardManagerClient.get<{ structuredData?: Record<string, unknown> }>(
+    `/api/v1/shards/${id}`,
+    { headers }
+  );
+  const structuredData = { ...(existing?.structuredData ?? {}), ...input };
+  await ctx.shardManagerClient.put(`/api/v1/shards/${id}`, { structuredData }, { headers });
+}
+
+/** Delete (archive) a competitor. When ctx.useShards, deletes c_competitor shard. */
+export async function deleteCompetitor(
+  tenantId: string,
+  id: string,
+  ctx?: CompetitiveIntelligenceShardContext
+): Promise<void> {
+  if (!ctx?.useShards || !ctx.shardManagerClient) {
+    throw new Error('Competitor catalog delete requires competitors_use_shards and shard-manager');
+  }
+  const headers = { 'X-Tenant-ID': tenantId, Authorization: `Bearer ${ctx.getToken(tenantId)}` };
+  await ctx.shardManagerClient.delete(`/api/v1/shards/${id}`, { headers });
 }
 
 export interface CompetitiveIntelligenceDashboard {

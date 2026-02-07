@@ -32,10 +32,10 @@ export function getNotificationEngine(): NotificationEngine {
   
   // Create dependencies
   const preferenceResolver = new PreferenceResolver();
-  const presenceTracker = config.notification.features?.presence_aware 
+  const presenceTracker = config.notification?.features?.presence_aware
     ? new PresenceTracker()
     : undefined;
-  const quietHoursService = config.notification.features?.quiet_hours
+  const quietHoursService = config.notification?.features?.quiet_hours
     ? new QuietHoursService()
     : undefined;
   const routingEngine = new RoutingEngine(
@@ -45,7 +45,7 @@ export function getNotificationEngine(): NotificationEngine {
   );
   const templateEngine = new TemplateEngine();
   const variableResolver = new VariableResolver();
-  const deliveryTracker = config.notification.features?.delivery_tracking
+  const deliveryTracker = config.notification?.features?.delivery_tracking
     ? new DeliveryTracker()
     : undefined;
   const retryService = new RetryService();

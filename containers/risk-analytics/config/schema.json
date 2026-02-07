@@ -149,18 +149,21 @@
         "anomaly_detection": { "type": "boolean" },
         "prescriptive_remediation": { "type": "boolean" },
         "executive_dashboards": { "type": "boolean" },
-        "hitl_approvals": { "type": "boolean" }
+        "hitl_approvals": { "type": "boolean" },
+        "declining_sentiment_risk": { "type": "boolean" },
+        "poor_product_fit_risk": { "type": "boolean" }
       },
       "additionalProperties": { "type": "boolean" }
     },
     "thresholds": {
       "type": "object",
-      "description": "Plan §8.1: early-warning, risk-velocity, HITL thresholds",
+      "description": "Plan §8.1: early-warning, risk-velocity, HITL thresholds; Phase 3 product_fit_risk_threshold",
       "properties": {
         "early_warning_days_inactivity": { "type": "array", "items": { "type": "number" } },
         "risk_velocity_alert": { "type": "number" },
         "hitl_risk_min": { "type": "number" },
-        "hitl_deal_min": { "type": "number" }
+        "hitl_deal_min": { "type": "number" },
+        "product_fit_risk_threshold": { "type": "number" }
       }
     },
     "at_risk_reasons_mitigation": {

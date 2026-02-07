@@ -21,7 +21,7 @@ export class DeduplicationService {
 
     // TODO: Implement Redis-based deduplication in Phase 4
     // For now, use in-memory cache
-    const ttl = (this.config.notification.defaults.deduplication_ttl_seconds || 3600) * 1000;
+    const ttl = (this.config.notification?.defaults?.deduplication_ttl_seconds ?? 3600) * 1000;
     const cached = this.memoryCache.get(deduplicationKey);
     
     if (cached && cached > Date.now()) {
@@ -40,7 +40,7 @@ export class DeduplicationService {
     }
 
     // TODO: Implement Redis-based deduplication in Phase 4
-    const ttl = (this.config.notification.defaults.deduplication_ttl_seconds || 3600) * 1000;
+    const ttl = (this.config.notification?.defaults?.deduplication_ttl_seconds ?? 3600) * 1000;
     this.memoryCache.set(deduplicationKey, Date.now() + ttl);
   }
 

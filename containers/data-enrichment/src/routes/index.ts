@@ -11,7 +11,6 @@ import { VectorizationService } from '../services/VectorizationService';
 import {
   EnrichShardRequest,
   BulkEnrichmentRequest,
-  EnrichmentConfiguration,
   EnrichmentProcessorType,
 } from '../types/enrichment.types';
 import {
@@ -22,7 +21,7 @@ import {
 /**
  * Register all routes
  */
-export async function registerRoutes(fastify: FastifyInstance, config: ReturnType<typeof loadConfig>): Promise<void> {
+export async function registerRoutes(fastify: FastifyInstance, _config: ReturnType<typeof loadConfig>): Promise<void> {
   try {
     const enrichmentService = new EnrichmentService(fastify);
     const vectorizationService = new VectorizationService(fastify);
@@ -31,7 +30,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { jobId: string } }>(
       '/api/v1/enrichment/jobs/:jobId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get enrichment job status',
           tags: ['Enrichment'],
@@ -41,7 +40,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { jobId } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const job = await enrichmentService.getEnrichmentJob(jobId, tenantId);
 
@@ -70,7 +69,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: { shardId: string; configId?: string; processors?: string[]; force?: boolean } }>(
       '/api/v1/enrichment/enrich',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Enrich a shard using enrichment configuration',
           tags: ['Enrichment'],
@@ -90,8 +89,8 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { shardId, configId, processors, force } = request.body;
-          const tenantId = request.user!.tenantId;
-          const userId = request.user!.id;
+          const tenantId = (request as any).user!.tenantId;
+          const userId = (request as any).user!.id;
 
           const enrichRequest: EnrichShardRequest = {
             shardId,
@@ -122,7 +121,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: { shardId: string } }>(
       '/api/v1/enrichment/trigger',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Trigger enrichment for a shard (legacy method)',
           tags: ['Enrichment'],
@@ -132,7 +131,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { shardId } = request.body;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           // Trigger enrichment (async)
           const job = await enrichmentService.triggerEnrichment(shardId, tenantId);
@@ -157,7 +156,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: BulkEnrichmentRequest }>(
       '/api/v1/enrichment/bulk',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Bulk enrich multiple shards',
           tags: ['Enrichment'],
@@ -166,8 +165,8 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       },
       async (request, reply) => {
         try {
-          const tenantId = request.user!.tenantId;
-          const userId = request.user!.id;
+          const tenantId = (request as any).user!.tenantId;
+          const userId = (request as any).user!.id;
 
           const bulkRequest: BulkEnrichmentRequest = {
             ...request.body,
@@ -194,7 +193,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Querystring: { tenantId?: string } }>(
       '/api/v1/enrichment/statistics',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get enrichment statistics for tenant',
           tags: ['Enrichment'],
@@ -203,7 +202,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       },
       async (request, reply) => {
         try {
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const statistics = await enrichmentService.getStatistics(tenantId);
 
@@ -227,7 +226,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: VectorizeShardRequest }>(
       '/api/v1/vectorization/vectorize',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Vectorize a shard',
           tags: ['Vectorization'],
@@ -236,7 +235,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       },
       async (request, reply) => {
         try {
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const vectorizeRequest: VectorizeShardRequest = {
             ...request.body,
             tenantId,
@@ -260,7 +259,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { jobId: string } }>(
       '/api/v1/vectorization/jobs/:jobId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get vectorization job status',
           tags: ['Vectorization'],
@@ -270,7 +269,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { jobId } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const status = await vectorizationService.getJobStatus(jobId, tenantId);
 
@@ -299,7 +298,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: BatchVectorizeRequest }>(
       '/api/v1/vectorization/batch',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Batch vectorize multiple shards',
           tags: ['Vectorization'],
@@ -308,7 +307,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       },
       async (request, reply) => {
         try {
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const batchRequest: BatchVectorizeRequest = {
             ...request.body,
             tenantId,

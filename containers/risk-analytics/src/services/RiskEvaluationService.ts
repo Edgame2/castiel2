@@ -26,6 +26,7 @@ import { trace } from '@opentelemetry/api';
 import { publishRiskAnalyticsEvent, publishHitlApprovalRequested } from '../events/publishers/RiskAnalyticsEventPublisher';
 import { riskEvaluationsTotal } from '../metrics';
 import { v4 as uuidv4 } from 'uuid';
+import { getSentimentTrends } from './SentimentTrendsService';
 
 // Default weights for fallback
 const DEFAULT_WEIGHTS: LearnedWeights = {
@@ -49,14 +50,17 @@ export class RiskEvaluationService {
   private readonly CACHE_TTL = 15 * 60 * 1000; // 15 minutes
   private app: FastifyInstance | null = null;
   private tenantMLConfigService: TenantMLConfigService;
+  private productFitService?: import('./ProductFitService').ProductFitService;
 
   constructor(
     app?: FastifyInstance,
     tenantMLConfigService?: TenantMLConfigService,
-    riskCatalogService?: import('./RiskCatalogService').RiskCatalogService
+    riskCatalogService?: import('./RiskCatalogService').RiskCatalogService,
+    productFitService?: import('./ProductFitService').ProductFitService
   ) {
     this.app = app || null;
     this.riskCatalogService = riskCatalogService;
+    this.productFitService = productFitService;
     this.tenantMLConfigService = tenantMLConfigService ?? new TenantMLConfigService();
     this.config = loadConfig();
     
@@ -119,7 +123,7 @@ export class RiskEvaluationService {
       // If app not available, return empty - will be handled by gateway/service mesh
       return '';
     }
-    return generateServiceToken(this.app, {
+    return generateServiceToken(this.app as any, {
       serviceId: 'risk-analytics',
       serviceName: 'risk-analytics',
       tenantId,
@@ -280,12 +284,85 @@ export class RiskEvaluationService {
       });
 
       // Step 3: Perform risk evaluation using learned weights
-      const detectedRisks = await this.detectRisks(
+      let detectedRisks = await this.detectRisks(
         opportunityShard,
         catalog,
         weights,
         request.options
       );
+
+      // Step 3b. Optional: declining sentiment risk (Phase 2)
+      if (this.config.feature_flags?.declining_sentiment_risk) {
+        try {
+          const trends = await getSentimentTrends(request.opportunityId, request.tenantId);
+          if (trends.length >= 2 && typeof trends[0].score === 'number' && typeof trends[1].score === 'number') {
+            const latest = trends[0].score;
+            const previous = trends[1].score;
+            if (latest < previous) {
+              const opportunityId = request.opportunityId;
+              detectedRisks = [
+                ...detectedRisks,
+                {
+                  riskId: 'declining_sentiment',
+                  riskName: 'Declining sentiment',
+                  category: 'Operational' as const,
+                  contribution: 0.05,
+                  ponderation: 1,
+                  confidence: 0.8,
+                  explainability: {
+                    detectionMethod: 'rule',
+                    confidence: 0.8,
+                    evidence: {
+                      sourceShards: [opportunityId],
+                      matchedRules: ['declining_sentiment'],
+                    },
+                  },
+                  sourceShards: [opportunityId],
+                  lifecycleState: 'identified' as const,
+                } as DetectedRisk,
+              ];
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // Step 3c. Optional: poor product fit risk (Phase 3)
+      if (this.config.feature_flags?.poor_product_fit_risk && this.productFitService) {
+        try {
+          const assessments = await this.productFitService.getProductFit(request.tenantId, request.opportunityId);
+          if (assessments.length > 0) {
+            const maxScore = Math.max(...assessments.map((a) => a.score));
+            const threshold = this.config.thresholds?.product_fit_risk_threshold ?? 0.4;
+            if (maxScore < threshold) {
+              detectedRisks = [
+                ...detectedRisks,
+                {
+                  riskId: 'poor_product_fit',
+                  riskName: 'Poor product fit',
+                  category: 'Operational' as const,
+                  contribution: 0.05,
+                  ponderation: 1,
+                  confidence: 0.8,
+                  explainability: {
+                    detectionMethod: 'rule',
+                    confidence: 0.8,
+                    evidence: {
+                      sourceShards: [request.opportunityId],
+                      matchedRules: ['poor_product_fit'],
+                    },
+                  },
+                  sourceShards: [request.opportunityId],
+                  lifecycleState: 'identified' as const,
+                } as DetectedRisk,
+              ];
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
 
       // Step 4: Calculate risk scores
       let riskScore = this.calculateRiskScore(detectedRisks, weights);

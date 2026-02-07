@@ -221,7 +221,7 @@ module:
 
 # Server settings (use env vars for deployment)
 server:
-  port: ${PORT:-3001}
+  port: ${PORT:-3002}
   host: ${HOST:-0.0.0.0}
 
 # Database (always from env)
@@ -1592,7 +1592,7 @@ npm start
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| server.port | number | 3001 | Server port |
+| server.port | number | 3002 | Server port (example: API Gateway) |
 | ... | ... | ... | ... |
 
 ## API Reference

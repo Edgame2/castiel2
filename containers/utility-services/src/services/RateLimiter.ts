@@ -15,8 +15,8 @@ export class RateLimiter {
    * Check if request is within rate limit
    */
   async checkLimit(userId: string, organizationId: string): Promise<boolean> {
-    const userLimit = this.config.notification.defaults.rate_limit_per_user || 100;
-    const orgLimit = this.config.notification.defaults.rate_limit_per_org || 1000;
+    const userLimit = this.config.notification?.defaults?.rate_limit_per_user || 100;
+    const orgLimit = this.config.notification?.defaults?.rate_limit_per_org || 1000;
 
     // Check user limit
     const userKey = `user:${userId}`;

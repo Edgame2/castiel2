@@ -84,7 +84,7 @@ export class ContextCacheService {
         createdAt: new Date(),
       };
 
-      await container.items.create(cached, { partitionKey: tenantId });
+      await container.items.create(cached, { partitionKey: tenantId } as any);
     } catch (error: any) {
       log.warn('Failed to cache context', {
         error: error.message,

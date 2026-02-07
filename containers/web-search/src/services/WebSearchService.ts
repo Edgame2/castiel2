@@ -26,8 +26,8 @@ export interface WebSearchResult {
 export class WebSearchService {
   private config: ReturnType<typeof loadConfig>;
   private aiServiceClient: ServiceClient;
-  private contextServiceClient: ServiceClient;
-  private embeddingsClient: ServiceClient;
+  private _contextServiceClient: ServiceClient;
+  private _embeddingsClient: ServiceClient;
 
   constructor() {
     this.config = loadConfig();
@@ -39,14 +39,14 @@ export class WebSearchService {
       circuitBreaker: { enabled: true },
     });
 
-    this.contextServiceClient = new ServiceClient({
+    this._contextServiceClient = new ServiceClient({
       baseURL: this.config.services.context_service?.url || '',
       timeout: 30000,
       retries: 3,
       circuitBreaker: { enabled: true },
     });
 
-    this.embeddingsClient = new ServiceClient({
+    this._embeddingsClient = new ServiceClient({
       baseURL: this.config.services.embeddings?.url || '',
       timeout: 30000,
       retries: 3,
@@ -198,7 +198,7 @@ export class WebSearchService {
   private async cacheSearch(result: WebSearchResult): Promise<void> {
     try {
       const container = getContainer('web_search_cache');
-      await container.items.create(result, { partitionKey: result.tenantId });
+      await container.items.create(result, { partitionKey: result.tenantId } as any);
     } catch (error: any) {
       log.warn('Failed to cache search result', {
         error: error.message,

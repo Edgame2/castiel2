@@ -5,7 +5,7 @@ module:
   version: 1.0.0
 
 server:
-  port: ${PORT:-3045}
+  port: ${PORT:-3040}
   host: ${HOST:-0.0.0.0}
 
 cosmos_db:

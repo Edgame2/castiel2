@@ -11,7 +11,7 @@ Next.js 16 web app (App Router, React 19): dashboards, admin, analytics, risk vi
 ### Configuration
 
 - **Port:** 3000 (container); docker-compose maps host 3000 → 3000.
-- **Base URL:** `NEXT_PUBLIC_API_BASE_URL` — must point to API Gateway (e.g. `http://api-gateway:3001` in Docker, or public URL in production).
+- **Base URL:** `NEXT_PUBLIC_API_BASE_URL` — must point to API Gateway (e.g. `http://api-gateway:3002` in Docker, or public URL in production).
 
 ### Environment variables
 

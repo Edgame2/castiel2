@@ -22,7 +22,6 @@ import {
   VectorizationErrorCode,
   VectorizationConfig,
   DEFAULT_VECTORIZATION_CONFIG,
-  EmbeddingModel,
 } from '../types/vectorization.types';
 import { extractTextFromShard } from '../utils/textExtraction';
 
@@ -30,7 +29,7 @@ export class VectorizationService {
   private config: ReturnType<typeof loadConfig>;
   private shardManagerClient: ServiceClient;
   private embeddingsClient: ServiceClient;
-  private runningJobs = new Set<string>();
+  private _runningJobs = new Set<string>();
   private app: FastifyInstance | null = null;
 
   constructor(app?: FastifyInstance) {
@@ -59,7 +58,7 @@ export class VectorizationService {
     if (!this.app) {
       return '';
     }
-    return generateServiceToken(this.app, {
+    return generateServiceToken(this.app as any, {
       serviceId: 'data-enrichment',
       serviceName: 'data-enrichment',
       tenantId,
@@ -125,7 +124,7 @@ export class VectorizationService {
 
       // Store job
       const container = getContainer('vectorization_jobs');
-      await container.items.create(job, { partitionKey: request.tenantId });
+      await container.items.create(job, { partitionKey: request.tenantId } as any);
 
       // Process asynchronously
       this.processJob(job, shard).catch((error) => {
@@ -273,9 +272,9 @@ export class VectorizationService {
     try {
       const container = getContainer('vectorization_jobs');
       await container.item(job.id, job.tenantId).replace({
+        ...job,
         id: job.id,
         tenantId: job.tenantId,
-        ...job,
         updatedAt: new Date(),
       });
     } catch (error: any) {
@@ -378,7 +377,7 @@ export class VectorizationService {
 
         jobIds.push(job.id);
         const container = getContainer('vectorization_jobs');
-        await container.items.create(job, { partitionKey: request.tenantId });
+        await container.items.create(job, { partitionKey: request.tenantId } as any);
 
         // Process asynchronously
         this.processJob(job, shard).catch((error) => {

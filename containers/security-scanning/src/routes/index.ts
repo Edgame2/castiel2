@@ -11,7 +11,7 @@ import { SecurityScanningService } from '../services/SecurityScanningService';
 /**
  * Register all routes
  */
-export async function registerRoutes(fastify: FastifyInstance, config: ReturnType<typeof loadConfig>): Promise<void> {
+export async function registerRoutes(fastify: FastifyInstance, _config: ReturnType<typeof loadConfig>): Promise<void> {
   try {
     const securityScanningService = new SecurityScanningService();
 
@@ -19,7 +19,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { scanId: string } }>(
       '/api/v1/security/scans/:scanId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get security scan status',
           tags: ['Security'],
@@ -29,7 +29,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { scanId } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const scan = await securityScanningService.getScan(scanId, tenantId);
 
@@ -59,7 +59,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: { targetId: string; targetType: 'shard' | 'document' | 'field'; scanType: 'pii' | 'secret' | 'vulnerability' } }>(
       '/api/v1/security/scans',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Trigger security scan',
           tags: ['Security'],
@@ -69,7 +69,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { targetId, targetType, scanType } = request.body;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const scan = await securityScanningService.scanSecurity(tenantId, targetId, targetType, scanType);
 
@@ -94,7 +94,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: { contentId: string; content: string } }>(
       '/api/v1/security/pii/detect',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Detect PII in content',
           tags: ['Security'],
@@ -104,7 +104,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { contentId, content } = request.body;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const detection = await securityScanningService.detectPII(tenantId, contentId, content);
 
@@ -125,7 +125,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.post<{ Body: { contentId: string; content: string } }>(
       '/api/v1/security/pii/redact',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Redact PII from content',
           tags: ['Security'],
@@ -135,7 +135,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { contentId, content } = request.body;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const redactedContent = await securityScanningService.redactPII(tenantId, contentId, content);
 
@@ -156,7 +156,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     fastify.get<{ Params: { detectionId: string } }>(
       '/api/v1/security/pii/detections/:detectionId',
       {
-        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
           description: 'Get PII detection by ID',
           tags: ['Security'],
@@ -166,7 +166,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { detectionId } = request.params;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
 
           const detection = await securityScanningService.getPIIDetection(detectionId, tenantId);
 

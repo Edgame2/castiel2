@@ -80,9 +80,9 @@ export class SESProvider extends BaseEmailProvider implements IEmailProvider {
 
   async sendBulk(options: BulkEmailOptions): Promise<BulkEmailResult> {
     try {
-      const { SESClient, SendBulkTemplatedEmailCommand } = await import('@aws-sdk/client-ses');
+      const { SESClient } = await import('@aws-sdk/client-ses');
 
-      const client = new SESClient({
+      const _client = new SESClient({
         region: this.config.region,
         credentials: {
           accessKeyId: this.config.accessKeyId,

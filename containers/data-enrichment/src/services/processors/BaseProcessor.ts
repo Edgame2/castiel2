@@ -33,7 +33,7 @@ export abstract class BaseProcessor implements IEnrichmentProcessor {
     if (!this.app) {
       return '';
     }
-    return generateServiceToken(this.app, {
+    return generateServiceToken(this.app as any, {
       serviceId: 'data-enrichment',
       serviceName: 'data-enrichment',
       tenantId,

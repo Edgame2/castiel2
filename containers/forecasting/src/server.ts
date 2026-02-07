@@ -148,10 +148,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   const { registerRoutes } = await import('./routes');
-  await registerRoutes(fastify, config);
+  await registerRoutes(fastify as any, config);
 
   const metricsConf = config.metrics ?? { path: '/metrics', require_auth: false, bearer_token: '' };
-  fastify.get(metricsConf.path, async (request, reply) => {
+  fastify.get(metricsConf.path ?? '/metrics', async (request: any, reply: any) => {
     if (metricsConf.require_auth) {
       const raw = (request.headers.authorization as string) || '';
       const token = raw.startsWith('Bearer ') ? raw.slice(7) : raw;

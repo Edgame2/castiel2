@@ -6,7 +6,7 @@ module:
   version: 1.0.0
 
 server:
-  port: ${PORT:-3000}
+  port: ${PORT:-3064}
   host: ${HOST:-0.0.0.0}
 
 # Cosmos DB Configuration (shared database, prefixed containers)

@@ -42,7 +42,7 @@ export async function registerContextRoutes(fastify: FastifyInstance, config: AI
     async (request, reply) => {
       try {
         const { conversationId } = request.params;
-        const tenantId = request.user!.tenantId;
+        const tenantId = (request as any).user!.tenantId;
 
         const conversation = await conversationService.getConversation(conversationId, tenantId);
         if (!conversation) {
@@ -89,8 +89,8 @@ export async function registerContextRoutes(fastify: FastifyInstance, config: AI
       },
       async (request, reply) => {
         try {
-          const tenantId = request.user!.tenantId;
-          const userId = request.user!.id;
+          const tenantId = (request as any).user!.tenantId;
+          const userId = (request as any).user!.id;
           const { query, projectId, maxTokens, minRelevance } = request.body;
 
           const context = await contextAssemblyService.assembleContext(tenantId, {
@@ -127,7 +127,7 @@ export async function registerContextRoutes(fastify: FastifyInstance, config: AI
       },
       async (request, reply) => {
         try {
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const { response, contextId } = request.body;
 
           // Get context

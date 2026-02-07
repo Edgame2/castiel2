@@ -78,12 +78,15 @@ export interface RiskAnalyticsConfig {
     prescriptive_remediation?: boolean;
     executive_dashboards?: boolean;
     hitl_approvals?: boolean;
+    declining_sentiment_risk?: boolean;
+    poor_product_fit_risk?: boolean;
   };
   thresholds?: {
     early_warning_days_inactivity?: number[];
     risk_velocity_alert?: number;
     hitl_risk_min?: number;
     hitl_deal_min?: number;
+    product_fit_risk_threshold?: number;
   };
   /** Plan §11.11, §944: reason -> playbook/action id or label for top-at-risk-reasons */
   at_risk_reasons_mitigation?: Record<string, string>;
@@ -182,6 +185,7 @@ export function loadConfig(): RiskAnalyticsConfig {
     if (typeof t.risk_velocity_alert === 'string') t.risk_velocity_alert = parseFloat(t.risk_velocity_alert);
     if (typeof t.hitl_risk_min === 'string') t.hitl_risk_min = parseFloat(t.hitl_risk_min);
     if (typeof t.hitl_deal_min === 'string') t.hitl_deal_min = parseFloat(t.hitl_deal_min);
+    if (typeof t.product_fit_risk_threshold === 'string') t.product_fit_risk_threshold = parseFloat(t.product_fit_risk_threshold);
     if (Array.isArray(t.early_warning_days_inactivity)) {
       t.early_warning_days_inactivity = t.early_warning_days_inactivity.map((v: unknown) =>
         typeof v === 'string' ? parseFloat(v) : v

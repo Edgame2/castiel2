@@ -57,7 +57,7 @@ export class UtilityService {
       };
 
       const container = getContainer('utility_imports');
-      await container.items.create(job, { partitionKey: tenantId });
+      await container.items.create(job, { partitionKey: tenantId } as any);
 
       // Process import asynchronously
       this.processImportJob(job.id, tenantId, importType, data).catch((error: any) => {
@@ -93,7 +93,7 @@ export class UtilityService {
       };
 
       const container = getContainer('utility_exports');
-      await container.items.create(job, { partitionKey: tenantId });
+      await container.items.create(job, { partitionKey: tenantId } as any);
 
       // Process export asynchronously
       this.processExportJob(job.id, tenantId, exportType, filters).catch((error: any) => {

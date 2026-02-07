@@ -46,7 +46,7 @@ export class IndustryBenchmarkService {
 
   private getServiceToken(tenantId: string): string {
     if (!this.app) return '';
-    return generateServiceToken(this.app, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
+    return generateServiceToken(this.app as any, { serviceId: 'risk-analytics', serviceName: 'risk-analytics', tenantId });
   }
 
   /**

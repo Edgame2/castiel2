@@ -3,7 +3,7 @@
  * Type definitions for integration synchronization
  */
 
-export type SyncTaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+export type SyncTaskStatus = 'pending' | 'running' | 'processing' | 'completed' | 'failed' | 'cancelled';
 export type SyncDirection = 'inbound' | 'outbound' | 'bidirectional';
 export type ConflictResolutionStrategy = 'source_wins' | 'target_wins' | 'manual' | 'merge';
 

@@ -38,4 +38,10 @@ export interface UtilityServicesConfig {
   features: {
     [key: string]: boolean;
   };
+  notification?: {
+    providers?: {
+      inapp?: { exchange?: string };
+      [key: string]: unknown;
+    };
+  };
 }

@@ -151,6 +151,7 @@ export class SystemSettingsService {
           salesforce: { requestsPerMinute: 100, requestsPerHour: 5000 },
           hubspot: { requestsPerMinute: 100, requestsPerHour: 5000 },
           google_drive: { requestsPerMinute: 50, requestsPerHour: 2000 },
+          google_workspace: { requestsPerMinute: 50, requestsPerHour: 2000 },
         },
         bypassTenants: [],
       },

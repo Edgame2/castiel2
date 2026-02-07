@@ -18,7 +18,7 @@ export class QuietHoursService {
     userId: string,
     preferences: ResolvedPreferences
   ): Promise<boolean> {
-    if (!this.config.notification.features?.quiet_hours) {
+    if (!this.config.notification?.features?.quiet_hours) {
       return false;
     }
 

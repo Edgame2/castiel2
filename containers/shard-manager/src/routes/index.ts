@@ -25,6 +25,7 @@ import {
 } from '../types/shard-edge.types';
 import { CreateLinkInput, UpdateLinkInput, BulkLinkInput } from '../types/shard-linking.types';
 import { PermissionCheckContext, ACLBatchCheckRequest, GrantPermissionInput, RevokePermissionInput, UpdateACLInput } from '../types/acl.types';
+import { bootstrapShardTypes } from '../startup/bootstrapShardTypes';
 
 export async function registerRoutes(fastify: FastifyInstance, config: any): Promise<void> {
   const shardService = new ShardService();
@@ -36,6 +37,19 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
   // Initialize services
   await relationshipService.initialize();
   await linkingService.initialize();
+
+  // Bootstrap system shard types (Phase 1.1: c_competitor, c_opportunity_competitor, c_product, product_fit, c_recommendation)
+  const bootstrap = config?.bootstrap;
+  if (bootstrap?.enabled && bootstrap?.tenant_id && bootstrap?.created_by) {
+    try {
+      await bootstrapShardTypes(shardTypeService, {
+        tenant_id: bootstrap.tenant_id,
+        created_by: bootstrap.created_by,
+      });
+    } catch (err) {
+      fastify.log.warn({ err, service: 'shard-manager' }, 'Bootstrap shard types failed');
+    }
+  }
 
   // ===== SHARD ROUTES =====
 

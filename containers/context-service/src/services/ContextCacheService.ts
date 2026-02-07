@@ -479,7 +479,7 @@ export class ContextCacheService {
    * Metrics tracking
    */
   private recordHit(
-    cacheKey: string,
+    _cacheKey: string,
     ageMs: number,
     isStale: boolean,
     isCriticallyStale: boolean
@@ -495,15 +495,15 @@ export class ContextCacheService {
     this.updateAverageAge(ageMs);
   }
 
-  private recordMiss(cacheKey: string): void {
+  private recordMiss(_cacheKey: string): void {
     this.metrics.misses++;
     this.updateHitRate();
   }
 
-  private recordError(cacheKey: string, errorType: string): void {
+  private recordError(_cacheKey: string, errorType: string): void {
     this.metrics.errors++;
     log.warn('Context cache error', {
-      cacheKey,
+      cacheKey: _cacheKey,
       errorType,
       service: 'context-service',
     });

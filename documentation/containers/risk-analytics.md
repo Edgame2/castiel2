@@ -25,7 +25,7 @@ Main entries from `config/default.yaml`:
 
 ### API
 
-Risk evaluation, revenue-at-risk, quotas, early warnings, benchmarking, simulations, data quality, explainability, trust level, AI validation. See [containers/risk-analytics/openapi.yaml](../../containers/risk-analytics/openapi.yaml).
+Risk evaluation, revenue-at-risk, quotas, early warnings, benchmarking, simulations, data quality, explainability, trust level, AI validation. Also product-fit (evaluate, get by opportunity), products CRUD (c_product shards), and competitor catalog CRUD when `features.competitors_use_shards` is enabled. See [containers/risk-analytics/openapi.yaml](../../containers/risk-analytics/openapi.yaml) and [containers/risk-analytics/README.md](../../containers/risk-analytics/README.md#additional-api-areas-considerations-plan).
 
 ### Events
 

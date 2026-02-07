@@ -16,7 +16,6 @@ import {
 import { loadConfig } from './config';
 import { log } from './utils/logger';
 import { registerRoutes } from './routes';
-import { ensureShardTypes } from './startup/ensureShardTypes';
 import { ensureQueues } from './startup/ensureQueues';
 import { startConsumers, ConsumerDependencies, BaseConsumer } from './consumers';
 import { MLFieldRecalculationJob } from './jobs/mlFieldRecalculation';
@@ -194,9 +193,7 @@ async function main(): Promise<void> {
     throw error;
   }
 
-  // 7. Ensure all shard types exist (BEFORE consumers start)
-  // This must happen regardless of eventPublisher since shard types are needed for API operations
-  await ensureShardTypes(shardManager);
+  // 7. Shard types are seeded by shard-manager bootstrap (platform bootstrap). Ensure shard-manager has been started with bootstrap.enabled (and optionally bootstrap.ensure_cosmos_containers) before starting integration-processors.
 
   // 8. Create monitoring service
   const monitoringService = new MonitoringService(

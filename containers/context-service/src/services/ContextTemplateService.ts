@@ -11,7 +11,6 @@ import {
   TemplateSelectionOptions,
   ContextTemplateStructuredData,
   TemplateCategory,
-  SystemTemplateId,
   SYSTEM_TEMPLATES,
 } from '../types/context-template.types';
 
@@ -20,7 +19,6 @@ const CONTEXT_TEMPLATE_TYPE_NAME = 'c_contextTemplate';
 export class ContextTemplateService {
   private config: ReturnType<typeof loadConfig>;
   private shardManagerClient: ServiceClient;
-  private aiServiceClient: ServiceClient;
   private app: FastifyInstance | null = null;
 
   constructor(app?: FastifyInstance) {
@@ -34,12 +32,6 @@ export class ContextTemplateService {
       circuitBreaker: { enabled: true },
     });
 
-    this.aiServiceClient = new ServiceClient({
-      baseURL: this.config.services.ai_service?.url || '',
-      timeout: 30000,
-      retries: 3,
-      circuitBreaker: { enabled: true },
-    });
   }
 
   /**

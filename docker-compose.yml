@@ -3,7 +3,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6380}:6379"
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
@@ -19,8 +19,8 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     ports:
-      - "5672:5672"   # AMQP
-      - "15672:15672" # Management UI
+      - "${RABBITMQ_PORT:-5673}:5672"   # AMQP (host default 5673 if 5672 in use)
+      - "${RABBITMQ_MGMT_PORT:-15673}:15672" # Management UI
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-admin}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-admin}

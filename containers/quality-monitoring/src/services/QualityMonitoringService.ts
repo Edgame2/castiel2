@@ -36,28 +36,28 @@ export interface QualityMetric {
 
 export class QualityMonitoringService {
   private config: ReturnType<typeof loadConfig>;
-  private aiServiceClient: ServiceClient;
-  private mlServiceClient: ServiceClient;
-  private analyticsServiceClient: ServiceClient;
+  private _aiServiceClient: ServiceClient;
+  private _mlServiceClient: ServiceClient;
+  private _analyticsServiceClient: ServiceClient;
 
   constructor() {
     this.config = loadConfig();
     
-    this.aiServiceClient = new ServiceClient({
+    this._aiServiceClient = new ServiceClient({
       baseURL: this.config.services.ai_service?.url || '',
       timeout: 30000,
       retries: 3,
       circuitBreaker: { enabled: true },
     });
 
-    this.mlServiceClient = new ServiceClient({
+    this._mlServiceClient = new ServiceClient({
       baseURL: this.config.services.ml_service?.url || '',
       timeout: 30000,
       retries: 3,
       circuitBreaker: { enabled: true },
     });
 
-    this.analyticsServiceClient = new ServiceClient({
+    this._analyticsServiceClient = new ServiceClient({
       baseURL: this.config.services.analytics_service?.url || '',
       timeout: 30000,
       retries: 3,
@@ -80,7 +80,7 @@ export class QualityMonitoringService {
         ],
       };
       const { resources: historicalMetrics } = await metricsContainer.items
-        .query(querySpec, { partitionKey: tenantId })
+        .query(querySpec as any, { partitionKey: tenantId } as any)
         .fetchAll();
 
       if (!historicalMetrics || historicalMetrics.length < 10) {
@@ -120,7 +120,7 @@ export class QualityMonitoringService {
 
         // Store anomaly
         const anomaliesContainer = getContainer('quality_anomalies');
-        await anomaliesContainer.items.create(anomaly, { partitionKey: tenantId });
+        await anomaliesContainer.items.create(anomaly, { partitionKey: tenantId } as any);
 
         return anomaly;
       }
@@ -149,7 +149,7 @@ export class QualityMonitoringService {
 
       // Store metric
       const container = getContainer('quality_metrics');
-      await container.items.create(qualityMetric, { partitionKey: tenantId });
+      await container.items.create(qualityMetric, { partitionKey: tenantId } as any);
 
       // Check for anomalies
       await this.detectAnomaly(tenantId, { metricType: metric.metricType, value: metric.value });

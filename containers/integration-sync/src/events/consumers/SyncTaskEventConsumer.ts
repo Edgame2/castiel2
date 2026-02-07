@@ -65,7 +65,7 @@ export async function initializeEventConsumer(app?: FastifyInstance): Promise<vo
       ],
     });
 
-    // Handle scheduled sync events
+    // Handle scheduled sync events: only sync enabled entity mappings
     consumer.on('integration.sync.scheduled', async (event) => {
       const integrationId = event.data?.integrationId;
       const tenantId = event.tenantId ?? event.data?.tenantId;
@@ -81,14 +81,42 @@ export async function initializeEventConsumer(app?: FastifyInstance): Promise<vo
       }
 
       try {
-        const task = await integrationSyncService.createSyncTask(
-          tenantId,
-          integrationId,
-          'inbound',
-          undefined,
-          undefined
-        );
-        await integrationSyncService.executeSyncTask(task.taskId, tenantId);
+        const integration = await integrationSyncService.getIntegration(integrationId, tenantId);
+        const entityMappings = integration?.syncConfig?.entityMappings ?? [];
+        const enabledEntities = entityMappings
+          .filter((m: { externalEntity: string; enabled?: boolean }) => m.enabled !== false)
+          .map((m: { externalEntity: string }) => m.externalEntity);
+
+        if (enabledEntities.length > 0) {
+          for (const entityType of enabledEntities) {
+            try {
+              const task = await integrationSyncService.createSyncTask(
+                tenantId,
+                integrationId,
+                'inbound',
+                entityType,
+                undefined
+              );
+              await integrationSyncService.executeSyncTask(task.taskId, tenantId);
+            } catch (err: unknown) {
+              log.error('Scheduled sync failed for entity type', err instanceof Error ? err : new Error(String(err)), {
+                integrationId,
+                tenantId,
+                entityType,
+                service: 'integration-sync',
+              });
+            }
+          }
+        } else if (entityMappings.length === 0) {
+          const task = await integrationSyncService.createSyncTask(
+            tenantId,
+            integrationId,
+            'inbound',
+            undefined,
+            undefined
+          );
+          await integrationSyncService.executeSyncTask(task.taskId, tenantId);
+        }
       } catch (error: unknown) {
         log.error('Failed to execute scheduled sync', error instanceof Error ? error : new Error(String(error)), { integrationId, tenantId, service: 'integration-sync' });
       }

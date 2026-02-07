@@ -65,7 +65,14 @@ npm start
 
 ## API Reference
 
-See [OpenAPI Spec](./openapi.yaml)
+See [OpenAPI Spec](./openapi.yaml).
+
+### Additional API areas (Considerations plan)
+
+- **Product-fit (Phase 3):** `POST /api/v1/opportunities/:opportunityId/product-fit/evaluate` — run product-fit evaluation and persist product_fit shards; `GET /api/v1/opportunities/:opportunityId/product-fit` — return product-fit assessments for the opportunity. Requires `services.shard_manager.url`.
+- **Products (c_product):** `GET /api/v1/products`, `GET /api/v1/products/:id`, `POST /api/v1/products`, `PUT /api/v1/products/:id`, `DELETE /api/v1/products/:id`. CRUD for product catalog (shard-manager c_product shards). Requires `services.shard_manager.url`.
+- **Competitor catalog CRUD (Full UI):** When `features.competitors_use_shards` is enabled: `POST /api/v1/competitors` (create), `PUT /api/v1/competitors/:id` (update), `DELETE /api/v1/competitors/:id` (delete). List and track remain as in OpenAPI.
+- **Config:** `feature_flags.poor_product_fit_risk` (optional “Poor product fit” risk when max product-fit &lt; threshold); `thresholds.product_fit_risk_threshold` (default 0.4); `features.competitors_use_shards` (dual-write competitor data to shards).
 
 ## Batch jobs (Plan §9.3)
 

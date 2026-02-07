@@ -2,7 +2,9 @@
 
 Run from `containers/recommendations` with env set (e.g. `COSMOS_DB_ENDPOINT`, `COSMOS_DB_KEY`, `COSMOS_DB_DATABASE_ID`).
 
-- **001_create_feedback_containers.ts** – Ensure Cosmos containers: recommendation_feedback, recommendation_feedback_aggregation, recommendation_config.
+**Platform bootstrap order:** Run **shard-manager bootstrap** first (ensure all Cosmos containers + seed shard types). Then run these migrations if you need recommendations feedback containers and feedback-type seed data:
+
+- **001_create_feedback_containers.ts** – Ensure Cosmos containers: recommendation_feedback, recommendation_feedback_aggregation, recommendation_config. (Optional if shard-manager bootstrap with `ensure_cosmos_containers` already ran.)
 - **002_seed_feedback_types.ts** – Seed 25+ feedback types and global_feedback_config into recommendation_config (idempotent; run after 001).
 
 ```bash

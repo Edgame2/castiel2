@@ -7,16 +7,14 @@ import { FastifyInstance } from 'fastify';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { ContextService } from '../services/ContextService';
 import { ContextAssemblerService } from '../services/ContextAssemblerService';
-import { FastifyInstance } from 'fastify';
 import { DependencyService } from '../services/DependencyService';
 import { CallGraphService } from '../services/CallGraphService';
 import {
   CreateContextInput,
   UpdateContextInput,
   AssembleContextInput,
-  ContextType,
-  ContextScope,
 } from '../types/context.types';
+import type { ContextAssemblyRequest, TopicExtractionRequest } from '../types/ai-context.types';
 
 export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
   const contextService = new ContextService();
@@ -63,8 +61,8 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
-      const userId = request.user!.id;
+      const tenantId = (request as any).user!.tenantId;
+      const userId = (request as any).user!.id;
 
       const input: CreateContextInput = {
         ...request.body,
@@ -105,7 +103,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as any).user!.tenantId;
       const context = await contextService.getById(request.params.id, tenantId);
       reply.send(context);
     }
@@ -137,7 +135,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as any).user!.tenantId;
       const path = decodeURIComponent(request.params.path);
       const context = await contextService.getByPath(path, tenantId);
       if (!context) {
@@ -189,7 +187,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as any).user!.tenantId;
       const context = await contextService.update(request.params.id, tenantId, request.body);
       reply.send(context);
     }
@@ -221,7 +219,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as any).user!.tenantId;
       await contextService.delete(request.params.id, tenantId);
       reply.code(204).send();
     }
@@ -269,7 +267,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as any).user!.tenantId;
       const result = await contextService.list(tenantId, {
         type: request.query.type as any,
         scope: request.query.scope as any,
@@ -321,8 +319,8 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
-      const userId = request.user!.id;
+      const tenantId = (request as any).user!.tenantId;
+      const userId = (request as any).user!.id;
 
       const assembly = await assemblerService.assemble(
         {
@@ -362,7 +360,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as any).user!.tenantId;
       const assembly = await assemblerService.getById(request.params.id, tenantId);
       reply.send(assembly);
     }
@@ -403,7 +401,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as any).user!.tenantId;
       const tree = await dependencyService.buildTree(
         request.body.rootPath,
         tenantId,
@@ -439,7 +437,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as any).user!.tenantId;
       const tree = await dependencyService.getById(request.params.id, tenantId);
       reply.send(tree);
     }
@@ -480,7 +478,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as any).user!.tenantId;
       const graph = await callGraphService.buildGraph(
         request.body.scope as any,
         tenantId,
@@ -516,7 +514,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as any).user!.tenantId;
       const graph = await callGraphService.getById(request.params.id, tenantId);
       reply.send(graph);
     }
@@ -548,7 +546,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as any).user!.tenantId;
       const path = decodeURIComponent(request.params.path);
       const callers = await callGraphService.getCallers(path, tenantId);
       reply.send(callers);
@@ -581,7 +579,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as any).user!.tenantId;
       const path = decodeURIComponent(request.params.path);
       const callees = await callGraphService.getCallees(path, tenantId);
       reply.send(callees);
@@ -594,7 +592,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
    * Assemble context for AI query
    * POST /api/v1/context/assemble-ai
    */
-  app.post<{ Body: ContextAssemblyRequest }>(
+  app.post<{ Body: Omit<ContextAssemblyRequest, 'userId'> }>(
     '/api/v1/context/assemble-ai',
     {
       preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
@@ -604,11 +602,11 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
-      const userId = request.user!.id;
+      const tenantId = (request as any).user?.tenantId;
+      const userId = (request as any).user?.id ?? '';
 
       const assemblyRequest: ContextAssemblyRequest = {
-        ...request.body,
+        ...(request.body as Omit<ContextAssemblyRequest, 'userId'>),
         userId,
       };
 
@@ -631,7 +629,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       },
     },
     async (request, reply) => {
-      const tenantId = request.user!.tenantId;
+      const tenantId = (request as any).user!.tenantId;
 
       const topics = await (assemblerService as any).extractTopics(tenantId, request.body);
       reply.send({ topics });

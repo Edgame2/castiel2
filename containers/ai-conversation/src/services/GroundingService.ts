@@ -128,7 +128,7 @@ export class GroundingService {
 
       // Store citation
       const container = getContainer('conversation_citations');
-      await container.items.create(groundedResponse, { partitionKey: tenantId });
+      await container.items.create(groundedResponse, { partitionKey: tenantId } as any);
 
       return groundedResponse;
     } catch (error: any) {

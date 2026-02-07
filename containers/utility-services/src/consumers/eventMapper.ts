@@ -9,8 +9,8 @@ import { DomainEvent } from '@coder/shared';
 
 export function mapEventToNotificationInput(event: DomainEvent<any>): NotificationInput | null {
   const eventData = event.data || {};
-  const userId = event.userId || eventData.userId;
-  const organizationId = event.organizationId || eventData.organizationId;
+  const userId = (event as any).userId ?? eventData?.userId ?? (eventData as any)?.userId;
+  const organizationId = (event as any).organizationId ?? eventData?.organizationId ?? (eventData as any)?.organizationId ?? event.tenantId;
 
   if (!userId || !organizationId) {
     return null; // Skip events without user/org context
@@ -247,7 +247,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
         organizationId,
         eventType: event.type,
         eventCategory: 'SYSTEM_ADMIN',
-        sourceModule: event.source || 'unknown',
+        sourceModule: (typeof event.source === 'object' && event.source?.service) ? event.source.service : String(event.source ?? 'unknown'),
         recipientId: userId,
         title: 'System Event',
         body: `Event: ${event.type}`,

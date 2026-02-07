@@ -46,21 +46,21 @@ export interface PIIDetection {
 
 export class SecurityScanningService {
   private config: ReturnType<typeof loadConfig>;
-  private authClient: ServiceClient;
-  private secretManagementClient: ServiceClient;
+  private _authClient: ServiceClient;
+  private _secretManagementClient: ServiceClient;
   private shardManagerClient: ServiceClient;
 
   constructor() {
     this.config = loadConfig();
     
-    this.authClient = new ServiceClient({
+    this._authClient = new ServiceClient({
       baseURL: this.config.services.auth?.url || '',
       timeout: 30000,
       retries: 3,
       circuitBreaker: { enabled: true },
     });
 
-    this.secretManagementClient = new ServiceClient({
+    this._secretManagementClient = new ServiceClient({
       baseURL: this.config.services.secret_management?.url || '',
       timeout: 30000,
       retries: 3,
@@ -110,7 +110,7 @@ export class SecurityScanningService {
 
       // Store scan
       const container = getContainer('security_scans');
-      await container.items.create(scan, { partitionKey: tenantId });
+      await container.items.create(scan, { partitionKey: tenantId } as any);
 
       // Get target data for scanning
       let targetData: any = null;
@@ -214,9 +214,9 @@ export class SecurityScanningService {
       scan.completedAt = new Date();
 
       await container.item(scanId, tenantId).replace({
+        ...scan,
         id: scanId,
         tenantId,
-        ...scan,
         updatedAt: new Date(),
       });
 
@@ -323,7 +323,7 @@ export class SecurityScanningService {
 
       // Store detection
       const container = getContainer('security_pii_detections');
-      await container.items.create(detection, { partitionKey: tenantId });
+      await container.items.create(detection, { partitionKey: tenantId } as any);
 
       return detection;
     } catch (error: any) {

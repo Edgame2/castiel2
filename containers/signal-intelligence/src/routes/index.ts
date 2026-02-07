@@ -11,7 +11,7 @@ import { SignalIntelligenceService } from '../services/SignalIntelligenceService
 /**
  * Register all routes
  */
-export async function registerRoutes(fastify: FastifyInstance, config: ReturnType<typeof loadConfig>): Promise<void> {
+export async function registerRoutes(fastify: FastifyInstance, _config: ReturnType<typeof loadConfig>): Promise<void> {
   try {
     const signalIntelligenceService = new SignalIntelligenceService();
 
@@ -29,7 +29,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       async (request, reply) => {
         try {
           const { signalType, source, data } = request.body;
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user?.tenantId;
 
           const signal = await signalIntelligenceService.analyzeSignal(tenantId, {
             signalType: signalType as any,

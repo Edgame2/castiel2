@@ -84,6 +84,16 @@ export default function AdminPage() {
         </Link>
 
         <Link
+          href="/admin/context"
+          className="rounded-lg border p-6 bg-white dark:bg-gray-900 hover:border-blue-500 transition-colors"
+        >
+          <h2 className="text-lg font-semibold mb-2">Context</h2>
+          <p className="text-sm text-gray-500">
+            Platform context (Super Admin) or tenant context (Tenant Admin); §2.9
+          </p>
+        </Link>
+
+        <Link
           href="/admin/tenant-ml-config"
           className="rounded-lg border p-6 bg-white dark:bg-gray-900 hover:border-blue-500 transition-colors"
         >

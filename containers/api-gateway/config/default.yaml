@@ -49,6 +49,12 @@ services:
     url: ${CONFIGURATION_SERVICE_URL:-http://localhost:3034}
   adaptive_learning:
     url: ${ADAPTIVE_LEARNING_URL:-http://localhost:3032}
+  ai_conversation:
+    url: ${AI_CONVERSATION_URL:-http://localhost:3045}
+  multi_modal_service:
+    url: ${MULTI_MODAL_SERVICE_URL:-http://localhost:3044}
+  prompt_service:
+    url: ${PROMPT_SERVICE_URL:-http://localhost:3036}
 
 # Rate limiting
 rate_limit:

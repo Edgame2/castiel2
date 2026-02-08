@@ -18,7 +18,7 @@ The API Gateway acts as the single entry point for all client requests, routing 
 
 ## Port
 
-3001 (configurable via `PORT` environment variable)
+3002 (configurable via `PORT` environment variable; see `config/default.yaml`)
 
 ## Route Mappings
 
@@ -47,7 +47,7 @@ See `config/default.yaml` for configuration options. Key settings:
 ```
 Client Request
     ↓
-API Gateway (Port 3001)
+API Gateway (Port 3002)
     ↓
 JWT Validation
     ↓

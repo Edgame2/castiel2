@@ -60,6 +60,12 @@ export default function SecurityPage() {
           Users
         </Link>
         <Link
+          href="/admin/security/invitations"
+          className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+        >
+          Invitations
+        </Link>
+        <Link
           href="/admin/security/api-keys"
           className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
         >

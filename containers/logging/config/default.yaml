@@ -102,6 +102,36 @@ siem:
     headers:
       Authorization: "Bearer ${SIEM_API_KEY:-}"
 
+# Data collection: enable/disable what gets stored in the main audit log (AND of all dimensions).
+# When absent, all events are collected. Event type supports wildcards: * = one segment, # = zero or more.
+data_collection:
+  default: allow
+  severity:
+    DEBUG: true
+    INFO: true
+    WARN: true
+    ERROR: true
+    CRITICAL: true
+  category:
+    ACTION: true
+    ACCESS: true
+    SECURITY: true
+    SYSTEM: true
+    CUSTOM: true
+  resource_type:
+    default: true
+    user: true
+    organization: true
+    team: true
+    role: true
+    invitation: true
+    secret: true
+    plan: true
+    notification: true
+  event_type:
+    mode: denylist
+    deny: []
+
 # Default settings (can be overridden per org)
 defaults:
   capture:
@@ -162,7 +192,7 @@ jobs:
 # External service URLs (from config, not hardcoded)
 services:
   user_management:
-    url: ${USER_MANAGEMENT_URL:-http://localhost:3000}
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
   notification:
     url: ${NOTIFICATION_URL:-http://localhost:3001}
 

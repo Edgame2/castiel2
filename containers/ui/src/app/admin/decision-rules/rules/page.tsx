@@ -414,13 +414,12 @@ export default function DecisionRulesRulesPage() {
           <div className="p-4 border-b flex justify-between items-center">
             <h2 className="text-lg font-semibold">Rules</h2>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={openCreate}
-                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+              <Link
+                href="/admin/decision-rules/rules/new"
+                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 inline-block"
               >
-                Create rule
-              </button>
+                New rule
+              </Link>
               <button
                 type="button"
                 onClick={fetchRules}
@@ -451,7 +450,9 @@ export default function DecisionRulesRulesPage() {
                   {rules.map((r) => (
                     <tr key={r.id} className="border-b">
                       <td className="py-2 px-4">
-                        <span className="font-medium">{r.name}</span>
+                        <Link href={`/admin/decision-rules/rules/${encodeURIComponent(r.id)}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                          {r.name}
+                        </Link>
                         {r.description ? (
                           <p className="text-xs text-gray-500 mt-0.5">{r.description}</p>
                         ) : null}

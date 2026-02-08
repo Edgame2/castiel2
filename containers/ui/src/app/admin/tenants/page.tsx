@@ -131,12 +131,20 @@ export default function TenantManagementOverviewPage() {
         <section className="rounded-lg border bg-white dark:bg-gray-900 p-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">Tenants</h2>
-            <Link
-              href="/admin/tenants/list"
-              className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-            >
-              View tenants →
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                href="/admin/tenants/new"
+                className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                New tenant
+              </Link>
+              <Link
+                href="/admin/tenants/list"
+                className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                View tenants →
+              </Link>
+            </div>
           </div>
           {tenantsCount !== null && (
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

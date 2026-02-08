@@ -97,13 +97,23 @@ The Multi-Modal Service processes different media types:
 
 ## Configuration
 
+Configuration is in `config/default.yaml` with environment variable overrides. Service URLs are config-driven, not hardcoded.
+
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `server.port` | number | 3044 | Server port |
 | `server.host` | string | 0.0.0.0 | Server host |
-| `cosmos_db.endpoint` | string | - | Cosmos DB endpoint |
-| `cosmos_db.key` | string | - | Cosmos DB key |
+| `cosmos_db.endpoint` | string | - | Cosmos DB endpoint (required) |
+| `cosmos_db.key` | string | - | Cosmos DB key (required) |
 | `cosmos_db.database_id` | string | castiel | Database ID |
+| `cosmos_db.containers.jobs` | string | multimodal_jobs | Cosmos container for jobs |
+| `services.ai_service.url` | string | http://localhost:3006 | AI Service URL |
+| `services.context_service.url` | string | http://localhost:3034 | Context Service URL |
+| `services.code_generation.url` | string | http://localhost:3040 | Code Generation Service URL (optional) |
+| `services.logging.url` | string | http://localhost:3014 | Logging Service URL |
+| `rabbitmq.url` | string | - | RabbitMQ connection URL |
+| `rabbitmq.exchange` | string | coder_events | Event exchange |
+| `rabbitmq.queue` | string | multimodal_service | Service queue |
 
 ## Testing
 

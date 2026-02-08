@@ -33,7 +33,11 @@ export interface GatewayConfig {
   jwt: {
     secret: string;
   };
-  services: Record<string, { url: string }>;
+  services: Record<string, { url: string }> & {
+    ai_conversation?: { url: string };
+    multi_modal_service?: { url: string };
+    prompt_service?: { url: string };
+  };
   rate_limit?: {
     max: number;
     timeWindow: number;

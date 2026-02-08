@@ -18,7 +18,7 @@ import { getGeolocationFromIp } from '../utils/geolocationUtils';
 import { changePasswordWithHistory, setPassword } from '../services/PasswordHistoryService';
 import { requestPasswordReset, resetPasswordWithToken } from '../services/PasswordResetService';
 import { linkGoogleProvider, unlinkProvider, getLinkedProviders, type AuthProvider } from '../services/AuthProviderService';
-import { sendVerificationEmail, verifyEmailWithToken } from '../services/EmailVerificationService';
+import { sendVerificationEmail, verifyEmailWithToken, verifyEmail } from '../services/EmailVerificationService';
 import { generateUsername } from '../utils/stringUtils';
 import { log } from '../utils/logger';
 import { publishEventSafely, extractEventMetadata, createBaseEvent } from '../events/publishers/AuthEventPublisher';
@@ -1870,7 +1870,36 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
     }) as any
   );
 
-  // Email verification
+  // Email verification (unauthenticated — token from email link)
+  fastify.get(
+    '/api/v1/auth/verify-email',
+    async (
+      request: FastifyRequest<{ Querystring: { token?: string } }>,
+      reply: FastifyReply
+    ) => {
+      try {
+        const token = request.query.token;
+        if (!token) {
+          reply.code(400).send({ error: 'Verification token is required' });
+          return;
+        }
+        const result = await verifyEmail(token);
+        if (!result.success) {
+          reply.code(400).send({ error: result.error ?? 'Invalid or expired verification token' });
+          return;
+        }
+        return { message: 'Email verified successfully' };
+      } catch (error: any) {
+        log.error('Email verification error', error, { route: 'GET /api/v1/auth/verify-email', service: 'auth' });
+        reply.code(500).send({
+          error: 'Failed to verify email',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
+      }
+    }
+  );
+
+  // Email verification (authenticated — in-session submit token)
   fastify.post(
     '/api/v1/auth/verify-email',
     { preHandler: authenticateRequest },

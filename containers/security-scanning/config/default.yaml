@@ -34,7 +34,7 @@ services:
   secret_management:
     url: ${SECRET_MANAGEMENT_URL:-http://localhost:3003}
   shard_manager:
-    url: ${SHARD_MANAGER_URL:-http://localhost:3002}
+    url: ${SHARD_MANAGER_URL:-http://localhost:3023}
 
 # RabbitMQ Configuration
 rabbitmq:

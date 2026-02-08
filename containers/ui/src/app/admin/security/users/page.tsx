@@ -142,6 +142,12 @@ export default function SecurityUsersPage() {
                 placeholder="e.g. org-123"
                 className="flex-1 max-w-xs px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
               />
+              <Link
+                href="/admin/security/users/invite"
+                className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm inline-flex items-center"
+              >
+                Invite user
+              </Link>
               <button
                 type="button"
                 onClick={fetchSummary}
@@ -224,7 +230,11 @@ export default function SecurityUsersPage() {
                       <tbody>
                         {sorted.map((row) => (
                           <tr key={row.userId} className="border-b">
-                            <td className="py-2 px-4">{row.userId}</td>
+                            <td className="py-2 px-4">
+                              <Link href={`/admin/security/users/${encodeURIComponent(row.userId)}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                                {row.userId}
+                              </Link>
+                            </td>
                             <td className="py-2 px-4">{row.email ?? '—'}</td>
                             <td className="py-2 px-4">{row.name ?? '—'}</td>
                             <td className="py-2 px-4">{row.roleName ?? '—'}</td>

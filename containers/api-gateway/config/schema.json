@@ -119,6 +119,24 @@
           "properties": {
             "url": { "type": "string", "format": "uri" }
           }
+        },
+        "ai_conversation": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
+        },
+        "multi_modal_service": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
+        },
+        "prompt_service": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
         }
       }
     },

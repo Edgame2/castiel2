@@ -82,6 +82,37 @@ export async function registerRoutes(app: FastifyInstance, _config: unknown): Pr
   );
 
   /**
+   * Get prompt analytics
+   * GET /api/v1/prompts/analytics
+   */
+  app.get(
+    '/api/v1/prompts/analytics',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Get prompt analytics (counts by status and category)',
+        tags: ['Prompts'],
+        response: {
+          200: {
+            type: 'object',
+            description: 'Prompt analytics',
+            properties: {
+              totalPrompts: { type: 'number' },
+              byStatus: { type: 'object', additionalProperties: { type: 'number' } },
+              byCategory: { type: 'object', additionalProperties: { type: 'number' } },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const analytics = await promptService.getAnalytics(tenantId);
+      reply.send(analytics);
+    }
+  );
+
+  /**
    * Get prompt template by ID
    * GET /api/v1/prompts/:id
    */

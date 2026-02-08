@@ -62,7 +62,7 @@ secrets:
 # External service URLs (from config, not hardcoded)
 services:
   user_management:
-    url: ${USER_MANAGEMENT_URL:-http://localhost:3000}
+    url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
   logging:
     url: ${LOGGING_SERVICE_URL:-http://localhost:3014}
   notification:

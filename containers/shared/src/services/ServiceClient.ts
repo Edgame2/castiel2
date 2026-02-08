@@ -199,6 +199,35 @@ export class ServiceClient {
   }
 
   /**
+   * Make HTTP request and return full response (status, data, headers).
+   * Used by API Gateway to proxy while preserving backend status and applying circuit breaker.
+   * Does not retry so the caller can forward the exact backend response.
+   */
+  async requestWithFullResponse(config: AxiosRequestConfig): Promise<{ status: number; data: any; headers: Record<string, string> }> {
+    if (this.circuitBreaker && !this.circuitBreaker.canAttempt()) {
+      throw new Error('Circuit breaker is OPEN - service unavailable');
+    }
+    try {
+      const response = await this.axiosInstance.request(config);
+      if (this.circuitBreaker) {
+        this.circuitBreaker.recordSuccess();
+      }
+      const headers: Record<string, string> = {};
+      if (response.headers && typeof response.headers === 'object') {
+        for (const [k, v] of Object.entries(response.headers)) {
+          if (typeof v === 'string') headers[k] = v;
+        }
+      }
+      return { status: response.status, data: response.data, headers };
+    } catch (error) {
+      if (this.circuitBreaker) {
+        this.circuitBreaker.recordFailure();
+      }
+      throw error;
+    }
+  }
+
+  /**
    * GET request
    */
   async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {

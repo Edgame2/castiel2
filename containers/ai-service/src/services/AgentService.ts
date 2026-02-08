@@ -1,6 +1,10 @@
-import { getDatabaseClient } from '@coder/shared';
+import { getContainer } from '@coder/shared/database';
+import { v4 as uuidv4 } from 'uuid';
+
+const AGENTS_CONTAINER = 'ai_agents';
 
 export interface ListAgentsInput {
+  tenantId: string;
   userId: string;
   organizationId?: string;
   projectId?: string;
@@ -13,65 +17,76 @@ export interface ExecuteAgentInput {
   agentId: string;
   userId: string;
   organizationId?: string;
-  input?: any;
-  context?: any;
+  input?: unknown;
+  context?: unknown;
 }
 
 export class AgentService {
-  private get db() {
-    return getDatabaseClient();
-  }
-
   async listAgents(input: ListAgentsInput) {
-    const where: any = {};
+    if (!input.tenantId) {
+      throw new Error('tenantId is required');
+    }
+    const container = getContainer(AGENTS_CONTAINER);
+    const limit = Math.min(input.limit ?? 50, 100);
+    const offset = input.offset ?? 0;
 
+    let query = 'SELECT * FROM c WHERE c.tenantId = @tenantId';
+    const parameters: { name: string; value: unknown }[] = [{ name: '@tenantId', value: input.tenantId }];
     if (input.scope) {
-      where.scope = input.scope;
+      query += ' AND c.scope = @scope';
+      parameters.push({ name: '@scope', value: input.scope });
     }
-
     if (input.projectId) {
-      where.projectId = input.projectId;
+      query += ' AND c.projectId = @projectId';
+      parameters.push({ name: '@projectId', value: input.projectId });
     }
+    query += ' ORDER BY c.createdAt DESC OFFSET @offset LIMIT @limit';
+    parameters.push({ name: '@offset', value: offset }, { name: '@limit', value: limit });
 
-    const agents = await (this.db as any).agent_agents.findMany({
-      where,
-      take: input.limit || 50,
-      skip: input.offset || 0,
-      orderBy: { createdAt: 'desc' },
-    });
+    const { resources: agents } = await container.items
+      .query({ query, parameters })
+      .fetchNext();
 
-    const total = await (this.db as any).agent_agents.count({ where });
+    const countParams = parameters.filter((p) => p.name !== '@offset' && p.name !== '@limit');
+    const countQuery =
+      'SELECT VALUE COUNT(1) FROM c WHERE c.tenantId = @tenantId' +
+      (input.scope ? ' AND c.scope = @scope' : '') +
+      (input.projectId ? ' AND c.projectId = @projectId' : '');
+    const countResult = await container.items.query({ query: countQuery, parameters: countParams }).fetchNext();
+    const total = countResult.resources?.[0] ?? 0;
 
     return {
       items: agents,
-      total,
-      limit: input.limit || 50,
-      offset: input.offset || 0,
+      total: typeof total === 'number' ? total : agents.length,
+      limit,
+      offset,
     };
   }
 
-  async getAgent(id: string) {
-    return await (this.db as any).agent_agents.findUnique({
-      where: { id },
-    });
+  async getAgent(id: string, tenantId: string) {
+    if (!id || !tenantId) {
+      return null;
+    }
+    const container = getContainer(AGENTS_CONTAINER);
+    try {
+      const { resource } = await container.item(id, tenantId).read();
+      return resource ?? null;
+    } catch {
+      return null;
+    }
   }
 
+  /**
+   * Records an execution request and returns a stub execution.
+   * Persistence to an executions container and actual agent run are out of scope;
+   * add cosmos_db.containers.executions and execution logic when implementing.
+   */
   async executeAgent(input: ExecuteAgentInput) {
-    // Create execution record
-    const execution = await (this.db as any).execution_executions.create({
-      data: {
-        planId: input.agentId, // Using planId field for agentId
-        status: 'pending',
-        result: {
-          input: input.input,
-          context: input.context,
-        },
-      },
-    });
-
-    // TODO: Actually execute the agent
-    // This would call the agent's execution logic
-
-    return execution;
+    return {
+      id: uuidv4(),
+      planId: input.agentId,
+      status: 'pending',
+      result: { input: input.input, context: input.context },
+    };
   }
 }

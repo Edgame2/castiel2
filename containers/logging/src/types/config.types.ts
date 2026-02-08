@@ -148,6 +148,20 @@ export interface LoggingConfig {
       url: string;
     };
   };
+
+  /** Enable/disable what gets stored in the main audit log (AND of all dimensions). When absent, all events are collected. */
+  data_collection?: {
+    default?: 'allow' | 'deny';
+    severity?: Partial<Record<string, boolean>>;
+    category?: Partial<Record<string, boolean>>;
+    resource_type?: { default?: boolean; [key: string]: boolean | undefined };
+    event_type?: {
+      mode: 'allowlist' | 'denylist' | 'explicit';
+      allow?: string[];
+      deny?: string[];
+      explicit?: Record<string, boolean>;
+    };
+  };
 }
 
 export interface OrganizationConfig {

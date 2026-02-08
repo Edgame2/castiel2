@@ -1,10 +1,9 @@
 /**
  * Proxy Service
- * Handles request proxying to backend microservices
+ * Handles request proxying to backend microservices via ServiceClient (circuit breaker applied)
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
-import axios from 'axios';
 import { ServiceClient } from '@coder/shared';
 
 /**
@@ -19,30 +18,40 @@ export interface RouteMapping {
   pathRewrite?: string;
 }
 
+/** Circuit breaker config from gateway config */
+export interface CircuitBreakerConfig {
+  threshold: number;
+  timeout: number;
+}
+
 /**
  * Proxy Service
- * Manages service clients and routing
+ * Manages service clients and routing; uses ServiceClient for proxied requests so circuit breaker is applied.
  */
 export class ProxyService {
   private serviceClients: Map<string, ServiceClient> = new Map();
   private routeMappings: RouteMapping[] = [];
+  private circuitBreakerConfig: CircuitBreakerConfig;
+
+  constructor(options?: { circuitBreaker?: CircuitBreakerConfig }) {
+    this.circuitBreakerConfig = options?.circuitBreaker ?? { threshold: 5, timeout: 30000 };
+  }
 
   /**
    * Register a route mapping
    */
   registerRoute(mapping: RouteMapping): void {
     this.routeMappings.push(mapping);
-    
-    // Create service client if not exists
+
     if (!this.serviceClients.has(mapping.service)) {
       const client = new ServiceClient({
         baseURL: mapping.serviceUrl,
         timeout: 30000,
-        retries: 3,
+        retries: 0, // Gateway forwards exact backend status; no retries
         circuitBreaker: {
           enabled: true,
-          threshold: 5,
-          timeout: 30000,
+          threshold: this.circuitBreakerConfig.threshold,
+          timeout: this.circuitBreakerConfig.timeout,
         },
       });
       this.serviceClients.set(mapping.service, client);
@@ -116,15 +125,12 @@ export class ProxyService {
         headers['X-Request-ID'] = request.headers['x-request-id'] as string;
       }
 
-      // Make request with axios so we preserve backend HTTP status (ServiceClient returns only body)
-      const method = request.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete';
+      // Use ServiceClient so circuit breaker is applied; requestWithFullResponse preserves backend status
+      const method = request.method.toLowerCase();
       const body = (request.body as any) || undefined;
-      const baseURL = mapping.serviceUrl.replace(/\/$/, '');
-      const fullUrl = targetPath.startsWith('http') ? targetPath : `${baseURL}${targetPath}`;
-
-      const res = await axios.request({
-        method,
-        url: fullUrl,
+      const res = await client.requestWithFullResponse({
+        method: method as 'get' | 'post' | 'put' | 'patch' | 'delete',
+        url: targetPath,
         data: body,
         headers,
         timeout: 30000,

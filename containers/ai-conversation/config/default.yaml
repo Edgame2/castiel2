@@ -38,7 +38,7 @@ services:
   context_service:
     url: ${CONTEXT_SERVICE_URL:-http://localhost:3034}
   shard_manager:
-    url: ${SHARD_MANAGER_URL:-http://localhost:3002}
+    url: ${SHARD_MANAGER_URL:-http://localhost:3023}
   embeddings:
     url: ${EMBEDDINGS_URL:-http://localhost:3035}
   search_service:

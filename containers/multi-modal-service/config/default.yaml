@@ -20,6 +20,8 @@ services:
     url: ${AI_SERVICE_URL:-http://localhost:3006}
   context_service:
     url: ${CONTEXT_SERVICE_URL:-http://localhost:3034}
+  code_generation:
+    url: ${CODE_GENERATION_URL:-http://localhost:3040}
   logging:
     url: ${LOGGING_URL:-http://localhost:3014}
 

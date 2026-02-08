@@ -8,6 +8,7 @@ import { IngestionService } from '../../services/IngestionService';
 import { getConfig } from '../../config';
 import { mapEventToLog } from '../eventMapper';
 import { AuditableEvent } from '../types';
+import { isCollectionEnabled } from '../dataCollectionFilter';
 import { log } from '../../utils/logger';
 
 export class AuditEventConsumer {
@@ -142,7 +143,14 @@ export class AuditEventConsumer {
     
     // Map event to log input
     const logInput = mapEventToLog(event);
-    
+    const config = getConfig();
+    if (config.data_collection && !isCollectionEnabled(logInput, config.data_collection)) {
+      log.debug('Event skipped by data_collection filter', {
+        type: event.type,
+        organizationId: event.organizationId,
+      });
+      return;
+    }
     // Ingest the log
     await this.ingestionService.ingest(logInput, {
       organizationId: event.organizationId,

@@ -461,13 +461,20 @@ export default function ActionCatalogCategoriesPage() {
 
       {apiBaseUrl && (
         <div className="mb-4 flex flex-wrap gap-4 items-center">
+          <Link
+            href="/admin/action-catalog/categories/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium inline-block"
+            aria-label="Create category (page)"
+          >
+            New category
+          </Link>
           <button
             type="button"
             onClick={openCreate}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-            aria-label="Add action catalog category"
+            className="px-4 py-2 border rounded dark:border-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium"
+            aria-label="Add category (modal)"
           >
-            Add category
+            Add category (modal)
           </button>
           <button
             type="button"
@@ -615,7 +622,11 @@ export default function ActionCatalogCategoriesPage() {
                     {cat.type}
                   </span>
                 </div>
-                <h3 className="font-semibold mt-2 text-gray-900 dark:text-gray-100">{cat.displayName}</h3>
+                <h3 className="font-semibold mt-2 text-gray-900 dark:text-gray-100">
+                <Link href={`/admin/action-catalog/categories/${cat.id}`} className="hover:underline text-blue-600 dark:text-blue-400">
+                  {cat.displayName}
+                </Link>
+              </h3>
                 {cat.description && (
                   <div className="text-sm text-gray-500 mt-1 line-clamp-2 prose prose-sm dark:prose-invert max-w-none">
                     <ReactMarkdown>{cat.description}</ReactMarkdown>

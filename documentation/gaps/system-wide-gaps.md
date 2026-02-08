@@ -79,7 +79,7 @@ Per documentation/DOCUMENTATION_STATUS.md, some containers are listed as removed
 
 ## 4. Areas Not Yet Gap-Analyzed
 
-The following have no dedicated gap document. They may have config, tenant, or compliance gaps.
+The following had no dedicated gap document; a **focused P3 coverage** doc now exists: [p3-gap-coverage.md](./p3-gap-coverage.md) (logging beyond data collection, secret-management, shard-manager, risk-analytics, recommendations, shared). They may still have config, tenant, or compliance gaps to address as needed.
 
 | Area | Why it matters |
 |------|-----------------|
@@ -97,6 +97,7 @@ The following have no dedicated gap document. They may have config, tenant, or c
 
 ## 5. Cross-References
 
+- [p3-gap-coverage.md](./p3-gap-coverage.md) — Focused P3 analyses: logging, secret-management, shard-manager, risk-analytics, recommendations, shared
 - [documentation/CURRENT_STATE.md](../CURRENT_STATE.md) — Container list and default ports
 - [documentation/DOCUMENTATION_STATUS.md](../DOCUMENTATION_STATUS.md) — Deprecated/stub container list
 - [documentation/gaps/auth-user-management-gaps.md](./auth-user-management-gaps.md)
@@ -113,7 +114,7 @@ The following have no dedicated gap document. They may have config, tenant, or c
 | P1 | Config defaults | Fix wrong URL defaults: user-management 3022 (secret-management, logging); integration-manager 3026 (workflow-orchestrator, signal-intelligence, integration-sync, integration-processors); shard-manager 3023 (security-scanning, risk-catalog). |
 | P2 | Gateway | If context-service and search-service are client-facing, add gateway route mappings and config entries. Otherwise document as backend-only. |
 | P2 | Stub containers | Either complete compliance-service, security-service, migration-service per ModuleImplementationGuide or mark deprecated and exclude from CURRENT_STATE/container list. |
-| P3 | Gap coverage | Add focused gap analyses for logging, secret-management, shard-manager, and (as needed) risk-analytics, recommendations, shared. |
+| P3 | Gap coverage | Add focused gap analyses for logging, secret-management, shard-manager, and (as needed) risk-analytics, recommendations, shared. **Done:** see [p3-gap-coverage.md](./p3-gap-coverage.md). |
 
 ---
 

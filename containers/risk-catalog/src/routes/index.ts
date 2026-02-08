@@ -117,6 +117,49 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       }
     );
 
+    // Get single risk by riskId (for current tenant's applicable catalog)
+    fastify.get<{ Params: { riskId: string } }>(
+      '/api/v1/risk-catalog/risks/:riskId',
+      {
+        preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+        schema: {
+          description: 'Get a single risk by riskId from the tenant applicable catalog',
+          tags: ['Risk Catalog'],
+          security: [{ bearerAuth: [] }],
+          params: {
+            type: 'object',
+            properties: { riskId: { type: 'string' } },
+            required: ['riskId'],
+          },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const tenantId = request.user!.tenantId;
+          const { riskId } = request.params;
+          const catalog = await riskCatalogService.getCatalog(tenantId);
+          const risk = catalog.find((c) => c.riskId === riskId);
+          if (!risk) {
+            return reply.status(404).send({
+              error: {
+                code: 'RISK_NOT_FOUND',
+                message: `Risk with riskId "${riskId}" not found`,
+              },
+            });
+          }
+          return reply.send(risk);
+        } catch (error: any) {
+          log.error('Failed to get risk', error, { service: 'risk-catalog' });
+          return reply.status(error.statusCode || 500).send({
+            error: {
+              code: 'RISK_GET_FAILED',
+              message: error.message || 'Failed to get risk',
+            },
+          });
+        }
+      }
+    );
+
     // Create risk
     fastify.post<{ Body: CreateRiskInput }>(
       '/api/v1/risk-catalog/risks',

@@ -6,6 +6,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { log } from '../utils/logger';
+import { getConfig } from '../config';
 
 const updateConfigSchema = z.object({
   captureIpAddress: z.boolean().optional(),
@@ -19,7 +20,38 @@ const updateConfigSchema = z.object({
 
 export async function registerConfigurationRoutes(app: FastifyInstance): Promise<void> {
   const configService = (app as any).configService;
-  
+
+  // Get data collection config (view-only; edits remain in YAML/env). Plan §1.6, §2.9.
+  app.get('/config/data-collection', {
+    schema: {
+      description: 'Get data collection config (view-only). Controls what events are stored in audit log.',
+      tags: ['Configuration'],
+      summary: 'Get data collection config',
+      security: [{ bearerAuth: [] }],
+      querystring: {
+        type: 'object',
+        properties: {
+          search: { type: 'string', description: 'Filter by event_type or resource_type (client-side filter hint)' },
+        },
+      },
+      response: {
+        200: {
+          description: 'Data collection section from config',
+          type: 'object',
+        },
+      },
+    },
+  }, async (_request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const config = getConfig();
+      const dataCollection = config.data_collection ?? null;
+      return reply.send(dataCollection);
+    } catch (error: any) {
+      log.error('Failed to get data collection config', error);
+      throw error;
+    }
+  });
+
   if (!configService) {
     throw new Error('ConfigurationService not available');
   }

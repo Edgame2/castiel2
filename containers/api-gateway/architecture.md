@@ -20,7 +20,7 @@ The API Gateway acts as the single entry point for all client requests, routing 
 ```
 Client Request
     ↓
-API Gateway (Port 3001)
+API Gateway (Port 3002)
     ↓
 JWT Authentication
     ↓

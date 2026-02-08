@@ -18,6 +18,7 @@ type UserDb = {
     findUnique: (args: unknown) => Promise<unknown>;
     update: (args: unknown) => Promise<unknown>;
     delete: (args: unknown) => Promise<unknown>;
+    create: (args: unknown) => Promise<unknown>;
   };
   session: {
     findMany: (args: unknown) => Promise<unknown[]>;
@@ -110,8 +111,42 @@ export interface UserSession {
 }
 
 /**
+ * Update user's last login timestamp (called from auth.login.success consumer).
+ */
+export async function updateLastLogin(userId: string): Promise<void> {
+  const db = getDb();
+  await db.user.update({
+    where: { id: userId },
+    data: { lastLoginAt: new Date() },
+  });
+}
+
+/**
+ * Ensure user profile exists in user-management (called from user.registered consumer).
+ * Creates a minimal user record if not present.
+ */
+export async function ensureUserProfileFromRegistration(userId: string, email: string): Promise<void> {
+  const db = getDb();
+  const existing = (await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  })) as { id: string } | null;
+  if (existing) return;
+  await db.user.create({
+    data: {
+      id: userId,
+      email,
+      timezone: 'UTC',
+      language: 'en',
+      isEmailVerified: false,
+      isActive: true,
+    },
+  });
+}
+
+/**
  * Get user profile
- * 
+ *
  * @param userId - User ID
  * @returns Promise resolving to user profile
  * @throws Error if user not found

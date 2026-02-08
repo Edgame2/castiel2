@@ -28,9 +28,18 @@ interface SchemaResponse {
   updatedAt?: string;
 }
 
+interface FeatureStoreItem {
+  id: string;
+  name?: string;
+  type?: string;
+  description?: string;
+}
+
 export default function FeatureEngineeringFeaturesPage() {
   const [versions, setVersions] = useState<FeatureVersionItem[]>([]);
   const [schema, setSchema] = useState<SchemaResponse | null>(null);
+  const [storeItems, setStoreItems] = useState<FeatureStoreItem[]>([]);
+  const [storeLoading, setStoreLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [purposeFilter, setPurposeFilter] = useState<FeaturePurpose | ''>('');
@@ -61,17 +70,33 @@ export default function FeatureEngineeringFeaturesPage() {
     }
   }, [purposeFilter]);
 
+  const fetchStore = useCallback(async () => {
+    if (!apiBaseUrl) return;
+    setStoreLoading(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/v1/ml/features?limit=100`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setStoreItems(Array.isArray(json?.items) ? json.items : []);
+    } catch {
+      setStoreItems([]);
+    } finally {
+      setStoreLoading(false);
+    }
+  }, []);
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       await Promise.all([fetchVersions(), fetchSchema()]);
+      await fetchStore();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, [fetchVersions, fetchSchema]);
+  }, [fetchVersions, fetchSchema, fetchStore]);
 
   useEffect(() => {
     if (apiBaseUrl) fetchAll();
@@ -170,6 +195,43 @@ export default function FeatureEngineeringFeaturesPage() {
 
       {!loading && !error && apiBaseUrl && (
         <div className="space-y-6">
+          <section className="rounded-lg border bg-white dark:bg-gray-900 p-6">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <h2 className="text-lg font-semibold">Feature store</h2>
+              <Link href="/admin/feature-engineering/features/new" className="px-3 py-1.5 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-700">New feature</Link>
+            </div>
+            {storeLoading ? (
+              <p className="text-sm text-gray-500">Loading…</p>
+            ) : storeItems.length === 0 ? (
+              <p className="text-sm text-gray-500">No features in store.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-gray-50 dark:bg-gray-800">
+                      <th className="text-left py-2 px-4">Name</th>
+                      <th className="text-left py-2 px-4">Type</th>
+                      <th className="text-left py-2 px-4">ID</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {storeItems.map((f) => (
+                      <tr key={f.id} className="border-b">
+                        <td className="py-2 px-4">
+                          <Link href={`/admin/feature-engineering/features/${encodeURIComponent(f.id)}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                            {f.name ?? '—'}
+                          </Link>
+                        </td>
+                        <td className="py-2 px-4">{f.type ?? '—'}</td>
+                        <td className="py-2 px-4 text-gray-500">{f.id}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
           <section className="rounded-lg border bg-white dark:bg-gray-900 p-6">
             <h2 className="text-lg font-semibold mb-3">Feature versions</h2>
             {versions.length === 0 ? (

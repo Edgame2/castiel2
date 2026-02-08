@@ -221,12 +221,20 @@ export default function ActionCatalogRelationshipsPage() {
 
       {apiBaseUrl && (
         <div className="mb-4 flex flex-wrap gap-4 items-center">
+          <Link
+            href="/admin/action-catalog/relationships/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium inline-block"
+            aria-label="New link (page)"
+          >
+            New link
+          </Link>
           <button
             type="button"
             onClick={openCreate}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+            className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
+            aria-label="Add link (modal)"
           >
-            Add link
+            Add link (modal)
           </button>
           <div>
             <label className="block text-sm font-medium mb-1">Search (§2.3)</label>
@@ -347,21 +355,32 @@ export default function ActionCatalogRelationshipsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((rel, i) => (
-                  <tr key={`${rel.riskId}-${rel.recommendationId}-${i}`} className="border-b border-gray-200 dark:border-gray-700 last:border-0">
-                    <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{entryName(rel.riskId)}</td>
-                    <td className="px-4 py-3 text-gray-900 dark:text-gray-100">{entryName(rel.recommendationId)}</td>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => openDelete(rel)}
-                        className="text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {sorted.map((rel, i) => {
+                  const compositeId = encodeURIComponent(`${rel.riskId}::${rel.recommendationId}`);
+                  return (
+                    <tr key={`${rel.riskId}-${rel.recommendationId}-${i}`} className="border-b border-gray-200 dark:border-gray-700 last:border-0">
+                      <td className="px-4 py-3 text-gray-900 dark:text-gray-100">
+                        <Link href={`/admin/action-catalog/relationships/${compositeId}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                          {entryName(rel.riskId)}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-gray-900 dark:text-gray-100">
+                        <Link href={`/admin/action-catalog/relationships/${compositeId}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                          {entryName(rel.recommendationId)}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => openDelete(rel)}
+                          className="text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

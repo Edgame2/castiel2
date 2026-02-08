@@ -31,7 +31,7 @@ services:
   logging:
     url: ${LOGGING_URL:-http://localhost:3014}
   integration_manager:
-    url: ${INTEGRATION_MANAGER_URL:-http://localhost:3012}
+    url: ${INTEGRATION_MANAGER_URL:-http://localhost:3026}
   shard_manager:
     url: ${SHARD_MANAGER_URL:-http://localhost:3002}
   secret_management:

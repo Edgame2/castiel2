@@ -125,6 +125,17 @@ export async function buildApp(): Promise<FastifyInstance> {
     // Don't fail startup if event publisher fails - service can still function
   }
 
+  // Start auth event consumer (auth.login.success, auth.login.failed, user.registered)
+  try {
+    const { AuthEventConsumer } = await import('./events/consumers/AuthEventConsumer.js');
+    const authConsumer = new AuthEventConsumer();
+    await authConsumer.start();
+    (fastify as any).authEventConsumer = authConsumer;
+    log.info('Auth event consumer started', { service: 'user-management' });
+  } catch (error) {
+    log.warn('Failed to start auth event consumer', { error, service: 'user-management' });
+  }
+
   // Register global error handler
   fastify.setErrorHandler((error: Error & { validation?: unknown; statusCode?: number }, request, reply) => {
     log.error('Request error', error, {
@@ -246,6 +257,12 @@ export async function start(): Promise<void> {
 // Graceful shutdown handler
 async function gracefulShutdown(signal: string): Promise<void> {
   log.info(`${signal} received, shutting down gracefully`, { service: 'user-management' });
+  try {
+    const authConsumer = (app as any)?.authEventConsumer;
+    if (authConsumer?.stop) await authConsumer.stop();
+  } catch (error) {
+    log.error('Error closing auth event consumer', error, { service: 'user-management' });
+  }
   try {
     const { closeEventPublisher } = await import('./events/publishers/UserManagementEventPublisher.js');
     await closeEventPublisher();

@@ -18,6 +18,31 @@ components:
 security:
   - bearerAuth: []
 paths:
+  /prompts/analytics:
+    get:
+      tags: [Prompts]
+      summary: Get prompt analytics
+      description: Returns prompt counts by status and category for the current tenant.
+      operationId: getPromptAnalytics
+      responses:
+        '200':
+          description: Prompt analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalPrompts:
+                    type: integer
+                    description: Total number of prompts
+                  byStatus:
+                    type: object
+                    additionalProperties: { type: integer }
+                    description: Count per status (e.g. draft, active)
+                  byCategory:
+                    type: object
+                    additionalProperties: { type: integer }
+                    description: Count per category
   /health:
     get:
       tags: [Health]

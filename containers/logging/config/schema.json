@@ -250,6 +250,40 @@
           }
         }
       }
+    },
+    "data_collection": {
+      "type": "object",
+      "description": "Enable/disable what gets stored in the main audit log. AND of severity, category, resource_type, event_type. When absent, all events are collected.",
+      "properties": {
+        "default": { "type": "string", "enum": ["allow", "deny"] },
+        "severity": {
+          "type": "object",
+          "additionalProperties": { "type": "boolean" }
+        },
+        "category": {
+          "type": "object",
+          "additionalProperties": { "type": "boolean" }
+        },
+        "resource_type": {
+          "type": "object",
+          "properties": {
+            "default": { "type": "boolean" }
+          },
+          "additionalProperties": { "type": "boolean" }
+        },
+        "event_type": {
+          "type": "object",
+          "properties": {
+            "mode": { "type": "string", "enum": ["allowlist", "denylist", "explicit"] },
+            "allow": { "type": "array", "items": { "type": "string" } },
+            "deny": { "type": "array", "items": { "type": "string" } },
+            "explicit": {
+              "type": "object",
+              "additionalProperties": { "type": "boolean" }
+            }
+          }
+        }
+      }
     }
   }
 }

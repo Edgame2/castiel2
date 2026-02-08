@@ -130,8 +130,14 @@ export default function DecisionRulesTemplatesPage() {
 
       <div className="mb-4 flex flex-wrap gap-4 items-center">
         <Link
-          href="/admin/decision-rules/rules"
+          href="/admin/decision-rules/templates/new"
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+        >
+          New template
+        </Link>
+        <Link
+          href="/admin/decision-rules/rules"
+          className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
         >
           Create rule (Rules page)
         </Link>
@@ -157,7 +163,9 @@ export default function DecisionRulesTemplatesPage() {
               key={t.name}
               className="rounded-lg border bg-white dark:bg-gray-900 p-4 flex flex-col"
             >
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{t.name}</h3>
+              <Link href={`/admin/decision-rules/templates/${encodeURIComponent(t.name)}`} className="font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400">
+                {t.name}
+              </Link>
               <p className="text-sm text-gray-500 mt-1">{t.description}</p>
               <Link
                 href="/admin/decision-rules/rules"

@@ -91,13 +91,13 @@ vi.mock('yaml', () => ({
   }),
 }));
 
-// Mock @coder/shared database
+// Mock @coder/shared database (Cosmos-style: query().fetchNext(), item(id, partitionKey).read())
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(() => ({
     items: {
       create: vi.fn(),
       query: vi.fn(() => ({
-        fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
       })),
     },
     item: vi.fn(() => ({

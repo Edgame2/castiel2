@@ -32,6 +32,10 @@ export declare class ServiceClient {
      */
     request<T = any>(config: AxiosRequestConfig): Promise<T>;
     /**
+     * Make HTTP request and return full response (status, data, headers). Used by API Gateway.
+     */
+    requestWithFullResponse(config: AxiosRequestConfig): Promise<{ status: number; data: any; headers: Record<string, string> }>;
+    /**
      * GET request
      */
     get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;

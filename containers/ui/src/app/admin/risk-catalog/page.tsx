@@ -82,6 +82,14 @@ export default function RiskCatalogPage() {
       <p className="text-muted-foreground mb-6">
         Categories, templates, industry and methodology risks for the current tenant. Via risk-catalog.
       </p>
+      <div className="mb-4">
+        <Link
+          href="/admin/risk-catalog/new"
+          className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+        >
+          New risk
+        </Link>
+      </div>
 
       {!apiBaseUrl && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
@@ -181,7 +189,11 @@ export default function RiskCatalogPage() {
                   <tbody>
                     {view.riskTemplates.map((t) => (
                       <tr key={t.id} className="border-b">
-                        <td className="py-2">{t.name}</td>
+                        <td className="py-2">
+                          <Link href={`/admin/risk-catalog/${encodeURIComponent(t.riskId)}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                            {t.name}
+                          </Link>
+                        </td>
                         <td className="py-2">{t.category}</td>
                         <td className="py-2">{Array.isArray(t.applicableStages) ? t.applicableStages.join(', ') : ''}</td>
                       </tr>

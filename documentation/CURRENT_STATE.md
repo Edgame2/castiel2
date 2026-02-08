@@ -58,6 +58,11 @@ Single reference for all containers: list, description, features, and dependenci
 - **ui** – Next.js frontend; consumes API Gateway.
 - **bug-detection** – Removed from the system.
 
+**Stub / deprecated (excluded from active container list; Plan Phase 3.1):**
+- **compliance-service** – Deprecated. Services and types only; no runnable HTTP server. Compliance is covered by **logging** (audit trail), **secret-management** (e.g. compliance report), and **security-service** (compliance_check). See `containers/compliance-service/README.md`.
+- **migration-service** – Deprecated. Services and types only; no runnable HTTP server. Migration logic and routes live in **configuration-service** (`/api/v1/migration/*`). See `containers/migration-service/README.md`.
+- **security-service** – Stub retained for future completion. Services and types only; no runnable HTTP server yet. Listed in table above (port 3042) for dependency references; not run in default stack until completed. See `containers/security-service/README.md`.
+
 ---
 
 ## 2. Description, Features, and Dependencies per Container

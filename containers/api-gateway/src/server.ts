@@ -39,8 +39,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   // Setup health checks
   setupHealthCheck(fastify);
 
-  // Initialize proxy service
-  const proxyService = new ProxyService();
+  // Initialize proxy service (circuit breaker config from config file)
+  const proxyService = new ProxyService({
+    circuitBreaker: config.circuit_breaker,
+  });
 
   // Register rate limiting middleware
   const rateLimitMiddleware = createRateLimitMiddleware({

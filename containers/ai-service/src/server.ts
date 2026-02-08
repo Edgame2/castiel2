@@ -32,8 +32,16 @@ const start = async () => {
       containers: config.cosmos_db.containers,
     });
     
-    // Setup JWT for authentication
-    await setupJWT(server, { secret: process.env.JWT_SECRET || (config as any).jwt?.secret || 'change-me' });
+    // Setup JWT for authentication (require secret in production; dev-only default never used in prod)
+    const jwtSecret = process.env.JWT_SECRET || (config as any).jwt?.secret;
+    if (process.env.NODE_ENV === 'production' && !jwtSecret) {
+      throw new Error('JWT_SECRET (or config.jwt.secret) is required in production');
+    }
+    if (!jwtSecret) {
+      server.log.warn('Using dev-only JWT secret; set JWT_SECRET in production');
+    }
+    const secret = jwtSecret || 'dev-jwt-secret-not-for-production';
+    await setupJWT(server, { secret });
     
     await connectDatabase();
     await initializeLLMReasoningEventPublisher();

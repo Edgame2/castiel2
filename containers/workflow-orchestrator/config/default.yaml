@@ -45,7 +45,7 @@ services:
   user_management:
     url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
   integration_manager:
-    url: ${INTEGRATION_MANAGER_URL:-http://localhost:3012}
+    url: ${INTEGRATION_MANAGER_URL:-http://localhost:3026}
   risk_analytics:
     url: ${RISK_ANALYTICS_URL:-http://localhost:3048}
   ml_service:

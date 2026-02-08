@@ -1,9 +1,11 @@
 /**
  * User Management Routes
- * 
+ *
  * API endpoints for managing user profiles, sessions, and account operations.
- * 
+ *
  * Endpoints:
+ * - GET /api/v1/users - List users (tenant/org-scoped; requires organization context)
+ * - GET /api/v1/users/:id - Get user profile by id (tenant-scoped + RBAC)
  * - PUT /api/v1/users/me - Update current user profile
  * - GET /api/v1/users/me/sessions - List user sessions
  * - DELETE /api/v1/users/me/sessions/:sessionId - Revoke a session
@@ -17,12 +19,145 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authenticateRequest } from '../middleware/auth';
 import * as userService from '../services/UserService';
+import * as organizationService from '../services/OrganizationService';
 import { getDatabaseClient } from '@coder/shared';
 import { log } from '../utils/logger';
 import { publishEventSafely, extractEventMetadata, createBaseEvent } from '../events/publishers/UserManagementEventPublisher';
 import { UserManagementEvent } from '../types/events';
 
+/** Check if requester can access target user (self, same org, or Super Admin). Throws if no access. */
+async function ensureCanAccessUser(
+  requesterId: string,
+  targetUserId: string,
+  organizationId: string | undefined
+): Promise<void> {
+  if (requesterId === targetUserId) return;
+  const db = getDatabaseClient() as unknown as {
+    organizationMembership: { findMany: (args: unknown) => Promise<Array<{ userId: string; organizationId: string }>>; findFirst: (args: unknown) => Promise<{ role: { isSuperAdmin: boolean } } | null> };
+  };
+  const memberships = await db.organizationMembership.findMany({
+    where: { userId: requesterId, status: 'active' },
+    include: { role: true },
+  }) as Array<{ role?: { isSuperAdmin?: boolean } }>;
+  const isSuperAdmin = memberships.some((m) => m.role?.isSuperAdmin);
+  if (isSuperAdmin) return;
+  if (organizationId) {
+    const targetInOrg = await db.organizationMembership.findFirst({
+      where: { userId: targetUserId, organizationId, status: 'active' },
+    });
+    if (targetInOrg) return;
+  }
+  throw new Error('Permission denied. You can only view users in your organization.');
+}
+
 export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
+  // List users (tenant/org-scoped; requires organization context)
+  fastify.get(
+    '/api/v1/users',
+    { preHandler: authenticateRequest },
+    (async (request: FastifyRequest<{ Querystring: { organizationId?: string } }>, reply: FastifyReply) => {
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const organizationId = request.query?.organizationId ?? (request as any).organizationId;
+        if (!organizationId) {
+          reply.code(400).send({ error: 'Organization context required. Provide organizationId in query or use a session with organization context.' });
+          return;
+        }
+        const members = await organizationService.getOrganizationMembers(organizationId, requestUser.id);
+        const users = members.map((m) => ({
+          id: m.userId,
+          email: m.email,
+          name: m.name,
+          roleName: m.roleName,
+          status: m.status,
+          joinedAt: m.joinedAt,
+        }));
+        return { data: { users } };
+      } catch (error: any) {
+        log.error('List users error', error, { route: '/api/v1/users', userId: (request as any).user?.id, service: 'user-management' });
+        if (error.message?.includes('not a member')) {
+          reply.code(403).send({ error: error.message });
+          return;
+        }
+        if (error.message?.includes('not found')) {
+          reply.code(404).send({ error: error.message });
+          return;
+        }
+        reply.code(500).send({
+          error: 'Failed to list users',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
+      }
+    }) as any
+  );
+
+  // Get current user profile (must be registered before /api/v1/users/:id so "me" is not treated as id)
+  fastify.get(
+    '/api/v1/users/me',
+    { preHandler: authenticateRequest },
+    (async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const profile = await userService.getUserProfile(requestUser.id);
+        return { data: profile };
+      } catch (error: any) {
+        log.error('Get current user profile error', error, { route: '/api/v1/users/me', userId: (request as any).user?.id, service: 'user-management' });
+        if (error.message?.includes('not found')) {
+          reply.code(404).send({ error: error.message });
+          return;
+        }
+        reply.code(500).send({
+          error: 'Failed to get profile',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
+      }
+    }) as any
+  );
+
+  // Get user profile by id (tenant-scoped + RBAC: self, same org, or Super Admin)
+  fastify.get(
+    '/api/v1/users/:id',
+    { preHandler: authenticateRequest },
+    (async (
+      request: FastifyRequest<{ Params: { id: string } }>,
+      reply: FastifyReply
+    ) => {
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const { id } = request.params;
+        await ensureCanAccessUser(requestUser.id, id, (request as any).organizationId);
+        const profile = await userService.getUserProfile(id);
+        return { data: profile };
+      } catch (error: any) {
+        log.error('Get user profile error', error, { route: '/api/v1/users/:id', userId: (request as any).user?.id, targetId: request.params?.id, service: 'user-management' });
+        if (error.message?.includes('not found')) {
+          reply.code(404).send({ error: error.message });
+          return;
+        }
+        if (error.message?.includes('Permission denied')) {
+          reply.code(403).send({ error: error.message });
+          return;
+        }
+        reply.code(500).send({
+          error: 'Failed to get user profile',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
+      }
+    }) as any
+  );
+
   // Update current user profile
   fastify.put(
     '/api/v1/users/me',

@@ -11,13 +11,19 @@ export async function agentRoutes(fastify: FastifyInstance) {
     await tenantEnforcementMiddleware()(request, reply);
   });
 
-  // List agents
+  // List agents (tenant-scoped)
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
+      const tenantId = (request as any).tenantId;
+      if (!tenantId) {
+        reply.code(400).send({ error: 'X-Tenant-ID required' });
+        return;
+      }
       const query = request.query as any;
 
       const agents = await agentService.listAgents({
+        tenantId,
         userId: user.id,
         organizationId: user.organizationId,
         projectId: query.projectId,
@@ -32,11 +38,16 @@ export async function agentRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Get agent
+  // Get agent (tenant-scoped)
   fastify.get('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const agent = await agentService.getAgent(id);
+      const tenantId = (request as any).tenantId;
+      if (!tenantId) {
+        reply.code(400).send({ error: 'X-Tenant-ID required' });
+        return;
+      }
+      const agent = await agentService.getAgent(id, tenantId);
 
       if (!agent) {
         reply.code(404).send({ error: 'Agent not found' });

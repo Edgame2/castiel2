@@ -1441,13 +1441,20 @@ export default function ActionCatalogEntriesPage() {
       {apiBaseUrl && (
         <div className="mb-4 space-y-3">
           <div className="flex flex-wrap gap-4 items-end">
+          <Link
+            href="/admin/action-catalog/entries/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium inline-block"
+            aria-label="New entry (page)"
+          >
+            New entry
+          </Link>
           <button
             type="button"
             onClick={openCreate}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-            aria-label="Create action catalog entry"
+            className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
+            aria-label="Create entry (modal)"
           >
-            Create entry
+            Create entry (modal)
           </button>
           <button
             type="button"
@@ -1904,7 +1911,9 @@ export default function ActionCatalogEntriesPage() {
                       />
                       <div className="min-w-0 flex-1">
                         <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate" title={e.displayName || e.name}>
-                          {e.displayName || e.name || e.id}
+                          <Link href={`/admin/action-catalog/entries/${encodeURIComponent(e.id)}`} className="hover:underline text-blue-600 dark:text-blue-400">
+                            {e.displayName || e.name || e.id}
+                          </Link>
                         </h3>
                         <div className="flex flex-wrap gap-1 mt-1">
                           <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">{e.type ?? '—'}</span>
@@ -2140,7 +2149,9 @@ export default function ActionCatalogEntriesPage() {
                       </td>
                       <td className="py-2 px-4">{e.type}</td>
                       <td className="py-2 px-4">
-                        <span className="font-medium">{e.displayName || e.name}</span>
+                        <Link href={`/admin/action-catalog/entries/${encodeURIComponent(e.id)}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                          {e.displayName || e.name}
+                        </Link>
                         {e.description ? (
                           <p className="text-xs text-gray-500 mt-0.5 truncate max-w-xs">{e.description}</p>
                         ) : null}

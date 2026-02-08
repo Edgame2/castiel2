@@ -1,0 +1,231 @@
+openapi: 3.0.3
+info:
+  title: Integration Processors API
+  description: |
+    Integration data processors for multi-modal data (CRM, Documents, Emails, Messages, Meetings).
+    Provides health, metrics, suggested links, entity linking settings, processing settings, and admin monitoring.
+  version: 1.0.0
+servers:
+  - url: /
+    description: Root (health, metrics)
+  - url: /api/v1
+    description: API Version 1
+tags:
+  - name: Health
+  - name: Metrics
+  - name: Suggested Links
+  - name: Entity Linking
+  - name: Data Processing
+  - name: Admin Monitoring
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+  /ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe (RabbitMQ, Shard Manager, Blob Storage)
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+        '503':
+          description: Service is not ready
+  /metrics:
+    get:
+      tags: [Metrics]
+      summary: Prometheus metrics
+      security: []
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+        '401':
+          description: Unauthorized (when metrics.require_auth is true)
+  /api/v1/suggested-links:
+    get:
+      tags: [Suggested Links]
+      summary: Get pending suggested links
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: List of suggested links
+  /api/v1/suggested-links/{id}/approve:
+    post:
+      tags: [Suggested Links]
+      summary: Approve suggested link
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Link approved
+  /api/v1/suggested-links/{id}/reject:
+    post:
+      tags: [Suggested Links]
+      summary: Reject suggested link
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Link rejected
+  /api/v1/entity-linking/settings:
+    get:
+      tags: [Entity Linking]
+      summary: Get entity linking settings
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Entity linking settings
+    put:
+      tags: [Entity Linking]
+      summary: Update entity linking settings
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Settings updated
+  /api/v1/entity-linking/suggested-links:
+    get:
+      tags: [Entity Linking]
+      summary: Get entity linking suggested links
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: List of suggested links
+  /api/v1/entity-linking/suggested-links/{id}/approve:
+    post:
+      tags: [Entity Linking]
+      summary: Approve entity linking suggested link
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Link approved
+  /api/v1/entity-linking/suggested-links/{id}/reject:
+    post:
+      tags: [Entity Linking]
+      summary: Reject entity linking suggested link
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Link rejected
+  /api/v1/entity-linking/suggested-links/approve-all:
+    post:
+      tags: [Entity Linking]
+      summary: Approve all suggested links
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: All links approved
+  /api/v1/entity-linking/rules:
+    get:
+      tags: [Entity Linking]
+      summary: Get linking rules
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: List of linking rules
+    post:
+      tags: [Entity Linking]
+      summary: Create linking rule
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201':
+          description: Rule created
+  /api/v1/processing/settings:
+    get:
+      tags: [Data Processing]
+      summary: Get data processing settings
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Processing settings
+    put:
+      tags: [Data Processing]
+      summary: Update data processing settings
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Settings updated
+  /api/v1/admin/monitoring/health:
+    get:
+      tags: [Admin Monitoring]
+      summary: Get overall system health (Super Admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: System health status
+  /api/v1/admin/monitoring/queues:
+    get:
+      tags: [Admin Monitoring]
+      summary: Get queue metrics (Super Admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Queue metrics
+  /api/v1/admin/monitoring/dlq:
+    get:
+      tags: [Admin Monitoring]
+      summary: Get dead-letter queue metrics (Super Admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: DLQ metrics
+  /api/v1/admin/monitoring/processors:
+    get:
+      tags: [Admin Monitoring]
+      summary: Get processor status (Super Admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Processor status
+  /api/v1/admin/monitoring/integrations:
+    get:
+      tags: [Admin Monitoring]
+      summary: Get integration metrics (Super Admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Integration metrics
+  /api/v1/admin/monitoring/errors:
+    get:
+      tags: [Admin Monitoring]
+      summary: Get error metrics (Super Admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Error metrics
+  /api/v1/admin/monitoring/performance:
+    get:
+      tags: [Admin Monitoring]
+      summary: Get performance metrics (Super Admin)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Performance metrics

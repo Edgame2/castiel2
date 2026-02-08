@@ -5,7 +5,7 @@
 
 import { FastifyRequest, FastifyReply } from 'fastify';
 
-/** Path prefixes that do not require a Bearer token (public auth endpoints) */
+/** Path prefixes that do not require a Bearer token (public auth/invitation endpoints) */
 const PUBLIC_AUTH_PATH_PREFIXES = [
   '/api/auth/login',
   '/api/auth/register',
@@ -19,6 +19,7 @@ const PUBLIC_AUTH_PATH_PREFIXES = [
   '/api/auth/sso/saml/callback',
   '/api/auth/verify-email',
   '/api/auth/health',
+  '/api/invitations',
 ];
 
 /**

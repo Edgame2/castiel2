@@ -32,13 +32,6 @@ const DEFAULT_ANALYTICS: AnalyticsConfig = {
   exportConfig: {},
 };
 
-function generateId(): string {
-  if (typeof crypto !== 'undefined' && typeof (crypto as { randomUUID?: () => string }).randomUUID === 'function') {
-    return (crypto as { randomUUID: () => string }).randomUUID();
-  }
-  return `dash-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-}
-
 function AnalyticsDashboardsContent() {
   const searchParams = useSearchParams();
   const tenantId = searchParams.get('tenantId') ?? '';
@@ -46,10 +39,6 @@ function AnalyticsDashboardsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [showCreate, setShowCreate] = useState(false);
-  const [createName, setCreateName] = useState('');
-  const [createDataSource, setCreateDataSource] = useState('');
-  const [createRefresh, setCreateRefresh] = useState(300);
 
   const fetchConfig = useCallback(async () => {
     if (!apiBaseUrl) {
@@ -98,28 +87,11 @@ function AnalyticsDashboardsContent() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setConfig({ ...config, dashboards: data.dashboards ?? [] });
-      setShowCreate(false);
-      setCreateName('');
-      setCreateDataSource('');
-      setCreateRefresh(300);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleCreate = () => {
-    if (!createName.trim() || !config) return;
-    const newDash: DashboardDef = {
-      id: generateId(),
-      name: createName.trim(),
-      dataSource: createDataSource.trim() || undefined,
-      refreshIntervalSeconds: createRefresh,
-      widgets: [],
-      createdAt: new Date().toISOString(),
-    };
-    handleSave([...config.dashboards, newDash]);
   };
 
   const handleDelete = (id: string) => {
@@ -165,57 +137,22 @@ function AnalyticsDashboardsContent() {
       <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Dashboards</h2>
-          <button
-            type="button"
-            onClick={() => setShowCreate(!showCreate)}
-            className="px-3 py-1.5 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-700"
+          <Link
+            href="/admin/analytics/dashboards/new"
+            className="px-3 py-1.5 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-700 inline-block"
           >
-            {showCreate ? 'Cancel' : 'Create dashboard'}
-          </button>
+            New dashboard
+          </Link>
         </div>
-        {showCreate && (
-          <div className="rounded border border-gray-200 dark:border-gray-700 p-4 space-y-3 max-w-md">
-            <input
-              type="text"
-              value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
-              placeholder="Dashboard name"
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            />
-            <input
-              type="text"
-              value={createDataSource}
-              onChange={(e) => setCreateDataSource(e.target.value)}
-              placeholder="Data source (optional)"
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            />
-            <div>
-              <label className="block text-sm font-medium mb-1">Refresh interval (seconds)</label>
-              <input
-                type="number"
-                min={60}
-                value={createRefresh}
-                onChange={(e) => setCreateRefresh(parseInt(e.target.value, 10) || 300)}
-                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleCreate}
-              disabled={!createName.trim() || saving}
-              className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium disabled:opacity-50 hover:bg-blue-700"
-            >
-              {saving ? 'Saving…' : 'Create'}
-            </button>
-          </div>
-        )}
         <ul className="list-none space-y-2">
-          {dashboards.length === 0 && !showCreate && (
+          {dashboards.length === 0 && (
             <li className="text-sm text-gray-500">No dashboards yet. Create one above.</li>
           )}
           {dashboards.map((d) => (
             <li key={d.id} className="flex items-center gap-2 rounded border border-gray-200 dark:border-gray-700 p-3">
-              <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{d.name}</span>
+              <Link href={`/admin/analytics/dashboards/${encodeURIComponent(d.id)}`} className="font-medium text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                {d.name}
+              </Link>
               {d.dataSource && <span className="text-xs text-gray-500 dark:text-gray-400">{d.dataSource}</span>}
               {d.refreshIntervalSeconds && <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">Refresh: {d.refreshIntervalSeconds}s</span>}
               <button

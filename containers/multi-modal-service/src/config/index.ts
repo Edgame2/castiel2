@@ -9,6 +9,7 @@ export interface MultiModalServiceConfig {
   services: {
     ai_service: { url: string };
     context_service: { url: string };
+    code_generation?: { url: string };
     logging: { url: string };
   };
   rabbitmq: { url: string; exchange: string; queue: string };

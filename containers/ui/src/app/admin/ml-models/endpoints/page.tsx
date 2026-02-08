@@ -127,7 +127,8 @@ export default function MLModelsEndpointsPage() {
       </nav>
 
       {apiBaseUrl && (
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap gap-2">
+          <Link href="/admin/ml-models/endpoints/new" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium">New endpoint</Link>
           <button
             type="button"
             onClick={fetchEndpoints}
@@ -200,7 +201,11 @@ export default function MLModelsEndpointsPage() {
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                   {data.items.map((item) => (
                     <tr key={item.id}>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{item.name}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <Link href={`/admin/ml-models/endpoints/${encodeURIComponent(item.id)}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                          {item.name}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 font-mono truncate max-w-[240px]" title={item.url}>
                         {item.url}
                       </td>

@@ -16,10 +16,34 @@ interface ModelHealthResponse {
   timestamp: string;
 }
 
+interface ModelItem {
+  id: string;
+  name?: string;
+  type?: string;
+  status?: string;
+}
+
 export default function MLModelsModelsPage() {
   const [health, setHealth] = useState<ModelHealthResponse | null>(null);
+  const [models, setModels] = useState<ModelItem[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchModels = useCallback(async () => {
+    if (!apiBaseUrl) return;
+    setModelsLoading(true);
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/v1/ml/models?limit=100`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setModels(Array.isArray(json?.items) ? json.items : []);
+    } catch {
+      setModels([]);
+    } finally {
+      setModelsLoading(false);
+    }
+  }, []);
 
   const fetchHealth = useCallback(async () => {
     if (!apiBaseUrl) {
@@ -46,8 +70,14 @@ export default function MLModelsModelsPage() {
   }, []);
 
   useEffect(() => {
-    fetchHealth();
-  }, [fetchHealth]);
+    let cancelled = false;
+    const run = async () => {
+      await fetchHealth();
+      if (apiBaseUrl && !cancelled) await fetchModels();
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [fetchHealth, fetchModels, apiBaseUrl]);
 
   useEffect(() => {
     document.title = 'Models & health | Admin | Castiel';
@@ -126,6 +156,47 @@ export default function MLModelsModelsPage() {
       {error && (
         <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 mb-4">
           <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
+        </div>
+      )}
+
+      {apiBaseUrl && (
+        <div className="rounded-lg border bg-white dark:bg-gray-900 mb-6">
+          <div className="p-4 border-b flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Models</h2>
+            <Link href="/admin/ml-models/models/new" className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">New model</Link>
+          </div>
+          <div className="p-6">
+            {modelsLoading ? (
+              <p className="text-sm text-gray-500">Loading…</p>
+            ) : models.length === 0 ? (
+              <p className="text-sm text-gray-500">No models.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-gray-50 dark:bg-gray-800">
+                      <th className="text-left py-2 px-4">Name</th>
+                      <th className="text-left py-2 px-4">Type</th>
+                      <th className="text-left py-2 px-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {models.map((m) => (
+                      <tr key={m.id} className="border-b">
+                        <td className="py-2 px-4">
+                          <Link href={`/admin/ml-models/models/${encodeURIComponent(m.id)}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                            {m.name ?? m.id}
+                          </Link>
+                        </td>
+                        <td className="py-2 px-4">{m.type ?? '—'}</td>
+                        <td className="py-2 px-4">{m.status ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

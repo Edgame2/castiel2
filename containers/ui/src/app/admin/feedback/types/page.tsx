@@ -669,13 +669,20 @@ export default function FeedbackTypesPage() {
       {!loading && apiBaseUrl && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/admin/feedback/types/new"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium inline-block"
+              aria-label="New type (page)"
+            >
+              New type
+            </Link>
             <button
               type="button"
               onClick={openCreate}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-              aria-label="Create feedback type"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
+              aria-label="Create type (modal)"
             >
-              Create type
+              Create type (modal)
             </button>
             <input
               ref={importInputRef}
@@ -894,7 +901,9 @@ export default function FeedbackTypesPage() {
                           />
                         </td>
                         <td className="p-3">
-                          <span className="font-medium">{t.displayName || t.name}</span>
+                          <Link href={`/admin/feedback/types/${encodeURIComponent(t.id)}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                            {t.displayName || t.name}
+                          </Link>
                           {t.icon && <span className="ml-2" aria-hidden>{t.icon}</span>}
                         </td>
                         <td className="p-3">

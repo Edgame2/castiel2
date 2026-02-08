@@ -3,17 +3,20 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import axios from 'axios';
 import { ProxyService } from '../../../src/services/ProxyService';
 
-vi.mock('axios', () => ({
-  default: { request: vi.fn() },
+const mockRequestWithFullResponse = vi.fn();
+vi.mock('@coder/shared', () => ({
+  ServiceClient: vi.fn().mockImplementation(() => ({
+    requestWithFullResponse: mockRequestWithFullResponse,
+  })),
 }));
 
 describe('ProxyService', () => {
   let proxyService: ProxyService;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     proxyService = new ProxyService();
   });
 
@@ -61,7 +64,7 @@ describe('ProxyService', () => {
 
   describe('proxyRequest targetPath', () => {
     beforeEach(() => {
-      vi.mocked(axios.request).mockResolvedValue({ status: 200, data: {} });
+      mockRequestWithFullResponse.mockResolvedValue({ status: 200, data: {}, headers: {} });
     });
 
     it('builds /api/v1/auth path when pathRewrite is set', async () => {
@@ -86,10 +89,10 @@ describe('ProxyService', () => {
 
       await proxyService.proxyRequest(request, reply, mapping!);
 
-      expect(axios.request).toHaveBeenCalledWith(
+      expect(mockRequestWithFullResponse).toHaveBeenCalledWith(
         expect.objectContaining({
           method: 'get',
-          url: 'http://localhost:3021/api/v1/auth/login',
+          url: '/api/v1/auth/login',
           data: undefined,
         })
       );
@@ -111,8 +114,8 @@ describe('ProxyService', () => {
 
       await proxyService.proxyRequest(request, reply, mapping!);
 
-      expect(axios.request).toHaveBeenCalledWith(
-        expect.objectContaining({ url: 'http://localhost:3022/me', method: 'get' })
+      expect(mockRequestWithFullResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ url: '/me', method: 'get' })
       );
     });
 
@@ -131,7 +134,7 @@ describe('ProxyService', () => {
 
       await proxyService.proxyRequest(request, reply, mapping!);
 
-      expect(axios.request).toHaveBeenCalledWith(
+      expect(mockRequestWithFullResponse).toHaveBeenCalledWith(
         expect.objectContaining({ url: expect.stringContaining('?token=abc') })
       );
     });
@@ -144,7 +147,7 @@ describe('ProxyService', () => {
         stripPrefix: true,
         pathRewrite: '/api/v1/auth',
       });
-      vi.mocked(axios.request).mockResolvedValueOnce({ status: 401, data: { error: 'Invalid credentials' } });
+      mockRequestWithFullResponse.mockResolvedValueOnce({ status: 401, data: { error: 'Invalid credentials' }, headers: {} });
 
       const mapping = proxyService.findRoute('/api/auth/login');
       const request = { url: '/api/auth/login', method: 'POST', headers: {}, body: { email: 'a@b.com', password: 'x' } } as any;

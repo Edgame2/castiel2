@@ -50,6 +50,12 @@
             "url": { "type": "string", "format": "uri" }
           }
         },
+        "code_generation": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
+        },
         "logging": {
           "type": "object",
           "properties": {

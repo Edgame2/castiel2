@@ -34,13 +34,6 @@ const DEFAULT_ANALYTICS: AnalyticsConfig = {
   exportConfig: {},
 };
 
-function generateId(): string {
-  if (typeof crypto !== 'undefined' && typeof (crypto as { randomUUID?: () => string }).randomUUID === 'function') {
-    return (crypto as { randomUUID: () => string }).randomUUID();
-  }
-  return `report-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-}
-
 function AnalyticsReportsContent() {
   const searchParams = useSearchParams();
   const tenantId = searchParams.get('tenantId') ?? '';
@@ -48,11 +41,6 @@ function AnalyticsReportsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [showCreate, setShowCreate] = useState(false);
-  const [createName, setCreateName] = useState('');
-  const [createDataSources, setCreateDataSources] = useState('');
-  const [createFormat, setCreateFormat] = useState<'PDF' | 'Excel' | 'CSV'>('CSV');
-  const [createSchedule, setCreateSchedule] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
 
   const fetchConfig = useCallback(async () => {
     if (!apiBaseUrl) {
@@ -101,30 +89,11 @@ function AnalyticsReportsContent() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setConfig({ ...config, reports: data.reports ?? [] });
-      setShowCreate(false);
-      setCreateName('');
-      setCreateDataSources('');
-      setCreateFormat('CSV');
-      setCreateSchedule('weekly');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleCreate = () => {
-    if (!createName.trim() || !config) return;
-    const newReport: ReportDef = {
-      id: generateId(),
-      name: createName.trim(),
-      dataSources: createDataSources.split(',').map((s) => s.trim()).filter(Boolean),
-      outputFormat: createFormat,
-      schedule: createSchedule,
-      recipients: [],
-      createdAt: new Date().toISOString(),
-    };
-    handleSave([...config.reports, newReport]);
   };
 
   const handleDelete = (id: string) => {
@@ -170,71 +139,22 @@ function AnalyticsReportsContent() {
       <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Reports</h2>
-          <button
-            type="button"
-            onClick={() => setShowCreate(!showCreate)}
-            className="px-3 py-1.5 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-700"
+          <Link
+            href="/admin/analytics/reports/new"
+            className="px-3 py-1.5 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-700 inline-block"
           >
-            {showCreate ? 'Cancel' : 'Create report'}
-          </button>
+            New report
+          </Link>
         </div>
-        {showCreate && (
-          <div className="rounded border border-gray-200 dark:border-gray-700 p-4 space-y-3 max-w-md">
-            <input
-              type="text"
-              value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
-              placeholder="Report name"
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            />
-            <input
-              type="text"
-              value={createDataSources}
-              onChange={(e) => setCreateDataSources(e.target.value)}
-              placeholder="Data sources (comma-separated)"
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            />
-            <div>
-              <label className="block text-sm font-medium mb-1">Output format</label>
-              <select
-                value={createFormat}
-                onChange={(e) => setCreateFormat(e.target.value as 'PDF' | 'Excel' | 'CSV')}
-                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-              >
-                <option value="PDF">PDF</option>
-                <option value="Excel">Excel</option>
-                <option value="CSV">CSV</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Schedule</label>
-              <select
-                value={createSchedule}
-                onChange={(e) => setCreateSchedule(e.target.value as 'daily' | 'weekly' | 'monthly')}
-                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-            <button
-              type="button"
-              onClick={handleCreate}
-              disabled={!createName.trim() || saving}
-              className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium disabled:opacity-50 hover:bg-blue-700"
-            >
-              {saving ? 'Saving…' : 'Create'}
-            </button>
-          </div>
-        )}
         <ul className="list-none space-y-2">
-          {reports.length === 0 && !showCreate && (
+          {reports.length === 0 && (
             <li className="text-sm text-gray-500">No reports yet. Create one above.</li>
           )}
           {reports.map((r) => (
             <li key={r.id} className="flex items-center gap-2 rounded border border-gray-200 dark:border-gray-700 p-3">
-              <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{r.name}</span>
+              <Link href={`/admin/analytics/reports/${encodeURIComponent(r.id)}`} className="font-medium text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                {r.name}
+              </Link>
               {r.outputFormat && <span className="text-xs text-gray-500 dark:text-gray-400">{r.outputFormat}</span>}
               {r.schedule && <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">Schedule: {r.schedule}</span>}
               <button

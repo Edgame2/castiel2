@@ -260,6 +260,43 @@ export class PromptService {
   }
 
   /**
+   * Get prompt analytics for the tenant (counts by status and category).
+   */
+  async getAnalytics(tenantId: string): Promise<{
+    totalPrompts: number;
+    byStatus: Record<string, number>;
+    byCategory: Record<string, number>;
+  }> {
+    if (!tenantId) {
+      throw new BadRequestError('tenantId is required');
+    }
+
+    const container = getContainer(this.promptContainerName) as any;
+    const { resources } = await container.items
+      .query<{ status: string; category?: string }>({
+        query: 'SELECT c.status, c.category FROM c WHERE c.tenantId = @tenantId',
+        parameters: [{ name: '@tenantId', value: tenantId }],
+      })
+      .fetchAll();
+
+    const byStatus: Record<string, number> = {};
+    const byCategory: Record<string, number> = {};
+
+    for (const row of resources) {
+      const status = row.status ?? 'draft';
+      byStatus[status] = (byStatus[status] ?? 0) + 1;
+      const category = row.category ?? 'uncategorized';
+      byCategory[category] = (byCategory[category] ?? 0) + 1;
+    }
+
+    return {
+      totalPrompts: resources.length,
+      byStatus,
+      byCategory,
+    };
+  }
+
+  /**
    * List prompt templates
    */
   async list(

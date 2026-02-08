@@ -33,7 +33,7 @@ services:
   user_management:
     url: ${USER_MANAGEMENT_URL:-http://localhost:3022}
   integration_manager:
-    url: ${INTEGRATION_MANAGER_URL:-http://localhost:3012}
+    url: ${INTEGRATION_MANAGER_URL:-http://localhost:3026}
   secret_management:
     url: ${SECRET_MANAGEMENT_URL:-http://localhost:3003}
   shard_manager:

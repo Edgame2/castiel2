@@ -21,7 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@azure/cosmos": "^4.0.0",
+    "@azure/cosmos": "^4.9.1",
     "@fastify/jwt": "^9.0.0",
     "amqplib": "^0.10.5",
     "axios": "^1.7.9",

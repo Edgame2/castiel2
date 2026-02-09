@@ -63,6 +63,7 @@ See [OpenAPI Spec](./openapi.yaml)
 - `forecast.completed` - Generate forecast-based recommendations (ensures sequential processing after risk and forecast)
 - `shard.updated` - May trigger contextual recommendations for specific shard types
 - `workflow.recommendation.requested` - Triggered by workflow-orchestrator
+- `opportunity.outcome.recorded` - Record won/lost for accepted recommendations (dataflow Phase 2.3); calls adaptive-learning record-outcome per accepted rec
 
 ## Development
 

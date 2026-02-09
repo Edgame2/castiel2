@@ -7,6 +7,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -224,29 +229,20 @@ export default function TenantMLConfigPage() {
             <section>
               <h2 className="text-lg font-semibold mb-3">Risk tolerance</h2>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Overall tolerance</label>
-                  <select
-                    value={formData.riskTolerance.overallTolerance}
-                    onChange={(e) => updateRiskTolerance({ overallTolerance: e.target.value as RiskToleranceLevel })}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                  >
-                    <option value="conservative">Conservative</option>
-                    <option value="balanced">Balanced</option>
-                    <option value="aggressive">Aggressive</option>
-                  </select>
+                <div className="space-y-2">
+                  <Label>Overall tolerance</Label>
+                  <Select value={formData.riskTolerance.overallTolerance} onValueChange={(v) => updateRiskTolerance({ overallTolerance: v as RiskToleranceLevel })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="conservative">Conservative</SelectItem>
+                      <SelectItem value="balanced">Balanced</SelectItem>
+                      <SelectItem value="aggressive">Aggressive</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Auto-escalation threshold (HITL risk min)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="1"
-                    value={formData.riskTolerance.autoEscalationThreshold}
-                    onChange={(e) => updateRiskTolerance({ autoEscalationThreshold: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                  />
+                <div className="space-y-2">
+                  <Label>Auto-escalation threshold (HITL risk min)</Label>
+                  <Input type="number" step={0.01} min={0} max={1} value={formData.riskTolerance.autoEscalationThreshold} onChange={(e) => updateRiskTolerance({ autoEscalationThreshold: parseFloat(e.target.value) || 0 })} />
                 </div>
               </div>
             </section>
@@ -255,15 +251,10 @@ export default function TenantMLConfigPage() {
               <h2 className="text-lg font-semibold mb-3">Decision preferences</h2>
               <div className="space-y-2">
                 {(['autoMarkHot', 'autoCreateTasks', 'requireApprovalForActions'] as const).map((key) => (
-                  <label key={key} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.decisionPreferences[key]}
-                      onChange={(e) => updateDecisionPreferences({ [key]: e.target.checked })}
-                      className="rounded border"
-                    />
-                    <span className="text-sm">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                  </label>
+                  <div key={key} className="flex items-center gap-2">
+                    <Checkbox id={key} checked={formData.decisionPreferences[key]} onCheckedChange={(c) => updateDecisionPreferences({ [key]: !!c })} />
+                    <Label htmlFor={key} className="text-sm cursor-pointer">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
+                  </div>
                 ))}
               </div>
             </section>
@@ -272,48 +263,22 @@ export default function TenantMLConfigPage() {
               <h2 className="text-lg font-semibold mb-3">Model preferences</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="preferIndustryModels"
-                    checked={formData.modelPreferences.preferIndustryModels}
-                    onChange={(e) => updateModelPreferences({ preferIndustryModels: e.target.checked })}
-                    className="rounded border"
-                  />
-                  <label htmlFor="preferIndustryModels" className="text-sm">Prefer industry models</label>
+                  <Checkbox id="preferIndustryModels" checked={formData.modelPreferences.preferIndustryModels} onCheckedChange={(c) => updateModelPreferences({ preferIndustryModels: !!c })} />
+                  <Label htmlFor="preferIndustryModels" className="text-sm cursor-pointer">Prefer industry models</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="abTestingEnabled"
-                    checked={formData.modelPreferences.abTestingEnabled}
-                    onChange={(e) => updateModelPreferences({ abTestingEnabled: e.target.checked })}
-                    className="rounded border"
-                  />
-                  <label htmlFor="abTestingEnabled" className="text-sm">A/B testing enabled</label>
+                  <Checkbox id="abTestingEnabled" checked={formData.modelPreferences.abTestingEnabled} onCheckedChange={(c) => updateModelPreferences({ abTestingEnabled: !!c })} />
+                  <Label htmlFor="abTestingEnabled" className="text-sm cursor-pointer">A/B testing enabled</Label>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Min confidence threshold</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="1"
-                    value={formData.modelPreferences.minConfidenceThreshold}
-                    onChange={(e) => updateModelPreferences({ minConfidenceThreshold: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                  />
+                <div className="space-y-2">
+                  <Label>Min confidence threshold</Label>
+                  <Input type="number" step={0.01} min={0} max={1} value={formData.modelPreferences.minConfidenceThreshold} onChange={(e) => updateModelPreferences({ minConfidenceThreshold: parseFloat(e.target.value) || 0 })} />
                 </div>
               </div>
             </section>
 
             <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {saving ? 'Saving…' : 'Save'}
-              </button>
+              <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
             </div>
           </div>
         </form>

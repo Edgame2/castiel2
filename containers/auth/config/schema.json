@@ -168,7 +168,16 @@
         "saml_sso": { "type": "boolean", "default": false },
         "password_reset": { "type": "boolean", "default": true },
         "email_verification": { "type": "boolean", "default": true },
-        "multi_factor_auth": { "type": "boolean", "default": false }
+        "multi_factor_auth": { "type": "boolean", "default": false },
+        "api_keys": { "type": "boolean", "default": false }
+      }
+    },
+    "rate_limit": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "window_seconds": { "type": "integer", "minimum": 1, "default": 60 },
+        "max_per_window": { "type": "integer", "minimum": 1, "default": 30 }
       }
     }
   }

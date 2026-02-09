@@ -8,6 +8,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -33,7 +44,7 @@ interface Transform {
     name: string;
     type: string;
     required: boolean;
-    default?: any;
+    default?: string | number | boolean | null;
   }>;
 }
 
@@ -311,49 +322,25 @@ export default function FieldMappingsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handleExport}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm"
-          >
-            Export
-          </button>
-          <button
-            onClick={handleImport}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm"
-          >
-            Import
-          </button>
-          <button
-            onClick={() => setShowTester(true)}
-            className="px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-800 text-sm"
-          >
-            Test
-          </button>
-          <button
-            onClick={() => {
-              setEditingIndex(null);
-              setShowEditor(true);
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-          >
-            Add Mapping
-          </button>
+          <Button variant="secondary" size="sm" onClick={handleExport}>Export</Button>
+          <Button variant="secondary" size="sm" onClick={handleImport}>Import</Button>
+          <Button variant="outline" size="sm" className="text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800" onClick={() => setShowTester(true)}>Test</Button>
+          <Button size="sm" onClick={() => { setEditingIndex(null); setShowEditor(true); }}>Add Mapping</Button>
         </div>
       </div>
 
-      <div className="mb-4">
-        <label className="block text-sm font-medium mb-2">Entity Type</label>
-        <select
-          value={selectedEntityType}
-          onChange={(e) => setSelectedEntityType(e.target.value)}
-          className="px-3 py-2 border rounded"
-        >
-          {availableEntityTypes.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
+      <div className="mb-4 space-y-2">
+        <Label>Entity Type</Label>
+        <Select value={selectedEntityType} onValueChange={setSelectedEntityType}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {availableEntityTypes.map((type) => (
+              <SelectItem key={type} value={type}>{type}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {error && (
@@ -399,21 +386,8 @@ export default function FieldMappingsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      <button
-                        onClick={() => {
-                          setEditingIndex(index);
-                          setShowEditor(true);
-                        }}
-                        className="text-blue-600 hover:underline mr-3"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(index)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
+                      <Button variant="link" size="sm" className="p-0 h-auto text-primary mr-3" onClick={() => { setEditingIndex(index); setShowEditor(true); }}>Edit</Button>
+                      <Button variant="link" size="sm" className="p-0 h-auto text-destructive" onClick={() => handleDelete(index)}>Delete</Button>
                     </td>
                   </tr>
                 ))
@@ -458,13 +432,9 @@ export default function FieldMappingsPage() {
 
       {fieldMappings.length > 0 && (
         <div className="mt-4 flex justify-end">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          >
+          <Button onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save Mappings'}
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -511,86 +481,64 @@ function FieldMappingEditor({
       <div className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">{mapping ? 'Edit' : 'Add'} Field Mapping</h2>
-          <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
-            ×
-          </button>
+          <Button variant="ghost" size="icon" onClick={onCancel} aria-label="Close">×</Button>
         </div>
 
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">External Field *</label>
-            <select
-              value={externalField}
-              onChange={(e) => setExternalField(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            >
-              <option value="">Select external field</option>
-              {externalFields.map((field) => (
-                <option key={field.name} value={field.name}>
-                  {field.label} ({field.name})
-                </option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <Label>External Field *</Label>
+            <Select value={externalField || '_none'} onValueChange={(v) => setExternalField(v === '_none' ? '' : v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select external field" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">Select external field</SelectItem>
+                {externalFields.map((field) => (
+                  <SelectItem key={field.name} value={field.name}>{field.label} ({field.name})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Internal Field *</label>
-            <select
-              value={shardField}
-              onChange={(e) => setShardField(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            >
-              <option value="">Select internal field</option>
-              {internalFields.map((field) => (
-                <option key={field.name} value={field.name}>
-                  {field.label} ({field.name})
-                </option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <Label>Internal Field *</Label>
+            <Select value={shardField || '_none'} onValueChange={(v) => setShardField(v === '_none' ? '' : v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select internal field" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">Select internal field</SelectItem>
+                {internalFields.map((field) => (
+                  <SelectItem key={field.name} value={field.name}>{field.label} ({field.name})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Transform Function (optional)</label>
-            <select
-              value={transform}
-              onChange={(e) => setTransform(e.target.value)}
-              className="w-full px-3 py-2 border rounded"
-            >
-              <option value="">None</option>
-              {transforms.map((t) => (
-                <option key={t.name} value={t.name}>
-                  {t.name} - {t.description}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <Label>Transform Function (optional)</Label>
+            <Select value={transform || '_none'} onValueChange={(v) => setTransform(v === '_none' ? '' : v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">None</SelectItem>
+                {transforms.map((t) => (
+                  <SelectItem key={t.name} value={t.name}>{t.name} - {t.description}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={required}
-                onChange={(e) => setRequired(e.target.checked)}
-                className="mr-2"
-              />
-              <span className="text-sm">Required field</span>
-            </label>
+          <div className="flex items-center gap-2">
+            <Checkbox id="req-field" checked={required} onCheckedChange={(c) => setRequired(!!c)} />
+            <Label htmlFor="req-field" className="text-sm cursor-pointer">Required field</Label>
           </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:underline"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Save
-          </button>
+          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+          <Button onClick={handleSave}>Save</Button>
         </div>
       </div>
     </div>
@@ -645,24 +593,22 @@ function FieldMappingTester({ mappings, entityType, integrationId, onClose }: Fi
       <div className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Test Field Mappings</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            ×
-          </button>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">×</Button>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Test Data (JSON)</label>
-            <textarea
+          <div className="space-y-2">
+            <Label>Test Data (JSON)</Label>
+            <Textarea
               value={testData}
               onChange={(e) => setTestData(e.target.value)}
-              className="w-full px-3 py-2 border rounded font-mono text-sm"
+              className="font-mono text-sm"
               rows={15}
               placeholder='{"Id": "123", "Name": "Test Opportunity", ...}'
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Transformed Data</label>
+            <Label className="mb-2 block text-sm font-medium">Transformed Data</Label>
             <div className="w-full px-3 py-2 border rounded bg-gray-50 dark:bg-gray-800 font-mono text-sm min-h-[200px]">
               {result ? (
                 <pre className="whitespace-pre-wrap">{JSON.stringify(result.transformedData || result, null, 2)}</pre>
@@ -674,8 +620,8 @@ function FieldMappingTester({ mappings, entityType, integrationId, onClose }: Fi
               <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded">
                 <p className="text-sm font-medium text-red-800 dark:text-red-200">Errors:</p>
                 <ul className="text-xs text-red-700 dark:text-red-300 list-disc list-inside">
-                  {result.errors.map((err: any, i: number) => (
-                    <li key={i}>{err.message || JSON.stringify(err)}</li>
+                  {result.errors.map((err: { message?: string } | string, i: number) => (
+                    <li key={i}>{typeof err === 'string' ? err : (typeof err === 'object' && err && 'message' in err ? (err as { message?: string }).message : undefined) ?? JSON.stringify(err)}</li>
                   ))}
                 </ul>
               </div>
@@ -684,8 +630,8 @@ function FieldMappingTester({ mappings, entityType, integrationId, onClose }: Fi
               <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
                 <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Warnings:</p>
                 <ul className="text-xs text-yellow-700 dark:text-yellow-300 list-disc list-inside">
-                  {result.warnings.map((warn: any, i: number) => (
-                    <li key={i}>{warn.message || JSON.stringify(warn)}</li>
+                  {result.warnings.map((warn: { message?: string } | string, i: number) => (
+                    <li key={i}>{typeof warn === 'string' ? warn : (typeof warn === 'object' && warn && 'message' in warn ? (warn as { message?: string }).message : undefined) ?? JSON.stringify(warn)}</li>
                   ))}
                 </ul>
               </div>
@@ -700,19 +646,10 @@ function FieldMappingTester({ mappings, entityType, integrationId, onClose }: Fi
         )}
 
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:underline"
-          >
-            Close
-          </button>
-          <button
-            onClick={handleTest}
-            disabled={testing}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          >
+          <Button variant="ghost" onClick={onClose}>Close</Button>
+          <Button onClick={handleTest} disabled={testing}>
             {testing ? 'Testing...' : 'Test'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

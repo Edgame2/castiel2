@@ -39,6 +39,8 @@ Response
 
 ## Route Mappings
 
+Routes are registered in `src/routes/index.ts`; only services with a URL in config are active. Core mappings:
+
 - `/api/auth/*` → Auth Service
 - `/api/users/*` → User Management Service
 - `/api/secrets/*` → Secret Management Service
@@ -47,6 +49,8 @@ Response
 - `/api/ai/*` → AI Service
 - `/api/embeddings/*` → Embeddings Service
 - `/api/dashboard/*` → Dashboard Service
+
+When configured: `/api/v1/search`, `/api/v1/integrations`, `/api/v1/schedules`, `/api/v1/web-search`, `/api/v1/prompts`, `/api/v1/multimodal`, `/api/conversations`, and `/api/v1/*` (risk-analytics, recommendations, ML, etc.). See README for the full list.
 
 ## Configuration
 

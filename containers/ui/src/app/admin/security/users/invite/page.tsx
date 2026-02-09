@@ -7,6 +7,17 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -102,77 +113,52 @@ export default function AdminSecurityUserInvitePage() {
         )}
 
         <form onSubmit={handleSubmit} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
-          <div>
-            <label htmlFor="orgId" className="block text-sm font-medium mb-1">Organization ID</label>
-            <input
-              id="orgId"
-              type="text"
-              value={orgId}
-              onChange={(e) => setOrgId(e.target.value)}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-              required
-            />
+          <div className="space-y-2">
+            <Label htmlFor="orgId">Organization ID</Label>
+            <Input id="orgId" type="text" value={orgId} onChange={(e) => setOrgId(e.target.value)} className="w-full" required />
           </div>
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-1">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-              required
-            />
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full" required />
           </div>
-          <div>
-            <label htmlFor="roleId" className="block text-sm font-medium mb-1">Role</label>
+          <div className="space-y-2">
+            <Label htmlFor="roleId">Role</Label>
             {roles.length > 0 ? (
-              <select
-                id="roleId"
-                value={roleId}
-                onChange={(e) => setRoleId(e.target.value)}
-                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                required
-              >
-                <option value="">Select role</option>
-                {roles.map((r) => (
-                  <option key={r.id} value={r.id}>{r.name ?? r.id}</option>
-                ))}
-              </select>
+              <Select value={roleId || '_none'} onValueChange={(v) => setRoleId(v === '_none' ? '' : v)}>
+                <SelectTrigger id="roleId" className="w-full">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Select role</SelectItem>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>{r.name ?? r.id}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             ) : (
-              <input
+              <Input
                 id="roleId"
                 type="text"
                 value={roleId}
                 onChange={(e) => setRoleId(e.target.value)}
                 placeholder={rolesLoading ? 'Loading roles…' : 'Enter role ID (load org first)'}
-                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                className="w-full"
                 required
                 disabled={rolesLoading}
               />
             )}
           </div>
-          <div>
-            <label htmlFor="message" className="block text-sm font-medium mb-1">Message (optional)</label>
-            <textarea
-              id="message"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              rows={2}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            />
+          <div className="space-y-2">
+            <Label htmlFor="message">Message (optional)</Label>
+            <Textarea id="message" value={message} onChange={(e) => setMessage(e.target.value)} rows={2} className="w-full" />
           </div>
           <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={submitting || !orgId.trim() || !email.trim() || !roleId.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-            >
+            <Button type="submit" disabled={submitting || !orgId.trim() || !email.trim() || !roleId.trim()}>
               {submitting ? 'Sending…' : 'Send invitation'}
-            </button>
-            <Link href="/admin/security/users" className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-              Cancel
-            </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/admin/security/users">Cancel</Link>
+            </Button>
           </div>
         </form>
         <p className="mt-4">

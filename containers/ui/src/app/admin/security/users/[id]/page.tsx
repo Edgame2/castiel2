@@ -80,7 +80,7 @@ export default function AdminSecurityUserDetailPage() {
         {!loading && !error && user && (
           <div className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
             <h1 className="text-xl font-semibold">
-              {user.name ?? [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || user.id}
+              {user.name ?? ([user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || user.id)}
             </h1>
             <dl className="text-sm space-y-2">
               <div><dt className="font-medium text-gray-500">ID</dt><dd>{user.id ?? id}</dd></div>

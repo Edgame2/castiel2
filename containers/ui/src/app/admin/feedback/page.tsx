@@ -7,6 +7,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -161,16 +169,9 @@ export default function FeedbackSystemPage() {
 
       {apiBaseUrl && (
         <div className="mb-4">
-          <button
-            type="button"
-            onClick={() => fetchAll()}
-            disabled={loading}
-            className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
-            title="Refetch types, config, and aggregation"
-            aria-label="Refresh feedback types, config, and aggregation"
-          >
+          <Button type="button" variant="outline" onClick={() => fetchAll()} disabled={loading} title="Refetch types, config, and aggregation" aria-label="Refresh feedback types, config, and aggregation">
             Refresh
-          </button>
+          </Button>
         </div>
       )}
 
@@ -260,16 +261,17 @@ export default function FeedbackSystemPage() {
           <section className="rounded-lg border bg-white dark:bg-gray-900 p-6">
             <h2 className="text-lg font-semibold mb-3">Feedback aggregation (tenant)</h2>
             <div className="flex gap-2 mb-3">
-              <select
-                value={aggregationPeriod}
-                onChange={(e) => setAggregationPeriod(e.target.value as 'daily' | 'weekly' | 'monthly')}
-                className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-              <button type="button" onClick={fetchAggregation} className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700" aria-label="Refresh aggregation for selected period">Refresh</button>
+              <Select value={aggregationPeriod} onValueChange={(v) => setAggregationPeriod(v as 'daily' | 'weekly' | 'monthly')}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" onClick={fetchAggregation} aria-label="Refresh aggregation for selected period">Refresh</Button>
             </div>
             {aggregation == null ? (
               <p className="text-sm text-gray-500">No aggregation for this period (or not yet computed).</p>

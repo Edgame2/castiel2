@@ -1,11 +1,13 @@
 /**
  * Search Service
- * Handles vector search, hybrid search, and full-text search
+ * Handles vector search, hybrid search, and full-text search.
+ * Web search: proxies to web-search when configured (dataflow Phase 3.2) so c_search shards are created there.
  */
 
+import { FastifyInstance } from 'fastify';
 import { v4 as uuidv4 } from 'uuid';
 import { getContainer } from '@coder/shared/database';
-import { ServiceClient } from '@coder/shared/services';
+import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { BadRequestError } from '@coder/shared/utils/errors';
 import { loadConfig } from '../config';
 import {
@@ -38,10 +40,13 @@ export class SearchService {
   private embeddingsClient: ServiceClient;
   private shardManagerClient: ServiceClient;
   private aiServiceClient: ServiceClient;
+  private webSearchClient: ServiceClient | null = null;
+  private app: FastifyInstance | null = null;
   private config: ReturnType<typeof loadConfig>;
 
-  constructor(embeddingsUrl: string, shardManagerUrl: string) {
+  constructor(embeddingsUrl: string, shardManagerUrl: string, app?: FastifyInstance) {
     this.config = loadConfig();
+    this.app = app ?? null;
     this.embeddingsClient = new ServiceClient({
       baseURL: embeddingsUrl,
       timeout: 30000,
@@ -57,6 +62,23 @@ export class SearchService {
       timeout: 30000,
       retries: 3,
       circuitBreaker: { enabled: true },
+    });
+    if (this.config.services.web_search?.url && this.app) {
+      this.webSearchClient = new ServiceClient({
+        baseURL: this.config.services.web_search.url,
+        timeout: 15000,
+        retries: 2,
+        circuitBreaker: { enabled: true },
+      });
+    }
+  }
+
+  private getServiceToken(tenantId: string): string {
+    if (!this.app) return '';
+    return generateServiceToken(this.app, {
+      serviceId: 'search-service',
+      serviceName: 'search-service',
+      tenantId,
     });
   }
 
@@ -88,9 +110,7 @@ export class SearchService {
 
       const queryEmbedding = embeddingResponse.embedding;
 
-      // Perform vector search via Shard Manager
-      // TODO: Implement actual vector search in Shard Manager
-      // For now, return placeholder results
+      // Vector search: call Shard Manager when vector search API is available; placeholder results until then.
       let results: VectorSearchResult[] = [];
 
       // Field-weighted relevance rerank (MISSING_FEATURES 2.3)
@@ -154,8 +174,7 @@ export class SearchService {
       };
       const vectorResults = await this.vectorSearch(vectorRequest);
 
-      // TODO: Perform keyword search via Shard Manager
-      // For now, use vector results only
+      // Keyword branch: call Shard Manager when keyword search API is available; vector-only until then.
       const keywordResults: VectorSearchResult[] = [];
 
       // Combine and re-rank results
@@ -213,8 +232,7 @@ export class SearchService {
     const offset = request.offset || 0;
 
     try {
-      // TODO: Implement actual full-text search via Shard Manager
-      // For now, return placeholder results
+      // Full-text search: call Shard Manager when API is available; placeholder results until then.
       const results: FullTextSearchResult[] = [];
 
       // Record query for analytics
@@ -374,11 +392,21 @@ export class SearchService {
   }
 
   /**
-   * Perform web search (from web-search)
+   * Perform web search. Proxies to web-search when configured (Phase 3.2); web-search creates c_search shard.
    */
   async webSearch(tenantId: string, query: string, options?: { limit?: number; useCache?: boolean }): Promise<WebSearchResult> {
     try {
-      // Check cache first
+      if (this.webSearchClient) {
+        const token = this.getServiceToken(tenantId);
+        const res = await this.webSearchClient.post<WebSearchResult>(
+          '/api/v1/web-search',
+          { query, limit: options?.limit, useCache: options?.useCache },
+          { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId } }
+        );
+        return res;
+      }
+
+      // Fallback when web_search not configured: check cache then AI/mock
       if (options?.useCache !== false) {
         const cached = await this.getCachedWebSearch(tenantId, query);
         if (cached) {
@@ -386,9 +414,8 @@ export class SearchService {
         }
       }
 
-      // Implement web search
-      // For production, this would integrate with external search APIs (Bing, Google, etc.)
-      // For now, use AI service to generate contextual search results
+      // Implement web search (fallback)
+      // For production, proxy to web-search so c_search shards are created; when web_search.url is set, proxy is used above.
       const searchResults: Array<{
         title: string;
         url: string;

@@ -29,6 +29,8 @@ services:
     url: ${EMBEDDINGS_URL:-http://localhost:3005}
   shard_manager:
     url: ${SHARD_MANAGER_URL:-http://localhost:3023}
+  web_search:
+    url: ${WEB_SEARCH_URL:-http://localhost:3056}
   logging:
     url: ${LOGGING_URL:-http://localhost:3014}
   ai_service:

@@ -1,14 +1,15 @@
 /**
  * RecommendationsCard – recommendations list and feedback for an opportunity (Phase 8).
  * Fetches GET /api/v1/recommendations?opportunityId=...&limit=20; displays title, source, score, explanation.
+ * When API returns reasoningSteps/conclusion (dataflow §11), shows "Why these recommendations" section.
  * Feedback: Accept, Ignore, Irrelevant -> POST /api/v1/recommendations/:id/feedback.
  */
 
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-
-const apiBase = typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '') : '';
+import { Button } from '@/components/ui/button';
+import { apiFetch, getApiBaseUrl } from '@/lib/api';
 
 export type RecommendationItem = {
   id: string;
@@ -20,6 +21,15 @@ export type RecommendationItem = {
   status?: string;
 };
 
+export type ReasoningStep = {
+  id: string;
+  order: number;
+  type: string;
+  content: string;
+  reasoning?: string;
+  confidence?: number;
+};
+
 export type RecommendationsCardProps = {
   opportunityId: string;
   title?: string;
@@ -27,25 +37,28 @@ export type RecommendationsCardProps = {
 
 export function RecommendationsCard({ opportunityId, title = 'Recommendations' }: RecommendationsCardProps) {
   const [items, setItems] = useState<RecommendationItem[]>([]);
+  const [reasoningSteps, setReasoningSteps] = useState<ReasoningStep[]>([]);
+  const [conclusion, setConclusion] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
 
   const fetchRecommendations = useCallback(() => {
-    if (!apiBase || !opportunityId) {
+    if (!getApiBaseUrl() || !opportunityId) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    const url = `${apiBase}/api/v1/recommendations?opportunityId=${encodeURIComponent(opportunityId)}&limit=20`;
-    fetch(url, { credentials: 'include' })
+    apiFetch(`/api/v1/recommendations?opportunityId=${encodeURIComponent(opportunityId)}&limit=20`)
       .then((r) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load recommendations');
         return r.json();
       })
-      .then((data: { recommendations?: RecommendationItem[] }) => {
+      .then((data: { recommendations?: RecommendationItem[]; reasoningSteps?: ReasoningStep[]; conclusion?: string }) => {
         setItems(Array.isArray(data.recommendations) ? data.recommendations : []);
+        setReasoningSteps(Array.isArray(data.reasoningSteps) ? data.reasoningSteps : []);
+        setConclusion(typeof data.conclusion === 'string' ? data.conclusion : undefined);
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
@@ -56,12 +69,10 @@ export function RecommendationsCard({ opportunityId, title = 'Recommendations' }
   }, [fetchRecommendations]);
 
   const submitFeedback = (recommendationId: string, action: 'accept' | 'ignore' | 'irrelevant') => {
-    if (!apiBase) return;
+    if (!getApiBaseUrl()) return;
     setSubmittingId(recommendationId);
-    const url = `${apiBase}/api/v1/recommendations/${encodeURIComponent(recommendationId)}/feedback`;
-    fetch(url, {
+    apiFetch(`/api/v1/recommendations/${encodeURIComponent(recommendationId)}/feedback`, {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action }),
     })
@@ -107,34 +118,55 @@ export function RecommendationsCard({ opportunityId, title = 'Recommendations' }
                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{rec.explanation}</p>
               )}
               <div className="flex gap-2 mt-2">
-                <button
+                <Button
                   type="button"
-                  className="text-xs px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-800/40 disabled:opacity-50"
+                  size="sm"
+                  variant="secondary"
+                  className="text-xs bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-800/40"
                   onClick={() => submitFeedback(rec.id, 'accept')}
                   disabled={submittingId === rec.id}
                 >
                   Accept
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                  size="sm"
+                  variant="secondary"
                   onClick={() => submitFeedback(rec.id, 'ignore')}
                   disabled={submittingId === rec.id}
                 >
                   Ignore
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="text-xs px-2 py-1 rounded bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/40 disabled:opacity-50"
+                  size="sm"
+                  variant="destructive"
+                  className="text-xs bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800/40"
                   onClick={() => submitFeedback(rec.id, 'irrelevant')}
                   disabled={submittingId === rec.id}
                 >
                   Irrelevant
-                </button>
+                </Button>
               </div>
             </li>
           ))}
         </ul>
+      )}
+      {!loading && !error && reasoningSteps.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Why these recommendations</p>
+          <ol className="list-decimal list-inside space-y-1 text-xs text-gray-600 dark:text-gray-400">
+            {reasoningSteps.sort((a, b) => a.order - b.order).map((s) => (
+              <li key={s.id}>
+                {s.content}
+                {s.reasoning && <span className="block ml-4 mt-0.5 text-gray-500 dark:text-gray-500">{s.reasoning}</span>}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {!loading && !error && conclusion && (
+        <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">{conclusion}</p>
       )}
     </div>
   );

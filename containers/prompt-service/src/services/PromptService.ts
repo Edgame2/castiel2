@@ -272,12 +272,13 @@ export class PromptService {
     }
 
     const container = getContainer(this.promptContainerName) as any;
-    const { resources } = await container.items
-      .query<{ status: string; category?: string }>({
+    const result = await container.items
+      .query({
         query: 'SELECT c.status, c.category FROM c WHERE c.tenantId = @tenantId',
         parameters: [{ name: '@tenantId', value: tenantId }],
       })
       .fetchAll();
+    const resources = result.resources as { status: string; category?: string }[];
 
     const byStatus: Record<string, number> = {};
     const byCategory: Record<string, number> = {};

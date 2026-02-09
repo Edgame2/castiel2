@@ -3,6 +3,9 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -79,21 +82,23 @@ export default function AnalyticsDashboardNewPage() {
         <h1 className="text-xl font-semibold mb-4">Create dashboard</h1>
         {error && <p className="text-sm text-red-600 dark:text-red-400 mb-4" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium mb-1">Name</label>
-            <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+          <div className="space-y-2">
+            <Label htmlFor="name">Name</Label>
+            <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full" required />
           </div>
-          <div>
-            <label htmlFor="dataSource" className="block text-sm font-medium mb-1">Data source (optional)</label>
-            <input id="dataSource" type="text" value={dataSource} onChange={(e) => setDataSource(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+          <div className="space-y-2">
+            <Label htmlFor="dataSource">Data source (optional)</Label>
+            <Input id="dataSource" type="text" value={dataSource} onChange={(e) => setDataSource(e.target.value)} className="w-full" />
           </div>
-          <div>
-            <label htmlFor="refresh" className="block text-sm font-medium mb-1">Refresh interval (seconds)</label>
-            <input id="refresh" type="number" min={60} value={refreshIntervalSeconds} onChange={(e) => setRefreshIntervalSeconds(parseInt(e.target.value, 10) || 300)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+          <div className="space-y-2">
+            <Label htmlFor="refresh">Refresh interval (seconds)</Label>
+            <Input id="refresh" type="number" min={60} value={refreshIntervalSeconds} onChange={(e) => setRefreshIntervalSeconds(parseInt(e.target.value, 10) || 300)} className="w-full" />
           </div>
           <div className="flex gap-2">
-            <button type="submit" disabled={submitting || !name.trim()} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Create</button>
-            <Link href="/admin/analytics/dashboards" className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</Link>
+            <Button type="submit" disabled={submitting || !name.trim()}>Create</Button>
+            <Button asChild variant="outline">
+              <Link href="/admin/analytics/dashboards">Cancel</Link>
+            </Button>
           </div>
         </form>
         <p className="mt-4"><Link href="/admin/analytics/dashboards" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Back to Dashboards</Link></p>

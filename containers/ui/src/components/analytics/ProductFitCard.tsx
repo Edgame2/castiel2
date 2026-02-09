@@ -6,6 +6,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
 
 export type ProductFitCardProps = {
   opportunityId: string;
@@ -97,14 +98,9 @@ export function ProductFitCard({
           ))}
         </ul>
       )}
-      <button
-        type="button"
-        onClick={handleRecalculate}
-        disabled={evaluating}
-        className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800 disabled:opacity-50"
-      >
+      <Button type="button" variant="outline" size="sm" onClick={handleRecalculate} disabled={evaluating}>
         {evaluating ? 'Recalculating…' : 'Recalculate fit'}
-      </button>
+      </Button>
     </div>
   );
 }

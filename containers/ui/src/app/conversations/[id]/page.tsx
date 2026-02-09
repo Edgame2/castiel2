@@ -7,6 +7,8 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 const apiBase =
   typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '') : '';
@@ -126,21 +128,17 @@ export default function ConversationDetailPage() {
             </div>
 
             <form onSubmit={sendMessage} className="flex gap-2">
-              <input
+              <Input
                 type="text"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Type a message…"
-                className="flex-1 border rounded px-3 py-2 text-sm dark:bg-gray-800 dark:border-gray-700"
+                className="flex-1"
                 disabled={sending}
               />
-              <button
-                type="submit"
-                disabled={sending || !message.trim()}
-                className="px-4 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50"
-              >
+              <Button type="submit" disabled={sending || !message.trim()} size="sm">
                 {sending ? 'Sending…' : 'Send'}
-              </button>
+              </Button>
             </form>
           </>
         )}

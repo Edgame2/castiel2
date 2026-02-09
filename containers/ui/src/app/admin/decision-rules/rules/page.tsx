@@ -7,6 +7,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -414,19 +419,12 @@ export default function DecisionRulesRulesPage() {
           <div className="p-4 border-b flex justify-between items-center">
             <h2 className="text-lg font-semibold">Rules</h2>
             <div className="flex gap-2">
-              <Link
-                href="/admin/decision-rules/rules/new"
-                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 inline-block"
-              >
-                New rule
-              </Link>
-              <button
-                type="button"
-                onClick={fetchRules}
-                className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-800 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-              >
+              <Button asChild size="sm">
+              <Link href="/admin/decision-rules/rules/new">New rule</Link>
+              </Button>
+              <Button type="button" variant="secondary" size="sm" onClick={fetchRules}>
                 Refresh
-              </button>
+              </Button>
             </div>
           </div>
           {rules.length === 0 ? (
@@ -465,43 +463,15 @@ export default function DecisionRulesRulesPage() {
                       <td className="py-2 px-4">{r.catalogRiskId ?? '—'}</td>
                       <td className="py-2 px-4">
                         <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(r)}
-                            className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openDuplicate(r)}
-                            className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
-                          >
-                            Duplicate
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setTestingRuleId(r.id)}
-                            className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
-                          >
-                            Test
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleEnabled(r)}
-                            disabled={togglingRuleId === r.id}
-                            className="text-amber-600 dark:text-amber-400 hover:underline text-xs disabled:opacity-50"
-                          >
+                          <Button type="button" variant="link" size="sm" className="text-xs h-auto p-0 text-primary" onClick={() => openEdit(r)}>Edit</Button>
+                          <Button type="button" variant="link" size="sm" className="text-xs h-auto p-0 text-primary" onClick={() => openDuplicate(r)}>Duplicate</Button>
+                          <Button type="button" variant="link" size="sm" className="text-xs h-auto p-0 text-primary" onClick={() => setTestingRuleId(r.id)}>Test</Button>
+                          <Button type="button" variant="link" size="sm" className="text-xs h-auto p-0 text-amber-600 dark:text-amber-400" onClick={() => handleToggleEnabled(r)} disabled={togglingRuleId === r.id}>
                             {togglingRuleId === r.id ? '…' : r.enabled ? 'Disable' : 'Enable'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(r)}
-                            disabled={deletingRuleId === r.id}
-                            className="text-red-600 dark:text-red-400 hover:underline text-xs disabled:opacity-50"
-                          >
+                          </Button>
+                          <Button type="button" variant="link" size="sm" className="text-xs h-auto p-0 text-destructive" onClick={() => handleDelete(r)} disabled={deletingRuleId === r.id}>
                             {deletingRuleId === r.id ? '…' : 'Delete'}
-                          </button>
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -518,27 +488,14 @@ export default function DecisionRulesRulesPage() {
           <div className="bg-white dark:bg-gray-900 rounded-lg border shadow-lg max-w-md w-full p-6">
             <h3 id="test-rule-title" className="text-lg font-semibold mb-3">Test rule</h3>
             <p className="text-sm text-gray-500 mb-3">Rule ID: {testingRuleId}</p>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Opportunity ID *</label>
-              <input
-                type="text"
-                value={testOpportunityId}
-                onChange={(e) => setTestOpportunityId(e.target.value)}
-                placeholder="e.g. opp_123"
-                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-              />
+            <div className="mb-4 space-y-2">
+              <Label>Opportunity ID *</Label>
+              <Input value={testOpportunityId} onChange={(e) => setTestOpportunityId(e.target.value)} placeholder="e.g. opp_123" />
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Risk score (optional, §6.1.3)</label>
-              <input
-                type="text"
-                value={testRiskScore}
-                onChange={(e) => setTestRiskScore(e.target.value)}
-                placeholder="e.g. 0.7"
-                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                aria-label="Optional risk score for test context"
-              />
-              <p className="text-xs text-gray-500 mt-1">Used when rule condition checks riskScore (e.g. riskScore ≥ 0.5).</p>
+            <div className="mb-4 space-y-2">
+              <Label>Risk score (optional, §6.1.3)</Label>
+              <Input value={testRiskScore} onChange={(e) => setTestRiskScore(e.target.value)} placeholder="e.g. 0.7" aria-label="Optional risk score for test context" />
+              <p className="text-xs text-muted-foreground">Used when rule condition checks riskScore (e.g. riskScore ≥ 0.5).</p>
             </div>
             {testError && (
               <p className="text-sm text-red-600 dark:text-red-400 mb-3">{testError}</p>
@@ -550,21 +507,10 @@ export default function DecisionRulesRulesPage() {
               </div>
             )}
             <div className="flex gap-2 justify-end">
-              <button
-                type="button"
-                onClick={closeTest}
-                className="px-3 py-2 border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={() => testingRuleId && runTest(testingRuleId)}
-                disabled={!testOpportunityId.trim() || !testingRuleId || testLoading}
-                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <Button type="button" variant="outline" size="sm" onClick={closeTest}>Close</Button>
+              <Button type="button" size="sm" onClick={() => testingRuleId && runTest(testingRuleId)} disabled={!testOpportunityId.trim() || !testingRuleId || testLoading}>
                 {testLoading ? 'Running…' : 'Run test'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -580,213 +526,93 @@ export default function DecisionRulesRulesPage() {
               <p className="text-sm text-red-600 dark:text-red-400 mb-3">{formError}</p>
             )}
             <form onSubmit={handleFormSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Name *</label>
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                  required
-                />
+              <div className="space-y-2">
+                <Label>Name *</Label>
+                <Input value={formName} onChange={(e) => setFormName(e.target.value)} required />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
-                <input
-                  type="text"
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                />
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Input value={formDescription} onChange={(e) => setFormDescription(e.target.value)} />
               </div>
               <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="formEnabled"
-                  checked={formEnabled}
-                  onChange={(e) => setFormEnabled(e.target.checked)}
-                  className="rounded"
-                />
-                <label htmlFor="formEnabled" className="text-sm font-medium">Enabled</label>
+                <Checkbox id="formEnabled" checked={formEnabled} onCheckedChange={(c) => setFormEnabled(!!c)} />
+                <Label htmlFor="formEnabled" className="text-sm font-medium cursor-pointer">Enabled</Label>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Priority</label>
-                <input
-                  type="number"
-                  value={formPriority}
-                  onChange={(e) => setFormPriority(Number(e.target.value))}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                />
+              <div className="space-y-2">
+                <Label>Priority</Label>
+                <Input type="number" value={formPriority} onChange={(e) => setFormPriority(Number(e.target.value))} />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Condition logic</label>
-                <select
-                  value={formConditionLogic}
-                  onChange={(e) => setFormConditionLogic(e.target.value as 'AND' | 'OR')}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                >
-                  <option value="AND">AND</option>
-                  <option value="OR">OR</option>
-                </select>
+              <div className="space-y-2">
+                <Label>Condition logic</Label>
+                <Select value={formConditionLogic} onValueChange={(v) => setFormConditionLogic(v as 'AND' | 'OR')}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AND">AND</SelectItem>
+                    <SelectItem value="OR">OR</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium">Conditions</label>
-                  <button
-                    type="button"
-                    onClick={() => setFormConditions((prev) => [...prev, { field: 'riskScore', operator: '>=', value: 0.5 }])}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    Add condition
-                  </button>
+                  <Label>Conditions</Label>
+                  <Button type="button" variant="link" size="sm" className="text-xs h-auto p-0" onClick={() => setFormConditions((prev) => [...prev, { field: 'riskScore', operator: '>=', value: 0.5 }])}>Add condition</Button>
                 </div>
                 {formConditions.map((c, i) => (
                   <div key={i} className="flex gap-2 items-center mb-2">
                     <div className="grid grid-cols-3 gap-2 flex-1">
-                      <input
-                        type="text"
-                        value={c.field}
-                        onChange={(e) =>
-                          setFormConditions((prev) => {
-                            const next = [...prev];
-                            next[i] = { ...next[i], field: e.target.value };
-                            return next;
-                          })
-                        }
-                        placeholder="field"
-                        className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                      />
-                      <select
-                        value={c.operator}
-                        onChange={(e) =>
-                          setFormConditions((prev) => {
-                            const next = [...prev];
-                            next[i] = { ...next[i], operator: e.target.value };
-                            return next;
-                          })
-                        }
-                        className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                      >
-                        <option value=">=">≥</option>
-                        <option value=">">&gt;</option>
-                        <option value="<">&lt;</option>
-                        <option value="<=">≤</option>
-                        <option value="=">=</option>
-                      </select>
-                      <input
-                        type="text"
-                        value={String(c.value ?? '')}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          const num = Number(v);
-                          setFormConditions((prev) => {
-                            const next = [...prev];
-                            next[i] = { ...next[i], value: v === '' || Number.isNaN(num) ? v : num };
-                            return next;
-                          });
-                        }}
-                        placeholder="value"
-                        className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                      />
+                      <Input value={c.field} onChange={(e) => setFormConditions((prev) => { const next = [...prev]; next[i] = { ...next[i], field: e.target.value }; return next; })} placeholder="field" />
+                      <Select value={c.operator} onValueChange={(v) => setFormConditions((prev) => { const next = [...prev]; next[i] = { ...next[i], operator: v }; return next; })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value=">=">≥</SelectItem>
+                          <SelectItem value=">">&gt;</SelectItem>
+                          <SelectItem value="<">&lt;</SelectItem>
+                          <SelectItem value="<=">≤</SelectItem>
+                          <SelectItem value="=">=</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input value={String(c.value ?? '')} onChange={(e) => { const v = e.target.value; const num = Number(v); setFormConditions((prev) => { const next = [...prev]; next[i] = { ...next[i], value: v === '' || Number.isNaN(num) ? v : num }; return next; }); }} placeholder="value" />
                     </div>
                     {formConditions.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setFormConditions((prev) => prev.filter((_, j) => j !== i))}
-                        className="text-red-600 dark:text-red-400 hover:underline text-xs shrink-0"
-                        aria-label="Remove condition"
-                      >
-                        Remove
-                      </button>
+                      <Button type="button" variant="link" size="sm" className="text-destructive text-xs shrink-0 h-auto p-0" onClick={() => setFormConditions((prev) => prev.filter((_, j) => j !== i))} aria-label="Remove condition">Remove</Button>
                     )}
                   </div>
                 ))}
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium">Actions</label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormActions((prev) => [...prev, { type: 'notification', details: {}, priority: 'medium', idempotencyKey: `rule_${Date.now()}` }])
-                    }
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    Add action
-                  </button>
+                  <Label>Actions</Label>
+                  <Button type="button" variant="link" size="sm" className="text-xs h-auto p-0" onClick={() => setFormActions((prev) => [...prev, { type: 'notification', details: {}, priority: 'medium', idempotencyKey: `rule_${Date.now()}` }])}>Add action</Button>
                 </div>
                 {formActions.map((a, i) => (
                   <div key={i} className="flex gap-2 items-center mb-2">
                     <div className="grid grid-cols-2 gap-2 flex-1">
-                      <select
-                        value={a.type}
-                        onChange={(e) =>
-                          setFormActions((prev) => {
-                            const next = [...prev];
-                            next[i] = { ...next[i], type: e.target.value };
-                            return next;
-                          })
-                        }
-                        className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                      >
-                        <option value="notification">notification</option>
-                        <option value="crm_update">crm_update</option>
-                        <option value="task_creation">task_creation</option>
-                        <option value="email_draft">email_draft</option>
-                        <option value="calendar_event">calendar_event</option>
-                        <option value="playbook_assignment">playbook_assignment</option>
-                      </select>
-                      <input
-                        type="text"
-                        value={a.idempotencyKey ?? ''}
-                        onChange={(e) =>
-                          setFormActions((prev) => {
-                            const next = [...prev];
-                            next[i] = { ...next[i], idempotencyKey: e.target.value };
-                            return next;
-                          })
-                        }
-                        placeholder="idempotencyKey"
-                        className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                      />
+                      <Select value={a.type} onValueChange={(v) => setFormActions((prev) => { const next = [...prev]; next[i] = { ...next[i], type: v }; return next; })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="notification">notification</SelectItem>
+                          <SelectItem value="crm_update">crm_update</SelectItem>
+                          <SelectItem value="task_creation">task_creation</SelectItem>
+                          <SelectItem value="email_draft">email_draft</SelectItem>
+                          <SelectItem value="calendar_event">calendar_event</SelectItem>
+                          <SelectItem value="playbook_assignment">playbook_assignment</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input value={a.idempotencyKey ?? ''} onChange={(e) => setFormActions((prev) => { const next = [...prev]; next[i] = { ...next[i], idempotencyKey: e.target.value }; return next; })} placeholder="idempotencyKey" />
                     </div>
                     {formActions.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setFormActions((prev) => prev.filter((_, j) => j !== i))}
-                        className="text-red-600 dark:text-red-400 hover:underline text-xs shrink-0"
-                        aria-label="Remove action"
-                      >
-                        Remove
-                      </button>
+                      <Button type="button" variant="link" size="sm" className="text-destructive text-xs shrink-0 h-auto p-0" onClick={() => setFormActions((prev) => prev.filter((_, j) => j !== i))} aria-label="Remove action">Remove</Button>
                     )}
                   </div>
                 ))}
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Created by</label>
-                <input
-                  type="text"
-                  value={formCreatedBy}
-                  onChange={(e) => setFormCreatedBy(e.target.value)}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                />
+              <div className="space-y-2">
+                <Label>Created by</Label>
+                <Input value={formCreatedBy} onChange={(e) => setFormCreatedBy(e.target.value)} />
               </div>
               <div className="flex gap-2 justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={closeForm}
-                  className="px-3 py-2 border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={formSaving}
-                  className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {formSaving ? 'Saving…' : formRule ? 'Update' : 'Create'}
-                </button>
+                <Button type="button" variant="outline" size="sm" onClick={closeForm}>Cancel</Button>
+                <Button type="submit" size="sm" disabled={formSaving}>{formSaving ? 'Saving…' : formRule ? 'Update' : 'Create'}</Button>
               </div>
             </form>
           </div>

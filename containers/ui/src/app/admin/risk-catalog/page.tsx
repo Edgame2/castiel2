@@ -7,6 +7,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -83,12 +86,9 @@ export default function RiskCatalogPage() {
         Categories, templates, industry and methodology risks for the current tenant. Via risk-catalog.
       </p>
       <div className="mb-4">
-        <Link
-          href="/admin/risk-catalog/new"
-          className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-        >
-          New risk
-        </Link>
+        <Button asChild>
+          <Link href="/admin/risk-catalog/new">New risk</Link>
+        </Button>
       </div>
 
       {!apiBaseUrl && (
@@ -99,33 +99,29 @@ export default function RiskCatalogPage() {
 
       {apiBaseUrl && (
         <div className="mb-4 flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-sm font-medium mb-1">Industry (filter)</label>
-            <input
+          <div className="space-y-2">
+            <Label>Industry (filter)</Label>
+            <Input
               type="text"
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
               placeholder="Optional"
-              className="w-48 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="w-48"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Stage (filter)</label>
-            <input
+          <div className="space-y-2">
+            <Label>Stage (filter)</Label>
+            <Input
               type="text"
               value={stage}
               onChange={(e) => setStage(e.target.value)}
               placeholder="Optional"
-              className="w-48 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="w-48"
             />
           </div>
-          <button
-            type="button"
-            onClick={fetchCatalog}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
+          <Button type="button" onClick={fetchCatalog}>
             Refresh
-          </button>
+          </Button>
         </div>
       )}
 

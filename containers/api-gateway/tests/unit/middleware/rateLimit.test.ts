@@ -2,15 +2,17 @@
  * Rate Limit Middleware Unit Tests
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import Fastify from 'fastify';
 import { createRateLimitMiddleware } from '../../../src/middleware/rateLimit';
+import { createInMemoryStore } from '../../../src/middleware/rateLimitStore';
 
 describe('createRateLimitMiddleware', () => {
   const config = { max: 2, timeWindow: 60000 };
+  const store = createInMemoryStore();
 
   it('adds X-RateLimit headers', async () => {
-    const middleware = createRateLimitMiddleware(config);
+    const middleware = createRateLimitMiddleware(config, store);
     const app = Fastify();
     app.addHook('onRequest', middleware);
     app.get('/api/ratelimit-headers', async (_request, reply) => reply.send({ ok: true }));
@@ -23,7 +25,7 @@ describe('createRateLimitMiddleware', () => {
   });
 
   it('skips rate limit for /health', async () => {
-    const middleware = createRateLimitMiddleware(config);
+    const middleware = createRateLimitMiddleware(config, store);
     const app = Fastify();
     app.addHook('onRequest', middleware);
     app.get('/health', async (_request, reply) => reply.send({ ok: true }));
@@ -36,7 +38,7 @@ describe('createRateLimitMiddleware', () => {
   });
 
   it('skips rate limit for /ready', async () => {
-    const middleware = createRateLimitMiddleware(config);
+    const middleware = createRateLimitMiddleware(config, store);
     const app = Fastify();
     app.addHook('onRequest', middleware);
     app.get('/ready', async (_request, reply) => reply.send({ ok: true }));
@@ -46,8 +48,10 @@ describe('createRateLimitMiddleware', () => {
   });
 
   it('allows requests within limit', async () => {
-    // Use higher max so shared in-memory store from other tests does not exhaust limit
-    const middleware = createRateLimitMiddleware({ max: 10, timeWindow: 60000 });
+    const middleware = createRateLimitMiddleware(
+      { max: 10, timeWindow: 60000 },
+      createInMemoryStore()
+    );
     const app = Fastify();
     app.addHook('onRequest', middleware);
     app.get('/api/test', async (_request, reply) => reply.send({ ok: true }));
@@ -59,7 +63,10 @@ describe('createRateLimitMiddleware', () => {
   });
 
   it('returns 429 when over limit', async () => {
-    const middleware = createRateLimitMiddleware({ max: 2, timeWindow: 60000 });
+    const middleware = createRateLimitMiddleware(
+      { max: 2, timeWindow: 60000 },
+      createInMemoryStore()
+    );
     const app = Fastify();
     app.addHook('onRequest', middleware);
     app.get('/api/test', async (_request, reply) => reply.send({ ok: true }));

@@ -361,7 +361,7 @@ export class RevenueAtRiskService {
       const riskAdjustedValue = totalDealValue - totalRevenueAtRisk;
       const opportunityCount = portfolios.reduce((sum, p) => sum + p.opportunityCount, 0);
 
-      // TODO: Group by team when team structure is available
+      // Team breakdown: populate when team structure is available.
       const teams: TeamRevenueAtRisk[] = [];
 
       const result: TenantRevenueAtRisk = {

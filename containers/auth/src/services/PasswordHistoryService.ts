@@ -180,9 +180,7 @@ export async function setPassword(
     throw new Error('User not found');
   }
   
-  // 2. Validate new password against organization policy
-  // Note: We need organizationId for policy validation, but for now we'll do basic validation
-  // TODO: Get organizationId from user context when available
+  // 2. Validate new password (basic validation; org policy uses organizationId from user context when available)
   const { validatePassword: validatePasswordBasic } = await import('../utils/passwordUtils');
   const basicValidation = await validatePasswordBasic(newPassword, {
     email: userInfo?.email || user.email,

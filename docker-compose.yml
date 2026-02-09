@@ -2,8 +2,7 @@ services:
   # Infrastructure Services
   redis:
     image: redis:7-alpine
-    ports:
-      - "${REDIS_PORT:-6380}:6379"
+    # No host port by default (internal-only). Add "ports: ['${REDIS_PORT:-6381}:6379']" to expose.
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
@@ -19,7 +18,7 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
     ports:
-      - "${RABBITMQ_PORT:-5673}:5672"   # AMQP (host default 5673 if 5672 in use)
+      - "${RABBITMQ_PORT:-5674}:5672"   # AMQP (host 5674 to avoid conflict with 5673)
       - "${RABBITMQ_MGMT_PORT:-15673}:15672" # Management UI
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-admin}
@@ -59,6 +58,7 @@ services:
     restart: unless-stopped
 
   # UI Container
+  # For browser access from outside, set NEXT_PUBLIC_API_BASE_URL=http://YOUR_PUBLIC_HOST:3001 then rebuild: docker-compose build --no-cache ui
   ui:
     build:
       context: ./containers/ui
@@ -68,7 +68,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3000
-      - NEXT_PUBLIC_API_BASE_URL=http://api-gateway:3001
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://api-gateway:3001}
     depends_on:
       - api-gateway
     networks:
@@ -198,7 +198,6 @@ services:
     build:
       context: .
       dockerfile: containers/integration-processors/Dockerfile
-    container_name: integration-processors-light
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3000
@@ -241,7 +240,6 @@ services:
     build:
       context: .
       dockerfile: containers/integration-processors/Dockerfile
-    container_name: integration-processors-heavy
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3000

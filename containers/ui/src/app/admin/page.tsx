@@ -7,6 +7,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function AdminPage() {
   useEffect(() => {
@@ -32,14 +33,9 @@ export default function AdminPage() {
             System administration and configuration (Super Admin only)
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-          title="Reload page"
-        >
+        <Button type="button" variant="outline" onClick={() => window.location.reload()} title="Reload page">
           Refresh
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-6">
@@ -230,6 +226,16 @@ export default function AdminPage() {
           <h2 className="text-lg font-semibold mb-2">Monitoring</h2>
           <p className="text-sm text-gray-500">
             System health, queues, processors, integrations
+          </p>
+        </Link>
+
+        <Link
+          href="/admin/web-search/schedules"
+          className="rounded-lg border p-6 bg-white dark:bg-gray-900 hover:border-blue-500 transition-colors"
+        >
+          <h2 className="text-lg font-semibold mb-2">Recurring web search</h2>
+          <p className="text-sm text-gray-500">
+            Recurring search schedules; creates c_search shards (dataflow Phase 4)
           </p>
         </Link>
       </div>

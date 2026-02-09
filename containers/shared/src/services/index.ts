@@ -20,3 +20,9 @@ export {
   type ValidationError as ShardValidationError,
 } from './ShardValidator';
 export * from './OpportunityEventDebouncer';
+export {
+  PolicyResolver,
+  ACTIVATION_FLAG_NAMES,
+  type PolicyResolverOptions,
+  type ShardTypeAnalysisPolicyEntry,
+} from './PolicyResolver';

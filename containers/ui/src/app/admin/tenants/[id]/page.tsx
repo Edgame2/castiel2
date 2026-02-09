@@ -9,6 +9,11 @@
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useState, useCallback, useEffect, Suspense } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -327,16 +332,9 @@ function TenantDetailContent() {
       <div className="flex items-center gap-3 mb-2">
         <h1 className="text-2xl font-bold">Tenant: {id || '—'}</h1>
         {apiBaseUrl && id.trim() && (
-          <button
-            type="button"
-            onClick={() => { setError(null); setOverviewError(null); fetchConfig(); fetchOverview(); }}
-            disabled={loading || overviewLoading}
-            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 text-sm font-medium"
-            title="Refetch tenant config and overview"
-            aria-label="Refresh tenant config and overview"
-          >
+          <Button type="button" variant="outline" size="sm" onClick={() => { setError(null); setOverviewError(null); fetchConfig(); fetchOverview(); }} disabled={loading || overviewLoading} title="Refetch tenant config and overview" aria-label="Refresh tenant config and overview">
             Refresh
-          </button>
+          </Button>
         )}
       </div>
       <p className="text-muted-foreground mb-2">
@@ -372,13 +370,9 @@ function TenantDetailContent() {
             <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4">
               <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
               <div className="mt-2 flex gap-4">
-                <button
-                  type="button"
-                  onClick={fetchConfig}
-                  className="text-sm font-medium text-blue-600 hover:underline"
-                >
+                <Button type="button" variant="link" size="sm" onClick={fetchConfig}>
                   Retry
-                </button>
+                </Button>
                 <Link href="/admin/tenants" className="text-sm font-medium text-blue-600 hover:underline">
                   Back to Tenant Management
                 </Link>
@@ -389,27 +383,16 @@ function TenantDetailContent() {
             <>
               <nav className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4" role="tablist" aria-label="Tenant detail sections">
                 {TENANT_DETAIL_TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-4 py-2 text-sm font-medium rounded-t border border-b-0 -mb-px ${
-                      activeTab === tab.id
-                        ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-blue-600 dark:text-blue-400'
-                        : 'bg-gray-100 dark:bg-gray-800 border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                    }`}
-                  >
+                  <Button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} variant={activeTab === tab.id ? 'secondary' : 'ghost'} size="sm" className="rounded-b-none border-b-0 -mb-px" onClick={() => setActiveTab(tab.id)}>
                     {tab.label}
-                  </button>
+                  </Button>
                 ))}
               </nav>
               {activeTab === 'overview' && (
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <h2 className="text-lg font-semibold">Overview (§7.1.2)</h2>
-                    <button type="button" onClick={() => fetchOverview()} disabled={overviewLoading} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50" aria-label="Refresh overview">Refresh</button>
+                    <Button type="button" variant="link" size="sm" onClick={() => fetchOverview()} disabled={overviewLoading} aria-label="Refresh overview">Refresh</Button>
                   </div>
                   {overviewLoading && (
                     <p className="text-sm text-gray-500">Loading…</p>
@@ -417,13 +400,9 @@ function TenantDetailContent() {
                   {overviewError && !overviewLoading && (
                     <div>
                       <p className="text-sm text-red-600 dark:text-red-400">Error: {overviewError}</p>
-                      <button
-                        type="button"
-                        onClick={fetchOverview}
-                        className="mt-2 text-sm font-medium text-blue-600 hover:underline"
-                      >
+                      <Button type="button" variant="link" size="sm" className="mt-2" onClick={fetchOverview}>
                         Retry
-                      </button>
+                      </Button>
                     </div>
                   )}
                   {overviewTenant && !overviewLoading && (
@@ -443,7 +422,7 @@ function TenantDetailContent() {
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel" aria-labelledby="tab-feedback">
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <h2 className="text-lg font-semibold">Feedback config</h2>
-                    <button type="button" onClick={() => fetchConfig()} disabled={loading} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50" aria-label="Refresh feedback config">Refresh</button>
+                    <Button type="button" variant="link" size="sm" onClick={() => fetchConfig()} disabled={loading} aria-label="Refresh feedback config">Refresh</Button>
                   </div>
                   {editing ? (
                 <div className="space-y-3 max-w-md">
@@ -462,9 +441,9 @@ function TenantDetailContent() {
                         disabled={saving}
                         className="rounded"
                       />
-                      <label htmlFor="limitGlobal" className="text-sm">
-                        Use global default ({globalLimits?.defaultLimit ?? 5})
-                      </label>
+<Label htmlFor="limitGlobal" className="text-sm font-normal cursor-pointer">
+                      Use global default ({globalLimits?.defaultLimit ?? 5})
+                      </Label>
                     </div>
                     <div className="flex items-center gap-2">
                       <input
@@ -482,11 +461,11 @@ function TenantDetailContent() {
                         disabled={saving}
                         className="rounded"
                       />
-                      <label htmlFor="limitCustom" className="text-sm">Custom limit</label>
+                      <Label htmlFor="limitCustom" className="text-sm font-normal cursor-pointer">Custom limit</Label>
                     </div>
                     {!useGlobalDefaultLimit && globalLimits && (
                       <div className="mt-2">
-                        <input
+                        <Input
                           type="number"
                           min={globalLimits.minLimit}
                           max={globalLimits.maxLimit}
@@ -495,7 +474,7 @@ function TenantDetailContent() {
                             const v = parseInt(e.target.value, 10);
                             if (!Number.isNaN(v)) setEditActiveLimit(Math.min(globalLimits.maxLimit, Math.max(globalLimits.minLimit, v)));
                           }}
-                          className="w-24 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                          className="w-24 text-sm"
                           disabled={saving}
                         />
                         <span className="ml-2 text-xs text-gray-500">({globalLimits.minLimit}–{globalLimits.maxLimit})</span>
@@ -503,83 +482,34 @@ function TenantDetailContent() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="editRequireFeedback"
-                      checked={editRequireFeedback}
-                      onChange={(e) => setEditRequireFeedback(e.target.checked)}
-                      disabled={saving}
-                      className="rounded"
-                    />
-                    <label htmlFor="editRequireFeedback" className="text-sm">Require feedback</label>
+                    <Checkbox id="editRequireFeedback" checked={editRequireFeedback} onCheckedChange={(c) => setEditRequireFeedback(!!c)} disabled={saving} />
+                    <Label htmlFor="editRequireFeedback" className="text-sm font-normal cursor-pointer">Require feedback</Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="editAllowComments"
-                      checked={editAllowComments}
-                      onChange={(e) => setEditAllowComments(e.target.checked)}
-                      disabled={saving}
-                      className="rounded"
-                    />
-                    <label htmlFor="editAllowComments" className="text-sm">Allow comments</label>
+                    <Checkbox id="editAllowComments" checked={editAllowComments} onCheckedChange={(c) => setEditAllowComments(!!c)} disabled={saving} />
+                    <Label htmlFor="editAllowComments" className="text-sm font-normal cursor-pointer">Allow comments</Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="editCommentRequired"
-                      checked={editCommentRequired}
-                      onChange={(e) => setEditCommentRequired(e.target.checked)}
-                      disabled={saving}
-                      className="rounded"
-                    />
-                    <label htmlFor="editCommentRequired" className="text-sm">Comment required</label>
+                    <Checkbox id="editCommentRequired" checked={editCommentRequired} onCheckedChange={(c) => setEditCommentRequired(!!c)} disabled={saving} />
+                    <Label htmlFor="editCommentRequired" className="text-sm font-normal cursor-pointer">Comment required</Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="editAllowMultipleSelection"
-                      checked={editAllowMultipleSelection}
-                      onChange={(e) => setEditAllowMultipleSelection(e.target.checked)}
-                      disabled={saving}
-                      className="rounded"
-                    />
-                    <label htmlFor="editAllowMultipleSelection" className="text-sm">Allow multiple selection</label>
+                    <Checkbox id="editAllowMultipleSelection" checked={editAllowMultipleSelection} onCheckedChange={(c) => setEditAllowMultipleSelection(!!c)} disabled={saving} />
+                    <Label htmlFor="editAllowMultipleSelection" className="text-sm font-normal cursor-pointer">Allow multiple selection</Label>
                   </div>
                   <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                     <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pattern detection</span>
                     <div className="flex items-center gap-2 mb-1">
-                      <input
-                        type="checkbox"
-                        id="editPatternEnabled"
-                        checked={editPatternEnabled}
-                        onChange={(e) => setEditPatternEnabled(e.target.checked)}
-                        disabled={saving}
-                        className="rounded"
-                      />
-                      <label htmlFor="editPatternEnabled" className="text-sm">Enabled</label>
+                      <Checkbox id="editPatternEnabled" checked={editPatternEnabled} onCheckedChange={(c) => setEditPatternEnabled(!!c)} disabled={saving} />
+                      <Label htmlFor="editPatternEnabled" className="text-sm font-normal cursor-pointer">Enabled</Label>
                     </div>
                     <div className="flex items-center gap-2 mb-1">
-                      <input
-                        type="checkbox"
-                        id="editAutoSuppressEnabled"
-                        checked={editAutoSuppressEnabled}
-                        onChange={(e) => setEditAutoSuppressEnabled(e.target.checked)}
-                        disabled={saving}
-                        className="rounded"
-                      />
-                      <label htmlFor="editAutoSuppressEnabled" className="text-sm">Auto suppress enabled</label>
+                      <Checkbox id="editAutoSuppressEnabled" checked={editAutoSuppressEnabled} onCheckedChange={(c) => setEditAutoSuppressEnabled(!!c)} disabled={saving} />
+                      <Label htmlFor="editAutoSuppressEnabled" className="text-sm font-normal cursor-pointer">Auto suppress enabled</Label>
                     </div>
                     <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="editAutoBoostEnabled"
-                        checked={editAutoBoostEnabled}
-                        onChange={(e) => setEditAutoBoostEnabled(e.target.checked)}
-                        disabled={saving}
-                        className="rounded"
-                      />
-                      <label htmlFor="editAutoBoostEnabled" className="text-sm">Auto boost enabled</label>
+                      <Checkbox id="editAutoBoostEnabled" checked={editAutoBoostEnabled} onCheckedChange={(c) => setEditAutoBoostEnabled(!!c)} disabled={saving} />
+                      <Label htmlFor="editAutoBoostEnabled" className="text-sm font-normal cursor-pointer">Auto boost enabled</Label>
                     </div>
                   </div>
                   <div>
@@ -592,14 +522,9 @@ function TenantDetailContent() {
                           <div key={`${a.feedbackTypeId}-${idx}`} className="flex items-center justify-between gap-2">
                             <span>{label}</span>
                             <span className="text-gray-500">(order: {a.order})</span>
-                            <button
-                              type="button"
-                              onClick={() => setEditActiveTypes((prev) => prev.filter((_, i) => i !== idx))}
-                              disabled={saving}
-                              className="text-red-600 hover:underline text-xs disabled:opacity-50"
-                            >
+                            <Button type="button" variant="link" size="sm" className="text-destructive text-xs" onClick={() => setEditActiveTypes((prev) => prev.filter((_, i) => i !== idx))} disabled={saving}>
                               Remove
-                            </button>
+                            </Button>
                           </div>
                         );
                       })}
@@ -607,42 +532,39 @@ function TenantDetailContent() {
                     </div>
                     {allFeedbackTypes.filter((ft) => !editActiveTypes.some((a) => a.feedbackTypeId === ft.id)).length > 0 && (
                       <div className="flex gap-2 items-center">
-                        <select
-                          value=""
-                          onChange={(e) => {
-                            const fid = e.target.value;
-                            if (!fid) return;
+                        <Select
+                          value="_add"
+                          onValueChange={(fid) => {
+                            if (fid === '_add' || !fid) return;
                             const maxOrder = editActiveTypes.length > 0 ? Math.max(...editActiveTypes.map((a) => a.order), 0) : 0;
                             setEditActiveTypes((prev) => [...prev, { feedbackTypeId: fid, order: maxOrder + 1 }]);
-                            e.target.value = '';
                           }}
                           disabled={saving}
-                          className="px-2 py-1 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                         >
-                          <option value="">Add type…</option>
-                          {allFeedbackTypes
-                            .filter((ft) => !editActiveTypes.some((a) => a.feedbackTypeId === ft.id))
-                            .map((ft) => (
-                              <option key={ft.id} value={ft.id}>
-                                {ft.displayName ?? ft.name ?? ft.id}
-                              </option>
-                            ))}
-                        </select>
+                          <SelectTrigger className="w-auto text-sm" key={`add-${editActiveTypes.length}`}><SelectValue placeholder="Add type…" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_add">Add type…</SelectItem>
+                            {allFeedbackTypes
+                              .filter((ft) => !editActiveTypes.some((a) => a.feedbackTypeId === ft.id))
+                              .map((ft) => (
+                                <SelectItem key={ft.id} value={ft.id}>
+                                  {ft.displayName ?? ft.name ?? ft.id}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     )}
                   </div>
                   {saveError && <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>}
                   <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={saveConfig}
-                      disabled={saving}
-                      className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                    >
+                    <Button type="button" size="sm" onClick={saveConfig} disabled={saving}>
                       {saving ? 'Saving…' : 'Save'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={() => {
                         setEditing(false);
                         setSaveError(null);
@@ -658,11 +580,9 @@ function TenantDetailContent() {
                         setEditAutoBoostEnabled(config.patternDetection?.autoBoostEnabled ?? true);
                         setEditActiveTypes(config.activeTypes ? config.activeTypes.map((a) => ({ ...a })) : []);
                       }}
-                      className="px-3 py-1.5 text-sm border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                      disabled={saving}
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
@@ -736,8 +656,11 @@ function TenantDetailContent() {
                     </div>
                     <div><dt className="font-medium text-gray-500">Updated</dt><dd>{config.updatedAt ? new Date(config.updatedAt).toLocaleString() : '—'}</dd></div>
                   </dl>
-                  <button
+                  <Button
                     type="button"
+                    variant="link"
+                    size="sm"
+                    className="mt-4"
                     onClick={async () => {
                       setSaveError(null);
                       setFeedbackTypesLoading(true);
@@ -755,10 +678,9 @@ function TenantDetailContent() {
                       }
                     }}
                     disabled={feedbackTypesLoading}
-                    className="mt-4 text-sm font-medium text-blue-600 hover:underline disabled:opacity-50"
                   >
                     {feedbackTypesLoading ? 'Loading…' : 'Edit'}
-                  </button>
+                  </Button>
                 </>
               )}
                 </div>
@@ -767,7 +689,7 @@ function TenantDetailContent() {
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <h2 className="text-lg font-semibold">Catalog Configuration (§7.1.2)</h2>
-                    <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" aria-label="Refresh catalog configuration">Refresh</button>
+                    <Button type="button" variant="link" size="sm" onClick={() => window.location.reload()} aria-label="Refresh catalog configuration">Refresh</Button>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                     Assign Action Catalog entries to this tenant, enable or disable entries, and set per-tenant overrides. Full per-tenant catalog assignment will be available when the backend supports it.
@@ -781,7 +703,7 @@ function TenantDetailContent() {
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <h2 className="text-lg font-semibold">Methodology Configuration (§7.1.2)</h2>
-                    <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" aria-label="Refresh methodology configuration">Refresh</button>
+                    <Button type="button" variant="link" size="sm" onClick={() => window.location.reload()} aria-label="Refresh methodology configuration">Refresh</Button>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                     Configure sales methodology (MEDDIC, MEDDPICC, Challenger, etc.) for this tenant. Per-tenant methodology selection is detailed in Section 3.2 of the spec.
@@ -795,7 +717,7 @@ function TenantDetailContent() {
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <h2 className="text-lg font-semibold">Limits & Quotas (§7.1.2)</h2>
-                    <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" aria-label="Refresh limits and quotas">Refresh</button>
+                    <Button type="button" variant="link" size="sm" onClick={() => window.location.reload()} aria-label="Refresh limits and quotas">Refresh</Button>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     Configure limits for this tenant and view current usage. Editable when the backend API is available.
@@ -835,7 +757,7 @@ function TenantDetailContent() {
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <h2 className="text-lg font-semibold">Custom Configuration (§7.1.2)</h2>
-                    <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" aria-label="Refresh custom configuration">Refresh</button>
+                    <Button type="button" variant="link" size="sm" onClick={() => window.location.reload()} aria-label="Refresh custom configuration">Refresh</Button>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     Tenant-specific settings: risk tolerance, decision preferences, model preferences, custom feature flags. Editable when the backend API is available.
@@ -879,7 +801,7 @@ function TenantDetailContent() {
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4" role="tabpanel">
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <h2 className="text-lg font-semibold">Analytics (§7.1.2)</h2>
-                    <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" aria-label="Refresh analytics">Refresh</button>
+                    <Button type="button" variant="link" size="sm" onClick={() => window.location.reload()} aria-label="Refresh analytics">Refresh</Button>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     Tenant-specific analytics: usage trends, performance metrics, feedback analysis. Filter global dashboards and reports by this tenant when viewing.

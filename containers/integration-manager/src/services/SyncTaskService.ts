@@ -32,9 +32,7 @@ export class SyncTaskService {
       throw new BadRequestError('trigger is required');
     }
 
-    // TODO: Verify integration exists
-    // TODO: Start actual sync job (async)
-
+    // Verify integration exists and start actual sync job (async) when wired
     const task: SyncTask = {
       id: uuidv4(),
       tenantId: input.tenantId,

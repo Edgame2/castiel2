@@ -7,6 +7,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -337,13 +342,9 @@ export default function MLModelsMonitoringPage() {
       {error && (
         <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 mb-4">
           <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
-          <button
-            type="button"
-            onClick={fetchEndpoints}
-            className="mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-          >
+          <Button type="button" variant="link" size="sm" className="mt-2" onClick={fetchEndpoints}>
             Retry
-          </button>
+          </Button>
         </div>
       )}
 
@@ -370,13 +371,9 @@ export default function MLModelsMonitoringPage() {
           <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-hidden mb-4">
             <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Endpoint status</h2>
-              <button
-                type="button"
-                onClick={fetchEndpoints}
-                className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-              >
+              <Button type="button" variant="link" size="sm" onClick={fetchEndpoints}>
                 Refresh
-              </button>
+              </Button>
             </div>
             {data.items.length === 0 ? (
               <div className="p-6 text-sm text-gray-500">
@@ -420,13 +417,9 @@ export default function MLModelsMonitoringPage() {
           <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-hidden mb-4">
             <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Alert configuration (§4.4.2)</h2>
-              <button
-                type="button"
-                onClick={() => setShowCreateAlert(true)}
-                className="px-3 py-1.5 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-              >
+              <Button type="button" size="sm" onClick={() => setShowCreateAlert(true)}>
                 Create alert
-              </button>
+              </Button>
             </div>
             {alertsData.length === 0 ? (
               <div className="p-6 text-sm text-gray-500">
@@ -456,20 +449,12 @@ export default function MLModelsMonitoringPage() {
                         <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{a.severity ?? '—'}</td>
                         <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{a.enabled === true ? 'Yes' : a.enabled === false ? 'No' : '—'}</td>
                         <td className="px-4 py-2 text-sm">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(a)}
-                            className="text-blue-600 dark:text-blue-400 hover:underline font-medium mr-2"
-                          >
+                          <Button type="button" variant="link" size="sm" className="mr-2 text-blue-600 dark:text-blue-400" onClick={() => openEdit(a)}>
                             Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleteAlert(a)}
-                            className="text-red-600 dark:text-red-400 hover:underline font-medium"
-                          >
+                          </Button>
+                          <Button type="button" variant="link" size="sm" className="text-destructive" onClick={() => setDeleteAlert(a)}>
                             Delete
-                          </button>
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -495,112 +480,70 @@ export default function MLModelsMonitoringPage() {
                   {formError && (
                     <p className="text-sm text-red-600 dark:text-red-400">{formError}</p>
                   )}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
-                    <input
-                      type="text"
-                      value={editForm.name}
-                      onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                      className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                      placeholder="e.g. Accuracy drop"
-                      required
-                    />
+                  <div className="space-y-2">
+                    <Label>Name</Label>
+                    <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Accuracy drop" required className="text-sm" />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Metric</label>
-                    <select
-                      value={editForm.metric}
-                      onChange={(e) => setEditForm((f) => ({ ...f, metric: e.target.value }))}
-                      className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                    >
-                      {METRICS.map((m) => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex gap-4">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Operator</label>
-                      <select
-                        value={editForm.operator}
-                        onChange={(e) => setEditForm((f) => ({ ...f, operator: e.target.value as '>' | '<' | '=' | '>=' | '<=' }))}
-                        className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                      >
-                        {OPERATORS.map((o) => (
-                          <option key={o} value={o}>{o}</option>
+                  <div className="space-y-2">
+                    <Label>Metric</Label>
+                    <Select value={editForm.metric} onValueChange={(v) => setEditForm((f) => ({ ...f, metric: v }))}>
+                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {METRICS.map((m) => (
+                          <SelectItem key={m} value={m}>{m}</SelectItem>
                         ))}
-                      </select>
-                    </div>
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Threshold</label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={editForm.threshold}
-                        onChange={(e) => setEditForm((f) => ({ ...f, threshold: Number(e.target.value) || 0 }))}
-                        className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Severity</label>
-                    <select
-                      value={editForm.severity}
-                      onChange={(e) => setEditForm((f) => ({ ...f, severity: e.target.value as 'critical' | 'high' | 'medium' | 'low' }))}
-                      className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                    >
-                      {SEVERITIES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex gap-4">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Duration (seconds)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={editForm.duration}
-                        onChange={(e) => setEditForm((f) => ({ ...f, duration: Number(e.target.value) || 0 }))}
-                        className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                      />
+                    <div className="flex-1 space-y-2">
+                      <Label>Operator</Label>
+                      <Select value={editForm.operator} onValueChange={(v) => setEditForm((f) => ({ ...f, operator: v as AlertFormOperator }))}>
+                        <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {OPERATORS.map((o) => (
+                            <SelectItem key={o} value={o}>{o}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Throttle (minutes)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={editForm.throttleMinutes}
-                        onChange={(e) => setEditForm((f) => ({ ...f, throttleMinutes: Number(e.target.value) || 0 }))}
-                        className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                      />
+                    <div className="flex-1 space-y-2">
+                      <Label>Threshold</Label>
+                      <Input type="number" step="any" value={editForm.threshold} onChange={(e) => setEditForm((f) => ({ ...f, threshold: Number(e.target.value) || 0 }))} className="text-sm" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Severity</Label>
+                    <Select value={editForm.severity} onValueChange={(v) => setEditForm((f) => ({ ...f, severity: v as AlertFormSeverity }))}>
+                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {SEVERITIES.map((s) => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-1 space-y-2">
+                      <Label>Duration (seconds)</Label>
+                      <Input type="number" min={0} value={editForm.duration} onChange={(e) => setEditForm((f) => ({ ...f, duration: Number(e.target.value) || 0 }))} className="text-sm" />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <Label>Throttle (minutes)</Label>
+                      <Input type="number" min={0} value={editForm.throttleMinutes} onChange={(e) => setEditForm((f) => ({ ...f, throttleMinutes: Number(e.target.value) || 0 }))} className="text-sm" />
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="edit-alert-enabled"
-                      checked={editForm.enabled}
-                      onChange={(e) => setEditForm((f) => ({ ...f, enabled: e.target.checked }))}
-                      className="rounded border-gray-300 dark:border-gray-600"
-                    />
-                    <label htmlFor="edit-alert-enabled" className="text-sm text-gray-700 dark:text-gray-300">Enabled</label>
+                    <Checkbox id="edit-alert-enabled" checked={editForm.enabled} onCheckedChange={(c) => setEditForm((f) => ({ ...f, enabled: !!c }))} />
+                    <Label htmlFor="edit-alert-enabled" className="text-sm font-normal">Enabled</Label>
                   </div>
                   <div className="flex justify-end gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={closeEditModal}
-                      className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-                    >
+                    <Button type="button" variant="outline" size="sm" onClick={closeEditModal}>
                       Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={formSaving}
-                      className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded disabled:opacity-50"
-                    >
+                    </Button>
+                    <Button type="submit" disabled={formSaving} size="sm">
                       {formSaving ? 'Saving…' : 'Save'}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </div>
@@ -618,21 +561,12 @@ export default function MLModelsMonitoringPage() {
                   <p className="text-sm text-red-600 dark:text-red-400 mb-4">{deleteError}</p>
                 )}
                 <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={closeDeleteModal}
-                    className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-                  >
+                  <Button type="button" variant="outline" size="sm" onClick={closeDeleteModal}>
                     Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDeleteAlert}
-                    disabled={deleteSaving}
-                    className="px-3 py-1.5 text-sm font-medium bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 rounded disabled:opacity-50"
-                  >
+                  </Button>
+                  <Button type="button" variant="destructive" size="sm" onClick={handleDeleteAlert} disabled={deleteSaving}>
                     {deleteSaving ? 'Deleting…' : 'Delete'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -646,112 +580,70 @@ export default function MLModelsMonitoringPage() {
                   {formError && (
                     <p className="text-sm text-red-600 dark:text-red-400">{formError}</p>
                   )}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
-                    <input
-                      type="text"
-                      value={createForm.name}
-                      onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-                      className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                      placeholder="e.g. Accuracy drop"
-                      required
-                    />
+                  <div className="space-y-2">
+                    <Label>Name</Label>
+                    <Input value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Accuracy drop" required className="text-sm" />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Metric</label>
-                    <select
-                      value={createForm.metric}
-                      onChange={(e) => setCreateForm((f) => ({ ...f, metric: e.target.value }))}
-                      className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                    >
-                      {METRICS.map((m) => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex gap-4">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Operator</label>
-                      <select
-                        value={createForm.operator}
-                        onChange={(e) => setCreateForm((f) => ({ ...f, operator: e.target.value as '>' | '<' | '=' | '>=' | '<=' }))}
-                        className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                      >
-                        {OPERATORS.map((o) => (
-                          <option key={o} value={o}>{o}</option>
+                  <div className="space-y-2">
+                    <Label>Metric</Label>
+                    <Select value={createForm.metric} onValueChange={(v) => setCreateForm((f) => ({ ...f, metric: v }))}>
+                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {METRICS.map((m) => (
+                          <SelectItem key={m} value={m}>{m}</SelectItem>
                         ))}
-                      </select>
-                    </div>
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Threshold</label>
-                      <input
-                        type="number"
-                        step="any"
-                        value={createForm.threshold}
-                        onChange={(e) => setCreateForm((f) => ({ ...f, threshold: Number(e.target.value) || 0 }))}
-                        className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Severity</label>
-                    <select
-                      value={createForm.severity}
-                      onChange={(e) => setCreateForm((f) => ({ ...f, severity: e.target.value as 'critical' | 'high' | 'medium' | 'low' }))}
-                      className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                    >
-                      {SEVERITIES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex gap-4">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Duration (seconds)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={createForm.duration}
-                        onChange={(e) => setCreateForm((f) => ({ ...f, duration: Number(e.target.value) || 0 }))}
-                        className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                      />
+                    <div className="flex-1 space-y-2">
+                      <Label>Operator</Label>
+                      <Select value={createForm.operator} onValueChange={(v) => setCreateForm((f) => ({ ...f, operator: v as AlertFormOperator }))}>
+                        <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {OPERATORS.map((o) => (
+                            <SelectItem key={o} value={o}>{o}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Throttle (minutes)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={createForm.throttleMinutes}
-                        onChange={(e) => setCreateForm((f) => ({ ...f, throttleMinutes: Number(e.target.value) || 0 }))}
-                        className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm"
-                      />
+                    <div className="flex-1 space-y-2">
+                      <Label>Threshold</Label>
+                      <Input type="number" step="any" value={createForm.threshold} onChange={(e) => setCreateForm((f) => ({ ...f, threshold: Number(e.target.value) || 0 }))} className="text-sm" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Severity</Label>
+                    <Select value={createForm.severity} onValueChange={(v) => setCreateForm((f) => ({ ...f, severity: v as AlertFormSeverity }))}>
+                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {SEVERITIES.map((s) => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-1 space-y-2">
+                      <Label>Duration (seconds)</Label>
+                      <Input type="number" min={0} value={createForm.duration} onChange={(e) => setCreateForm((f) => ({ ...f, duration: Number(e.target.value) || 0 }))} className="text-sm" />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <Label>Throttle (minutes)</Label>
+                      <Input type="number" min={0} value={createForm.throttleMinutes} onChange={(e) => setCreateForm((f) => ({ ...f, throttleMinutes: Number(e.target.value) || 0 }))} className="text-sm" />
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="create-alert-enabled"
-                      checked={createForm.enabled}
-                      onChange={(e) => setCreateForm((f) => ({ ...f, enabled: e.target.checked }))}
-                      className="rounded border-gray-300 dark:border-gray-600"
-                    />
-                    <label htmlFor="create-alert-enabled" className="text-sm text-gray-700 dark:text-gray-300">Enabled</label>
+                    <Checkbox id="create-alert-enabled" checked={createForm.enabled} onCheckedChange={(c) => setCreateForm((f) => ({ ...f, enabled: !!c }))} />
+                    <Label htmlFor="create-alert-enabled" className="text-sm font-normal">Enabled</Label>
                   </div>
                   <div className="flex justify-end gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={closeCreateModal}
-                      className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-                    >
+                    <Button type="button" variant="outline" size="sm" onClick={closeCreateModal}>
                       Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={formSaving}
-                      className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded disabled:opacity-50"
-                    >
+                    </Button>
+                    <Button type="submit" disabled={formSaving} size="sm">
                       {formSaving ? 'Creating…' : 'Create'}
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </div>

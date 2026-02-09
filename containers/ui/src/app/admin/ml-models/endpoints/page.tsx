@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -128,16 +129,12 @@ export default function MLModelsEndpointsPage() {
 
       {apiBaseUrl && (
         <div className="mb-4 flex flex-wrap gap-2">
-          <Link href="/admin/ml-models/endpoints/new" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium">New endpoint</Link>
-          <button
-            type="button"
-            onClick={fetchEndpoints}
-            disabled={loading}
-            className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
-            title="Refetch ML endpoints"
-          >
+          <Button asChild size="sm">
+            <Link href="/admin/ml-models/endpoints/new">New endpoint</Link>
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={fetchEndpoints} disabled={loading} title="Refetch ML endpoints">
             Refresh
-          </button>
+          </Button>
         </div>
       )}
 
@@ -156,13 +153,9 @@ export default function MLModelsEndpointsPage() {
       {error && (
         <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 mb-4">
           <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
-          <button
-            type="button"
-            onClick={fetchEndpoints}
-            className="mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-          >
+          <Button type="button" variant="link" size="sm" className="mt-2" onClick={fetchEndpoints}>
             Retry
-          </button>
+          </Button>
         </div>
       )}
 

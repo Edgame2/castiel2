@@ -3,6 +3,17 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -68,41 +79,48 @@ export default function RiskCatalogNewPage() {
         <h1 className="text-xl font-semibold mb-4">Create risk</h1>
         {error && <p className="text-sm text-red-600 dark:text-red-400 mb-4" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
-          <div>
-            <label htmlFor="riskId" className="block text-sm font-medium mb-1">Risk ID *</label>
-            <input id="riskId" type="text" value={riskId} onChange={(e) => setRiskId(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required placeholder="e.g. custom_risk_1" />
+          <div className="space-y-2">
+            <Label htmlFor="riskId">Risk ID *</Label>
+            <Input id="riskId" type="text" value={riskId} onChange={(e) => setRiskId(e.target.value)} className="w-full" required placeholder="e.g. custom_risk_1" />
           </div>
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium mb-1">Name *</label>
-            <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+          <div className="space-y-2">
+            <Label htmlFor="name">Name *</Label>
+            <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full" required />
           </div>
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium mb-1">Description</label>
-            <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" rows={2} />
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full" rows={2} />
           </div>
-          <div>
-            <label htmlFor="category" className="block text-sm font-medium mb-1">Category</label>
-            <select id="category" value={category} onChange={(e) => setCategory(e.target.value as (typeof CATEGORIES)[number])} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700">
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Select value={category} onValueChange={(v) => setCategory(v as (typeof CATEGORIES)[number])}>
+              <SelectTrigger id="category" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <div>
-            <label htmlFor="defaultPonderation" className="block text-sm font-medium mb-1">Default ponderation (0–1)</label>
-            <input id="defaultPonderation" type="number" min={0} max={1} step={0.1} value={defaultPonderation} onChange={(e) => setDefaultPonderation(Number(e.target.value))} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+          <div className="space-y-2">
+            <Label htmlFor="defaultPonderation">Default ponderation (0–1)</Label>
+            <Input id="defaultPonderation" type="number" min={0} max={1} step={0.1} value={defaultPonderation} onChange={(e) => setDefaultPonderation(Number(e.target.value))} className="w-full" />
           </div>
-          <div>
-            <label htmlFor="sourceShardTypes" className="block text-sm font-medium mb-1">Source shard types (comma-separated)</label>
-            <input id="sourceShardTypes" type="text" value={sourceShardTypesStr} onChange={(e) => setSourceShardTypesStr(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" placeholder="e.g. opportunity, account" />
+          <div className="space-y-2">
+            <Label htmlFor="sourceShardTypes">Source shard types (comma-separated)</Label>
+            <Input id="sourceShardTypes" type="text" value={sourceShardTypesStr} onChange={(e) => setSourceShardTypesStr(e.target.value)} className="w-full" placeholder="e.g. opportunity, account" />
           </div>
-          <div>
-            <label htmlFor="explainabilityTemplate" className="block text-sm font-medium mb-1">Explainability template</label>
-            <input id="explainabilityTemplate" type="text" value={explainabilityTemplate} onChange={(e) => setExplainabilityTemplate(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" placeholder="Optional" />
+          <div className="space-y-2">
+            <Label htmlFor="explainabilityTemplate">Explainability template</Label>
+            <Input id="explainabilityTemplate" type="text" value={explainabilityTemplate} onChange={(e) => setExplainabilityTemplate(e.target.value)} className="w-full" placeholder="Optional" />
           </div>
           <div className="flex gap-2">
-            <button type="submit" disabled={submitting || !riskId.trim() || !name.trim()} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Create</button>
-            <Link href="/admin/risk-catalog" className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</Link>
+            <Button type="submit" disabled={submitting || !riskId.trim() || !name.trim()}>Create</Button>
+            <Button asChild variant="outline">
+              <Link href="/admin/risk-catalog">Cancel</Link>
+            </Button>
           </div>
         </form>
         <p className="mt-4"><Link href="/admin/risk-catalog" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Back to Risk Catalog</Link></p>

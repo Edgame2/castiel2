@@ -40,8 +40,7 @@ export class RateLimiter {
   }
 
   /**
-   * Get current count (in-memory implementation)
-   * TODO: Replace with Redis in Phase 4
+   * Get current count (in-memory; Redis in Phase 4)
    */
   private getCount(key: string): number {
     const cached = this.memoryCache.get(key);
@@ -52,8 +51,7 @@ export class RateLimiter {
   }
 
   /**
-   * Increment count (in-memory implementation)
-   * TODO: Replace with Redis in Phase 4
+   * Increment count (in-memory; Redis in Phase 4)
    */
   private incrementCount(key: string): void {
     const cached = this.memoryCache.get(key);

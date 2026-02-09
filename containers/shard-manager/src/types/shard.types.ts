@@ -110,6 +110,8 @@ export interface Shard {
   schemaVersion?: number;
   structuredData: StructuredData;
   unstructuredData?: UnstructuredData;
+  /** Detection/enrichment results (dataflow doc: top-level enrichmentData). Kept alongside enrichment for backward compatibility. */
+  enrichmentData?: Record<string, unknown>;
   metadata?: ShardMetadata;
 
   internal_relationships?: InternalRelationship[];
@@ -153,6 +155,7 @@ export interface CreateShardInput {
   parentShardId?: string;
   structuredData: StructuredData;
   unstructuredData?: UnstructuredData;
+  enrichmentData?: Record<string, unknown>;
   metadata?: ShardMetadata;
   internal_relationships?: InternalRelationship[];
   external_relationships?: ExternalRelationship[];
@@ -169,6 +172,7 @@ export interface CreateShardInput {
 export interface UpdateShardInput {
   structuredData?: StructuredData;
   unstructuredData?: UnstructuredData;
+  enrichmentData?: Record<string, unknown>;
   metadata?: ShardMetadata;
   internal_relationships?: InternalRelationship[];
   external_relationships?: ExternalRelationship[];

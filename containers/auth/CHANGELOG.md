@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **MFA (TOTP):** When `features.multi_factor_auth` (env `FEATURE_MFA`) is enabled: GET `/api/v1/auth/mfa/status`, POST `/api/v1/auth/mfa/enroll`, POST `/api/v1/auth/mfa/verify`, POST `/api/v1/auth/mfa/disable` (requires current TOTP code). `MfaService` and Cosmos container `auth_mfa_secrets` (partition key `/userId`). UI: settings enroll, verify, and disable flows; security page shows MFA status.
+- **MFA backup codes:** POST `/api/v1/auth/mfa/backup-codes/generate` (TOTP-gated), POST `/api/v1/auth/mfa/verify-backup` (one-time consume). Container `auth_mfa_backup_codes`. UI: security page generate flow; verify page accepts TOTP or backup code.
+
 ### Changed
 - **Production-safe URLs:** LoggingService uses only `config.services.logging.url` (no localhost fallback). OAuth redirect frontend URL uses `config.services.main_app.url ?? config.frontend_url`; in production with neither set, returns 500 with clear message instead of redirecting to localhost. SAML acsUrl uses only `config.server.base_url`; throws if missing (no localhost fallback). SAML callback path fixed to `/api/v1/auth/sso/saml/callback`.
 

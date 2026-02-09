@@ -16,21 +16,21 @@ export interface AuthenticatedUser {
 }
 
 /**
- * Extract token from request
+ * Extract token from request (Bearer, X-API-Key, or cookie)
  */
 function extractToken(request: FastifyRequest): string | null {
   const authHeader = request.headers.authorization;
-  
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
   }
-
-  // Also check cookies
+  const apiKey = request.headers['x-api-key'];
+  if (typeof apiKey === 'string' && apiKey.trim()) {
+    return apiKey.trim();
+  }
   const cookieToken = (request as any).cookies?.accessToken;
   if (cookieToken) {
     return cookieToken;
   }
-
   return null;
 }
 
@@ -44,7 +44,7 @@ export async function authenticateRequest(
   try {
     log.debug('Authentication middleware called', { route: request.url, method: request.method, service: 'auth' });
     const token = extractToken(request);
-    
+
     if (!token) {
       log.debug('No authentication token provided', { route: request.url, method: request.method, service: 'auth' });
       reply.code(401).send({ error: 'No authentication token provided' });
@@ -53,7 +53,29 @@ export async function authenticateRequest(
 
     log.debug('Token found in request', { route: request.url, tokenLength: token.length, service: 'auth' });
 
-    // Validate session using session service
+    // API key auth (when feature enabled and token looks like API key)
+    if (token.startsWith('ak_')) {
+      const { getConfig } = await import('../config');
+      if (getConfig().features?.api_keys) {
+        const { ApiKeyService } = await import('../services/ApiKeyService');
+        const result = await new ApiKeyService().validate(token);
+        if (result) {
+          (request as any).user = {
+            id: result.userId,
+            email: '',
+            name: undefined,
+          } as AuthenticatedUser;
+          (request as any).organizationId = result.tenantId;
+          (request as any).apiKeyAuth = true;
+          log.debug('Request authenticated via API key', { userId: result.userId, route: request.url, service: 'auth' });
+          return;
+        }
+      }
+      reply.code(401).send({ error: 'Invalid or expired API key' });
+      return;
+    }
+
+    // JWT/session auth
     const userAgent = request.headers['user-agent'] || null;
     const sessionData = await validateSession(token, userAgent, request.server);
 
@@ -127,11 +149,29 @@ export async function optionalAuth(
 ): Promise<void> {
   try {
     const token = extractToken(request);
-    
+
+    if (token?.startsWith('ak_')) {
+      const { getConfig } = await import('../config');
+      if (getConfig().features?.api_keys) {
+        const { ApiKeyService } = await import('../services/ApiKeyService');
+        const result = await new ApiKeyService().validate(token);
+        if (result) {
+          (request as any).user = {
+            id: result.userId,
+            email: '',
+            name: undefined,
+          } as AuthenticatedUser;
+          (request as any).organizationId = result.tenantId;
+          (request as any).apiKeyAuth = true;
+        }
+      }
+      return;
+    }
+
     if (token) {
       const userAgent = request.headers['user-agent'] || null;
       const sessionData = await validateSession(token, userAgent, request.server);
-      
+
       if (sessionData) {
         const db = getDatabaseClient() as any;
         const user = await db.user.findUnique({
@@ -145,7 +185,7 @@ export async function optionalAuth(
             email: user.email,
             name: user.name || undefined,
           } as AuthenticatedUser;
-          
+
           if (sessionData.sessionId) {
             (request as any).sessionId = sessionData.sessionId;
           }

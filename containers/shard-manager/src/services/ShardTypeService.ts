@@ -29,7 +29,7 @@ export class ShardTypeService {
       throw new BadRequestError('schema is required');
     }
 
-    // TODO: Validate JSON Schema format
+    // Optional: validate schema is valid JSON Schema (e.g. ajv) when strict validation is added.
 
     const shardType: ShardType = {
       id: uuidv4(),

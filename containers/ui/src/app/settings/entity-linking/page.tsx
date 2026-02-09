@@ -7,6 +7,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -51,7 +55,7 @@ interface LinkingRule {
     sourceShardType: string;
     field: string;
     operator: 'equals' | 'contains' | 'matches' | 'startsWith' | 'endsWith';
-    value: any;
+    value: string | number | boolean;
   };
   action: {
     targetShardType: string;
@@ -258,36 +262,42 @@ export default function EntityLinkingPage() {
       <div className="rounded-lg border bg-white dark:bg-gray-900">
         <div className="border-b">
           <nav className="flex gap-4 px-4">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setActiveTab('settings')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
+              className={`rounded-none border-b-2 ${
                 activeTab === 'settings'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               Auto-Link Settings
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setActiveTab('suggested')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
+              className={`rounded-none border-b-2 ${
                 activeTab === 'suggested'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               Suggested Links ({suggestedLinks.length})
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setActiveTab('rules')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
+              className={`rounded-none border-b-2 ${
                 activeTab === 'rules'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               Manual Rules
-            </button>
+            </Button>
           </nav>
         </div>
 
@@ -335,17 +345,17 @@ function AutoLinkSettingsTab({ settings, onChange, onSave, saving }: AutoLinkSet
       <h3 className="text-lg font-semibold mb-4">Auto-Link Settings</h3>
 
       <div>
-        <label className="block text-sm font-medium mb-2">
+        <Label className="block mb-2">
           Auto-Link Threshold: {(settings.autoLinkThreshold * 100).toFixed(0)}%
-        </label>
-        <input
+        </Label>
+        <Input
           type="range"
           min="0.6"
           max="1.0"
           step="0.05"
           value={settings.autoLinkThreshold}
           onChange={(e) => onChange({ ...settings, autoLinkThreshold: parseFloat(e.target.value) })}
-          className="w-full"
+          className="w-full h-2"
         />
         <p className="text-xs text-gray-500 mt-1">
           Links with confidence above this threshold will be automatically created (60-100%)
@@ -353,17 +363,17 @@ function AutoLinkSettingsTab({ settings, onChange, onSave, saving }: AutoLinkSet
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-2">
+        <Label className="block mb-2">
           Suggested Link Threshold: {(settings.suggestedLinkThreshold * 100).toFixed(0)}%
-        </label>
-        <input
+        </Label>
+        <Input
           type="range"
           min="0.4"
           max="0.8"
           step="0.05"
           value={settings.suggestedLinkThreshold}
           onChange={(e) => onChange({ ...settings, suggestedLinkThreshold: parseFloat(e.target.value) })}
-          className="w-full"
+          className="w-full h-2"
         />
         <p className="text-xs text-gray-500 mt-1">
           Links with confidence above this threshold will be suggested for review (40-80%)
@@ -371,111 +381,90 @@ function AutoLinkSettingsTab({ settings, onChange, onSave, saving }: AutoLinkSet
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-4">Linking Strategies</label>
+        <Label className="block mb-4">Linking Strategies</Label>
         <div className="space-y-2">
-          <label className="flex items-center p-3 border rounded">
-            <input
-              type="checkbox"
-              checked={settings.enabledStrategies.explicitReference}
-              disabled
-              className="mr-3"
-            />
-            <div>
-              <span className="text-sm font-medium">Explicit Reference (Always Enabled)</span>
-              <p className="text-xs text-gray-500">Links entities when explicit references are found</p>
+          <div className="flex items-center p-3 border rounded">
+            <Checkbox id="strat-explicit" checked={settings.enabledStrategies.explicitReference} disabled className="mr-3" />
+            <div className="flex-1">
+              <Label htmlFor="strat-explicit" className="text-sm font-medium cursor-default">Explicit Reference (Always Enabled)</Label>
+              <p className="text-xs text-muted-foreground">Links entities when explicit references are found</p>
             </div>
-          </label>
-          <label className="flex items-center p-3 border rounded">
-            <input
-              type="checkbox"
+          </div>
+          <div className="flex items-center p-3 border rounded">
+            <Checkbox
+              id="strat-participant"
               checked={settings.enabledStrategies.participantMatching}
-              onChange={(e) =>
+              onCheckedChange={(c) =>
                 onChange({
                   ...settings,
-                  enabledStrategies: {
-                    ...settings.enabledStrategies,
-                    participantMatching: e.target.checked,
-                  },
+                  enabledStrategies: { ...settings.enabledStrategies, participantMatching: !!c },
                 })
               }
               className="mr-3"
             />
-            <div>
-              <span className="text-sm font-medium">Participant Matching</span>
-              <p className="text-xs text-gray-500">Links based on participant/contact matching</p>
+            <div className="flex-1">
+              <Label htmlFor="strat-participant" className="text-sm font-medium cursor-pointer">Participant Matching</Label>
+              <p className="text-xs text-muted-foreground">Links based on participant/contact matching</p>
             </div>
-          </label>
-          <label className="flex items-center p-3 border rounded">
-            <input
-              type="checkbox"
+          </div>
+          <div className="flex items-center p-3 border rounded">
+            <Checkbox
+              id="strat-content"
               checked={settings.enabledStrategies.contentAnalysis}
-              onChange={(e) =>
+              onCheckedChange={(c) =>
                 onChange({
                   ...settings,
-                  enabledStrategies: {
-                    ...settings.enabledStrategies,
-                    contentAnalysis: e.target.checked,
-                  },
+                  enabledStrategies: { ...settings.enabledStrategies, contentAnalysis: !!c },
                 })
               }
               className="mr-3"
             />
-            <div>
-              <span className="text-sm font-medium">Content Analysis (LLM)</span>
-              <p className="text-xs text-gray-500">Uses AI to analyze content and find relationships</p>
+            <div className="flex-1">
+              <Label htmlFor="strat-content" className="text-sm font-medium cursor-pointer">Content Analysis (LLM)</Label>
+              <p className="text-xs text-muted-foreground">Uses AI to analyze content and find relationships</p>
             </div>
-          </label>
-          <label className="flex items-center p-3 border rounded">
-            <input
-              type="checkbox"
+          </div>
+          <div className="flex items-center p-3 border rounded">
+            <Checkbox
+              id="strat-temporal"
               checked={settings.enabledStrategies.temporalCorrelation}
-              onChange={(e) =>
+              onCheckedChange={(c) =>
                 onChange({
                   ...settings,
-                  enabledStrategies: {
-                    ...settings.enabledStrategies,
-                    temporalCorrelation: e.target.checked,
-                  },
+                  enabledStrategies: { ...settings.enabledStrategies, temporalCorrelation: !!c },
                 })
               }
               className="mr-3"
             />
-            <div>
-              <span className="text-sm font-medium">Temporal Correlation</span>
-              <p className="text-xs text-gray-500">Links entities based on time-based patterns</p>
+            <div className="flex-1">
+              <Label htmlFor="strat-temporal" className="text-sm font-medium cursor-pointer">Temporal Correlation</Label>
+              <p className="text-xs text-muted-foreground">Links entities based on time-based patterns</p>
             </div>
-          </label>
-          <label className="flex items-center p-3 border rounded">
-            <input
-              type="checkbox"
+          </div>
+          <div className="flex items-center p-3 border rounded">
+            <Checkbox
+              id="strat-vector"
               checked={settings.enabledStrategies.vectorSimilarity}
-              onChange={(e) =>
+              onCheckedChange={(c) =>
                 onChange({
                   ...settings,
-                  enabledStrategies: {
-                    ...settings.enabledStrategies,
-                    vectorSimilarity: e.target.checked,
-                  },
+                  enabledStrategies: { ...settings.enabledStrategies, vectorSimilarity: !!c },
                 })
               }
               className="mr-3"
             />
-            <div>
-              <span className="text-sm font-medium">Vector Similarity</span>
-              <p className="text-xs text-gray-500">Links entities based on semantic similarity</p>
+            <div className="flex-1">
+              <Label htmlFor="strat-vector" className="text-sm font-medium cursor-pointer">Vector Similarity</Label>
+              <p className="text-xs text-muted-foreground">Links entities based on semantic similarity</p>
             </div>
-          </label>
+          </div>
         </div>
       </div>
 
       <div className="flex justify-end">
-        <button
-          onClick={onSave}
-          disabled={saving}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-        >
+        <Button onClick={onSave} disabled={saving}>
           {saving ? 'Saving...' : 'Save Settings'}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -494,12 +483,9 @@ function SuggestedLinksReviewTab({ links, onApprove, onReject, onApproveAll }: S
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Suggested Links Review</h3>
         {links.length > 0 && (
-          <button
-            onClick={onApproveAll}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-          >
+          <Button onClick={onApproveAll} size="sm">
             Approve All
-          </button>
+          </Button>
         )}
       </div>
 
@@ -523,18 +509,12 @@ function SuggestedLinksReviewTab({ links, onApprove, onReject, onApproveAll }: S
                   <p className="text-sm text-gray-700 dark:text-gray-300">{link.linkingReason}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => onApprove(link.id)}
-                    className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded text-xs hover:bg-green-200 dark:hover:bg-green-800"
-                  >
+                  <Button size="sm" variant="secondary" className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800" onClick={() => onApprove(link.id)}>
                     Approve
-                  </button>
-                  <button
-                    onClick={() => onReject(link.id)}
-                    className="px-3 py-1 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded text-xs hover:bg-red-200 dark:hover:bg-red-800"
-                  >
+                  </Button>
+                  <Button size="sm" variant="destructive" className="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800" onClick={() => onReject(link.id)}>
                     Reject
-                  </button>
+                  </Button>
                 </div>
               </div>
               <div className="text-xs text-gray-500">
@@ -560,12 +540,9 @@ function ManualLinkingRulesTab({ rules, onRefresh }: ManualLinkingRulesTabProps)
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Manual Linking Rules</h3>
-        <button
-          onClick={() => setShowEditor(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-        >
+        <Button onClick={() => setShowEditor(true)} size="sm">
           Add Rule
-        </button>
+        </Button>
       </div>
 
       <p className="text-sm text-gray-500 mb-4">
@@ -615,12 +592,9 @@ function ManualLinkingRulesTab({ rules, onRefresh }: ManualLinkingRulesTabProps)
             <p className="text-sm text-gray-500 mb-4">
               Manual rule creation UI to be implemented. For now, use the API directly.
             </p>
-            <button
-              onClick={() => setShowEditor(false)}
-              className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-            >
+            <Button variant="secondary" onClick={() => setShowEditor(false)}>
               Close
-            </button>
+            </Button>
           </div>
         </div>
       )}

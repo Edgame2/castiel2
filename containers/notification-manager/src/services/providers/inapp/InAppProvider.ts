@@ -88,7 +88,7 @@ export class InAppProvider {
   async healthCheck(): Promise<{ healthy: boolean; message?: string }> {
     try {
       // Check if publisher is connected
-      // TODO: Add connection check when EventPublisher supports it
+      // Connection check: add when EventPublisher exposes connection status
       return {
         healthy: true,
         message: 'In-app provider is healthy',

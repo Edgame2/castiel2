@@ -1,13 +1,15 @@
 /**
  * Web Search Service
- * Web search integration and context
+ * Web search integration and context. Creates c_search shards per dataflow Phase 3.1.
  */
 
-import { ServiceClient } from '@coder/shared';
+import { ServiceClient, generateServiceToken } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
+import { FastifyInstance } from 'fastify';
 import { loadConfig } from '../config/index.js';
 import { log } from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
+import { cSearchShardsCreatedTotal } from '../metrics.js';
 
 export interface WebSearchResult {
   id: string;
@@ -23,15 +25,33 @@ export interface WebSearchResult {
   createdAt: Date | string;
 }
 
+export interface WebSearchOptions {
+  limit?: number;
+  useCache?: boolean;
+  userId?: string;
+  opportunityId?: string;
+  accountId?: string;
+}
+
 export class WebSearchService {
   private config: ReturnType<typeof loadConfig>;
   private aiServiceClient: ServiceClient;
   private _contextServiceClient: ServiceClient;
   private _embeddingsClient: ServiceClient;
+  private shardManagerClient: ServiceClient;
+  private app: FastifyInstance | null;
 
-  constructor() {
+  constructor(app?: FastifyInstance) {
+    this.app = app ?? null;
     this.config = loadConfig();
-    
+
+    this.shardManagerClient = new ServiceClient({
+      baseURL: this.config.services.shard_manager?.url || '',
+      timeout: 15000,
+      retries: 2,
+      circuitBreaker: { enabled: true },
+    });
+
     this.aiServiceClient = new ServiceClient({
       baseURL: this.config.services.ai_service?.url || '',
       timeout: 30000,
@@ -54,10 +74,19 @@ export class WebSearchService {
     });
   }
 
+  private getServiceToken(tenantId: string): string {
+    if (!this.app) return '';
+    return generateServiceToken(this.app as FastifyInstance, {
+      serviceId: 'web-search',
+      serviceName: 'web-search',
+      tenantId,
+    });
+  }
+
   /**
-   * Perform web search
+   * Perform web search. Creates a c_search shard when shard_manager is configured (dataflow Phase 3.1).
    */
-  async search(tenantId: string, query: string, options?: { limit?: number; useCache?: boolean }): Promise<WebSearchResult> {
+  async search(tenantId: string, query: string, options?: WebSearchOptions): Promise<WebSearchResult> {
     try {
       log.info('Performing web search', {
         tenantId,
@@ -142,6 +171,41 @@ export class WebSearchService {
 
       // Store in cache
       await this.cacheSearch(result);
+
+      // Create c_search shard for dataflow (Phase 3.1)
+      if (this.config.services.shard_manager?.url) {
+        try {
+          const token = this.getServiceToken(tenantId);
+          await this.shardManagerClient.post<{ id: string }>(
+            '/api/v1/shards',
+            {
+              tenantId,
+              shardTypeId: 'c_search',
+              shardTypeName: 'c_search',
+              structuredData: {
+                tenantId,
+                query,
+                searchType: 'web',
+                userId: options?.userId,
+                opportunityId: options?.opportunityId,
+                accountId: options?.accountId,
+                createdAt: new Date().toISOString(),
+                resultCount: searchResults.length,
+              },
+              unstructuredData: { rawQuery: query, snippets: searchResults.map((r) => r.snippet).slice(0, 5) },
+            },
+            { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId } }
+          );
+          cSearchShardsCreatedTotal.inc({ tenant_id: tenantId });
+        } catch (e) {
+          log.warn('Failed to create c_search shard', {
+            error: (e as Error).message,
+            tenantId,
+            query,
+            service: 'web-search',
+          });
+        }
+      }
 
       return result;
     } catch (error: any) {

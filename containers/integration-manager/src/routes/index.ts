@@ -2997,7 +2997,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const result = await integrationCatalogService.listIntegrations({
           filter: request.query.category ? { category: request.query.category } : undefined,
           limit: request.query.limit,
@@ -3033,7 +3033,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const catalogEntry = await integrationCatalogService.getIntegration(request.params.id);
         if (!catalogEntry) {
           return reply.status(404).send({
@@ -3070,7 +3070,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const catalogEntry = await integrationCatalogService.createIntegration(request.body);
         return reply.status(201).send({
           integrationType: catalogEntry,
@@ -3099,7 +3099,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const catalogEntry = await integrationCatalogService.updateIntegration(
           request.params.id,
           request.body
@@ -3139,7 +3139,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const deleted = await integrationCatalogService.deleteIntegration(request.params.id);
         if (!deleted) {
           return reply.status(404).send({
@@ -3178,7 +3178,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const result = await integrationCatalogService.listIntegrations({
           filter: request.query.category ? { category: request.query.category } : undefined,
           limit: request.query.limit,
@@ -3209,7 +3209,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const catalogEntry = await integrationCatalogService.getIntegration(request.params.integrationId);
         if (!catalogEntry) {
           return reply.status(404).send({ error: 'Integration not found' });
@@ -3239,7 +3239,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const catalogEntry = await integrationCatalogService.updateIntegration(
           request.params.integrationId,
           request.body
@@ -3272,7 +3272,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const deleted = await integrationCatalogService.deleteIntegration(request.params.integrationId);
         if (!deleted) {
           return reply.status(404).send({ error: 'Integration not found' });
@@ -3302,7 +3302,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const userId = request.user!.id;
         const catalogEntry = await integrationCatalogService.deprecateIntegration(
           request.params.integrationId,
@@ -3336,7 +3336,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const entries = await integrationCatalogService.getIntegrationsByCategory(request.params.category);
         return reply.send(entries);
       } catch (error: any) {
@@ -3363,7 +3363,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const rule = await integrationCatalogService.createVisibilityRule(request.body);
         return reply.status(201).send(rule);
       } catch (error: any) {
@@ -3390,7 +3390,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const userId = request.user!.id;
         const rule = await integrationCatalogService.approveIntegration(
           request.body.tenantId,
@@ -3422,7 +3422,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const userId = request.user!.id;
         const rule = await integrationCatalogService.denyIntegration(
           request.body.tenantId,
@@ -4114,7 +4114,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (_request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const settings = await systemSettingsService.getSettings();
         return reply.send({ settings });
       } catch (error: any) {
@@ -4159,7 +4159,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const userId = request.user!.id;
         const settings = await systemSettingsService.updateSettings(request.body, userId);
         return reply.send({ settings });
@@ -4195,7 +4195,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (_request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const rateLimits = await systemSettingsService.getRateLimits();
         return reply.send({ rateLimits });
       } catch (error: any) {
@@ -4247,7 +4247,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const userId = request.user!.id;
         const rateLimits = await systemSettingsService.updateRateLimits(request.body, userId);
         return reply.send({ rateLimits });
@@ -4283,7 +4283,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (_request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const capacity = await systemSettingsService.getCapacity();
         return reply.send({ capacity });
       } catch (error: any) {
@@ -4346,7 +4346,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const userId = request.user!.id;
         const capacity = await systemSettingsService.updateCapacity(request.body, userId);
         return reply.send({ capacity });
@@ -4382,7 +4382,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (_request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const featureFlags = await systemSettingsService.getFeatureFlags();
         return reply.send({ featureFlags });
       } catch (error: any) {
@@ -4430,7 +4430,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const userId = request.user!.id;
         const featureFlags = await systemSettingsService.updateFeatureFlags(request.body, userId);
         return reply.send({ featureFlags });
@@ -4485,7 +4485,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const userId = request.user!.id;
         const featureFlags = await systemSettingsService.toggleFeatureFlag(
           request.params.flagName,

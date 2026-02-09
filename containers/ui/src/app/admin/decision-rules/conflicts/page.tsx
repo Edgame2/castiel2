@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -106,12 +107,12 @@ export default function DecisionRulesConflictsPage() {
       </nav>
 
       <div className="mb-4 flex flex-wrap gap-4 items-center">
-        <Link href="/admin/decision-rules/rules" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium">
-          Manage rules (Rules page)
-        </Link>
-        <button type="button" onClick={fetchConflicts} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+        <Button asChild>
+          <Link href="/admin/decision-rules/rules">Manage rules (Rules page)</Link>
+        </Button>
+        <Button type="button" variant="link" onClick={fetchConflicts}>
           Refresh
-        </button>
+        </Button>
       </div>
 
       {!apiBaseUrl && (
@@ -123,7 +124,7 @@ export default function DecisionRulesConflictsPage() {
       {error && (
         <div className="rounded-lg border p-4 bg-white dark:bg-gray-900 mb-4">
           <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
-          <button type="button" onClick={fetchConflicts} className="mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline" aria-label="Retry loading rule conflicts">Retry</button>
+          <Button type="button" variant="link" onClick={fetchConflicts} className="mt-2" aria-label="Retry loading rule conflicts">Retry</Button>
         </div>
       )}
 

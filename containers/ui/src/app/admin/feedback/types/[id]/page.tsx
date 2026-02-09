@@ -3,6 +3,17 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -151,55 +162,65 @@ export default function FeedbackTypeDetailPage() {
                 <p><span className="text-gray-500">Default:</span> {type.isDefault ? 'Yes' : 'No'}</p>
                 {type.updatedAt && <p><span className="text-gray-500">Updated:</span> {new Date(type.updatedAt).toLocaleString()}</p>}
                 <div className="flex gap-2 mt-4">
-                  <button type="button" onClick={() => setEditing(true)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Edit</button>
-                  <button type="button" onClick={() => setDeleteConfirm(true)} className="px-4 py-2 border border-red-600 text-red-600 rounded hover:bg-red-50 dark:hover:bg-red-900/20">Delete</button>
+                  <Button type="button" onClick={() => setEditing(true)}>Edit</Button>
+                  <Button type="button" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" onClick={() => setDeleteConfirm(true)}>Delete</Button>
                 </div>
               </div>
             ) : (
               <form onSubmit={handleSave} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
-                <div>
-                  <label htmlFor="displayName" className="block text-sm font-medium mb-1">Display name</label>
-                  <input id="displayName" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+                <div className="space-y-2">
+                  <Label htmlFor="displayName">Display name</Label>
+                  <Input id="displayName" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full" required />
                 </div>
-                <div>
-                  <label htmlFor="category" className="block text-sm font-medium mb-1">Category</label>
-                  <select id="category" value={category} onChange={(e) => setCategory(e.target.value as Category)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700">
-                    <option value="action">Action</option>
-                    <option value="relevance">Relevance</option>
-                    <option value="quality">Quality</option>
-                    <option value="timing">Timing</option>
-                    <option value="other">Other</option>
-                  </select>
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Select value={category} onValueChange={(v) => setCategory(v as Category)}>
+                    <SelectTrigger id="category" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="action">Action</SelectItem>
+                      <SelectItem value="relevance">Relevance</SelectItem>
+                      <SelectItem value="quality">Quality</SelectItem>
+                      <SelectItem value="timing">Timing</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label htmlFor="sentiment" className="block text-sm font-medium mb-1">Sentiment</label>
-                  <select id="sentiment" value={sentiment} onChange={(e) => { const v = e.target.value as Sentiment; setSentiment(v); setSentimentScore(v === 'positive' ? 1 : v === 'negative' ? -1 : 0); }} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700">
-                    <option value="positive">Positive</option>
-                    <option value="neutral">Neutral</option>
-                    <option value="negative">Negative</option>
-                  </select>
+                <div className="space-y-2">
+                  <Label htmlFor="sentiment">Sentiment</Label>
+                  <Select value={sentiment} onValueChange={(v) => { const s = v as Sentiment; setSentiment(s); setSentimentScore(s === 'positive' ? 1 : s === 'negative' ? -1 : 0); }}>
+                    <SelectTrigger id="sentiment" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="positive">Positive</SelectItem>
+                      <SelectItem value="neutral">Neutral</SelectItem>
+                      <SelectItem value="negative">Negative</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label htmlFor="order" className="block text-sm font-medium mb-1">Order</label>
-                  <input id="order" type="number" value={order} onChange={(e) => setOrder(parseInt(e.target.value, 10) || 0)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <div className="space-y-2">
+                  <Label htmlFor="order">Order</Label>
+                  <Input id="order" type="number" value={order} onChange={(e) => setOrder(parseInt(e.target.value, 10) || 0)} className="w-full" />
                 </div>
                 <div className="flex items-center gap-2">
-                  <input id="isActive" type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded" />
-                  <label htmlFor="isActive" className="text-sm font-medium">Active</label>
+                  <Checkbox id="isActive" checked={isActive} onCheckedChange={(c) => setIsActive(c === true)} />
+                  <Label htmlFor="isActive" className="text-sm font-medium">Active</Label>
                 </div>
                 <div className="flex gap-2">
-                  <button type="submit" disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Save</button>
-                  <button type="button" onClick={() => setEditing(false)} className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</button>
+                  <Button type="submit" disabled={saving}>Save</Button>
+                  <Button type="button" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
                 </div>
               </form>
             )}
 
             {deleteConfirm && (
-              <div className="mt-4 p-4 border rounded-lg border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+              <div className="mt-4 p-4 border rounded-lg border-destructive/30 bg-destructive/10">
                 <p className="text-sm mb-2">Delete this feedback type? Pre-deletion checks may apply (not default, not in use, inactive 30 days).</p>
                 <div className="flex gap-2">
-                  <button type="button" onClick={handleDelete} disabled={deleting} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50">Delete</button>
-                  <button type="button" onClick={() => setDeleteConfirm(false)} className="px-4 py-2 border rounded dark:border-gray-700">Cancel</button>
+                  <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting}>Delete</Button>
+                  <Button type="button" variant="outline" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
                 </div>
               </div>
             )}

@@ -35,6 +35,8 @@ tags:
     description: Authentication provider management
   - name: Health
     description: Health check endpoints
+  - name: MFA
+    description: Multi-factor authentication (TOTP); requires features.multi_factor_auth
 
 components:
   securitySchemes:
@@ -83,3 +85,209 @@ paths:
         '503':
           description: Service is not ready
 
+  /auth/login/complete-mfa:
+    post:
+      tags:
+        - MFA
+      summary: Complete login after MFA
+      description: After login returns 202 with requiresMfa, send the TOTP or backup code to complete sign-in. Requires features.multi_factor_auth enabled.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mfaSessionId, code]
+              properties:
+                mfaSessionId: { type: string }
+                code: { type: string, description: "TOTP 6-digit or 8-char backup code" }
+      responses:
+        '200':
+          description: Sign-in complete; same body as login (user, accessToken, refreshToken, sessionId, organizationId)
+        '400':
+          description: mfaSessionId or code missing
+        '401':
+          description: Invalid/expired code or MFA session expired
+        '403':
+          description: MFA not enabled
+  /auth/mfa/status:
+    get:
+      tags:
+        - MFA
+      summary: Get MFA enrollment status
+      description: Returns whether the current user has TOTP MFA enrolled. Requires features.multi_factor_auth enabled.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enrolled: { type: boolean }
+        '403':
+          description: MFA not enabled
+  /auth/mfa/enroll:
+    post:
+      tags:
+        - MFA
+      summary: Enroll in TOTP MFA
+      description: |
+        Generates a TOTP secret and stores it. Returns secret and provisioning URI for authenticator apps.
+        Requires features.multi_factor_auth enabled. Returns 403 if MFA is not enabled or 409 if already enrolled.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                issuer: { type: string, description: "Issuer label for authenticator" }
+                accountName: { type: string, description: "Account label (e.g. email)" }
+      responses:
+        '200':
+          description: Enrollment successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret: { type: string }
+                  provisioningUri: { type: string }
+                  label: { type: string }
+        '403':
+          description: MFA not enabled
+        '409':
+          description: MFA already enrolled
+  /auth/mfa/verify:
+    post:
+      tags:
+        - MFA
+      summary: Verify TOTP code
+      description: Verifies the user's TOTP code. Requires features.multi_factor_auth enabled.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, description: 6-digit TOTP code }
+      responses:
+        '200':
+          description: Code valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+        '400':
+          description: code missing
+        '401':
+          description: Invalid or expired code
+        '403':
+          description: MFA not enabled
+  /auth/mfa/verify-backup:
+    post:
+      tags:
+        - MFA
+      summary: Verify backup code
+      description: Verifies a one-time backup code and marks it used. Requires features.multi_factor_auth enabled.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, description: "Backup code (8 characters)" }
+      responses:
+        '200':
+          description: Code valid and consumed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+        '400':
+          description: code missing
+        '401':
+          description: Invalid or already used backup code
+        '403':
+          description: MFA not enabled
+  /auth/mfa/backup-codes/generate:
+    post:
+      tags:
+        - MFA
+      summary: Generate backup codes
+      description: Verifies the current TOTP code then generates new one-time backup codes. Returns plain codes once. Requires features.multi_factor_auth enabled.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, description: "6-digit TOTP code" }
+      responses:
+        '200':
+          description: Backup codes (show once to user)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  codes: { type: array, items: { type: string } }
+        '400':
+          description: code missing
+        '401':
+          description: Invalid or expired TOTP code
+        '403':
+          description: MFA not enabled
+  /auth/mfa/disable:
+    post:
+      tags:
+        - MFA
+      summary: Disable TOTP MFA
+      description: Verifies the current TOTP code then removes MFA for the user. Requires features.multi_factor_auth enabled.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, description: "6-digit TOTP code to confirm identity" }
+      responses:
+        '200':
+          description: MFA disabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+        '400':
+          description: code missing
+        '401':
+          description: Invalid or expired code
+        '403':
+          description: MFA not enabled

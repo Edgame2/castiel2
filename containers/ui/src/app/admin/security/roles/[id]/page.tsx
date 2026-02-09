@@ -8,6 +8,10 @@
 import Link from 'next/link';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useState, useCallback, useEffect, Suspense } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -233,25 +237,17 @@ function RoleDetailContent() {
         <>
           {!loading && !role && !error && (
             <div className="rounded-lg border bg-white dark:bg-gray-900 p-4 mb-4">
-              <button
-                type="button"
-                onClick={fetchRole}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
+              <Button type="button" size="sm" onClick={fetchRole}>
                 Load role
-              </button>
+              </Button>
             </div>
           )}
           {error && (
             <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 mb-4">
               <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
-              <button
-                type="button"
-                onClick={fetchRole}
-                className="mt-2 text-sm font-medium text-blue-600 hover:underline"
-              >
+              <Button type="button" variant="link" size="sm" className="mt-2" onClick={fetchRole}>
                 Retry
-              </button>
+              </Button>
             </div>
           )}
           {loading && (
@@ -264,29 +260,17 @@ function RoleDetailContent() {
               <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <h2 className="text-lg font-semibold">Details</h2>
-                  <button type="button" onClick={fetchRole} disabled={loading} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50" aria-label="Refresh role details">Refresh</button>
+                  <Button type="button" variant="link" size="sm" onClick={fetchRole} disabled={loading} aria-label="Refresh role details">Refresh</Button>
                 </div>
                 {editing ? (
                   <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="w-full max-w-md px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                        disabled={saving}
-                      />
+                    <div className="space-y-2">
+                      <Label>Name</Label>
+                      <Input className="max-w-md text-sm" value={editName} onChange={(e) => setEditName(e.target.value)} disabled={saving} />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                      <input
-                        type="text"
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
-                        className="w-full max-w-md px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                        disabled={saving}
-                      />
+                    <div className="space-y-2">
+                      <Label>Description</Label>
+                      <Input className="max-w-md text-sm" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} disabled={saving} />
                     </div>
                     <div>
                       <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Permissions</span>
@@ -295,21 +279,19 @@ function RoleDetailContent() {
                       ) : (
                         <div className="max-h-48 overflow-y-auto border rounded p-2 dark:bg-gray-800 dark:border-gray-700 space-y-1.5 text-sm">
                           {allPermissions.map((p) => (
-                            <label key={p.id} className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
+                            <Label key={p.id} className="flex cursor-pointer items-center gap-2">
+                              <Checkbox
                                 checked={editPermissionIds.includes(p.id)}
-                                onChange={() => {
+                                onCheckedChange={() => {
                                   setEditPermissionIds((prev) =>
                                     prev.includes(p.id) ? prev.filter((x) => x !== p.id) : [...prev, p.id]
                                   );
                                 }}
                                 disabled={saving}
-                                className="rounded"
                               />
                               <span>{p.displayName}</span>
                               <span className="text-gray-500">({p.code})</span>
-                            </label>
+                            </Label>
                           ))}
                           {allPermissions.length === 0 && !permissionsLoading && (
                             <p className="text-gray-500">No permissions available.</p>
@@ -319,22 +301,12 @@ function RoleDetailContent() {
                     </div>
                     {saveError && <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>}
                     <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={updateRole}
-                        disabled={saving}
-                        className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                      >
+                      <Button type="button" size="sm" onClick={updateRole} disabled={saving}>
                         {saving ? 'Saving…' : 'Save'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setEditing(false); setSaveError(null); }}
-                        className="px-3 py-1.5 text-sm border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                        disabled={saving}
-                      >
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => { setEditing(false); setSaveError(null); }} disabled={saving}>
                         Cancel
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ) : (
@@ -354,8 +326,10 @@ function RoleDetailContent() {
                       </Link>
                       {role.isCustomRole && !deleteConfirm && (
                         <>
-                          <button
+                          <Button
                             type="button"
+                            variant="link"
+                            size="sm"
                             onClick={async () => {
                               setSaveError(null);
                               setPermissionsLoading(true);
@@ -380,18 +354,12 @@ function RoleDetailContent() {
                               }
                             }}
                             disabled={permissionsLoading}
-                            className="text-sm font-medium text-blue-600 hover:underline disabled:opacity-50"
                           >
                             {permissionsLoading ? 'Loading…' : 'Edit'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleteConfirm(true)}
-                            className="text-sm font-medium text-red-600 hover:underline disabled:opacity-50"
-                            disabled={deleting}
-                          >
+                          </Button>
+                          <Button type="button" variant="link" size="sm" className="text-destructive" onClick={() => setDeleteConfirm(true)} disabled={deleting}>
                             Delete role
-                          </button>
+                          </Button>
                         </>
                       )}
                     </div>
@@ -402,22 +370,12 @@ function RoleDetailContent() {
                     <p className="text-sm text-red-800 dark:text-red-200 mb-2">Are you sure? This cannot be undone.</p>
                     {deleteError && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{deleteError}</p>}
                     <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => { setDeleteConfirm(false); setDeleteError(null); }}
-                        className="px-3 py-1.5 text-sm border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                        disabled={deleting}
-                      >
+                      <Button type="button" variant="outline" size="sm" onClick={() => { setDeleteConfirm(false); setDeleteError(null); }} disabled={deleting}>
                         Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={deleteRole}
-                        disabled={deleting}
-                        className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-                      >
+                      </Button>
+                      <Button type="button" variant="destructive" size="sm" onClick={deleteRole} disabled={deleting}>
                         {deleting ? 'Deleting…' : 'Delete role'}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}

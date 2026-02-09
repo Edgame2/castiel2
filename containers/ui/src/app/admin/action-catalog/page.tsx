@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -89,14 +90,9 @@ export default function ActionCatalogOverviewPage() {
           </p>
         </div>
         {apiBaseUrl && (
-          <button
-            type="button"
-            onClick={fetchStats}
-            disabled={loading}
-            className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 text-sm"
-          >
+          <Button type="button" variant="outline" onClick={fetchStats} disabled={loading}>
             Refresh
-          </button>
+          </Button>
         )}
       </div>
       {!apiBaseUrl && (
@@ -107,13 +103,9 @@ export default function ActionCatalogOverviewPage() {
       {error && (
         <div className="rounded-lg border p-4 bg-red-50 dark:bg-red-900/20 mb-4">
           <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
-          <button
-            type="button"
-            onClick={() => fetchStats()}
-            className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-          >
-            Retry
-          </button>
+            <Button type="button" variant="link" onClick={() => fetchStats()} className="mt-2">
+              Retry
+            </Button>
         </div>
       )}
       <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">

@@ -712,9 +712,7 @@ export class FieldMapperService {
       return { valid: false, errors, warnings };
     }
 
-    // Schema validation would go here if schema is provided
-    // For now, just return basic validation
-    // TODO: Implement JSON Schema validation if schema is provided
+    // JSON Schema validation when schema is provided: to be added when needed.
 
     return {
       valid: errors.length === 0,

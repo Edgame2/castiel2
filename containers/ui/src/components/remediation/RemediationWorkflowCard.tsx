@@ -7,6 +7,8 @@
 
 'use client';
 
+import { Button } from '@/components/ui/button';
+
 export type RemediationStep = {
   stepNumber: number;
   description: string;
@@ -88,26 +90,18 @@ export function RemediationWorkflowCard({
               <span className="text-xs text-gray-400">{s.completedAt.slice(0, 10)}</span>
             )}
             {canComplete && (s.status === 'pending' || s.status === 'current') && onCompleteStep && (
-              <button
-                type="button"
-                onClick={() => onCompleteStep(id, s.stepNumber)}
-                className="text-xs font-medium text-blue-600 hover:underline shrink-0"
-              >
+              <Button type="button" variant="link" size="sm" className="text-xs h-auto p-0 shrink-0" onClick={() => onCompleteStep(id, s.stepNumber)}>
                 Complete
-              </button>
+              </Button>
             )}
           </li>
         ))}
       </ul>
       {canComplete && onCancel && (
         <div className="mt-3 pt-3 border-t">
-          <button
-            type="button"
-            onClick={() => onCancel(id)}
-            className="text-xs font-medium text-gray-600 hover:underline"
-          >
+          <Button type="button" variant="ghost" size="sm" className="text-xs h-auto p-0 text-muted-foreground hover:underline" onClick={() => onCancel(id)}>
             Cancel workflow
-          </button>
+          </Button>
         </div>
       )}
     </div>

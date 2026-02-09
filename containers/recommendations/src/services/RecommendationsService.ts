@@ -4,7 +4,7 @@
  * Combines vector search, collaborative filtering, temporal, content-based, and ML recommendations
  */
 
-import { ServiceClient, generateServiceToken } from '@coder/shared';
+import { ServiceClient, generateServiceToken, PolicyResolver } from '@coder/shared';
 import { getContainer } from '@coder/shared';
 import { FastifyInstance } from 'fastify';
 import { loadConfig } from '../config/index.js';
@@ -37,15 +37,26 @@ export class RecommendationsService {
   private mlServiceClient: ServiceClient;
   private embeddingsClient: ServiceClient;
   private shardManagerClient: ServiceClient;
+  private searchServiceClient: ServiceClient;
+  private policyResolver: PolicyResolver;
   private riskAnalyticsClient: ServiceClient | null = null;
   private recommendationCache = new Map<string, { batch: RecommendationBatch; expiresAt: number }>();
   private readonly CACHE_TTL = 30 * 60 * 1000; // 30 minutes
   private app: FastifyInstance | null = null;
+  private _reasoningEngineClient: ServiceClient | null = null;
 
   constructor(app?: FastifyInstance) {
     this.app = app || null;
     this.config = loadConfig();
-    
+    const reasoningUrl = this.config.services?.reasoning_engine?.url;
+    if (reasoningUrl) {
+      this._reasoningEngineClient = new ServiceClient({
+        baseURL: reasoningUrl,
+        timeout: 60000,
+        retries: 1,
+        circuitBreaker: { enabled: true },
+      });
+    }
     // Initialize service clients
     const riskAnalyticsUrl = this.config.services?.risk_analytics?.url;
     if (riskAnalyticsUrl) {
@@ -84,6 +95,14 @@ export class RecommendationsService {
       circuitBreaker: { enabled: true },
     });
 
+    this.searchServiceClient = new ServiceClient({
+      baseURL: this.config.services.search_service?.url || '',
+      timeout: 15000,
+      retries: 2,
+      circuitBreaker: { enabled: true },
+    });
+
+    this.policyResolver = new PolicyResolver();
   }
 
   /**
@@ -194,6 +213,13 @@ export class RecommendationsService {
         service: 'recommendations',
       });
 
+      // Step 2a: Fetch related shards for context (dataflow Phase 2.2 – useForRecommendationGeneration)
+      const relatedShardsContext = await this.getRelatedShardsForRecommendations(
+        request.tenantId,
+        request.opportunityId ?? undefined,
+        request.userId ?? 'system'
+      );
+
       // Step 2: Generate recommendations using multiple algorithms
       const allRecommendations: Recommendation[] = [];
       const metadata: RecommendationBatch['metadata'] = {};
@@ -271,8 +297,13 @@ export class RecommendationsService {
         }
       }
 
-      // Step 3: Merge and score recommendations
-      const merged = this.mergeAndScoreRecommendations(allRecommendations, weights, productFitMaxScore);
+      // Step 3: Merge and score recommendations (related-shard context can influence ranking)
+      const merged = this.mergeAndScoreRecommendations(
+        allRecommendations,
+        weights,
+        productFitMaxScore,
+        relatedShardsContext
+      );
       
       // Step 4: Apply limit and sort
       const sorted = merged
@@ -291,6 +322,30 @@ export class RecommendationsService {
         generatedAt: new Date(),
         metadata,
       };
+
+      if (this._reasoningEngineClient && this.app && withExplanations.length > 0) {
+        try {
+          const contextSnippets = withExplanations.slice(0, 5).map((r) => r.title + (r.explanation ? `: ${r.explanation.substring(0, 80)}` : ''));
+          const query = `Why are these recommendations suggested for this opportunity?`;
+          const token = this.getServiceToken(request.tenantId);
+          const res = await this._reasoningEngineClient.post<{
+            steps?: { id: string; order: number; type: string; content: string; reasoning?: string; confidence?: number }[];
+            conclusion?: string;
+          }>(
+            '/api/v1/reasoning/reason',
+            { query, context: contextSnippets, type: 'chain_of_thought' },
+            { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': request.tenantId } }
+          );
+          if (res?.steps?.length) batch.reasoningSteps = res.steps;
+          if (res?.conclusion) batch.conclusion = res.conclusion;
+        } catch (err: unknown) {
+          log.warn('Reasoning-engine sync reason failed, returning batch without reasoningSteps', {
+            error: err instanceof Error ? err.message : String(err),
+            opportunityId: request.opportunityId,
+            service: 'recommendations',
+          });
+        }
+      }
 
       // Step 7: Store in database
       await this.storeRecommendations(batch, request.tenantId);
@@ -853,16 +908,77 @@ export class RecommendationsService {
   }
 
   /**
+   * Fetch related shards via vector search (shardTypeIds where useForRecommendationGeneration).
+   * Returns enrichmentData and structuredData for context (dataflow Phase 2.2).
+   */
+  private async getRelatedShardsForRecommendations(
+    tenantId: string,
+    opportunityId: string | undefined,
+    userId: string
+  ): Promise<Array<{ enrichmentData?: Record<string, unknown>; structuredData?: Record<string, unknown> }>> {
+    if (!this.config.services.search_service?.url || !opportunityId) return [];
+    try {
+      const policy = await this.policyResolver.getShardTypeAnalysisPolicy(tenantId);
+      const shardTypeIds = Object.entries(policy)
+        .filter(([, v]) => v?.useForRecommendationGeneration === true)
+        .map(([k]) => k);
+      if (shardTypeIds.length === 0) return [];
+
+      const token = this.getServiceToken(tenantId);
+      const res = await this.searchServiceClient.post<{
+        results?: Array<{ shard?: { enrichmentData?: Record<string, unknown>; structuredData?: Record<string, unknown> } }>;
+      }>(
+        '/api/v1/search/vector',
+        {
+          query: opportunityId,
+          shardTypeIds,
+          limit: 15,
+          includeShard: true,
+          tenantId,
+          userId,
+        },
+        { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId } }
+      );
+      const results = res?.results ?? [];
+      return results
+        .map((r) => r.shard)
+        .filter((s): s is { enrichmentData?: Record<string, unknown>; structuredData?: Record<string, unknown> } => !!s)
+        .map((s) => ({ enrichmentData: s.enrichmentData, structuredData: s.structuredData }));
+    } catch (e) {
+      log.warn('Related shards for recommendations failed', {
+        error: (e as Error).message,
+        tenantId,
+        opportunityId,
+        service: 'recommendations',
+      });
+      return [];
+    }
+  }
+
+  /**
    * Merge and score recommendations from multiple sources
    */
   private mergeAndScoreRecommendations(
     recommendations: Recommendation[],
     weights: LearnedWeights,
-    productFitMaxScore?: number | null
+    productFitMaxScore?: number | null,
+    relatedShardsContext?: Array<{ enrichmentData?: Record<string, unknown>; structuredData?: Record<string, unknown> }>
   ): Recommendation[] {
     // Deduplicate by ID
     const uniqueMap = new Map<string, Recommendation>();
     const lowProductFit = productFitMaxScore != null && productFitMaxScore < 0.5;
+    const hasActionItems =
+      relatedShardsContext?.some(
+        (s) =>
+          (s.enrichmentData?.actionItems as unknown[])?.length ||
+          (s.structuredData?.actionItems as unknown[])?.length
+      ) ?? false;
+    const hasObjections =
+      relatedShardsContext?.some(
+        (s) =>
+          (s.enrichmentData?.objections as unknown[])?.length ||
+          (s.structuredData?.objections as unknown[])?.length
+      ) ?? false;
 
     for (const rec of recommendations) {
       const existing = uniqueMap.get(rec.id);
@@ -877,6 +993,13 @@ export class RecommendationsService {
         // Phase 3: boost "improve fit" / "better product" when product fit is low
         if (lowProductFit && (/\b(fit|product)\b/i.test(rec.title ?? '') || /\b(fit|product)\b/i.test(rec.description ?? ''))) {
           score = Math.min(1, score * 1.2);
+        }
+        // Dataflow Phase 2.2: boost action/objection-related recs when related shards have action items or objections
+        if (hasActionItems && /\b(action|follow up|commitment)\b/i.test(rec.title ?? rec.description ?? '')) {
+          score = Math.min(1, score * 1.1);
+        }
+        if (hasObjections && /\b(objection|address|concern)\b/i.test(rec.title ?? rec.description ?? '')) {
+          score = Math.min(1, score * 1.1);
         }
         rec.score = score;
         uniqueMap.set(rec.id, rec);
@@ -1158,5 +1281,52 @@ export class RecommendationsService {
     });
 
     return record;
+  }
+
+  /**
+   * Record won/lost outcome for all accepted recommendations tied to an opportunity (dataflow Phase 2.3).
+   * Called when opportunity.outcome.recorded is received. Sends record-outcome to adaptive-learning per accepted rec.
+   */
+  async recordOutcomeForOpportunityClose(
+    tenantId: string,
+    opportunityId: string,
+    outcome: 'won' | 'lost'
+  ): Promise<void> {
+    const feedbackService = new FeedbackService();
+    const accepted = await feedbackService.getAcceptedFeedbackByOpportunity(tenantId, opportunityId);
+    if (accepted.length === 0) return;
+    if (!this.config.services.adaptive_learning?.url) return;
+    const outcomeValue = outcome === 'won' ? 1 : 0;
+    const outcomeType = outcome === 'won' ? 'success' : 'failure';
+    const token = this.getServiceToken(tenantId);
+    for (const { recommendationId } of accepted) {
+      try {
+        await this.adaptiveLearningClient.post(
+          '/api/v1/adaptive-learning/outcomes/record-outcome',
+          {
+            predictionId: recommendationId,
+            outcomeValue,
+            outcomeType,
+            context: { opportunityId, source: 'opportunity.outcome.recorded' },
+          },
+          { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId } }
+        );
+      } catch (e: unknown) {
+        log.warn('recordOutcomeForOpportunityClose: adaptive-learning record-outcome failed', {
+          recommendationId,
+          opportunityId,
+          outcome,
+          error: (e as Error).message,
+          service: 'recommendations',
+        });
+      }
+    }
+    log.info('Recorded outcome for opportunity close', {
+      opportunityId,
+      tenantId,
+      outcome,
+      count: accepted.length,
+      service: 'recommendations',
+    });
   }
 }

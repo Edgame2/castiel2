@@ -7,6 +7,11 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -158,43 +163,46 @@ export default function ActionCatalogCategoryDetailPage() {
                 <p><span className="text-gray-500">Order:</span> {category.order ?? 0}</p>
                 {category.entriesCount != null && <p><span className="text-gray-500">Entries:</span> {category.entriesCount}</p>}
                 <div className="flex gap-2 mt-4">
-                  <button type="button" onClick={() => setEditing(true)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Edit</button>
-                  <button type="button" onClick={() => setDeleteConfirm(true)} className="px-4 py-2 border border-red-600 text-red-600 rounded hover:bg-red-50 dark:hover:bg-red-900/20">Delete</button>
+                  <Button type="button" onClick={() => setEditing(true)}>Edit</Button>
+                  <Button type="button" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" onClick={() => setDeleteConfirm(true)}>Delete</Button>
                 </div>
               </div>
             ) : (
               <form onSubmit={handleSave} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
-                <div>
-                  <label htmlFor="displayName" className="block text-sm font-medium mb-1">Display name</label>
-                  <input id="displayName" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+                <div className="space-y-2">
+                  <Label htmlFor="displayName">Display name</Label>
+                  <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
                 </div>
-                <div>
-                  <label htmlFor="type" className="block text-sm font-medium mb-1">Type</label>
-                  <select id="type" value={type} onChange={(e) => setType(e.target.value as CategoryType)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700">
-                    <option value="risk">Risk</option>
-                    <option value="recommendation">Recommendation</option>
-                    <option value="both">Both</option>
-                  </select>
+                <div className="space-y-2">
+                  <Label htmlFor="type">Type</Label>
+                  <Select value={type} onValueChange={(v) => setType(v as CategoryType)}>
+                    <SelectTrigger id="type"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="risk">Risk</SelectItem>
+                      <SelectItem value="recommendation">Recommendation</SelectItem>
+                      <SelectItem value="both">Both</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label htmlFor="icon" className="block text-sm font-medium mb-1">Icon</label>
-                  <input id="icon" type="text" value={icon} onChange={(e) => setIcon(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <div className="space-y-2">
+                  <Label htmlFor="icon">Icon</Label>
+                  <Input id="icon" value={icon} onChange={(e) => setIcon(e.target.value)} />
                 </div>
-                <div>
-                  <label htmlFor="color" className="block text-sm font-medium mb-1">Color</label>
-                  <input id="color" type="text" value={color} onChange={(e) => setColor(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <div className="space-y-2">
+                  <Label htmlFor="color">Color</Label>
+                  <Input id="color" value={color} onChange={(e) => setColor(e.target.value)} />
                 </div>
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium mb-1">Description</label>
-                  <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
                 </div>
-                <div>
-                  <label htmlFor="order" className="block text-sm font-medium mb-1">Order</label>
-                  <input id="order" type="number" value={order} onChange={(e) => setOrder(parseInt(e.target.value, 10) || 0)} min={0} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <div className="space-y-2">
+                  <Label htmlFor="order">Order</Label>
+                  <Input id="order" type="number" value={order} onChange={(e) => setOrder(parseInt(e.target.value, 10) || 0)} min={0} />
                 </div>
                 <div className="flex gap-2">
-                  <button type="submit" disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Save</button>
-                  <button type="button" onClick={() => setEditing(false)} className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</button>
+                  <Button type="submit" disabled={saving}>Save</Button>
+                  <Button type="button" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
                 </div>
               </form>
             )}
@@ -203,8 +211,8 @@ export default function ActionCatalogCategoryDetailPage() {
               <div className="mt-4 p-4 border rounded-lg border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
                 <p className="text-sm mb-2">Delete this category? Entries may need to be reassigned.</p>
                 <div className="flex gap-2">
-                  <button type="button" onClick={handleDelete} disabled={deleting} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50">Delete</button>
-                  <button type="button" onClick={() => setDeleteConfirm(false)} className="px-4 py-2 border rounded dark:border-gray-700">Cancel</button>
+                  <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting}>Delete</Button>
+                  <Button type="button" variant="outline" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
                 </div>
               </div>
             )}

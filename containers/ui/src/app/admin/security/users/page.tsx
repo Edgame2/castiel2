@@ -7,6 +7,16 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -132,41 +142,45 @@ export default function SecurityUsersPage() {
 
       {apiBaseUrl && (
         <>
-          <div className="rounded-lg border bg-white dark:bg-gray-900 p-4 mb-4">
-            <label className="block text-sm font-medium mb-2">Organization ID</label>
-            <div className="flex gap-2">
-              <input
+          <div className="rounded-lg border bg-card p-4 mb-4">
+            <Label htmlFor="admin-users-org-id" className="block mb-2">Organization ID</Label>
+            <div className="flex gap-2 flex-wrap">
+              <Input
+                id="admin-users-org-id"
                 type="text"
                 value={orgId}
                 onChange={(e) => setOrgId(e.target.value)}
                 placeholder="e.g. org-123"
-                className="flex-1 max-w-xs px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                className="flex-1 max-w-xs"
+                aria-required="true"
               />
-              <Link
-                href="/admin/security/users/invite"
-                className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm inline-flex items-center"
-              >
-                Invite user
-              </Link>
-              <button
+              <Button asChild variant="outline">
+                <Link href="/admin/security/users/invite">Invite user</Link>
+              </Button>
+              <Button
                 type="button"
                 onClick={fetchSummary}
                 disabled={!orgId.trim() || loading}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Loading…' : 'Load summary'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
                 onClick={fetchSummary}
                 disabled={!orgId.trim() || loading}
-                className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
                 title="Refetch member summary for current organization"
               >
                 Refresh
-              </button>
+              </Button>
             </div>
           </div>
+
+          {loading && orgId.trim() && (
+            <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 mb-4">
+              <p className="text-sm text-gray-500">Loading member summary…</p>
+            </div>
+          )}
 
           {error && (
             <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 mb-4">
@@ -184,35 +198,35 @@ export default function SecurityUsersPage() {
                   {isAtLimit !== null && <p><strong>At limit:</strong> {isAtLimit ? 'Yes' : 'No'}</p>}
                 </div>
               </div>
-              {members.length > 0 && (
+              {members.length > 0 ? (
                 <div className="rounded-lg border bg-white dark:bg-gray-900 p-6">
                   <div className="flex flex-wrap items-center gap-4 mb-3">
                     <h2 className="text-lg font-semibold">Members ({members.length})</h2>
                     <div className="flex items-center gap-2">
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by (§10.2)</label>
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                        className="px-3 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                        aria-label="Sort by"
-                      >
-                        <option value="">Default</option>
-                        <option value="userId">User ID</option>
-                        <option value="email">Email</option>
-                        <option value="name">Name</option>
-                        <option value="roleName">Role</option>
-                        <option value="status">Status</option>
-                        <option value="joinedAt">Joined</option>
-                      </select>
-                      <select
-                        value={sortDir}
-                        onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
-                        className="px-3 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                        aria-label="Sort direction"
-                      >
-                        <option value="asc">Ascending</option>
-                        <option value="desc">Descending</option>
-                      </select>
+                      <Label htmlFor="admin-users-sort-by" className="text-sm font-medium shrink-0">Sort by (§10.2)</Label>
+                      <Select value={sortBy || '_default'} onValueChange={(v) => setSortBy(v === '_default' ? '' : v as typeof sortBy)}>
+                        <SelectTrigger id="admin-users-sort-by" className="w-[140px]">
+                          <SelectValue placeholder="Default" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_default">Default</SelectItem>
+                          <SelectItem value="userId">User ID</SelectItem>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="name">Name</SelectItem>
+                          <SelectItem value="roleName">Role</SelectItem>
+                          <SelectItem value="status">Status</SelectItem>
+                          <SelectItem value="joinedAt">Joined</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={sortDir} onValueChange={(v) => setSortDir(v as 'asc' | 'desc')}>
+                        <SelectTrigger id="admin-users-sort-dir" className="w-[130px]" aria-label="Sort direction">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="asc">Ascending</SelectItem>
+                          <SelectItem value="desc">Descending</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <div className="overflow-x-auto">
@@ -245,6 +259,11 @@ export default function SecurityUsersPage() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border bg-white dark:bg-gray-900 p-6">
+                  <h2 className="text-lg font-semibold mb-2">Members</h2>
+                  <p className="text-sm text-gray-500">No members in this organization.</p>
                 </div>
               )}
             </>

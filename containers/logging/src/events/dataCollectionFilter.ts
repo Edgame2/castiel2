@@ -56,7 +56,7 @@ function eventTypeAllowed(
 /** Evaluate severity: if listed and false, disable; otherwise collect. */
 function severityAllowed(
   severity: LogSeverity | undefined,
-  severityConfig: Record<string, boolean> | undefined
+  severityConfig: Partial<Record<string, boolean>> | undefined
 ): boolean {
   if (!severityConfig) return true;
   const key = severity ?? LogSeverity.INFO;
@@ -67,7 +67,7 @@ function severityAllowed(
 /** Evaluate category: if listed and false, disable; otherwise collect. */
 function categoryAllowed(
   category: LogCategory | undefined,
-  categoryConfig: Record<string, boolean> | undefined
+  categoryConfig: Partial<Record<string, boolean>> | undefined
 ): boolean {
   if (!categoryConfig) return true;
   const key = category ?? LogCategory.SYSTEM;
@@ -78,7 +78,7 @@ function categoryAllowed(
 /** Evaluate resource_type: use default for null/empty; otherwise lookup. Not listed = collect. */
 function resourceTypeAllowed(
   resourceType: string | null | undefined,
-  resourceTypeConfig: NonNullable<LoggingConfig['data_collection']>['resource_type']
+  resourceTypeConfig: (Partial<Record<string, boolean>> & { default?: boolean }) | undefined
 ): boolean {
   if (!resourceTypeConfig) return true;
   const key = resourceType?.toLowerCase() ?? null;

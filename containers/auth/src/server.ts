@@ -6,6 +6,7 @@
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
 import { initializeDatabase, getDatabaseClient, connectDatabase } from '@coder/shared';
+import { ensureContainer } from '@coder/shared/database';
 import { setupJWT } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
@@ -98,17 +99,33 @@ export async function buildApp(): Promise<FastifyInstance> {
     secret: config.jwt.secret,
   });
   
-  // Initialize database with config
+  // Initialize database with config (exclude mfa and api_keys containers so we create them with custom partition keys)
+  const containers = { ...config.cosmos_db.containers };
+  const mfaContainerName = containers.mfa_secrets;
+  const mfaBackupCodesContainerName = containers.mfa_backup_codes;
+  const apiKeysContainerName = containers.api_keys;
+  delete containers.mfa_secrets;
+  delete containers.mfa_backup_codes;
+  delete containers.api_keys;
   initializeDatabase({
     endpoint: config.cosmos_db.endpoint,
     key: config.cosmos_db.key,
     database: config.cosmos_db.database_id,
-    containers: config.cosmos_db.containers,
+    containers,
   });
-  
+
   // Connect to database
   try {
     await connectDatabase();
+    if (mfaContainerName) {
+      await ensureContainer(mfaContainerName, '/userId');
+    }
+    if (mfaBackupCodesContainerName) {
+      await ensureContainer(mfaBackupCodesContainerName, '/userId');
+    }
+    if (apiKeysContainerName) {
+      await ensureContainer(apiKeysContainerName, '/id');
+    }
     log.info('Database connected successfully', { service: 'auth' });
   } catch (error) {
     log.error('Failed to connect to database', error, { service: 'auth' });
@@ -201,6 +218,10 @@ export async function buildApp(): Promise<FastifyInstance> {
       service: 'auth',
     });
   });
+
+  // Per-IP rate limiting for public auth routes (login, register, forgot-password, etc.)
+  const { rateLimitAuthRoutes } = await import('./middleware/rateLimit');
+  fastify.addHook('onRequest', rateLimitAuthRoutes);
 
   // Register routes
   const { registerRoutes } = await import('./routes');

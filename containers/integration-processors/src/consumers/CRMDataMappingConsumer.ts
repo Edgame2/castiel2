@@ -426,9 +426,7 @@ export class CRMDataMappingConsumer implements BaseConsumer {
       // 8. Mark as processed (idempotency)
       await this.markAsProcessed(event.idempotencyKey);
 
-      // 9. Fast entity linking (if applicable)
-      // TODO: Implement fast entity linking when EntityLinkingService is created
-
+      // 9. Fast entity linking (if applicable): wire when EntityLinkingService exists
       // 10. Publish opportunity events (if opportunity shard and significant changes detected)
       if (entityMapping.shardTypeId === 'opportunity' || entityMapping.shardTypeId === 'c_opportunity') {
         const hasSignificantChange = isCreate || this.hasSignificantOpportunityChange(
@@ -841,9 +839,7 @@ export class CRMDataMappingConsumer implements BaseConsumer {
       );
     }
 
-    // dealVelocity: From stage progression history (simplified)
-    // TODO: Implement proper deal velocity calculation
-
+    // dealVelocity: proper calculation from stage progression history when implemented
     // Initialize count fields to 0 (will be updated by MLFieldAggregationConsumer)
     structuredData.documentCount = 0;
     structuredData.emailCount = 0;
@@ -1074,9 +1070,7 @@ export class CRMDataMappingConsumer implements BaseConsumer {
     const batchThreshold = this.config.mapping?.opportunity_batch_threshold || 100;
 
     // For new opportunities, always publish
-    // For updates, only publish if significant changes
-    // TODO: Compare with previous shard data to detect changes
-
+    // For updates, only publish if significant changes (compare with previous shard when wired)
     // Determine if we should use batch events based on sync context
     // If this is from a batch sync (metadata indicates large sync), use batch events
     const isLargeSync = event.metadata?.batchSize && event.metadata.batchSize >= batchThreshold;

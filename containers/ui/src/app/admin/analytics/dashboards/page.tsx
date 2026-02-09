@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -137,12 +138,9 @@ function AnalyticsDashboardsContent() {
       <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 space-y-4">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Dashboards</h2>
-          <Link
-            href="/admin/analytics/dashboards/new"
-            className="px-3 py-1.5 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-700 inline-block"
-          >
-            New dashboard
-          </Link>
+          <Button asChild size="sm">
+            <Link href="/admin/analytics/dashboards/new">New dashboard</Link>
+          </Button>
         </div>
         <ul className="list-none space-y-2">
           {dashboards.length === 0 && (
@@ -155,14 +153,9 @@ function AnalyticsDashboardsContent() {
               </Link>
               {d.dataSource && <span className="text-xs text-gray-500 dark:text-gray-400">{d.dataSource}</span>}
               {d.refreshIntervalSeconds && <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">Refresh: {d.refreshIntervalSeconds}s</span>}
-              <button
-                type="button"
-                onClick={() => handleDelete(d.id)}
-                className="ml-auto text-sm text-red-600 dark:text-red-400 hover:underline"
-                aria-label={`Delete ${d.name}`}
-              >
+              <Button type="button" variant="ghost" size="sm" className="ml-auto text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(d.id)} aria-label={`Delete ${d.name}`}>
                 Delete
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

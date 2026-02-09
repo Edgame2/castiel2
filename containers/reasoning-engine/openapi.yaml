@@ -28,6 +28,65 @@ tags:
     description: Health check endpoints
 
 paths:
+  /reasoning/reason:
+    post:
+      summary: Synchronous reason (inline)
+      description: |
+        Run reasoning and return steps and conclusion without creating a persisted task (dataflow §10.1).
+        Use for inline explainability (e.g. risk, recommendations).
+      tags: [Reasoning]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  description: Question or problem to reason about
+                context:
+                  type: array
+                  items:
+                    type: string
+                type:
+                  type: string
+                  enum: [chain_of_thought, tree_of_thought, analogical, counterfactual, causal, probabilistic, meta_reasoning, custom]
+      responses:
+        '200':
+          description: Reasoning result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  steps:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        order: { type: number }
+                        type: { type: string }
+                        content: { type: string }
+                        reasoning: { type: string }
+                        confidence: { type: number }
+                  reasoning:
+                    type: string
+                  conclusion:
+                    type: string
+                  confidence:
+                    type: number
+                  alternatives:
+                    type: array
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /reasoning/tasks:
     post:
       summary: Create reasoning task

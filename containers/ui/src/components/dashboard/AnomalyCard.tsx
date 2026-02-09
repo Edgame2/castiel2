@@ -5,6 +5,8 @@
 
 'use client';
 
+import { Button } from '@/components/ui/button';
+
 export type AnomalyItem = {
   id: string;
   anomalyType?: string;
@@ -82,27 +84,15 @@ export function AnomalyCard({
       )}
       {showQuickActions && handleQuick && (
         <div className="mt-3 pt-3 border-t flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => handleQuick('create_task')}
-            className="text-xs font-medium px-2 py-1 rounded border hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
+          <Button type="button" variant="outline" size="sm" onClick={() => handleQuick('create_task')}>
             Create task
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuick('log_activity')}
-            className="text-xs font-medium px-2 py-1 rounded border hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => handleQuick('log_activity')}>
             Log activity
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuick('start_remediation')}
-            className="text-xs font-medium px-2 py-1 rounded border hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => handleQuick('start_remediation')}>
             Start remediation
-          </button>
+          </Button>
         </div>
       )}
     </div>

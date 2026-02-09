@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { MethodologyCardGrid } from './MethodologyCardGrid';
 
 export default function SalesMethodologyOverviewPage() {
@@ -39,14 +40,9 @@ export default function SalesMethodologyOverviewPage() {
             Methodology type, stages, requirements, risks, MEDDIC mapping. Per-tenant config via risk-analytics (§3).
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setRefreshKey((k) => k + 1)}
-          className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-          title="Refetch methodologies (§3.1.1)"
-        >
+        <Button type="button" variant="outline" onClick={() => setRefreshKey((k) => k + 1)} title="Refetch methodologies (§3.1.1)">
           Refresh
-        </button>
+        </Button>
       </div>
       <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
         <span className="text-sm font-medium text-gray-900 dark:text-gray-100 border-b-2 border-blue-600 pb-2 -mb-0.5">

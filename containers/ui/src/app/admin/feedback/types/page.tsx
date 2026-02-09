@@ -7,6 +7,17 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -669,21 +680,18 @@ export default function FeedbackTypesPage() {
       {!loading && apiBaseUrl && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/admin/feedback/types/new"
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium inline-block"
-              aria-label="New type (page)"
-            >
-              New type
-            </Link>
-            <button
-              type="button"
-              onClick={openCreate}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
-              aria-label="Create type (modal)"
-            >
+            <Button asChild>
+              <Link
+                href="/admin/feedback/types/new"
+                className="text-sm font-medium inline-block"
+                aria-label="New type (page)"
+              >
+                New type
+              </Link>
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={openCreate} aria-label="Create type (modal)">
               Create type (modal)
-            </button>
+            </Button>
             <input
               ref={importInputRef}
               type="file"
@@ -691,168 +699,183 @@ export default function FeedbackTypesPage() {
               className="hidden"
               onChange={handleImportFile}
             />
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => importInputRef.current?.click()}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
               aria-label="Import feedback types from JSON"
             >
               Import from JSON
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={fetchTypes}
               disabled={loading}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 text-sm font-medium"
               title="Refetch feedback types"
               aria-label="Refresh feedback types"
             >
               Refresh
-            </button>
+            </Button>
             {selectedIds.size > 0 && (
               <div className="flex flex-wrap items-center gap-2 ml-2 pl-2 border-l border-gray-200 dark:border-gray-600">
                 <span className="text-sm text-gray-600 dark:text-gray-400">{selectedIds.size} selected</span>
-                <button
+                <Button
                   type="button"
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
                   onClick={() => runBulk('activate')}
                   disabled={bulkSaving}
-                  className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
                 >
                   Activate
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => runBulk('deactivate')}
                   disabled={bulkSaving}
-                  className="px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50 text-sm"
                 >
                   Deactivate
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => setBulkModal('setCategory')}
                   disabled={bulkSaving}
-                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 text-sm"
                 >
                   Set category
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => setBulkModal('setSentiment')}
                   disabled={bulkSaving}
-                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 text-sm"
                 >
                   Set sentiment
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportSelected}
-                  className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-                >
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={handleExportSelected}>
                   Export to JSON
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedIds(new Set())}
-                  className="px-3 py-1.5 text-gray-600 dark:text-gray-400 hover:underline text-sm"
-                >
+                </Button>
+                <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setSelectedIds(new Set())}>
                   Clear selection
-                </button>
+                </Button>
               </div>
             )}
-            <label className="text-sm font-medium ml-2">Category</label>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter((e.target.value || '') as FeedbackTypeCategory | '')}
-              className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+            <Label className="text-sm font-medium ml-2">Category</Label>
+            <Select
+              value={categoryFilter || '_all'}
+              onValueChange={(v) => setCategoryFilter(v === '_all' ? '' : (v as FeedbackTypeCategory))}
             >
-              <option value="">All</option>
-              {(Object.keys(CATEGORY_LABELS) as FeedbackTypeCategory[]).map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY_LABELS[c]}
-                </option>
-              ))}
-            </select>
-            <label className="text-sm font-medium ml-2">Sentiment</label>
-            <select
-              value={sentimentFilter}
-              onChange={(e) => setSentimentFilter((e.target.value || '') as FeedbackSentiment | '')}
-              className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              <SelectTrigger className="w-[120px] text-sm">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                {(Object.keys(CATEGORY_LABELS) as FeedbackTypeCategory[]).map((c) => (
+                  <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Label className="text-sm font-medium ml-2">Sentiment</Label>
+            <Select
+              value={sentimentFilter || '_all'}
+              onValueChange={(v) => setSentimentFilter(v === '_all' ? '' : (v as FeedbackSentiment))}
             >
-              <option value="">All</option>
-              {(Object.keys(SENTIMENT_LABELS) as FeedbackSentiment[]).map((s) => (
-                <option key={s} value={s}>
-                  {SENTIMENT_LABELS[s]}
-                </option>
-              ))}
-            </select>
-            <label className="text-sm font-medium ml-2">Status</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter((e.target.value || '') as 'active' | 'inactive' | '')}
-              className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              <SelectTrigger className="w-[120px] text-sm">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                {(Object.keys(SENTIMENT_LABELS) as FeedbackSentiment[]).map((s) => (
+                  <SelectItem key={s} value={s}>{SENTIMENT_LABELS[s]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Label className="text-sm font-medium ml-2">Status</Label>
+            <Select
+              value={statusFilter || '_all'}
+              onValueChange={(v) => setStatusFilter(v === '_all' ? '' : (v as 'active' | 'inactive'))}
             >
-              <option value="">All</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-            <label className="text-sm font-medium ml-2">Usage</label>
-            <select
-              value={usageFilter}
-              onChange={(e) => setUsageFilter((e.target.value || '') as 'high' | 'medium' | 'low' | 'unused' | '')}
-              className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              <SelectTrigger className="w-[100px] text-sm">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+            <Label className="text-sm font-medium ml-2">Usage</Label>
+            <Select
+              value={usageFilter || '_all'}
+              onValueChange={(v) => setUsageFilter(v === '_all' ? '' : (v as 'high' | 'medium' | 'low' | 'unused'))}
             >
-              <option value="">All</option>
-              <option value="high">High (&gt;100)</option>
-              <option value="medium">Medium (10–100)</option>
-              <option value="low">Low (1–9)</option>
-              <option value="unused">Unused (0)</option>
-            </select>
-            <label className="text-sm font-medium ml-2">Search</label>
-            <input
+              <SelectTrigger className="w-[130px] text-sm">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                <SelectItem value="high">High (&gt;100)</SelectItem>
+                <SelectItem value="medium">Medium (10–100)</SelectItem>
+                <SelectItem value="low">Low (1–9)</SelectItem>
+                <SelectItem value="unused">Unused (0)</SelectItem>
+              </SelectContent>
+            </Select>
+            <Label className="text-sm font-medium ml-2">Search</Label>
+            <Input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="By name…"
-              className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm w-40"
+              className="w-40 text-sm"
               aria-label="Search by name"
             />
-            <label className="text-sm font-medium ml-2">Sort by</label>
-            <select
+            <Label className="text-sm font-medium ml-2">Sort by</Label>
+            <Select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'displayName' | 'order' | 'updatedAt' | 'lastUsed' | 'usageCount' | 'sentimentScore')}
-              className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              onValueChange={(v) => setSortBy(v as typeof sortBy)}
               aria-label="Sort by"
             >
-              <option value="order">Order</option>
-              <option value="displayName">Name</option>
-              <option value="usageCount">Usage</option>
-              <option value="lastUsed">Last used</option>
-              <option value="updatedAt">Last updated</option>
-              <option value="sentimentScore">Sentiment score</option>
-            </select>
-            <select
-              value={sortDir}
-              onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
-              className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm ml-1"
-              aria-label="Sort direction"
-            >
-              <option value="asc">Ascending</option>
-              <option value="desc">Descending</option>
-            </select>
+              <SelectTrigger className="w-[130px] text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="order">Order</SelectItem>
+                <SelectItem value="displayName">Name</SelectItem>
+                <SelectItem value="usageCount">Usage</SelectItem>
+                <SelectItem value="lastUsed">Last used</SelectItem>
+                <SelectItem value="updatedAt">Last updated</SelectItem>
+                <SelectItem value="sentimentScore">Sentiment score</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortDir} onValueChange={(v) => setSortDir(v as 'asc' | 'desc')} aria-label="Sort direction">
+              <SelectTrigger className="w-[120px] text-sm ml-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="asc">Ascending</SelectItem>
+                <SelectItem value="desc">Descending</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2 mt-4">
             <h2 className="text-lg font-semibold">Feedback types</h2>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={fetchTypes}
               disabled={loading}
-              className="px-3 py-1.5 text-sm font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
               aria-label="Refresh feedback types"
             >
               Refresh
-            </button>
+            </Button>
           </div>
 
           <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-hidden">
@@ -861,12 +884,10 @@ export default function FeedbackTypesPage() {
                 <thead>
                   <tr className="border-b bg-gray-50 dark:bg-gray-800/50">
                     <th className="text-left p-3 w-10">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={isAllSelected}
-                        onChange={toggleSelectAll}
+                        onCheckedChange={toggleSelectAll}
                         aria-label="Select all"
-                        className="rounded"
                       />
                     </th>
                     <th className="text-left p-3 font-medium">Display Name</th>
@@ -892,12 +913,10 @@ export default function FeedbackTypesPage() {
                     sorted.map((t) => (
                       <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                         <td className="p-3">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             checked={selectedIds.has(t.id)}
-                            onChange={() => toggleSelect(t.id)}
+                            onCheckedChange={() => toggleSelect(t.id)}
                             aria-label={`Select ${t.displayName || t.name}`}
-                            className="rounded"
                           />
                         </td>
                         <td className="p-3">
@@ -976,62 +995,74 @@ export default function FeedbackTypesPage() {
                         </td>
                         <td className="p-3">
                           <div className="flex flex-wrap gap-2">
-                            <button
+                            <Button
                               type="button"
+                              variant="link"
+                              size="sm"
+                              className="p-0 h-auto text-primary text-sm"
                               onClick={() => openEdit(t)}
-                              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
                             >
                               Edit
-                            </button>
+                            </Button>
                             {t.isActive ? (
-                              <button
+                              <Button
                                 type="button"
+                                variant="link"
+                                size="sm"
+                                className="p-0 h-auto text-amber-600 dark:text-amber-400 text-sm"
                                 onClick={() => handleToggleActive(t.id, false)}
                                 disabled={togglingActiveId === t.id}
-                                className="text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 text-sm disabled:opacity-50"
                                 title="Disable this feedback type"
                               >
                                 {togglingActiveId === t.id ? '…' : 'Disable'}
-                              </button>
+                              </Button>
                             ) : (
-                              <button
+                              <Button
                                 type="button"
+                                variant="link"
+                                size="sm"
+                                className="p-0 h-auto text-green-600 dark:text-green-400 text-sm"
                                 onClick={() => handleToggleActive(t.id, true)}
                                 disabled={togglingActiveId === t.id}
-                                className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm disabled:opacity-50"
                                 title="Enable this feedback type"
                               >
                                 {togglingActiveId === t.id ? '…' : 'Enable'}
-                              </button>
+                              </Button>
                             )}
-                            <button
+                            <Button
                               type="button"
+                              variant="link"
+                              size="sm"
+                              className="p-0 h-auto text-destructive text-sm"
                               onClick={() => { setDeleteConfirmRow(t); setDeleteConfirmName(''); setDeleteError(null); }}
-                              className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm"
                               title="Delete feedback type (§1.1.4)"
                             >
                               Delete
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
+                              variant="link"
+                              size="sm"
+                              className="p-0 h-auto text-muted-foreground text-sm"
                               onClick={() => setUsageModalType(t)}
-                              className="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 text-sm"
                               title="View usage for this type"
                             >
                               View Usage
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
+                              variant="link"
+                              size="sm"
+                              className="p-0 h-auto text-muted-foreground text-sm"
                               onClick={() => {
                                 setTenantsModalType(t);
                                 setTenantsList([]);
                                 setTenantsError(null);
                               }}
-                              className="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 text-sm"
                               title="View tenants using this type (§1.1.3)"
                             >
                               View tenants
-                            </button>
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -1070,13 +1101,9 @@ export default function FeedbackTypesPage() {
               </div>
             </dl>
             <div className="mt-6 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setUsageModalType(null)}
-                className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-              >
+              <Button type="button" variant="outline" size="sm" onClick={() => setUsageModalType(null)}>
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1112,13 +1139,9 @@ export default function FeedbackTypesPage() {
               </div>
             )}
             <div className="mt-4 flex justify-end shrink-0">
-              <button
-                type="button"
-                onClick={() => { setTenantsModalType(null); setTenantsList([]); setTenantsError(null); }}
-                className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-              >
+              <Button type="button" variant="outline" size="sm" onClick={() => { setTenantsModalType(null); setTenantsList([]); setTenantsError(null); }}>
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1146,44 +1169,39 @@ export default function FeedbackTypesPage() {
                 </ul>
               </div>
             )}
-            <div className="mb-4">
-              <label htmlFor="delete-confirm-name" className="block text-sm font-medium mb-1">
+            <div className="mb-4 space-y-2">
+              <Label htmlFor="delete-confirm-name" className="text-sm font-medium">
                 Type the feedback type name to confirm: <strong>{(deleteConfirmRow.displayName || deleteConfirmRow.name || '').trim()}</strong>
-              </label>
-              <input
+              </Label>
+              <Input
                 id="delete-confirm-name"
-                type="text"
                 value={deleteConfirmName}
                 onChange={(e) => setDeleteConfirmName(e.target.value)}
                 placeholder="Type name to confirm"
-                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                className="text-sm"
                 aria-label="Type feedback type name to confirm"
               />
             </div>
             {deleteError && (
-              <p className="text-sm text-red-600 dark:text-red-400 mb-4" role="alert">{deleteError}</p>
+              <p className="text-sm text-destructive mb-4" role="alert">{deleteError}</p>
             )}
             <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={closeDeleteConfirm}
-                disabled={deleteSaving}
-                className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 text-sm"
-              >
+              <Button type="button" variant="outline" size="sm" onClick={closeDeleteConfirm} disabled={deleteSaving}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="destructive"
+                size="sm"
                 onClick={handleConfirmDelete}
                 disabled={
                   deleteSaving ||
                   deleteConfirmName.trim() !== (deleteConfirmRow.displayName || deleteConfirmRow.name || '').trim() ||
                   deleteBlockReasons(deleteConfirmRow).length > 0
                 }
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 {deleteSaving ? 'Deleting…' : 'Delete'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1210,15 +1228,17 @@ export default function FeedbackTypesPage() {
                     </p>
                   )}
                   <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                    <button
+                    <Button
                       type="button"
+                      variant="link"
+                      size="sm"
+                      className="p-0 h-auto text-primary font-medium"
                       onClick={handleBulkUpdateBehavior}
                       disabled={bulkUpdateSaving}
-                      className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Apply current behavior to this type; all tenants using it will see the new behavior on next load (§1.1.3)"
                     >
                       {bulkUpdateSaving ? 'Updating…' : 'Bulk update behavior for all tenants'}
-                    </button>
+                    </Button>
                     {bulkUpdateError && (
                       <p className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">{bulkUpdateError}</p>
                     )}
@@ -1232,70 +1252,75 @@ export default function FeedbackTypesPage() {
               )}
               <form onSubmit={modalMode === 'create' ? handleCreate : handleUpdate} className="space-y-3">
                 {modalMode === 'create' && (
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Name (slug, e.g. my_type)</label>
-                    <input
-                      type="text"
+                  <div className="space-y-2">
+                    <Label>Name (slug, e.g. my_type)</Label>
+                    <Input
                       value={form.name}
                       onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                       placeholder="e.g. custom_feedback"
-                      className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
                       required
                     />
                   </div>
                 )}
-                <div>
-                  <label className="block text-sm font-medium mb-1">Display name (1–50 chars)</label>
-                  <input
-                    type="text"
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Display name (1–50 chars)</Label>
+                  <Input
                     value={form.displayName}
                     onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
                     maxLength={50}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
                     required
                     aria-describedby="display-name-hint"
                   />
-                  <p id="display-name-hint" className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{form.displayName.trim().length}/50</p>
+                  <p id="display-name-hint" className="text-xs text-muted-foreground">{form.displayName.trim().length}/50</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Category</label>
-                    <select
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select
                       value={form.category}
-                      onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as FeedbackTypeCategory }))}
-                      className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                      onValueChange={(v) => setForm((f) => ({ ...f, category: v as FeedbackTypeCategory }))}
                     >
-                      {(Object.keys(CATEGORY_LABELS) as FeedbackTypeCategory[]).map((c) => (
-                        <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-                      ))}
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(CATEGORY_LABELS) as FeedbackTypeCategory[]).map((c) => (
+                          <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Sentiment</label>
-                    <select
+                  <div className="space-y-2">
+                    <Label>Sentiment</Label>
+                    <Select
                       value={form.sentiment}
-                      onChange={(e) => setForm((f) => ({ ...f, sentiment: e.target.value as FeedbackSentiment }))}
-                      className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                      onValueChange={(v) => setForm((f) => ({ ...f, sentiment: v as FeedbackSentiment }))}
                     >
-                      {(Object.keys(SENTIMENT_LABELS) as FeedbackSentiment[]).map((s) => (
-                        <option key={s} value={s}>{SENTIMENT_LABELS[s]}</option>
-                      ))}
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(SENTIMENT_LABELS) as FeedbackSentiment[]).map((s) => (
+                          <SelectItem key={s} value={s}>{SENTIMENT_LABELS[s]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Sentiment score (-1 to 1) §1.1.2</label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Sentiment score (-1 to 1) §1.1.2</Label>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">Presets:</span>
+                    <span className="text-xs text-muted-foreground">Presets:</span>
                     {([-1, 0, 1] as const).map((v) => (
-                      <button
+                      <Button
                         key={v}
                         type="button"
+                        variant={form.sentimentScore === v ? 'secondary' : 'outline'}
+                        size="sm"
                         onClick={() => setForm((f) => ({ ...f, sentimentScore: v }))}
-                        className={`px-2 py-1 rounded text-sm border ${form.sentimentScore === v ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-500' : 'border-gray-300 dark:border-gray-600'}`}
                       >
                         {v === -1 ? 'Negative (-1)' : v === 0 ? 'Neutral (0)' : 'Positive (1)'}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                   <input
@@ -1308,47 +1333,47 @@ export default function FeedbackTypesPage() {
                     className="w-full mt-1 h-2 rounded-lg appearance-none cursor-pointer bg-gray-200 dark:bg-gray-700 accent-blue-600"
                     aria-label="Sentiment score slider"
                   />
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{form.sentimentScore.toFixed(1)}</span>
+                  <span className="text-xs text-muted-foreground">{form.sentimentScore.toFixed(1)}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Order</label>
-                    <input
+                  <div className="space-y-2">
+                    <Label>Order</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={form.order}
                       onChange={(e) => setForm((f) => ({ ...f, order: parseInt(e.target.value, 10) || 0 }))}
-                      className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Icon (§1.1.2 picker)</label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Icon (§1.1.2 picker)</Label>
                   <div className="flex flex-wrap gap-1 mb-2">
                     {ICON_EMOJIS.map((emoji) => (
-                      <button
+                      <Button
                         key={emoji}
                         type="button"
+                        variant={form.icon === emoji ? 'secondary' : 'outline'}
+                        size="icon"
+                        className="w-9 h-9 text-lg"
                         onClick={() => setForm((f) => ({ ...f, icon: emoji }))}
-                        className={`w-9 h-9 rounded border text-lg flex items-center justify-center ${form.icon === emoji ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                         title={`Set icon to ${emoji}`}
                         aria-label={`Icon ${emoji}`}
                       >
                         {emoji}
-                      </button>
+                      </Button>
                     ))}
                   </div>
-                  <input
-                    type="text"
+                  <Input
                     value={form.icon}
                     onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}
                     placeholder="Or type emoji / character"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                    className="text-sm"
                     aria-label="Icon text"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Color (§1.1.2 picker)</label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Color (§1.1.2 picker)</Label>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
@@ -1360,38 +1385,35 @@ export default function FeedbackTypesPage() {
                           : '#22c55e'
                       }
                       onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
-                      className="h-10 w-14 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                      className="h-10 w-14 rounded border border-input cursor-pointer"
                       aria-label="Color picker"
                     />
-                    <input
-                      type="text"
+                    <Input
                       value={form.color}
                       onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
                       placeholder="#22c55e"
-                      className="flex-1 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 font-mono text-sm"
+                      className="flex-1 font-mono text-sm"
                       aria-label="Color hex"
                     />
                   </div>
                 </div>
                 <div className="flex gap-4">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="form-isActive"
                       checked={form.isActive}
-                      onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
-                      className="rounded"
+                      onCheckedChange={(c) => setForm((f) => ({ ...f, isActive: !!c }))}
                     />
-                    <span className="text-sm">Active</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Label htmlFor="form-isActive" className="text-sm cursor-pointer">Active</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="form-isDefault"
                       checked={form.isDefault}
-                      onChange={(e) => setForm((f) => ({ ...f, isDefault: e.target.checked }))}
-                      className="rounded"
+                      onCheckedChange={(c) => setForm((f) => ({ ...f, isDefault: !!c }))}
                     />
-                    <span className="text-sm">Default (in tenant config)</span>
-                  </label>
+                    <Label htmlFor="form-isDefault" className="text-sm cursor-pointer">Default (in tenant config)</Label>
+                  </div>
                 </div>
                 {!form.isActive && (
                   <div className="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-200" role="region" aria-labelledby="deprecation-workflow-heading">
@@ -1403,28 +1425,26 @@ export default function FeedbackTypesPage() {
                 <div>
                   <p className="text-sm font-medium mb-2">Behavior</p>
                   <div className="flex flex-wrap gap-4">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="beh-createsTask"
                         checked={form.behavior.createsTask}
-                        onChange={(e) => setForm((f) => ({ ...f, behavior: { ...f.behavior, createsTask: e.target.checked } }))}
-                        className="rounded"
+                        onCheckedChange={(c) => setForm((f) => ({ ...f, behavior: { ...f.behavior, createsTask: !!c } }))}
                       />
-                      <span className="text-sm">Creates task</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                      <Label htmlFor="beh-createsTask" className="text-sm cursor-pointer">Creates task</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="beh-hidesRec"
                         checked={form.behavior.hidesRecommendation}
-                        onChange={(e) => setForm((f) => ({ ...f, behavior: { ...f.behavior, hidesRecommendation: e.target.checked } }))}
-                        className="rounded"
+                        onCheckedChange={(c) => setForm((f) => ({ ...f, behavior: { ...f.behavior, hidesRecommendation: !!c } }))}
                       />
-                      <span className="text-sm">Hides recommendation</span>
-                    </label>
+                      <Label htmlFor="beh-hidesRec" className="text-sm cursor-pointer">Hides recommendation</Label>
+                    </div>
                     {form.behavior.hidesRecommendation && (
                       <div className="flex items-center gap-2">
-                        <label className="text-sm text-gray-600 dark:text-gray-400">Hide duration (days, 0–365)</label>
-                        <input
+                        <Label className="text-sm text-muted-foreground">Hide duration (days, 0–365)</Label>
+                        <Input
                           type="number"
                           min={0}
                           max={365}
@@ -1435,48 +1455,47 @@ export default function FeedbackTypesPage() {
                               behavior: { ...f.behavior, hideDurationDays: parseInt(e.target.value, 10) || 0 },
                             }))
                           }
-                          className="w-20 px-2 py-1 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                          className="w-20 text-sm h-8"
                           aria-label="Hide duration days"
                         />
                       </div>
                     )}
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="beh-suppress"
                         checked={form.behavior.suppressSimilar}
-                        onChange={(e) => setForm((f) => ({ ...f, behavior: { ...f.behavior, suppressSimilar: e.target.checked } }))}
-                        className="rounded"
+                        onCheckedChange={(c) => setForm((f) => ({ ...f, behavior: { ...f.behavior, suppressSimilar: !!c } }))}
                       />
-                      <span className="text-sm">Suppress similar</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                      <Label htmlFor="beh-suppress" className="text-sm cursor-pointer">Suppress similar</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="beh-requiresComment"
                         checked={form.behavior.requiresComment}
-                        onChange={(e) => setForm((f) => ({ ...f, behavior: { ...f.behavior, requiresComment: e.target.checked } }))}
-                        className="rounded"
+                        onCheckedChange={(c) => setForm((f) => ({ ...f, behavior: { ...f.behavior, requiresComment: !!c } }))}
                       />
-                      <span className="text-sm">Requires comment</span>
-                    </label>
+                      <Label htmlFor="beh-requiresComment" className="text-sm cursor-pointer">Requires comment</Label>
+                    </div>
                   </div>
                 </div>
-                <div className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Preview (§1.1.2)</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">How the feedback button will look:</p>
-                  <button
+                <div className="rounded border bg-muted/50 p-3">
+                  <p className="text-sm font-medium mb-2">Preview (§1.1.2)</p>
+                  <p className="text-xs text-muted-foreground mb-2">How the feedback button will look:</p>
+                  <Button
                     type="button"
                     disabled
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded border border-gray-300 dark:border-gray-600 text-sm font-medium"
+                    variant="outline"
+                    size="sm"
+                    className="pointer-events-none"
                     style={{ backgroundColor: form.color?.trim() ? (form.color.trim().match(/^#[0-9A-Fa-f]{3,6}$/) ? form.color.trim() : undefined) : undefined, color: form.color?.trim() ? (form.color.trim().match(/^#[0-9A-Fa-f]{3,6}$/) ? '#fff' : undefined) : undefined }}
                     aria-hidden
                   >
                     {form.icon || '?'} {form.displayName.trim() || 'Display name'}
-                  </button>
+                  </Button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Applicable to rec types (comma-separated)</label>
-                  <input
-                    type="text"
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Applicable to rec types (comma-separated)</Label>
+                  <Input
                     value={form.applicableToRecTypes.join(', ')}
                     onChange={(e) =>
                       setForm((f) => ({
@@ -1488,24 +1507,15 @@ export default function FeedbackTypesPage() {
                       }))
                     }
                     placeholder="e.g. mitigation, insight"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-4">
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  >
+                  <Button type="button" variant="outline" onClick={closeModal}>
                     Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={formSaving}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
+                  </Button>
+                  <Button type="submit" disabled={formSaving}>
                     {formSaving ? 'Saving…' : modalMode === 'create' ? 'Create' : 'Save'}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>
@@ -1517,34 +1527,30 @@ export default function FeedbackTypesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="bulk-category-title">
           <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
             <h2 id="bulk-category-title" className="text-lg font-semibold mb-3">Set category for {selectedIds.size} types</h2>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Category</label>
-              <select
-                value={bulkCategory}
-                onChange={(e) => setBulkCategory(e.target.value as FeedbackTypeCategory)}
-                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-              >
-                {(Object.keys(CATEGORY_LABELS) as FeedbackTypeCategory[]).map((c) => (
-                  <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-                ))}
-              </select>
+            <div className="mb-4 space-y-2">
+              <Label>Category</Label>
+              <Select value={bulkCategory} onValueChange={(v) => setBulkCategory(v as FeedbackTypeCategory)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(CATEGORY_LABELS) as FeedbackTypeCategory[]).map((c) => (
+                    <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-2 justify-end">
-              <button
-                type="button"
-                onClick={() => setBulkModal(null)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
-              >
+              <Button type="button" variant="outline" onClick={() => setBulkModal(null)}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => runBulk('setCategory', { category: bulkCategory })}
                 disabled={bulkSaving}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
               >
                 {bulkSaving ? 'Applying…' : 'Apply'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1555,51 +1561,48 @@ export default function FeedbackTypesPage() {
           <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
             <h2 id="bulk-sentiment-title" className="text-lg font-semibold mb-3">Set sentiment for {selectedIds.size} types</h2>
             <div className="space-y-3 mb-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Sentiment</label>
-                <select
+              <div className="space-y-2">
+                <Label>Sentiment</Label>
+                <Select
                   value={bulkSentiment}
-                  onChange={(e) => {
-                    const s = e.target.value as FeedbackSentiment;
-                    setBulkSentiment(s);
+                  onValueChange={(s) => {
+                    setBulkSentiment(s as FeedbackSentiment);
                     setBulkSentimentScore(s === 'positive' ? 1 : s === 'negative' ? -1 : 0);
                   }}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
                 >
-                  {(Object.keys(SENTIMENT_LABELS) as FeedbackSentiment[]).map((s) => (
-                    <option key={s} value={s}>{SENTIMENT_LABELS[s]}</option>
-                  ))}
-                </select>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(SENTIMENT_LABELS) as FeedbackSentiment[]).map((s) => (
+                      <SelectItem key={s} value={s}>{SENTIMENT_LABELS[s]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Sentiment score (-1 to 1)</label>
-                <input
+              <div className="space-y-2">
+                <Label>Sentiment score (-1 to 1)</Label>
+                <Input
                   type="number"
-                  step="0.1"
+                  step={0.1}
                   min={-1}
                   max={1}
                   value={bulkSentimentScore}
                   onChange={(e) => setBulkSentimentScore(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
                 />
               </div>
             </div>
             <div className="flex gap-2 justify-end">
-              <button
-                type="button"
-                onClick={() => setBulkModal(null)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
-              >
+              <Button type="button" variant="outline" onClick={() => setBulkModal(null)}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => runBulk('setSentiment', { sentiment: bulkSentiment, sentimentScore: bulkSentimentScore })}
                 disabled={bulkSaving}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
               >
                 {bulkSaving ? 'Applying…' : 'Apply'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

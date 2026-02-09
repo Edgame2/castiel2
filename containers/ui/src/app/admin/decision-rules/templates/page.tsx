@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -118,38 +119,22 @@ export default function DecisionRulesTemplatesPage() {
       {error && (
         <div className="rounded-lg border p-4 bg-white dark:bg-gray-900 mb-4">
           <p className="text-sm text-red-600 dark:text-red-400">Error: {error}. Showing default templates.</p>
-          <button
-            type="button"
-            onClick={fetchTemplates}
-            className="mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-          >
+          <Button type="button" variant="link" size="sm" className="mt-2" onClick={fetchTemplates}>
             Retry
-          </button>
+          </Button>
         </div>
       )}
 
       <div className="mb-4 flex flex-wrap gap-4 items-center">
-        <Link
-          href="/admin/decision-rules/templates/new"
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-        >
-          New template
-        </Link>
-        <Link
-          href="/admin/decision-rules/rules"
-          className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
-        >
-          Create rule (Rules page)
-        </Link>
-        <button
-          type="button"
-          onClick={fetchTemplates}
-          disabled={loading}
-          className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
-          title="Refetch rule templates"
-        >
+        <Button asChild>
+          <Link href="/admin/decision-rules/templates/new">New template</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/admin/decision-rules/rules">Create rule (Rules page)</Link>
+        </Button>
+        <Button type="button" variant="outline" onClick={fetchTemplates} disabled={loading} title="Refetch rule templates">
           Refresh
-        </button>
+        </Button>
       </div>
 
       {loading ? (

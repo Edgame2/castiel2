@@ -4,7 +4,7 @@
  * @module integration-processors/consumers
  */
 
-import { ServiceClient, EventPublisher } from '@coder/shared';
+import { ServiceClient, EventPublisher, PolicyResolver } from '@coder/shared';
 import { log } from '../utils/logger.js';
 import { CRMDataMappingConsumer } from './CRMDataMappingConsumer.js';
 import { MLFieldAggregationConsumer } from './MLFieldAggregationConsumer.js';
@@ -15,12 +15,14 @@ import { MessageProcessorConsumer } from './MessageProcessorConsumer.js';
 import { EventProcessorConsumer } from './EventProcessorConsumer.js';
 import { MeetingProcessorConsumer } from './MeetingProcessorConsumer.js';
 import { ActivityAggregationConsumer } from './ActivityAggregationConsumer.js';
+import { UsageIngestionConsumer } from './UsageIngestionConsumer.js';
 
 export interface ConsumerDependencies {
   shardManager: ServiceClient;
   eventPublisher: EventPublisher;
   integrationManager: ServiceClient;
   aiService?: ServiceClient; // Optional AI service for entity linking
+  policyResolver?: PolicyResolver; // Optional; when set, detection steps respect integration_processing_settings
   redis?: any; // Redis client (optional)
 }
 
@@ -53,7 +55,8 @@ export async function startConsumers(
       new EmailProcessorConsumer(deps),
       new MessageProcessorConsumer(deps),
       new EventProcessorConsumer(deps),
-      new ActivityAggregationConsumer(deps)
+      new ActivityAggregationConsumer(deps),
+      new UsageIngestionConsumer(deps)
     );
   }
 

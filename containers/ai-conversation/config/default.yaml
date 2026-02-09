@@ -43,6 +43,8 @@ services:
     url: ${EMBEDDINGS_URL:-http://localhost:3035}
   search_service:
     url: ${SEARCH_SERVICE_URL:-http://localhost:3029}
+  reasoning_engine:
+    url: ${REASONING_ENGINE_URL:-}
 
 # RabbitMQ Configuration
 rabbitmq:

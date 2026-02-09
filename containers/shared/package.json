@@ -17,7 +17,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@azure/cosmos": "^4.0.0",
@@ -34,7 +35,8 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^25.0.5",
     "@types/ioredis": "^5.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.0"
   }
 }
 

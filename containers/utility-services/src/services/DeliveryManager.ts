@@ -209,8 +209,7 @@ export class DeliveryManager {
    */
   private async deliverPush(notification: NotificationInput): Promise<DeliveryResult> {
     try {
-      // TODO: Get device tokens from user profile
-      // For now, return not implemented
+      // Push: resolve device tokens from user profile when implemented
       return {
         channel: 'PUSH',
         success: false,

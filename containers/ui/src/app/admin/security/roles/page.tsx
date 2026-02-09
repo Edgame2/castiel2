@@ -8,6 +8,17 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -217,40 +228,24 @@ export default function SecurityRolesPage() {
             </ul>
           </section>
           <div className="rounded-lg border bg-white dark:bg-gray-900 p-4 mb-4">
-            <label className="block text-sm font-medium mb-2">Organization ID</label>
+            <Label className="block mb-2">Organization ID</Label>
             <div className="flex gap-2">
-              <input
+              <Input
                 type="text"
                 value={orgId}
                 onChange={(e) => setOrgId(e.target.value)}
                 placeholder="e.g. org-123"
-                className="flex-1 max-w-xs px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                className="flex-1 max-w-xs"
               />
-              <button
-                type="button"
-                onClick={fetchRoles}
-                disabled={!orgId.trim() || loading}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <Button type="button" onClick={fetchRoles} disabled={!orgId.trim() || loading}>
                 {loading ? 'Loading…' : 'Load roles'}
-              </button>
-              <button
-                type="button"
-                onClick={fetchRoles}
-                disabled={!orgId.trim() || loading}
-                className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-                title="Refetch roles for current organization"
-              >
+              </Button>
+              <Button type="button" variant="outline" onClick={fetchRoles} disabled={!orgId.trim() || loading} title="Refetch roles for current organization">
                 Refresh
-              </button>
-              <button
-                type="button"
-                onClick={openCreateForm}
-                disabled={!orgId.trim() || createPermissionsLoading}
-                className="px-4 py-2 border rounded hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              </Button>
+              <Button type="button" variant="outline" onClick={openCreateForm} disabled={!orgId.trim() || createPermissionsLoading}>
                 {createPermissionsLoading ? 'Loading…' : 'Create role'}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -259,46 +254,47 @@ export default function SecurityRolesPage() {
               <h2 className="text-lg font-semibold mb-3">Create custom role</h2>
               <div className="space-y-3 max-w-md">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
-                  <input
+                  <Label className="block mb-1">Name</Label>
+                  <Input
                     type="text"
                     value={createName}
                     onChange={(e) => setCreateName(e.target.value)}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                    className="w-full text-sm"
                     disabled={createSubmitting}
                     placeholder="Role name"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                  <input
+                  <Label className="block mb-1">Description</Label>
+                  <Input
                     type="text"
                     value={createDescription}
                     onChange={(e) => setCreateDescription(e.target.value)}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                    className="w-full text-sm"
                     disabled={createSubmitting}
                     placeholder="Optional"
                   />
                 </div>
                 <div>
-                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Permissions</span>
-                  <div className="max-h-48 overflow-y-auto border rounded p-2 dark:bg-gray-800 dark:border-gray-700 space-y-1.5 text-sm">
+                  <span className="block text-sm font-medium mb-2">Permissions</span>
+                  <div className="max-h-48 overflow-y-auto border rounded p-2 dark:border-gray-700 space-y-1.5 text-sm">
                     {createAllPermissions.map((p) => (
-                      <label key={p.id} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
+                      <div key={p.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`create-perm-${p.id}`}
                           checked={createPermissionIds.includes(p.id)}
-                          onChange={() => {
+                          onCheckedChange={() => {
                             setCreatePermissionIds((prev) =>
                               prev.includes(p.id) ? prev.filter((x) => x !== p.id) : [...prev, p.id]
                             );
                           }}
                           disabled={createSubmitting}
-                          className="rounded"
                         />
-                        <span>{p.displayName}</span>
-                        <span className="text-gray-500">({p.code})</span>
-                      </label>
+                        <Label htmlFor={`create-perm-${p.id}`} className="font-normal cursor-pointer">
+                          <span>{p.displayName}</span>
+                          <span className="text-gray-500"> ({p.code})</span>
+                        </Label>
+                      </div>
                     ))}
                     {createAllPermissions.length === 0 && (
                       <p className="text-gray-500">No permissions available.</p>
@@ -307,22 +303,12 @@ export default function SecurityRolesPage() {
                 </div>
                 {createError && <p className="text-sm text-red-600 dark:text-red-400">{createError}</p>}
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={createRole}
-                    disabled={createSubmitting}
-                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                  >
+                  <Button type="button" size="sm" onClick={createRole} disabled={createSubmitting}>
                     {createSubmitting ? 'Creating…' : 'Create'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCreating(false); setCreateError(null); }}
-                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                    disabled={createSubmitting}
-                  >
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => { setCreating(false); setCreateError(null); }} disabled={createSubmitting}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -339,27 +325,27 @@ export default function SecurityRolesPage() {
               <div className="flex flex-wrap items-center gap-4 mb-3">
                 <h2 className="text-lg font-semibold">Roles ({items.length})</h2>
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by (§10.1)</label>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                    className="px-3 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                    aria-label="Sort by"
-                  >
-                    <option value="">Default</option>
-                    <option value="name">Name</option>
-                    <option value="createdAt">Created</option>
-                    <option value="userCount">User count</option>
-                  </select>
-                  <select
-                    value={sortDir}
-                    onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
-                    className="px-3 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                    aria-label="Sort direction"
-                  >
-                    <option value="asc">Ascending</option>
-                    <option value="desc">Descending</option>
-                  </select>
+                  <Label className="text-sm">Sort by (§10.1)</Label>
+                  <Select value={sortBy || '_default'} onValueChange={(v) => setSortBy(v === '_default' ? '' : (v as typeof sortBy))}>
+                    <SelectTrigger className="w-[130px] h-8 text-sm" aria-label="Sort by">
+                      <SelectValue placeholder="Default" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_default">Default</SelectItem>
+                      <SelectItem value="name">Name</SelectItem>
+                      <SelectItem value="createdAt">Created</SelectItem>
+                      <SelectItem value="userCount">User count</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={sortDir} onValueChange={(v) => setSortDir(v as 'asc' | 'desc')}>
+                    <SelectTrigger className="w-[120px] h-8 text-sm" aria-label="Sort direction">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="asc">Ascending</SelectItem>
+                      <SelectItem value="desc">Descending</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="overflow-x-auto">

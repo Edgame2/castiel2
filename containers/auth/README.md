@@ -8,10 +8,15 @@ User authentication and session management service for Castiel.
 - **JWT Token Management**: Secure token generation, validation, and refresh
 - **Session Management**: Multi-device session tracking and revocation
 - **Password Security**: Bcrypt hashing, password history, strength validation
-- **Account Security**: Login attempt tracking, account lockout, email verification
+- **Account Security**: Login attempt tracking, account lockout, email verification, per-IP rate limiting on public auth routes
 - **Provider Linking**: Link/unlink multiple authentication providers
 - **Password Reset**: Secure password reset flow with email verification
 - **Event-Driven Email Notifications**: All emails are sent via the Notification module through RabbitMQ events
+- **API Keys**: When `features.api_keys` is enabled, users can create API keys for programmatic auth (Bearer or X-API-Key)
+
+### MFA (P2)
+
+Multi-factor authentication (TOTP) is implemented when `features.multi_factor_auth` is enabled (env `FEATURE_MFA`, default `false`). Cosmos container `auth_mfa_secrets` (partition key `/userId`) stores TOTP secrets. Endpoints: **GET /api/v1/auth/mfa/status** (enrollment status), **POST /api/v1/auth/mfa/enroll** (authenticated) returns secret and provisioning URI for authenticator apps; **POST /api/v1/auth/mfa/verify** (body `{ "code": "123456" }`, authenticated) verifies a TOTP code. Backup codes are not yet implemented.
 
 ## Quick Start
 
@@ -47,7 +52,9 @@ The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers)
 - `auth_login_attempts` - Login attempt tracking (TTL: 15 minutes)
 - `auth_sso_configs` - SSO/SAML configurations
 - `auth_oauth2_clients` - OAuth2 client applications
-- `auth_mfa_secrets` - MFA secrets (encrypted)
+- `auth_mfa_secrets` - MFA TOTP secrets
+- `auth_mfa_backup_codes` - MFA backup code hashes (one-time use)
+- `auth_api_keys` - API key hashes and metadata (partition key `/id`; when `features.api_keys` is enabled)
 
 See [architecture.md](./architecture.md) for container structure and partition key details.
 
@@ -78,6 +85,9 @@ npm start
 | oauth.github.enabled | boolean | false | Enable GitHub OAuth |
 | password.min_length | number | 8 | Minimum password length |
 | security.max_login_attempts | number | 5 | Max failed login attempts before lockout |
+| rate_limit.enabled | boolean | true | Per-IP rate limit for login, register, forgot-password, etc. |
+| rate_limit.window_seconds | number | 60 | Rate limit window in seconds |
+| rate_limit.max_per_window | number | 30 | Max requests per IP per window (429 when exceeded) |
 
 See `config/default.yaml` for full configuration options.
 
@@ -90,12 +100,22 @@ See [OpenAPI Specification](./docs/openapi.yaml)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/v1/auth/register` | Register new user |
-| POST | `/api/v1/auth/login` | Login with email/password |
+| POST | `/api/v1/auth/login` | Login (returns 202 with `requiresMfa`, `mfaSessionId` when MFA enrolled) |
+| POST | `/api/v1/auth/login/complete-mfa` | Complete login with TOTP or backup code after 202 |
 | GET | `/api/v1/auth/google` | Initiate Google OAuth |
 | GET | `/api/v1/auth/google/callback` | Google OAuth callback |
 | POST | `/api/v1/auth/logout` | Logout and revoke session |
 | GET | `/api/v1/auth/me` | Get current user |
 | POST | `/api/v1/auth/refresh` | Refresh JWT token |
+| GET | `/api/v1/auth/mfa/status` | MFA enrollment status (requires `FEATURE_MFA`) |
+| POST | `/api/v1/auth/mfa/enroll` | Enroll TOTP MFA (requires `FEATURE_MFA`) |
+| POST | `/api/v1/auth/mfa/verify` | Verify TOTP code |
+| POST | `/api/v1/auth/mfa/verify-backup` | Verify one-time backup code |
+| POST | `/api/v1/auth/mfa/disable` | Disable MFA (requires current TOTP code) |
+| POST | `/api/v1/auth/mfa/backup-codes/generate` | Generate backup codes (requires current TOTP code; returns codes once) |
+| POST | `/api/v1/auth/api-keys` | Create API key (JWT only; body `{ name, expiresInDays? }`; returns `key` once; requires `FEATURE_API_KEYS`) |
+| GET | `/api/v1/auth/api-keys` | List API keys for current user (id, name, createdAt, expiresAt; no secrets) |
+| DELETE | `/api/v1/auth/api-keys/:id` | Revoke an API key (own keys only) |
 | POST | `/api/v1/auth/change-password` | Change password |
 | POST | `/api/v1/auth/request-password-reset` | Request password reset |
 | POST | `/api/v1/auth/reset-password` | Reset password with token |

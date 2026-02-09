@@ -62,6 +62,10 @@ services:
     url: ${RISK_ANALYTICS_URL:-http://localhost:3048}
   analytics_service:
     url: ${ANALYTICS_SERVICE_URL:-http://localhost:3010}
+  search_service:
+    url: ${SEARCH_SERVICE_URL:-http://localhost:3029}
+  reasoning_engine:
+    url: ${REASONING_ENGINE_URL:-}
 
 # RabbitMQ Configuration
 rabbitmq:
@@ -75,6 +79,7 @@ rabbitmq:
     - "forecast.completed"
     - "shard.updated"
     - "workflow.recommendation.requested"
+    - "opportunity.outcome.recorded"
 
 # Feature Flags. Phase 4: dual-write recommendations to shard-manager as c_recommendation.
 features: {}

@@ -7,6 +7,15 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -88,38 +97,38 @@ export default function ActionCatalogRelationshipNewPage() {
         ) : (
           <form onSubmit={handleSubmit} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
             <div>
-              <label htmlFor="riskId" className="block text-sm font-medium mb-1">Risk</label>
-              <select
-                id="riskId"
-                value={riskId}
-                onChange={(e) => setRiskId(e.target.value)}
-                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                required
-              >
-                <option value="">Select risk</option>
-                {risks.map((r) => (
-                  <option key={r.id} value={r.id}>{r.displayName}</option>
-                ))}
-              </select>
+              <Label htmlFor="riskId" className="block mb-1">Risk</Label>
+              <Select value={riskId || '_none'} onValueChange={(v) => setRiskId(v === '_none' ? '' : v)}>
+                <SelectTrigger id="riskId" className="w-full">
+                  <SelectValue placeholder="Select risk" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Select risk</SelectItem>
+                  {risks.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>{r.displayName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label htmlFor="recommendationId" className="block text-sm font-medium mb-1">Recommendation (mitigates this risk)</label>
-              <select
-                id="recommendationId"
-                value={recommendationId}
-                onChange={(e) => setRecommendationId(e.target.value)}
-                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                required
-              >
-                <option value="">Select recommendation</option>
-                {recommendations.map((r) => (
-                  <option key={r.id} value={r.id}>{r.displayName}</option>
-                ))}
-              </select>
+              <Label htmlFor="recommendationId" className="block mb-1">Recommendation (mitigates this risk)</Label>
+              <Select value={recommendationId || '_none'} onValueChange={(v) => setRecommendationId(v === '_none' ? '' : v)}>
+                <SelectTrigger id="recommendationId" className="w-full">
+                  <SelectValue placeholder="Select recommendation" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Select recommendation</SelectItem>
+                  {recommendations.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>{r.displayName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-2">
-              <button type="submit" disabled={submitting || !riskId || !recommendationId} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Add link</button>
-              <Link href="/admin/action-catalog/relationships" className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</Link>
+              <Button type="submit" disabled={submitting || !riskId || !recommendationId}>Add link</Button>
+              <Button variant="outline" asChild>
+                <Link href="/admin/action-catalog/relationships">Cancel</Link>
+              </Button>
             </div>
           </form>
         )}

@@ -3,7 +3,7 @@
  * AI enrichment and vectorization pipeline for shards
  */
 
-import { ServiceClient, generateServiceToken } from '@coder/shared';
+import { ServiceClient, generateServiceToken, PolicyResolver } from '@coder/shared';
 import { getContainer } from '@coder/shared/database';
 import { FastifyInstance } from 'fastify';
 import { loadConfig } from '../config/index.js';
@@ -53,11 +53,21 @@ export interface EnrichmentJob {
   updatedAt: Date | string;
 }
 
+/** Map enrichment processor type to integration_processing_settings flag name. */
+const PROCESSOR_TO_FLAG: Partial<Record<EnrichmentProcessorType, string>> = {
+  [EnrichmentProcessorType.SENTIMENT_ANALYSIS]: 'sentimentAnalysis',
+  [EnrichmentProcessorType.ENTITY_EXTRACTION]: 'entityExtraction',
+  [EnrichmentProcessorType.CLASSIFICATION]: 'classification',
+  [EnrichmentProcessorType.KEY_PHRASES]: 'keyPhrases',
+  [EnrichmentProcessorType.SUMMARIZATION]: 'summarization',
+};
+
 export class EnrichmentService {
   private config: ReturnType<typeof loadConfig>;
   private shardManagerClient: ServiceClient;
   private embeddingsClient: ServiceClient;
   private _aiServiceClient: ServiceClient;
+  private policyResolver: PolicyResolver;
   private processors = new Map<EnrichmentProcessorType, IEnrichmentProcessor>();
   private _runningJobs = new Set<string>();
   private app: FastifyInstance | null = null;
@@ -86,6 +96,8 @@ export class EnrichmentService {
       retries: 3,
       circuitBreaker: { enabled: true },
     });
+
+    this.policyResolver = new PolicyResolver();
 
     // Register built-in processors
     const aiServiceUrl = this.config.services.ai_service?.url;
@@ -228,8 +240,8 @@ export class EnrichmentService {
         );
       }
 
-      // Check if already enriched
-      if (shard.metadata?.enrichment && !request.force) {
+      // Check if already enriched (enrichmentData or legacy metadata.enrichment)
+      if ((shard.enrichmentData ?? shard.metadata?.enrichment) && !request.force) {
         return {
           jobId: 'already-enriched',
           shardId: request.shardId,
@@ -316,9 +328,24 @@ export class EnrichmentService {
         processingTimeMs: 0,
       };
 
+      // Policy: skip processor if activation flag for this shard type is false
+      const shardTypeId = (shard as { shardTypeId?: string }).shardTypeId ?? '';
+      const activationFlags = await this.policyResolver.getActivationFlags(job.tenantId, shardTypeId);
+
       // Process each enabled processor
       for (const processorConfig of config.processors.filter((p) => p.enabled)) {
         if (!job.processors.includes(processorConfig.type)) {
+          continue;
+        }
+
+        const flagName = PROCESSOR_TO_FLAG[processorConfig.type];
+        if (flagName !== undefined && activationFlags[flagName] === false) {
+          log.info('Skipping processor (policy disabled)', {
+            type: processorConfig.type,
+            shardTypeId,
+            jobId: job.id,
+            service: 'data-enrichment',
+          });
           continue;
         }
 
@@ -450,8 +477,7 @@ export class EnrichmentService {
         );
       }
 
-      shard.metadata = shard.metadata || {};
-      shard.metadata.enrichment = results;
+      shard.enrichmentData = results;
       shard.updatedAt = new Date();
 
       await this.shardManagerClient.put<any>(
@@ -582,7 +608,7 @@ export class EnrichmentService {
                 },
               }
             );
-            if (shard && (!shard.metadata?.enrichment || request.force)) {
+            if (shard && (!(shard.enrichmentData ?? shard.metadata?.enrichment) || request.force)) {
               shards.push(shard);
             }
           } catch (error) {

@@ -694,6 +694,31 @@ export class FeedbackService {
   }
 
   /**
+   * Get accepted feedback records for an opportunity (dataflow Phase 2.3: outcome linkage).
+   * Used when opportunity.outcome.recorded is received to record won/lost for accepted recommendations.
+   */
+  async getAcceptedFeedbackByOpportunity(
+    tenantId: string,
+    opportunityId: string
+  ): Promise<{ recommendationId: string }[]> {
+    const container = getContainer(this.feedbackContainerName);
+    const { resources } = await container.items
+      .query<{ recommendationId: string }>(
+        {
+          query:
+            'SELECT c.recommendationId FROM c WHERE c.action = @action AND c.opportunity.id = @opportunityId',
+          parameters: [
+            { name: '@action', value: 'accept' },
+            { name: '@opportunityId', value: opportunityId },
+          ],
+        },
+        { partitionKey: tenantId } as Parameters<typeof container.items.query>[1]
+      )
+      .fetchAll();
+    return resources;
+  }
+
+  /**
    * Get tenant-level feedback usage statistics. Super Admin §1.3.2.
    */
   async getTenantFeedbackStats(tenantId: string): Promise<{ totalFeedbackCount: number; lastFeedbackAt: string | null }> {

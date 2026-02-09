@@ -107,7 +107,7 @@ export class NotificationEngine {
           input.eventType,
           input.eventType,
           channel,
-          'en', // TODO: Get from user preferences
+          'en', // Locale: use user preferences when available
           variables,
           input.organizationId
         );
@@ -155,7 +155,7 @@ export class NotificationEngine {
         projectId: input.projectId,
         escalationChainId: input.escalationChainId,
         escalationLevel: 0,
-        batchId: input.deduplicationKey ? undefined : undefined, // TODO: Batch logic
+        batchId: input.deduplicationKey ? undefined : undefined, // Batch: set when batch grouping is implemented
         deduplicationKey: input.deduplicationKey,
         read: false,
         processedAt: new Date(),

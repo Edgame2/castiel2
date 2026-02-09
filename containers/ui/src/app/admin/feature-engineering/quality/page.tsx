@@ -7,6 +7,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -135,30 +144,27 @@ export default function FeatureEngineeringQualityPage() {
 
       {apiBaseUrl && (
         <div className="mb-4 flex items-center gap-4">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Purpose</label>
-          <select
-            value={purpose}
-            onChange={(e) => setPurpose(e.target.value as FeaturePurpose)}
-            className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-1.5 text-sm"
-          >
-            {PURPOSES.map((p) => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={fetchQuality}
-            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-          >
+          <Label className="text-sm">Purpose</Label>
+          <Select value={purpose} onValueChange={(v) => setPurpose(v as FeaturePurpose)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PURPOSES.map((p) => (
+                <SelectItem key={p} value={p}>{p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button type="button" variant="link" onClick={fetchQuality}>
             Refresh
-          </button>
+          </Button>
         </div>
       )}
 
       {error && (
         <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 mb-4">
           <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
-          <button type="button" onClick={fetchQuality} className="mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Retry</button>
+          <Button type="button" variant="link" onClick={fetchQuality} className="mt-2">Retry</Button>
         </div>
       )}
 

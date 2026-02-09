@@ -7,6 +7,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -200,35 +204,31 @@ export default function SalesMethodologyMeddicPage() {
                 <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">{label}</h3>
                 <div className="grid gap-2">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Fields (comma-separated)</label>
-                    <input
+                    <Label className="block text-xs text-muted-foreground mb-1">Fields (comma-separated)</Label>
+                    <Input
                       type="text"
                       value={getFieldsStr(key)}
                       onChange={(e) => setFieldsFor(key, e.target.value)}
                       placeholder="e.g. Amount, StageName, CloseDate"
-                      className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                      className="text-sm"
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id={`${key}-required`}
                       checked={meddic[key]?.required ?? false}
-                      onChange={(e) => updateComponent(key, { required: e.target.checked })}
-                      className="rounded"
+                      onCheckedChange={(c) => updateComponent(key, { required: !!c })}
                     />
-                    <label htmlFor={`${key}-required`} className="text-sm text-gray-700 dark:text-gray-300">
-                      Required for MEDDIC score
-                    </label>
+                    <Label htmlFor={`${key}-required`} className="text-sm font-normal">Required for MEDDIC score</Label>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Validation rule (optional)</label>
-                    <input
+                    <Label className="block text-xs text-muted-foreground mb-1">Validation rule (optional)</Label>
+                    <Input
                       type="text"
                       value={meddic[key]?.validationRule ?? ''}
                       onChange={(e) => updateComponent(key, { validationRule: e.target.value || undefined })}
                       placeholder="e.g. non-empty"
-                      className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                      className="text-sm"
                     />
                   </div>
                 </div>
@@ -236,20 +236,12 @@ export default function SalesMethodologyMeddicPage() {
             ))}
           </div>
           <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
-            >
+            <Button type="submit" size="sm" disabled={saving}>
               Save MEDDIC mapping
-            </button>
-            <button
-              type="button"
-              onClick={fetchConfig}
-              className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-            >
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={fetchConfig}>
               Refresh
-            </button>
+            </Button>
           </div>
         </form>
       )}

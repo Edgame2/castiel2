@@ -7,6 +7,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -145,66 +155,59 @@ export default function AnalyticsExportPage() {
       <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 space-y-4">
         <div className="grid gap-4 max-w-xl">
           <div>
-            <label className="block text-sm font-medium mb-1">Datasets (comma-separated)</label>
-            <input
+            <Label className="block mb-1">Datasets (comma-separated)</Label>
+            <Input
               type="text"
               value={datasetsInput}
               onChange={(e) => { setDatasetsInput(e.target.value); setDirty(true); }}
               placeholder="e.g. risk_evaluations, ml_predictions, feedback"
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="w-full"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Format</label>
-            <select
-              value={exportConfig.format ?? 'CSV'}
-              onChange={(e) => update({ format: e.target.value as ExportConfig['format'] })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="CSV">CSV</option>
-              <option value="JSON">JSON</option>
-              <option value="Parquet">Parquet</option>
-            </select>
+            <Label className="block mb-1">Format</Label>
+            <Select value={exportConfig.format ?? 'CSV'} onValueChange={(v) => update({ format: v as ExportConfig['format'] })}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CSV">CSV</SelectItem>
+                <SelectItem value="JSON">JSON</SelectItem>
+                <SelectItem value="Parquet">Parquet</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Schedule</label>
-            <select
-              value={exportConfig.schedule ?? 'daily'}
-              onChange={(e) => update({ schedule: e.target.value as ExportConfig['schedule'] })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
+            <Label className="block mb-1">Schedule</Label>
+            <Select value={exportConfig.schedule ?? 'daily'} onValueChange={(v) => update({ schedule: v as ExportConfig['schedule'] })}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Retention (days)</label>
-            <input
+            <Label className="block mb-1">Retention (days)</Label>
+            <Input
               type="number"
               min={1}
               value={exportConfig.retentionDays ?? 90}
               onChange={(e) => update({ retentionDays: parseInt(e.target.value, 10) || undefined })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="w-full"
             />
           </div>
         </div>
         <div className="flex gap-2 pt-4">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!dirty || saving}
-            className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium disabled:opacity-50 hover:bg-blue-700"
-          >
+          <Button type="button" onClick={handleSave} disabled={!dirty || saving}>
             {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button
-            type="button"
-            onClick={() => { fetchConfig(); setDirty(false); }}
-            className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
+          </Button>
+          <Button type="button" variant="outline" onClick={() => { fetchConfig(); setDirty(false); }}>
             Reset
-          </button>
+          </Button>
         </div>
       </div>
       <Link href="/admin/analytics" className="inline-block mt-4 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">← Back to Analytics & Reporting</Link>

@@ -118,9 +118,8 @@ export class EscalationManager {
       deduplicationKey: `${notification.id}-escalation-${level}`,
     };
 
-    // Override recipients if specified
+    // Override recipients if specified (multi-recipient: send to all when supported)
     if (levelConfig.recipients && levelConfig.recipients.length > 0) {
-      // TODO: Send to multiple recipients
       escalatedInput.recipientId = levelConfig.recipients[0];
     }
 

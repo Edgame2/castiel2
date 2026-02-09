@@ -3,6 +3,16 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 type Category = 'action' | 'relevance' | 'quality' | 'timing' | 'other';
@@ -65,33 +75,51 @@ export default function FeedbackTypeNewPage() {
         <h1 className="text-xl font-semibold mb-4">Create feedback type</h1>
         {error && <p className="text-sm text-red-600 dark:text-red-400 mb-4" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium mb-1">Name (slug, optional)</label>
-            <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+          <div className="space-y-2">
+            <Label htmlFor="name">Name (slug, optional)</Label>
+            <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full" />
           </div>
-          <div>
-            <label htmlFor="displayName" className="block text-sm font-medium mb-1">Display name</label>
-            <input id="displayName" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+          <div className="space-y-2">
+            <Label htmlFor="displayName">Display name</Label>
+            <Input id="displayName" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full" required />
           </div>
-          <div>
-            <label htmlFor="category" className="block text-sm font-medium mb-1">Category</label>
-            <select id="category" value={category} onChange={(e) => setCategory(e.target.value as Category)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700">
-              <option value="action">Action</option><option value="relevance">Relevance</option><option value="quality">Quality</option><option value="timing">Timing</option><option value="other">Other</option>
-            </select>
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Select value={category} onValueChange={(v) => setCategory(v as Category)}>
+              <SelectTrigger id="category" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="action">Action</SelectItem>
+                <SelectItem value="relevance">Relevance</SelectItem>
+                <SelectItem value="quality">Quality</SelectItem>
+                <SelectItem value="timing">Timing</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div>
-            <label htmlFor="sentiment" className="block text-sm font-medium mb-1">Sentiment</label>
-            <select id="sentiment" value={sentiment} onChange={(e) => setSentiment(e.target.value as Sentiment)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700">
-              <option value="positive">Positive</option><option value="neutral">Neutral</option><option value="negative">Negative</option>
-            </select>
+          <div className="space-y-2">
+            <Label htmlFor="sentiment">Sentiment</Label>
+            <Select value={sentiment} onValueChange={(v) => setSentiment(v as Sentiment)}>
+              <SelectTrigger id="sentiment" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="positive">Positive</SelectItem>
+                <SelectItem value="neutral">Neutral</SelectItem>
+                <SelectItem value="negative">Negative</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div>
-            <label htmlFor="order" className="block text-sm font-medium mb-1">Order</label>
-            <input id="order" type="number" value={order} onChange={(e) => setOrder(parseInt(e.target.value, 10) || 0)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+          <div className="space-y-2">
+            <Label htmlFor="order">Order</Label>
+            <Input id="order" type="number" value={order} onChange={(e) => setOrder(parseInt(e.target.value, 10) || 0)} className="w-full" />
           </div>
           <div className="flex gap-2">
-            <button type="submit" disabled={submitting || !displayName.trim()} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Create</button>
-            <Link href="/admin/feedback/types" className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</Link>
+            <Button type="submit" disabled={submitting || !displayName.trim()}>Create</Button>
+            <Button asChild variant="outline">
+              <Link href="/admin/feedback/types">Cancel</Link>
+            </Button>
           </div>
         </form>
         <p className="mt-4"><Link href="/admin/feedback/types" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Back to Types</Link></p>

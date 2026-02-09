@@ -24,18 +24,29 @@ import { FastifyInstance } from 'fastify';
 
 const CONVERSATION_TYPE_NAME = 'c_conversation';
 
+const EXPLAIN_STYLE_PATTERN = /^\s*(why|explain|how come|what caused|tell me (more )?about|can you explain)\b/i;
+
 export class ConversationService {
   private config: ReturnType<typeof loadConfig>;
   private shardManagerClient: ServiceClient;
   private aiServiceClient: ServiceClient;
   private contextServiceClient: ServiceClient;
   private _embeddingsClient: ServiceClient;
+  private _reasoningEngineClient: ServiceClient | null = null;
   private app: FastifyInstance | null = null;
 
   constructor(app?: FastifyInstance) {
     this.app = app || null;
     this.config = loadConfig();
-    
+    const reasoningUrl = this.config.services?.reasoning_engine?.url;
+    if (reasoningUrl) {
+      this._reasoningEngineClient = new ServiceClient({
+        baseURL: reasoningUrl,
+        timeout: 60000,
+        retries: 1,
+        circuitBreaker: { enabled: true },
+      });
+    }
     this.shardManagerClient = new ServiceClient({
       baseURL: this.config.services.shard_manager?.url || '',
       timeout: 30000,
@@ -439,6 +450,38 @@ export class ConversationService {
 
       // Assemble context
       const context = await this.assembleContext(conversation, tenantId);
+
+      // When reasoning-engine is configured and user message is explain-style, add reasoning as context (dataflow §11)
+      if (this._reasoningEngineClient && this.app) {
+        const messages = conversation.structuredData.messages;
+        const lastUserMsg = messages.filter((m) => m.role === 'user').pop();
+        const queryText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : '';
+        if (queryText && EXPLAIN_STYLE_PATTERN.test(queryText)) {
+          try {
+            const token = this.getServiceToken(tenantId);
+            const contextStrings = (context.sources || [])
+              .slice(0, 5)
+              .map((s: { content?: string }) => (typeof s?.content === 'string' ? s.content : String(s)))
+              .filter(Boolean);
+            const res = await this._reasoningEngineClient.post<{ conclusion?: string; reasoning?: string; steps?: { content: string }[] }>(
+              '/api/v1/reasoning/reason',
+              { query: queryText, context: contextStrings.length ? contextStrings : undefined, type: 'chain_of_thought' },
+              { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId } }
+            );
+            const reasoningContent = res?.conclusion || res?.reasoning || (res?.steps?.length ? res.steps.map((s) => s.content).join(' ') : '');
+            if (reasoningContent) {
+              context.sources = context.sources || [];
+              context.sources.push({ type: 'reasoning', content: reasoningContent });
+            }
+          } catch (e: unknown) {
+            log.warn('Reasoning-engine sync reason failed, continuing without reasoning context', {
+              error: e instanceof Error ? e.message : String(e),
+              conversationId,
+              service: 'ai-conversation',
+            });
+          }
+        }
+      }
 
       // Create assistant message placeholder
       const assistantMessage: ConversationMessage = {

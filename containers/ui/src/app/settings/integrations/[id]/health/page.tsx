@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -278,56 +279,56 @@ export default function IntegrationHealthPage() {
       <div className="rounded-lg border bg-white dark:bg-gray-900">
         <div className="border-b">
           <nav className="flex gap-4 px-4">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                activeTab === 'overview'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`rounded-none border-b-2 -mb-px ${
+                activeTab === 'overview' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
+              onClick={() => setActiveTab('overview')}
             >
               Health Overview
-            </button>
-            <button
-              onClick={() => setActiveTab('sync')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                activeTab === 'sync'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`rounded-none border-b-2 -mb-px ${
+                activeTab === 'sync' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
+              onClick={() => setActiveTab('sync')}
             >
               Sync History
-            </button>
-            <button
-              onClick={() => setActiveTab('errors')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                activeTab === 'errors'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`rounded-none border-b-2 -mb-px ${
+                activeTab === 'errors' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
+              onClick={() => setActiveTab('errors')}
             >
               Error Logs
-            </button>
-            <button
-              onClick={() => setActiveTab('quality')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                activeTab === 'quality'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`rounded-none border-b-2 -mb-px ${
+                activeTab === 'quality' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
+              onClick={() => setActiveTab('quality')}
             >
               Data Quality
-            </button>
-            <button
-              onClick={() => setActiveTab('performance')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                activeTab === 'performance'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`rounded-none border-b-2 -mb-px ${
+                activeTab === 'performance' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
+              onClick={() => setActiveTab('performance')}
             >
               Performance
-            </button>
+            </Button>
           </nav>
         </div>
 
@@ -501,12 +502,14 @@ function SyncHistoryTab({ history, onViewDetails, selectedSyncId, syncDetails }:
                   <td className="px-4 py-3 text-sm">{sync.recordsProcessed.toLocaleString()}</td>
                   <td className="px-4 py-3 text-sm text-red-600">{sync.recordsFailed}</td>
                   <td className="px-4 py-3 text-sm">
-                    <button
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 h-auto text-primary"
                       onClick={() => onViewDetails(sync.id)}
-                      className="text-blue-600 hover:underline"
                     >
                       View Details
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}

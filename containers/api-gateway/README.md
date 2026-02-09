@@ -22,8 +22,9 @@ The API Gateway acts as the single entry point for all client requests, routing 
 
 ## Route Mappings
 
-The gateway routes requests to microservices:
+The gateway routes requests to microservices. Paths are registered in `src/routes/index.ts`; only services with a URL in config are active.
 
+**Core routes:**
 - `/api/auth/*` → Auth Service (port 3021)
 - `/api/users/*` → User Management Service (port 3022)
 - `/api/secrets/*` → Secret Management Service (port 3003)
@@ -33,6 +34,8 @@ The gateway routes requests to microservices:
 - `/api/embeddings/*` → Embeddings Service (port 3005)
 - `/api/dashboard/*` → Dashboard Service (port 3011)
 
+**When configured:** `/api/v1/search/*` → Search Service; `/api/v1/integrations/*` → Integration Manager (tenant-facing); `/api/v1/schedules`, `/api/v1/web-search` → Web Search; `/api/v1/prompts`, `/api/v1/multimodal`, `/api/conversations` → Prompt, Multi-Modal, AI Conversation; `/api/v1/*` (risk-analytics, recommendations, ML, etc.) per `config/default.yaml`.
+
 ## Configuration
 
 See `config/default.yaml` for configuration options. Key settings:
@@ -41,6 +44,10 @@ See `config/default.yaml` for configuration options. Key settings:
 - `services.*.url`: Backend service URLs
 - `rate_limit.max`: Maximum requests per time window
 - `rate_limit.timeWindow`: Time window in milliseconds
+- `circuit_breaker.threshold`: Failure count before opening the circuit (default 5)
+- `circuit_breaker.timeout`: Time in ms before half-open retry (default 30000)
+- `cors.origin`: Allowed CORS origin (env `FRONTEND_URL`; default `*`)
+- `redis.url`: Optional. When set (env `REDIS_URL`), rate limits use Redis so multiple gateway instances share the same limits; otherwise in-memory (single instance).
 
 ## Architecture
 
@@ -68,6 +75,14 @@ Response
 - **Header Injection**: X-Tenant-ID header is injected and cannot be overridden
 - **Rate Limiting**: Prevents abuse with per-user and per-tenant limits
 - **Circuit Breakers**: Prevents cascading failures
+
+## Running
+
+From the module root: `pnpm run dev` (development), `pnpm run build` then `pnpm start` (production). Set `JWT_SECRET` and optional service URLs (or use `config/default.yaml` defaults).
+
+## Testing
+
+From the module root: `pnpm test` (all tests), `pnpm test:unit`, or `pnpm test:integration`. Unit tests cover tenant validation, rate limiting, and ProxyService; integration tests hit gateway routes (public auth, protected 401).
 
 ## Status
 

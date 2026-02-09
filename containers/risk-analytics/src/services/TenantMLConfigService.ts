@@ -43,12 +43,17 @@ export class TenantMLConfigService {
   async upsert(tenantId: string, body: UpsertTenantMLConfigBody): Promise<TenantMLConfigurationDocument> {
     const container = getContainer(this.containerName);
     const now = new Date().toISOString();
+    const existing = await this.getByTenantId(tenantId);
     const payload: TenantMLConfiguration = {
       tenantId,
       riskTolerance: body.riskTolerance,
       decisionPreferences: body.decisionPreferences,
       modelPreferences: body.modelPreferences,
       customFeatures: body.customFeatures ?? [],
+      shardTypeAnalysisPolicy:
+        body.shardTypeAnalysisPolicy !== undefined
+          ? body.shardTypeAnalysisPolicy
+          : (existing?.shardTypeAnalysisPolicy ?? undefined),
     };
     const doc: TenantMLConfigurationDocument = {
       ...payload,
@@ -56,7 +61,6 @@ export class TenantMLConfigService {
       createdAt: now,
       updatedAt: now,
     };
-    const existing = await this.getByTenantId(tenantId);
     if (existing) {
       doc.createdAt = (existing as TenantMLConfigurationDocument).createdAt;
     }

@@ -1,6 +1,6 @@
 /**
  * Unauthorized (401) — Shown when access is denied or session is required. Plan §2.10.
- * Redirect here when API returns 401 or when auth middleware requires login.
+ * Redirect here when API returns 401 or when auth proxy requires login.
  */
 
 import type { Metadata } from 'next';

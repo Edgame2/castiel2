@@ -10,6 +10,7 @@ const mockClients = vi.hoisted(() => ({
   ai: { post: vi.fn() },
   context: { post: vi.fn() },
   embeddings: { post: vi.fn() },
+  shardManager: { post: vi.fn() },
 }));
 
 vi.mock('uuid', () => ({ v4: vi.fn(() => 'test-uuid') }));
@@ -21,23 +22,28 @@ vi.mock('@coder/shared', () => ({
     if (config?.baseURL?.includes('ai-service')) return mockClients.ai;
     if (config?.baseURL?.includes('context-service')) return mockClients.context;
     if (config?.baseURL?.includes('embeddings')) return mockClients.embeddings;
+    if (config?.baseURL?.includes('shard')) return mockClients.shardManager;
     return { post: vi.fn() };
   }),
+  generateServiceToken: vi.fn(() => 'mock-token'),
+}));
+
+const mockLoadConfig = vi.fn(() => ({
+  services: {
+    ai_service: { url: 'http://ai-service:3000' },
+    context_service: { url: 'http://context-service:3000' },
+    embeddings: { url: 'http://embeddings:3000' },
+    shard_manager: { url: '' },
+  },
+  database: {
+    containers: {
+      web_search_results: 'web_search_results',
+    },
+  },
 }));
 
 vi.mock('../../../src/config', () => ({
-  loadConfig: vi.fn(() => ({
-    services: {
-      ai_service: { url: 'http://ai-service:3000' },
-      context_service: { url: 'http://context-service:3000' },
-      embeddings: { url: 'http://embeddings:3000' },
-    },
-    database: {
-      containers: {
-        web_search_results: 'web_search_results',
-      },
-    },
-  })),
+  loadConfig: mockLoadConfig,
 }));
 
 vi.mock('../../../src/utils/logger', () => ({
@@ -145,6 +151,58 @@ describe('WebSearchService', () => {
       expect(result.cached).toBe(true);
       expect(result.results.length).toBe(1);
       expect(mockClients.ai.post).not.toHaveBeenCalled();
+    });
+
+    it('should create c_search shard via Shard Manager when shard_manager.url is set (dataflow Phase 3.1)', async () => {
+      mockLoadConfig.mockReturnValueOnce({
+        services: {
+          ai_service: { url: 'http://ai-service:3000' },
+          context_service: { url: 'http://context-service:3000' },
+          embeddings: { url: 'http://embeddings:3000' },
+          shard_manager: { url: 'http://shard-manager:3002' },
+        },
+        database: {
+          containers: {
+            web_search_results: 'web_search_results',
+          },
+        },
+      });
+      mockContainer.items.query.mockReturnValue({
+        fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+      });
+      mockClients.ai.post.mockResolvedValue({
+        results: [
+          { title: 'Result', url: 'https://example.com', snippet: 'Snippet', relevance: 0.9 },
+        ],
+      });
+      mockContainer.items.create.mockResolvedValue({
+        resource: { id: 'result-1', tenantId: 't1', query: 'q', results: [], cached: false },
+      });
+      mockClients.shardManager.post.mockResolvedValue({ id: 'shard-1' });
+
+      const svc = new WebSearchService();
+      await svc.search('t1', 'test query');
+
+      expect(mockClients.shardManager.post).toHaveBeenCalledWith(
+        '/api/v1/shards',
+        expect.objectContaining({
+          tenantId: 't1',
+          shardTypeId: 'c_search',
+          shardTypeName: 'c_search',
+          structuredData: expect.objectContaining({
+            tenantId: 't1',
+            query: 'test query',
+            searchType: 'web',
+            resultCount: 1,
+          }),
+          unstructuredData: expect.objectContaining({ rawQuery: 'test query' }),
+        }),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Tenant-ID': 't1',
+          }),
+        })
+      );
     });
   });
 });

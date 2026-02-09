@@ -8,6 +8,7 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 
 const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
 
@@ -107,14 +108,9 @@ function AcceptInvitationContent() {
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
         You have been invited to join an organization. Accept to continue.
       </p>
-      <button
-        type="button"
-        onClick={handleAccept}
-        disabled={loading}
-        className="w-full rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2 px-4 text-sm"
-      >
+      <Button type="button" onClick={handleAccept} disabled={loading} className="w-full">
         {loading ? 'Accepting…' : 'Accept invitation'}
-      </button>
+      </Button>
       <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
         <Link href="/login" className="underline hover:no-underline">
           Sign in

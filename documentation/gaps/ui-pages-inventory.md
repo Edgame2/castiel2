@@ -10,10 +10,10 @@
 
 | Topic | Decision |
 |-------|----------|
-| **Auth** | Implement in this UI (login, register, forgot-password, reset-password, verify-email). *Current:* none of these routes exist; auth pages are **to implement**. |
+| **Auth** | Implemented in this UI (login, register, forgot-password, reset-password, verify-email, logout, accept-invitation). Pages call gateway `/api/auth/*` and redirect as needed. |
 | **MFA** | Full pages (enroll, verify). |
 | **User management** | Admin user detail `/admin/security/users/[id]` and tenant “my profile” `/settings/profile` — all required. |
-| **AI** | Expose ai-conversation, prompt-service, multi-modal in UI. *Current:* no conversations, prompts, or multimodal pages exist — **to implement**. |
+| **AI** | Expose ai-conversation, prompt-service, multi-modal in UI. Implemented: conversations, prompts, and multimodal pages (see §3.11–§3.13). |
 | **Search/context** | Yes — add `/search` (and context if applicable). |
 | **Logging** | View-only + Search for audit/data collection (no edit of data collection config in UI). |
 | **Integration detail** | One page `/settings/integrations/[id]` with health, sync, and field-mappings on it. |
@@ -48,27 +48,27 @@ Status: **Done** = page exists; **Todo** = to implement.
 
 | Route | Description | CRUD | Status |
 |-------|-------------|------|--------|
-| `/login` | Login (credentials, OAuth entry) | — | Todo |
-| `/register` | Registration | — | Todo |
-| `/forgot-password` | Request password reset | — | Todo |
-| `/reset-password` | Reset password (token in query) | — | Todo |
-| `/verify-email` | Email verification (token in query) | — | Todo |
-| `/logout` | Logout (action or redirect; may be no dedicated page) | — | Todo |
-| `/accept-invitation` | Accept invitation (invitee; token in query) | — | Todo |
+| `/login` | Login (credentials, OAuth entry) | — | Done |
+| `/register` | Registration | — | Done |
+| `/forgot-password` | Request password reset | — | Done |
+| `/reset-password` | Reset password (token in query) | — | Done |
+| `/verify-email` | Email verification (token in query) | — | Done |
+| `/logout` | Logout (action or redirect; may be no dedicated page) | — | Done |
+| `/accept-invitation` | Accept invitation (invitee; token in query) | — | Done |
 
 ### 3.2 MFA (User / Tenant Admin)
 
 | Route | Description | CRUD | Status |
 |-------|-------------|------|--------|
-| `/settings/security` | Account security (MFA entry, sessions) | R, U | Todo |
-| `/settings/mfa/enroll` | MFA enrollment (TOTP, backup codes) | C | Todo |
-| `/settings/mfa/verify` | MFA verification (e.g. after login) | — | Todo |
+| `/settings/security` | Account security (MFA entry, sessions) | R, U | Done |
+| `/settings/mfa/enroll` | MFA enrollment (TOTP, backup codes) | C | Done |
+| `/settings/mfa/verify` | MFA verification (e.g. after login) | — | Done |
 
 ### 3.3 Profile & account (User)
 
 | Route | Description | CRUD | Status |
 |-------|-------------|------|--------|
-| `/settings/profile` | Current user profile (edit self) | R, U | Todo |
+| `/settings/profile` | Current user profile (edit self) | R, U | Done |
 
 ### 3.4 Public / app shell (User)
 
@@ -103,36 +103,36 @@ Status: **Done** = page exists; **Todo** = to implement.
 | `/analytics/competitive` | Competitive analytics | L, R | Done |
 | `/analytics/benchmarks` | Benchmarks | L, R | Done |
 | `/analytics/portfolios` | Portfolios | L, R | Done |
-| `/analytics/forecast` | Forecast overview / scenarios | L, R | Todo |
-| `/analytics/forecast/[period]` | Period scenario / risk-adjusted / ML | R | Todo |
-| `/analytics/forecast/team` | Team-level forecast aggregate | L, R | Todo |
-| `/analytics/forecast/tenant` | Tenant-level forecast aggregate | L, R | Todo |
-| `/analytics/forecast/accuracy` | Forecast accuracy (MAPE, bias, R²) | R | Todo |
-| `/analytics/forecast/record-actual` | Record actual for prediction (dedicated page) | C, U | Todo |
+| `/analytics/forecast` | Forecast overview / scenarios | L, R | Done |
+| `/analytics/forecast/[period]` | Period scenario / risk-adjusted / ML | R | Done |
+| `/analytics/forecast/team` | Team-level forecast aggregate | L, R | Done |
+| `/analytics/forecast/tenant` | Tenant-level forecast aggregate | L, R | Done |
+| `/analytics/forecast/accuracy` | Forecast accuracy (MAPE, bias, R²) | R | Done |
+| `/analytics/forecast/record-actual` | Record actual for prediction (dedicated page) | C, U | Done |
 
 ### 3.8 Recommendations (User)
 
 | Route | Description | CRUD | Status |
 |-------|-------------|------|--------|
-| `/recommendations` | All recommendations list (with filters) | L | Todo |
-| `/opportunities/[id]/recommendations` | Recommendations for one opportunity | L, R, U (feedback) | Todo |
-| `/recommendations/[id]` | Recommendation detail + feedback | R, U (feedback) | Todo |
+| `/recommendations` | All recommendations list (with filters) | L | Done |
+| `/opportunities/[id]/recommendations` | Recommendations for one opportunity | L, R, U (feedback) | Done |
+| `/recommendations/[id]` | Recommendation detail + feedback | R, U (feedback) | Done |
 
 ### 3.9 Search (User / Tenant Admin)
 
 | Route | Description | CRUD | Status |
 |-------|-------------|------|--------|
-| `/search` | Global or scoped search | L | Todo |
+| `/search` | Global or scoped search | L | Done |
 
 ### 3.10 Settings — tenant (User / Tenant Admin)
 
 | Route | Description | CRUD | Status |
 |-------|-------------|------|--------|
-| `/settings` | Settings landing (links to competitors, industries, integrations, etc.) | — | Todo |
+| `/settings` | Settings landing (links to competitors, industries, integrations, etc.) | — | Done |
 | `/settings/competitors` | Competitors | L, C, R, U, D | Done |
 | `/settings/industries` | Industries | L, R | Done |
 | `/settings/integrations` | Integrations list | L, C (connect) | Done |
-| `/settings/integrations/[id]` | Integration detail (health + sync + field-mappings on one page) | R, U | Todo |
+| `/settings/integrations/[id]` | Integration detail (health + sync + field-mappings on one page) | R, U | Done |
 | `/settings/integrations/[id]/field-mappings` | Field mappings (if kept as sub-route) | R, U | Done |
 | `/settings/integrations/[id]/health` | Health (if kept as sub-route) | R | Done |
 | `/settings/integrations/[id]/sync` | Sync (if kept as sub-route) | R, U | Done |
@@ -143,23 +143,23 @@ Status: **Done** = page exists; **Todo** = to implement.
 
 | Route | Description | CRUD | Status |
 |-------|-------------|------|--------|
-| `/conversations` | List or entry for AI conversations | L, C | Todo |
-| `/conversations/[id]` | Single conversation (chat) | R, U | Todo |
+| `/conversations` | List or entry for AI conversations | L, C | Done |
+| `/conversations/[id]` | Single conversation (chat) | R, U | Done |
 
 ### 3.12 AI — prompts (Tenant Admin / Super Admin)
 
 | Route | Description | CRUD | Status |
 |-------|-------------|------|--------|
-| `/admin/prompts` | Prompt list | L, C | Todo |
-| `/admin/prompts/[id]` | Prompt detail / edit | R, U, D | Todo |
-| `/admin/prompts/analytics` | Prompt analytics | R | Todo |
+| `/admin/prompts` | Prompt list | L, C | Done |
+| `/admin/prompts/[id]` | Prompt detail / edit | R, U, D | Done |
+| `/admin/prompts/analytics` | Prompt analytics | R | Done |
 
 ### 3.13 AI — multi-modal (User or Tenant Admin)
 
 | Route | Description | CRUD | Status |
 |-------|-------------|------|--------|
-| `/admin/multimodal` or `/tools/multimodal` | Multi-modal jobs list / upload | L, C | Todo |
-| `/admin/multimodal/[id]` or `/tools/multimodal/[id]` | Job status / result | R | Todo |
+| `/admin/multimodal` or `/tools/multimodal` | Multi-modal jobs list / upload | L, C | Done |
+| `/admin/multimodal/[id]` or `/tools/multimodal/[id]` | Job status / result | R | Done |
 
 ### 3.14 Admin — overview (Tenant Admin / Super Admin)
 
@@ -173,14 +173,14 @@ Status: **Done** = page exists; **Todo** = to implement.
 |-------|-------------|------|--------|
 | `/admin/security` | Security overview | — | Done |
 | `/admin/security/users` | Users list | L | Done |
-| `/admin/security/users/[id]` | User detail (admin view; includes Sessions to view/revoke) | R, U, D (e.g. deactivate) | Todo |
-| `/admin/security/users/invite` | Invite user | C | Todo |
-| `/admin/security/invitations` | Pending invitations (list, resend, cancel) | L, R, U, D | Todo |
+| `/admin/security/users/[id]` | User detail (admin view; includes Sessions to view/revoke) | R, U, D (e.g. deactivate) | Done |
+| `/admin/security/users/invite` | Invite user | C | Done |
+| `/admin/security/invitations` | Pending invitations (list, resend, cancel) | L, R, U, D | Done |
 | `/admin/security/roles` | Roles list | L, C | Done |
 | `/admin/security/roles/[id]` | Role detail / edit | R, U, D | Done |
-| `/admin/security/roles/new` | Create role | C | Todo |
+| `/admin/security/roles/new` | Create role | C | Done |
 | `/admin/security/api-keys` | API keys | L, C, D (revoke) | Done |
-| `/admin/security/api-keys/new` | Create API key | C | Todo |
+| `/admin/security/api-keys/new` | Create API key | C | Done |
 | `/admin/security/audit` | Audit logs | L, R | Done |
 
 ### 3.16 Admin — tenants (Super Admin)
@@ -190,7 +190,7 @@ Status: **Done** = page exists; **Todo** = to implement.
 | `/admin/tenants` | Tenants overview | — | Done |
 | `/admin/tenants/list` | Tenants list | L | Done |
 | `/admin/tenants/[id]` | Tenant detail | R, U | Done |
-| `/admin/tenants/new` | Create tenant | C | Todo |
+| `/admin/tenants/new` | Create tenant | C | Done |
 | `/admin/tenants/templates` | Tenant templates | L, C, R, U, D | Done |
 
 ### 3.17 Admin — action catalog (Tenant Admin / Super Admin)
@@ -277,16 +277,16 @@ Status: **Done** = page exists; **Todo** = to implement.
 | `/admin/system/performance` | Performance | R | Done |
 | `/admin/system/data-lake` | Data lake | R | Done |
 | `/admin/system/logging` | Logging (view + search) | L, R | Done |
-| `/admin/system/logging/config` | Data collection config (view-only + search) | R | Todo |
+| `/admin/system/logging/config` | Data collection config (view-only + search) | R | Done |
 | `/admin/system/api-security` | API security | R, U | Done |
-| `/admin/context` | Context config — Super Admin: platform; Tenant Admin: tenant context | R, U | Todo |
+| `/admin/context` | Context config — Super Admin: platform; Tenant Admin: tenant context | R, U | Done |
 
 ### 3.21 Error pages
 
 | Route / file | Description | Status |
 |--------------|-------------|--------|
-| `not-found.tsx` (404) | Custom not-found page | Todo |
-| `/unauthorized` or 401 handler | Unauthorized page | Todo |
+| `not-found.tsx` (404) | Custom not-found page | Done |
+| `/unauthorized` or 401 handler | Unauthorized page | Done |
 
 ---
 
@@ -294,20 +294,20 @@ Status: **Done** = page exists; **Todo** = to implement.
 
 | Category | Done | Todo |
 |----------|------|------|
-| Auth & session | 0 | 7 |
-| MFA | 0 | 3 |
-| Profile | 0 | 1 |
+| Auth & session | 7 | 0 |
+| MFA | 3 | 0 |
+| Profile | 1 | 0 |
 | Public / dashboard | 5 | 0 |
 | Opportunities & accounts | 6 | 0 |
 | Models | 1 | 0 |
-| Analytics (incl. forecast) | 3 | 6+ |
-| Recommendations | 0 | 3 |
-| Search | 0 | 1 |
-| Settings | 8 | 2 (settings index, integrations [id] single page) |
-| AI (conversations, prompts, multimodal) | 0 | 6 |
-| Admin (all sections) | 50 | 41+ (explicit /new, /[id]; users, invite, invitations, tenants/new, prompts, multimodal, logging config, context) |
-| Error pages | 0 | 2 |
-| **Total** | **~73** | **~62+** |
+| Analytics (incl. forecast) | 9 | 0 |
+| Recommendations | 3 | 0 |
+| Search | 1 | 0 |
+| Settings | 10 | 0 |
+| AI (conversations, prompts, multimodal) | 6 | 0 |
+| Admin (all sections) | 84 | 0 |
+| Error pages | 2 | 0 |
+| **Total** | **138** | **0** |
 
 ---
 

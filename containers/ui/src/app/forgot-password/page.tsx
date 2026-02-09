@@ -7,6 +7,17 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
 
@@ -44,54 +55,58 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm p-6">
-        <h1 className="text-xl font-semibold mb-4">Reset password</h1>
-        {successMessage ? (
-          <div className="space-y-4">
-            <p className="text-sm text-gray-700 dark:text-gray-300">{successMessage}</p>
-            <Link href="/login" className="inline-block text-sm font-medium text-blue-600 hover:text-blue-700 underline">
-              Back to sign in
-            </Link>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm p-3">
-                {error}
-              </div>
-            )}
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Enter your email and we&apos;ll send you a link to reset your password.
-            </p>
-            <div>
-              <label htmlFor="forgot-email" className="block text-sm font-medium mb-1">
-                Email
-              </label>
-              <input
-                id="forgot-email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-              />
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Reset password</CardTitle>
+          <CardDescription>
+            {successMessage
+              ? undefined
+              : "Enter your email and we'll send you a link to reset your password."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {successMessage ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">{successMessage}</p>
+              <Button asChild variant="link" className="p-0 h-auto">
+                <Link href="/login">Back to sign in</Link>
+              </Button>
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2 px-4 text-sm"
-            >
-              {loading ? 'Sending…' : 'Send reset link'}
-            </button>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              <Link href="/login" className="underline hover:no-underline">
-                Back to sign in
-              </Link>
-            </p>
-          </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="rounded-md bg-destructive/10 text-destructive text-sm p-3 border border-destructive/20">
+                  {error}
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email">
+                  Email <span className="text-destructive" aria-hidden="true">*</span>
+                </Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full"
+                />
+              </div>
+              <Button type="submit" disabled={loading} className="w-full">
+                {loading ? 'Sending…' : 'Send reset link'}
+              </Button>
+            </form>
+          )}
+        </CardContent>
+        {!successMessage && (
+          <CardFooter className="text-sm text-muted-foreground">
+            <Button asChild variant="link" className="p-0 h-auto text-muted-foreground">
+              <Link href="/login">Back to sign in</Link>
+            </Button>
+          </CardFooter>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

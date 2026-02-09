@@ -47,6 +47,10 @@ export interface RecommendationBatch {
     contentCount?: number;
     mlCount?: number;
   };
+  /** When reasoning-engine is configured: chain-of-thought steps (dataflow §11). */
+  reasoningSteps?: { id: string; order: number; type: string; content: string; reasoning?: string; confidence?: number }[];
+  /** When reasoning-engine is configured: conclusion from sync reason (dataflow §11). */
+  conclusion?: string;
 }
 
 export interface RecommendationFeedback {

@@ -39,6 +39,12 @@ npm run test:unit
 npm run test:integration
 ```
 
+### c_search flow (E2E, optional)
+Runs only when `RUN_C_SEARCH_E2E=1` and `SHARD_MANAGER_URL` is set (dataflow Phase 3.5):
+```bash
+RUN_C_SEARCH_E2E=1 SHARD_MANAGER_URL=http://localhost:3023 pnpm test tests/integration/c-search-flow
+```
+
 ## Test Coverage Requirements
 
 Per ModuleImplementationGuide.md Section 12:

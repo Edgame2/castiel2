@@ -6,6 +6,7 @@
 import Link from 'next/link';
 
 const FORECAST_LINKS = [
+  { href: '/analytics/forecast/2025-Q1', title: 'Period scenario', description: 'Risk-adjusted and ML scenario for a period (example: 2025-Q1)' },
   { href: '/analytics/forecast/team', title: 'Team forecast', description: 'Team-level forecast aggregate' },
   { href: '/analytics/forecast/tenant', title: 'Tenant forecast', description: 'Tenant-level forecast aggregate' },
   { href: '/analytics/forecast/accuracy', title: 'Forecast accuracy', description: 'MAPE, bias, R²' },

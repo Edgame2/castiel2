@@ -3,7 +3,13 @@
  * UI inventory §3.10.
  */
 
-import Link from 'next/link';
+import type { Metadata } from "next";
+import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Settings | Castiel",
+  description: "Profile, security, and tenant settings",
+};
 
 const SECTIONS = [
   { href: '/settings/profile', title: 'Profile', description: 'Edit your name and account details' },

@@ -7,6 +7,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
 
@@ -123,66 +126,27 @@ export default function ProfilePage() {
               {error}
             </div>
           )}
-          <div>
-            <label htmlFor="profile-email" className="block text-sm font-medium mb-1">
-              Email
-            </label>
-            <input
-              id="profile-email"
-              type="email"
-              value={profile?.email ?? ''}
-              readOnly
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm"
-            />
+          <div className="space-y-2">
+            <Label htmlFor="profile-email">Email</Label>
+            <Input id="profile-email" type="email" value={profile?.email ?? ''} readOnly className="w-full bg-muted" />
           </div>
-          <div>
-            <label htmlFor="profile-name" className="block text-sm font-medium mb-1">
-              Display name
-            </label>
-            <input
-              id="profile-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={200}
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-            />
+          <div className="space-y-2">
+            <Label htmlFor="profile-name">Display name</Label>
+            <Input id="profile-name" type="text" value={name} onChange={(e) => setName(e.target.value)} maxLength={200} className="w-full" />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="profile-firstName" className="block text-sm font-medium mb-1">
-                First name
-              </label>
-              <input
-                id="profile-firstName"
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                maxLength={100}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-              />
+            <div className="space-y-2">
+              <Label htmlFor="profile-firstName">First name</Label>
+              <Input id="profile-firstName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={100} className="w-full" />
             </div>
-            <div>
-              <label htmlFor="profile-lastName" className="block text-sm font-medium mb-1">
-                Last name
-              </label>
-              <input
-                id="profile-lastName"
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                maxLength={100}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
-              />
+            <div className="space-y-2">
+              <Label htmlFor="profile-lastName">Last name</Label>
+              <Input id="profile-lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} maxLength={100} className="w-full" />
             </div>
           </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2 px-4 text-sm"
-          >
+          <Button type="submit" disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
-          </button>
+          </Button>
         </form>
         <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
           <Link href="/settings/security" className="underline hover:no-underline">

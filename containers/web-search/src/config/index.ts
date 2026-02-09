@@ -20,13 +20,15 @@ export interface WebSearchConfig {
     key: string;
     database_id: string;
     containers: {
-      results: string
-      cache: string
+      results: string;
+      cache: string;
+      schedules: string;
     };
   };
   jwt: { secret: string };
   services: { [key: string]: { url: string } };
   rabbitmq: { url: string; exchange: string; queue: string; bindings: string[] };
+  external_search?: { provider: string; base_url: string };
   features: { [key: string]: boolean };
 }
 

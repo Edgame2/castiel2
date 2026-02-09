@@ -7,6 +7,9 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -87,22 +90,18 @@ export default function CompetitorSettingsPage() {
       {error && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>}
       <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 max-w-2xl mb-6">
         <form onSubmit={handleCreate} className="flex flex-wrap items-end gap-2 mb-4">
-          <label className="sr-only" htmlFor="competitor-name">Name</label>
-          <input
+          <Label className="sr-only" htmlFor="competitor-name">Name</Label>
+          <Input
             id="competitor-name"
             type="text"
             value={createName}
             onChange={(e) => setCreateName(e.target.value)}
             placeholder="Competitor name"
-            className="rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 w-48"
+            className="w-48 text-sm"
           />
-          <button
-            type="submit"
-            disabled={creating || !createName.trim()}
-            className="rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800 disabled:opacity-50"
-          >
+          <Button type="submit" variant="outline" size="sm" disabled={creating || !createName.trim()}>
             {creating ? 'Adding…' : 'Add competitor'}
-          </button>
+          </Button>
         </form>
         {createError && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{createError}</p>}
         {loading ? (

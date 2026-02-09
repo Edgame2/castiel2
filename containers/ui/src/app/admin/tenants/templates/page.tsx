@@ -7,6 +7,12 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -545,22 +551,12 @@ export default function TenantTemplatesPage() {
       {apiBaseUrl && (
         <>
           <div className="mb-4 flex gap-4">
-            <button
-              type="button"
-              onClick={fetchTemplates}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              aria-label="Refresh template list"
-            >
+            <Button type="button" size="sm" onClick={fetchTemplates} aria-label="Refresh template list">
               Refresh
-            </button>
-            <button
-              type="button"
-              onClick={handleOpenCreate}
-              className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-              aria-label="Create new tenant template"
-            >
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={handleOpenCreate} aria-label="Create new tenant template">
               Create template
-            </button>
+            </Button>
             <Link
               href="/admin/tenants"
               className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline self-center"
@@ -574,35 +570,32 @@ export default function TenantTemplatesPage() {
               <h2 className="text-lg font-semibold mb-3">Create template</h2>
               <div className="space-y-3 max-w-md">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
-                  <input
-                    type="text"
+                  <Label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Name *</Label>
+                  <Input
                     value={createName}
                     onChange={(e) => setCreateName(e.target.value)}
                     placeholder="e.g. Technology Startup"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                    className="text-sm"
                     disabled={creating}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                  <input
-                    type="text"
+                  <Label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Description</Label>
+                  <Input
                     value={createDescription}
                     onChange={(e) => setCreateDescription(e.target.value)}
                     placeholder="Optional"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                    className="text-sm"
                     disabled={creating}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Methodology</label>
-                  <input
-                    type="text"
+                  <Label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Methodology</Label>
+                  <Input
                     value={createMethodology}
                     onChange={(e) => setCreateMethodology(e.target.value)}
                     placeholder="e.g. MEDDIC, Challenger"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                    className="text-sm"
                     disabled={creating}
                   />
                 </div>
@@ -611,145 +604,96 @@ export default function TenantTemplatesPage() {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Leave empty for no limit.</p>
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Max users</label>
-                      <input
+                      <Label className="mb-0.5 block text-xs text-gray-600 dark:text-gray-400">Max users</Label>
+                      <Input
                         type="number"
                         min={0}
                         value={createMaxUsers}
                         onChange={(e) => setCreateMaxUsers(e.target.value)}
                         placeholder="—"
-                        className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                        className="text-sm"
                         disabled={creating}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Max opportunities</label>
-                      <input
+                      <Label className="mb-0.5 block text-xs text-gray-600 dark:text-gray-400">Max opportunities</Label>
+                      <Input
                         type="number"
                         min={0}
                         value={createMaxOpportunities}
                         onChange={(e) => setCreateMaxOpportunities(e.target.value)}
                         placeholder="—"
-                        className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                        className="text-sm"
                         disabled={creating}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Max predictions/day</label>
-                      <input
+                      <Label className="mb-0.5 block text-xs text-gray-600 dark:text-gray-400">Max predictions/day</Label>
+                      <Input
                         type="number"
                         min={0}
                         value={createMaxPredictionsPerDay}
                         onChange={(e) => setCreateMaxPredictionsPerDay(e.target.value)}
                         placeholder="—"
-                        className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                        className="text-sm"
                         disabled={creating}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Max feedback/day</label>
-                      <input
+                      <Label className="mb-0.5 block text-xs text-gray-600 dark:text-gray-400">Max feedback/day</Label>
+                      <Input
                         type="number"
                         min={0}
                         value={createMaxFeedbackPerDay}
                         onChange={(e) => setCreateMaxFeedbackPerDay(e.target.value)}
                         placeholder="—"
-                        className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                        className="text-sm"
                         disabled={creating}
                       />
                     </div>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Active limit</label>
-                  <input
+                  <Label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Active limit</Label>
+                  <Input
                     type="number"
                     min={1}
                     max={50}
                     value={createActiveLimit}
                     onChange={(e) => setCreateActiveLimit(parseInt(e.target.value, 10) || 1)}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                    className="text-sm"
                     disabled={creating}
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="createRequireFeedback"
-                    checked={createRequireFeedback}
-                    onChange={(e) => setCreateRequireFeedback(e.target.checked)}
-                    disabled={creating}
-                    className="rounded"
-                  />
-                  <label htmlFor="createRequireFeedback" className="text-sm">Require feedback</label>
+                  <Checkbox id="createRequireFeedback" checked={createRequireFeedback} onCheckedChange={(c) => setCreateRequireFeedback(!!c)} disabled={creating} />
+                  <Label htmlFor="createRequireFeedback" className="text-sm font-normal cursor-pointer">Require feedback</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="createAllowComments"
-                    checked={createAllowComments}
-                    onChange={(e) => setCreateAllowComments(e.target.checked)}
-                    disabled={creating}
-                    className="rounded"
-                  />
-                  <label htmlFor="createAllowComments" className="text-sm">Allow comments</label>
+                  <Checkbox id="createAllowComments" checked={createAllowComments} onCheckedChange={(c) => setCreateAllowComments(!!c)} disabled={creating} />
+                  <Label htmlFor="createAllowComments" className="text-sm font-normal cursor-pointer">Allow comments</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="createCommentRequired"
-                    checked={createCommentRequired}
-                    onChange={(e) => setCreateCommentRequired(e.target.checked)}
-                    disabled={creating}
-                    className="rounded"
-                  />
-                  <label htmlFor="createCommentRequired" className="text-sm">Comment required</label>
+                  <Checkbox id="createCommentRequired" checked={createCommentRequired} onCheckedChange={(c) => setCreateCommentRequired(!!c)} disabled={creating} />
+                  <Label htmlFor="createCommentRequired" className="text-sm font-normal cursor-pointer">Comment required</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="createAllowMultipleSelection"
-                    checked={createAllowMultipleSelection}
-                    onChange={(e) => setCreateAllowMultipleSelection(e.target.checked)}
-                    disabled={creating}
-                    className="rounded"
-                  />
-                  <label htmlFor="createAllowMultipleSelection" className="text-sm">Allow multiple selection</label>
+                  <Checkbox id="createAllowMultipleSelection" checked={createAllowMultipleSelection} onCheckedChange={(c) => setCreateAllowMultipleSelection(!!c)} disabled={creating} />
+                  <Label htmlFor="createAllowMultipleSelection" className="text-sm font-normal cursor-pointer">Allow multiple selection</Label>
                 </div>
                 <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                   <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pattern detection</span>
                   <div className="flex items-center gap-2 mb-1">
-                    <input
-                      type="checkbox"
-                      id="createPatternEnabled"
-                      checked={createPatternEnabled}
-                      onChange={(e) => setCreatePatternEnabled(e.target.checked)}
-                      disabled={creating}
-                      className="rounded"
-                    />
-                    <label htmlFor="createPatternEnabled" className="text-sm">Enabled</label>
+                    <Checkbox id="createPatternEnabled" checked={createPatternEnabled} onCheckedChange={(c) => setCreatePatternEnabled(!!c)} disabled={creating} />
+                    <Label htmlFor="createPatternEnabled" className="text-sm font-normal cursor-pointer">Enabled</Label>
                   </div>
                   <div className="flex items-center gap-2 mb-1">
-                    <input
-                      type="checkbox"
-                      id="createAutoSuppressEnabled"
-                      checked={createAutoSuppressEnabled}
-                      onChange={(e) => setCreateAutoSuppressEnabled(e.target.checked)}
-                      disabled={creating}
-                      className="rounded"
-                    />
-                    <label htmlFor="createAutoSuppressEnabled" className="text-sm">Auto suppress enabled</label>
+                    <Checkbox id="createAutoSuppressEnabled" checked={createAutoSuppressEnabled} onCheckedChange={(c) => setCreateAutoSuppressEnabled(!!c)} disabled={creating} />
+                    <Label htmlFor="createAutoSuppressEnabled" className="text-sm font-normal cursor-pointer">Auto suppress enabled</Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="createAutoBoostEnabled"
-                      checked={createAutoBoostEnabled}
-                      onChange={(e) => setCreateAutoBoostEnabled(e.target.checked)}
-                      disabled={creating}
-                      className="rounded"
-                    />
-                    <label htmlFor="createAutoBoostEnabled" className="text-sm">Auto boost enabled</label>
+                    <Checkbox id="createAutoBoostEnabled" checked={createAutoBoostEnabled} onCheckedChange={(c) => setCreateAutoBoostEnabled(!!c)} disabled={creating} />
+                    <Label htmlFor="createAutoBoostEnabled" className="text-sm font-normal cursor-pointer">Auto boost enabled</Label>
                   </div>
                 </div>
                 <div>
@@ -762,14 +706,9 @@ export default function TenantTemplatesPage() {
                         <div key={`${a.feedbackTypeId}-${idx}`} className="flex items-center justify-between gap-2">
                           <span>{label}</span>
                           <span className="text-gray-500">(order: {a.order})</span>
-                          <button
-                            type="button"
-                            onClick={() => setCreateActiveTypes((prev) => prev.filter((_, i) => i !== idx))}
-                            disabled={creating}
-                            className="text-red-600 hover:underline text-xs disabled:opacity-50"
-                          >
+                          <Button type="button" variant="link" size="sm" className="text-destructive text-xs" onClick={() => setCreateActiveTypes((prev) => prev.filter((_, i) => i !== idx))} disabled={creating}>
                             Remove
-                          </button>
+                          </Button>
                         </div>
                       );
                     })}
@@ -777,49 +716,39 @@ export default function TenantTemplatesPage() {
                   </div>
                   {allFeedbackTypes.filter((ft) => !createActiveTypes.some((a) => a.feedbackTypeId === ft.id)).length > 0 && (
                     <div className="flex gap-2 items-center">
-                      <select
-                        value=""
-                        onChange={(e) => {
-                          const fid = e.target.value;
-                          if (!fid) return;
+                      <Select
+                        value="_add"
+                        onValueChange={(fid) => {
+                          if (fid === '_add' || !fid) return;
                           const maxOrder =
                             createActiveTypes.length > 0 ? Math.max(...createActiveTypes.map((a) => a.order), 0) : 0;
                           setCreateActiveTypes((prev) => [...prev, { feedbackTypeId: fid, order: maxOrder + 1 }]);
-                          e.target.value = '';
                         }}
                         disabled={creating}
-                        className="px-2 py-1 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                       >
-                        <option value="">Add type…</option>
-                        {allFeedbackTypes
-                          .filter((ft) => !createActiveTypes.some((a) => a.feedbackTypeId === ft.id))
-                          .map((ft) => (
-                            <option key={ft.id} value={ft.id}>
-                              {ft.displayName ?? ft.name ?? ft.id}
-                            </option>
-                          ))}
-                      </select>
+                        <SelectTrigger className="w-auto text-sm" key={`create-add-${createActiveTypes.length}`}><SelectValue placeholder="Add type…" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_add">Add type…</SelectItem>
+                          {allFeedbackTypes
+                            .filter((ft) => !createActiveTypes.some((a) => a.feedbackTypeId === ft.id))
+                            .map((ft) => (
+                              <SelectItem key={ft.id} value={ft.id}>
+                                {ft.displayName ?? ft.name ?? ft.id}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   )}
                 </div>
                 {createError && <p className="text-sm text-red-600 dark:text-red-400">{createError}</p>}
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCreateSubmit}
-                    disabled={creating}
-                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                  >
+                  <Button type="button" size="sm" onClick={handleCreateSubmit} disabled={creating}>
                     {creating ? 'Creating…' : 'Create'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCreate(false)}
-                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                    disabled={creating}
-                  >
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setShowCreate(false)} disabled={creating}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -830,182 +759,72 @@ export default function TenantTemplatesPage() {
               <h2 className="text-lg font-semibold mb-3">Edit template</h2>
               <div className="space-y-3 max-w-md">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    placeholder="e.g. Technology Startup"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                    disabled={editSaving}
-                  />
+                  <Label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Name *</Label>
+                  <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="e.g. Technology Startup" className="text-sm" disabled={editSaving} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                  <input
-                    type="text"
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                    placeholder="Optional"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                    disabled={editSaving}
-                  />
+                  <Label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Description</Label>
+                  <Input value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Optional" className="text-sm" disabled={editSaving} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Methodology</label>
-                  <input
-                    type="text"
-                    value={editMethodology}
-                    onChange={(e) => setEditMethodology(e.target.value)}
-                    placeholder="e.g. MEDDIC, Challenger"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                    disabled={editSaving}
-                  />
+                  <Label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Methodology</Label>
+                  <Input value={editMethodology} onChange={(e) => setEditMethodology(e.target.value)} placeholder="e.g. MEDDIC, Challenger" className="text-sm" disabled={editSaving} />
                 </div>
                 <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                   <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Default limits (optional)</span>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Leave empty for no limit.</p>
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Max users</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={editMaxUsers}
-                        onChange={(e) => setEditMaxUsers(e.target.value)}
-                        placeholder="—"
-                        className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                        disabled={editSaving}
-                      />
+                      <Label className="mb-0.5 block text-xs text-gray-600 dark:text-gray-400">Max users</Label>
+                      <Input type="number" min={0} value={editMaxUsers} onChange={(e) => setEditMaxUsers(e.target.value)} placeholder="—" className="text-sm" disabled={editSaving} />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Max opportunities</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={editMaxOpportunities}
-                        onChange={(e) => setEditMaxOpportunities(e.target.value)}
-                        placeholder="—"
-                        className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                        disabled={editSaving}
-                      />
+                      <Label className="mb-0.5 block text-xs text-gray-600 dark:text-gray-400">Max opportunities</Label>
+                      <Input type="number" min={0} value={editMaxOpportunities} onChange={(e) => setEditMaxOpportunities(e.target.value)} placeholder="—" className="text-sm" disabled={editSaving} />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Max predictions/day</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={editMaxPredictionsPerDay}
-                        onChange={(e) => setEditMaxPredictionsPerDay(e.target.value)}
-                        placeholder="—"
-                        className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                        disabled={editSaving}
-                      />
+                      <Label className="mb-0.5 block text-xs text-gray-600 dark:text-gray-400">Max predictions/day</Label>
+                      <Input type="number" min={0} value={editMaxPredictionsPerDay} onChange={(e) => setEditMaxPredictionsPerDay(e.target.value)} placeholder="—" className="text-sm" disabled={editSaving} />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Max feedback/day</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={editMaxFeedbackPerDay}
-                        onChange={(e) => setEditMaxFeedbackPerDay(e.target.value)}
-                        placeholder="—"
-                        className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                        disabled={editSaving}
-                      />
+                      <Label className="mb-0.5 block text-xs text-gray-600 dark:text-gray-400">Max feedback/day</Label>
+                      <Input type="number" min={0} value={editMaxFeedbackPerDay} onChange={(e) => setEditMaxFeedbackPerDay(e.target.value)} placeholder="—" className="text-sm" disabled={editSaving} />
                     </div>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Active limit</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={editActiveLimit}
-                    onChange={(e) => setEditActiveLimit(parseInt(e.target.value, 10) || 1)}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                    disabled={editSaving}
-                  />
+                  <Label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Active limit</Label>
+                  <Input type="number" min={1} max={50} value={editActiveLimit} onChange={(e) => setEditActiveLimit(parseInt(e.target.value, 10) || 1)} className="text-sm" disabled={editSaving} />
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="editRequireFeedback"
-                    checked={editRequireFeedback}
-                    onChange={(e) => setEditRequireFeedback(e.target.checked)}
-                    disabled={editSaving}
-                    className="rounded"
-                  />
-                  <label htmlFor="editRequireFeedback" className="text-sm">Require feedback</label>
+                  <Checkbox id="editRequireFeedback" checked={editRequireFeedback} onCheckedChange={(c) => setEditRequireFeedback(!!c)} disabled={editSaving} />
+                  <Label htmlFor="editRequireFeedback" className="text-sm">Require feedback</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="editAllowComments"
-                    checked={editAllowComments}
-                    onChange={(e) => setEditAllowComments(e.target.checked)}
-                    disabled={editSaving}
-                    className="rounded"
-                  />
-                  <label htmlFor="editAllowComments" className="text-sm">Allow comments</label>
+                  <Checkbox id="editAllowComments" checked={editAllowComments} onCheckedChange={(c) => setEditAllowComments(!!c)} disabled={editSaving} />
+                  <Label htmlFor="editAllowComments" className="text-sm font-normal cursor-pointer">Allow comments</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="editCommentRequired"
-                    checked={editCommentRequired}
-                    onChange={(e) => setEditCommentRequired(e.target.checked)}
-                    disabled={editSaving}
-                    className="rounded"
-                  />
-                  <label htmlFor="editCommentRequired" className="text-sm">Comment required</label>
+                  <Checkbox id="editCommentRequired" checked={editCommentRequired} onCheckedChange={(c) => setEditCommentRequired(!!c)} disabled={editSaving} />
+                  <Label htmlFor="editCommentRequired" className="text-sm font-normal cursor-pointer">Comment required</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="editAllowMultipleSelection"
-                    checked={editAllowMultipleSelection}
-                    onChange={(e) => setEditAllowMultipleSelection(e.target.checked)}
-                    disabled={editSaving}
-                    className="rounded"
-                  />
-                  <label htmlFor="editAllowMultipleSelection" className="text-sm">Allow multiple selection</label>
+                  <Checkbox id="editAllowMultipleSelection" checked={editAllowMultipleSelection} onCheckedChange={(c) => setEditAllowMultipleSelection(!!c)} disabled={editSaving} />
+                  <Label htmlFor="editAllowMultipleSelection" className="text-sm font-normal cursor-pointer">Allow multiple selection</Label>
                 </div>
                 <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                   <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pattern detection</span>
                   <div className="flex items-center gap-2 mb-1">
-                    <input
-                      type="checkbox"
-                      id="editPatternEnabled"
-                      checked={editPatternEnabled}
-                      onChange={(e) => setEditPatternEnabled(e.target.checked)}
-                      disabled={editSaving}
-                      className="rounded"
-                    />
-                    <label htmlFor="editPatternEnabled" className="text-sm">Enabled</label>
+                    <Checkbox id="editPatternEnabled" checked={editPatternEnabled} onCheckedChange={(c) => setEditPatternEnabled(!!c)} disabled={editSaving} />
+                    <Label htmlFor="editPatternEnabled" className="text-sm font-normal cursor-pointer">Enabled</Label>
                   </div>
                   <div className="flex items-center gap-2 mb-1">
-                    <input
-                      type="checkbox"
-                      id="editAutoSuppressEnabled"
-                      checked={editAutoSuppressEnabled}
-                      onChange={(e) => setEditAutoSuppressEnabled(e.target.checked)}
-                      disabled={editSaving}
-                      className="rounded"
-                    />
-                    <label htmlFor="editAutoSuppressEnabled" className="text-sm">Auto suppress enabled</label>
+                    <Checkbox id="editAutoSuppressEnabled" checked={editAutoSuppressEnabled} onCheckedChange={(c) => setEditAutoSuppressEnabled(!!c)} disabled={editSaving} />
+                    <Label htmlFor="editAutoSuppressEnabled" className="text-sm font-normal cursor-pointer">Auto suppress enabled</Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="editAutoBoostEnabled"
-                      checked={editAutoBoostEnabled}
-                      onChange={(e) => setEditAutoBoostEnabled(e.target.checked)}
-                      disabled={editSaving}
-                      className="rounded"
-                    />
-                    <label htmlFor="editAutoBoostEnabled" className="text-sm">Auto boost enabled</label>
+                    <Checkbox id="editAutoBoostEnabled" checked={editAutoBoostEnabled} onCheckedChange={(c) => setEditAutoBoostEnabled(!!c)} disabled={editSaving} />
+                    <Label htmlFor="editAutoBoostEnabled" className="text-sm font-normal cursor-pointer">Auto boost enabled</Label>
                   </div>
                 </div>
                 <div>
@@ -1018,14 +837,9 @@ export default function TenantTemplatesPage() {
                         <div key={`${a.feedbackTypeId}-${idx}`} className="flex items-center justify-between gap-2">
                           <span>{label}</span>
                           <span className="text-gray-500">(order: {a.order})</span>
-                          <button
-                            type="button"
-                            onClick={() => setEditActiveTypes((prev) => prev.filter((_, i) => i !== idx))}
-                            disabled={editSaving}
-                            className="text-red-600 hover:underline text-xs disabled:opacity-50"
-                          >
+                          <Button type="button" variant="link" size="sm" className="text-destructive text-xs" onClick={() => setEditActiveTypes((prev) => prev.filter((_, i) => i !== idx))} disabled={editSaving}>
                             Remove
-                          </button>
+                          </Button>
                         </div>
                       );
                     })}
@@ -1033,48 +847,38 @@ export default function TenantTemplatesPage() {
                   </div>
                   {allFeedbackTypes.filter((ft) => !editActiveTypes.some((a) => a.feedbackTypeId === ft.id)).length > 0 && (
                     <div className="flex gap-2 items-center">
-                      <select
-                        value=""
-                        onChange={(e) => {
-                          const fid = e.target.value;
-                          if (!fid) return;
+                      <Select
+                        value="_add"
+                        onValueChange={(fid) => {
+                          if (fid === '_add' || !fid) return;
                           const maxOrder = editActiveTypes.length > 0 ? Math.max(...editActiveTypes.map((a) => a.order), 0) : 0;
                           setEditActiveTypes((prev) => [...prev, { feedbackTypeId: fid, order: maxOrder + 1 }]);
-                          e.target.value = '';
                         }}
                         disabled={editSaving}
-                        className="px-2 py-1 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                       >
-                        <option value="">Add type…</option>
-                        {allFeedbackTypes
-                          .filter((ft) => !editActiveTypes.some((a) => a.feedbackTypeId === ft.id))
-                          .map((ft) => (
-                            <option key={ft.id} value={ft.id}>
-                              {ft.displayName ?? ft.name ?? ft.id}
-                            </option>
-                          ))}
-                      </select>
+                        <SelectTrigger className="w-auto text-sm" key={`edit-add-${editActiveTypes.length}`}><SelectValue placeholder="Add type…" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_add">Add type…</SelectItem>
+                          {allFeedbackTypes
+                            .filter((ft) => !editActiveTypes.some((a) => a.feedbackTypeId === ft.id))
+                            .map((ft) => (
+                              <SelectItem key={ft.id} value={ft.id}>
+                                {ft.displayName ?? ft.name ?? ft.id}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   )}
                 </div>
                 {editError && <p className="text-sm text-red-600 dark:text-red-400">{editError}</p>}
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleUpdateSubmit}
-                    disabled={editSaving}
-                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                  >
+                  <Button type="button" size="sm" onClick={handleUpdateSubmit} disabled={editSaving}>
                     {editSaving ? 'Saving…' : 'Save'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setEditId(null); setEditError(null); }}
-                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                    disabled={editSaving}
-                  >
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => { setEditId(null); setEditError(null); }} disabled={editSaving}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1089,14 +893,9 @@ export default function TenantTemplatesPage() {
           {error && !loading && (
             <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 mb-4">
               <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
-              <button
-                type="button"
-                onClick={fetchTemplates}
-                className="mt-2 text-sm font-medium text-blue-600 hover:underline"
-                aria-label="Retry loading templates"
-              >
+              <Button type="button" variant="link" size="sm" className="mt-2" onClick={fetchTemplates} aria-label="Retry loading templates">
                 Retry
-              </button>
+              </Button>
             </div>
           )}
 
@@ -1133,27 +932,15 @@ export default function TenantTemplatesPage() {
                         </p>
                       )}
                       <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(row)}
-                          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                        >
+                        <Button type="button" variant="link" size="sm" className="text-blue-600 dark:text-blue-400" onClick={() => openEdit(row)}>
                           Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openApply(row.id)}
-                          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                        >
+                        </Button>
+                        <Button type="button" variant="link" size="sm" className="text-blue-600 dark:text-blue-400" onClick={() => openApply(row.id)}>
                           Apply
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(row.id)}
-                          className="text-sm text-red-600 dark:text-red-400 hover:underline"
-                        >
+                        </Button>
+                        <Button type="button" variant="link" size="sm" className="text-destructive" onClick={() => handleDelete(row.id)}>
                           Delete
-                        </button>
+                        </Button>
                       </div>
                     </article>
                   ))}
@@ -1172,17 +959,11 @@ export default function TenantTemplatesPage() {
                 Enter tenant IDs (one per line or comma-separated). Applying overwrites each tenant’s feedback config with this template’s.
               </p>
               <div className="flex gap-2 mb-2">
-                <button
-                  ref={selectFromListButtonRef}
-                  type="button"
-                  onClick={openTenantPicker}
-                  disabled={applyLoading}
-                  className="px-3 py-1.5 text-sm border rounded dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
-                >
+                <Button ref={selectFromListButtonRef} type="button" variant="outline" size="sm" onClick={openTenantPicker} disabled={applyLoading}>
                   Select from list
-                </button>
+                </Button>
               </div>
-              <textarea
+              <Textarea
                 value={applyTenantIdsInput}
                 onChange={(e) => setApplyTenantIdsInput(e.target.value)}
                 placeholder="e.g. tenant-1, tenant-2 (comma or newline)"
@@ -1205,27 +986,23 @@ export default function TenantTemplatesPage() {
                 </div>
               )}
               <div className="flex gap-2 mt-3">
-                <button
-                  type="button"
-                  onClick={() => handleApply(applyTemplateId)}
-                  disabled={applyLoading}
-                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                >
+                <Button type="button" size="sm" onClick={() => handleApply(applyTemplateId)} disabled={applyLoading}>
                   {applyLoading ? 'Applying…' : 'Apply'}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     setApplyTemplateId(null);
                     setApplyTenantIdsInput('');
                     setApplyResult(null);
                     setApplyError(null);
                   }}
-                  className="px-3 py-1.5 text-sm border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
                   disabled={applyLoading}
                 >
                   Close
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -1256,38 +1033,28 @@ export default function TenantTemplatesPage() {
                   {!tenantPickerLoading && tenantListForPicker.length > 0 && (
                     <>
                       <div className="flex gap-2 mb-3">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTenantIdsForPicker(tenantListForPicker.map((t) => t.id))}
-                          className="text-xs px-2 py-1 border rounded dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
+                        <Button type="button" variant="outline" size="sm" className="text-xs" onClick={() => setSelectedTenantIdsForPicker(tenantListForPicker.map((t) => t.id))}>
                           Select all
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTenantIdsForPicker([])}
-                          className="text-xs px-2 py-1 border rounded dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" className="text-xs" onClick={() => setSelectedTenantIdsForPicker([])}>
                           Clear
-                        </button>
+                        </Button>
                       </div>
                       <ul className="space-y-1 text-sm max-h-60 overflow-y-auto">
                         {tenantListForPicker.map((t) => (
                           <li key={t.id} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               id={`picker-${t.id}`}
                               checked={selectedTenantIdsForPicker.includes(t.id)}
-                              onChange={() => {
+                              onCheckedChange={() => {
                                 setSelectedTenantIdsForPicker((prev) =>
                                   prev.includes(t.id) ? prev.filter((id) => id !== t.id) : [...prev, t.id]
                                 );
                               }}
-                              className="rounded border-gray-300 dark:border-gray-600"
                             />
-                            <label htmlFor={`picker-${t.id}`} className="cursor-pointer truncate">
+                            <Label htmlFor={`picker-${t.id}`} className="cursor-pointer truncate">
                               {t.name || t.id}
-                            </label>
+                            </Label>
                           </li>
                         ))}
                       </ul>
@@ -1295,25 +1062,20 @@ export default function TenantTemplatesPage() {
                   )}
                 </div>
                 <div className="flex gap-2 p-4 border-t dark:border-gray-700">
-                  <button
+                  <Button
                     type="button"
+                    size="sm"
                     onClick={() => {
                       setApplyTenantIdsInput(selectedTenantIdsForPicker.join('\n'));
                       setShowTenantPicker(false);
                     }}
                     disabled={selectedTenantIdsForPicker.length === 0}
-                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Use selected ({selectedTenantIdsForPicker.length})
-                  </button>
-                  <button
-                    ref={tenantPickerCancelButtonRef}
-                    type="button"
-                    onClick={() => setShowTenantPicker(false)}
-                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                  >
+                  </Button>
+                  <Button ref={tenantPickerCancelButtonRef} type="button" variant="outline" size="sm" onClick={() => setShowTenantPicker(false)}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

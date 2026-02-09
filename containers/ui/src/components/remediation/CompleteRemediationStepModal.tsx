@@ -8,6 +8,9 @@
 
 import * as Dialog from '@radix-ui/react-dialog';
 import { useState, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export type CompleteRemediationStepModalProps = {
   isOpen: boolean;
@@ -94,30 +97,24 @@ export function CompleteRemediationStepModal({
           <Dialog.Title className="text-sm font-semibold">Complete step {stepNumber}</Dialog.Title>
           <Dialog.Description className="text-xs text-gray-500 mt-1">{stepDescription}</Dialog.Description>
           <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-              Completed by (optional)
-            </label>
-            <input
+            <Label className="text-xs">Completed by (optional)</Label>
+            <Input
               type="text"
               value={completedBy}
               onChange={(e) => setCompletedBy(e.target.value)}
               placeholder="Leave empty to use current user"
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+              className="w-full"
             />
-            {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+            {error && <p className="text-xs text-destructive">{error}</p>}
             <div className="flex justify-end gap-2">
               <Dialog.Close asChild>
-                <button type="button" className="rounded border px-3 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
+                <Button type="button" variant="outline" size="sm">
                   Cancel
-                </button>
+                </Button>
               </Dialog.Close>
-              <button
-                type="submit"
-                disabled={loading}
-                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
-              >
+              <Button type="submit" disabled={loading} size="sm">
                 {loading ? 'Submitting…' : 'Complete'}
-              </button>
+              </Button>
             </div>
           </form>
         </Dialog.Content>

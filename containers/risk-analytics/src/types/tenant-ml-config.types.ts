@@ -30,12 +30,20 @@ export interface CustomFeature {
   enabled: boolean;
 }
 
+/** Per-shard-type policy for risk and recommendations (dataflow §5). Missing shard type → treat as false. */
+export interface ShardTypeAnalysisPolicyEntry {
+  useForRiskAnalysis: boolean;
+  useForRecommendationGeneration: boolean;
+}
+
 export interface TenantMLConfiguration {
   tenantId: string;
   riskTolerance: RiskTolerance;
   decisionPreferences: DecisionPreferences;
   modelPreferences: ModelPreferences;
   customFeatures: CustomFeature[];
+  /** Which shard types feed risk analysis and recommendation generation. Key = shardTypeId. */
+  shardTypeAnalysisPolicy?: Record<string, ShardTypeAnalysisPolicyEntry>;
 }
 
 /** Cosmos document: id = tenantId, partitionKey = tenantId */

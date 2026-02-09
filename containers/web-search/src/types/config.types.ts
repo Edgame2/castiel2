@@ -18,6 +18,7 @@ export interface WebSearchConfig {
     containers: {
       results: string;
       cache: string;
+      schedules: string;
     };
   };
   jwt: {
@@ -34,6 +35,7 @@ export interface WebSearchConfig {
     queue: string;
     bindings: string[];
   };
+  external_search?: { provider: string; base_url: string };
   features: {
     [key: string]: boolean;
   };

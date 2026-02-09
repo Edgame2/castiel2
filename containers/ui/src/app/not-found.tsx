@@ -3,7 +3,13 @@
  * Rendered when a route does not match or when notFound() is called from next/navigation.
  */
 
-import Link from 'next/link';
+import type { Metadata } from "next";
+import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Page not found | Castiel",
+  description: "The page you are looking for does not exist.",
+};
 
 export default function NotFound() {
   return (

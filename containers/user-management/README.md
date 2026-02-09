@@ -78,15 +78,17 @@ See `config/default.yaml` for full configuration options.
 
 ## API Reference
 
-See [OpenAPI Specification](./docs/openapi.yaml)
+See [OpenAPI Specification](./openapi.yaml)
 
 ### Key Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/users` | List users |
-| GET | `/api/v1/users/:id` | Get user profile |
-| PUT | `/api/v1/users/:id` | Update user profile |
+| GET | `/api/v1/users` | List users (tenant/org-scoped; requires organizationId) |
+| GET | `/api/v1/users/me` | Get current user profile |
+| GET | `/api/v1/users/:id` | Get user profile by id (tenant + RBAC) |
+| PUT | `/api/v1/users/me` | Update current user profile |
+| PUT | `/api/v1/users/:id` | Admin update user profile (same org or Super Admin) |
 | GET | `/api/v1/organizations` | List organizations |
 | POST | `/api/v1/organizations` | Create organization |
 | GET | `/api/v1/organizations/:id` | Get organization |

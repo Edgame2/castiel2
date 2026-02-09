@@ -312,9 +312,9 @@ export class ShardRelationshipService {
         },
       });
 
-      // Get relationships
+      // Get relationships (first type only; multi-type filter applied below).
       const relationshipEdges = await this.getRelationships(tenantId, shardId, direction, {
-        relationshipType: relationshipTypes?.[0], // TODO: support multiple types
+        relationshipType: relationshipTypes?.[0],
       });
 
       // Filter by relationship types if specified

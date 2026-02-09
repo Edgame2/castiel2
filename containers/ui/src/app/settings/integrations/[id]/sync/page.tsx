@@ -6,8 +6,19 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -24,7 +35,7 @@ interface SyncConfig {
     entityType: string;
     field: string;
     operator: 'equals' | 'contains' | 'greaterThan' | 'lessThan' | 'in';
-    value: any;
+    value: string | number | boolean;
   }>;
   maxRecordsPerSync?: number;
 }
@@ -38,7 +49,6 @@ interface Integration {
 
 export default function SyncConfigurationPage() {
   const params = useParams();
-  const router = useRouter();
   const integrationId = params.id as string;
 
   const [integration, setIntegration] = useState<Integration | null>(null);
@@ -172,19 +182,12 @@ export default function SyncConfigurationPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => handleTriggerSync(false)}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm"
-          >
+          <Button type="button" variant="secondary" onClick={() => handleTriggerSync(false)}>
             Sync Now
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm disabled:opacity-50"
-          >
+          </Button>
+          <Button type="button" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -197,46 +200,42 @@ export default function SyncConfigurationPage() {
       <div className="rounded-lg border bg-white dark:bg-gray-900">
         <div className="border-b">
           <nav className="flex gap-4 px-4">
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={`rounded-b-none border-b-2 ${activeTab === 'entities' ? 'border-primary text-primary' : 'border-transparent'}`}
               onClick={() => setActiveTab('entities')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                activeTab === 'entities'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
             >
               Entity Selection
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={`rounded-b-none border-b-2 ${activeTab === 'schedule' ? 'border-primary text-primary' : 'border-transparent'}`}
               onClick={() => setActiveTab('schedule')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                activeTab === 'schedule'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
             >
               Sync Schedule
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={`rounded-b-none border-b-2 ${activeTab === 'direction' ? 'border-primary text-primary' : 'border-transparent'}`}
               onClick={() => setActiveTab('direction')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                activeTab === 'direction'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
             >
               Sync Direction
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={`rounded-b-none border-b-2 ${activeTab === 'filters' ? 'border-primary text-primary' : 'border-transparent'}`}
               onClick={() => setActiveTab('filters')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                activeTab === 'filters'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
             >
               Filters
-            </button>
+            </Button>
           </nav>
         </div>
 
@@ -296,15 +295,16 @@ function EntitySelectionTab({ enabledEntities, onChange }: EntitySelectionTabPro
       <h3 className="text-lg font-semibold mb-4">Select Entities to Sync</h3>
       <div className="space-y-2">
         {availableEntities.map((entity) => (
-          <label key={entity} className="flex items-center p-3 border rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
-            <input
-              type="checkbox"
+          <div key={entity} className="flex items-center space-x-2 p-3 border rounded hover:bg-muted/50">
+            <Checkbox
+              id={`entity-${entity}`}
               checked={enabledEntities.includes(entity)}
-              onChange={() => toggleEntity(entity)}
-              className="mr-3"
+              onCheckedChange={() => toggleEntity(entity)}
             />
-            <span className="text-sm font-medium">{entity}</span>
-          </label>
+            <Label htmlFor={`entity-${entity}`} className="text-sm font-medium cursor-pointer flex-1">
+              {entity}
+            </Label>
+          </div>
         ))}
       </div>
       {enabledEntities.length === 0 && (
@@ -330,57 +330,54 @@ function SyncScheduleTab({ schedule, onChange }: SyncScheduleTabProps) {
     });
   };
 
+  const frequencyLabels: Record<typeof frequency, string> = {
+    manual: 'Manual only',
+    '15min': 'Every 15 minutes',
+    hourly: 'Every hour',
+    daily: 'Daily',
+    weekly: 'Weekly',
+    custom: 'Custom cron expression',
+  };
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold mb-4">Sync Schedule</h3>
       <div className="space-y-2">
-        {(['manual', '15min', 'hourly', 'daily', 'weekly', 'custom'] as const).map((freq) => (
-          <label key={freq} className="flex items-center p-3 border rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
-            <input
-              type="radio"
-              name="frequency"
-              value={freq}
-              checked={frequency === freq}
-              onChange={() => handleFrequencyChange(freq)}
-              className="mr-3"
-            />
-            <span className="text-sm font-medium">
-              {freq === 'manual'
-                ? 'Manual only'
-                : freq === '15min'
-                  ? 'Every 15 minutes'
-                  : freq === 'hourly'
-                    ? 'Every hour'
-                    : freq === 'daily'
-                      ? 'Daily'
-                      : freq === 'weekly'
-                        ? 'Weekly'
-                        : 'Custom cron expression'}
-            </span>
-          </label>
-        ))}
+        <Label>Frequency</Label>
+        <Select value={frequency} onValueChange={(v) => handleFrequencyChange(v as NonNullable<SyncConfig['schedule']>['frequency'])}>
+          <SelectTrigger className="w-full max-w-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(['manual', '15min', 'hourly', 'daily', 'weekly', 'custom'] as const).map((freq) => (
+              <SelectItem key={freq} value={freq}>
+                {frequencyLabels[freq]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       {frequency === 'custom' && (
-        <div className="mt-4">
-          <label className="block text-sm font-medium mb-1">Cron Expression</label>
-          <input
+        <div className="mt-4 space-y-2">
+          <Label>Cron Expression</Label>
+          <Input
             type="text"
             value={schedule?.cronExpression || ''}
             onChange={(e) => onChange({ frequency: schedule?.frequency ?? 'custom', cronExpression: e.target.value, timezone: schedule?.timezone })}
-            className="w-full px-3 py-2 border rounded"
             placeholder="0 0 * * *"
+            className="w-full"
           />
-          <p className="text-xs text-gray-500 mt-1">Enter a valid cron expression (e.g., "0 0 * * *" for daily at midnight)</p>
+          <p className="text-xs text-muted-foreground">Enter a valid cron expression (e.g., "0 0 * * *" for daily at midnight)</p>
         </div>
       )}
-      <div className="mt-4">
-        <label className="block text-sm font-medium mb-1">Timezone (optional)</label>
-        <input
+      <div className="mt-4 space-y-2">
+        <Label>Timezone (optional)</Label>
+        <Input
           type="text"
           value={schedule?.timezone || ''}
           onChange={(e) => onChange({ frequency: schedule?.frequency ?? 'manual', timezone: e.target.value, cronExpression: schedule?.cronExpression })}
-          className="w-full px-3 py-2 border rounded"
           placeholder="UTC"
+          className="w-full max-w-xs"
         />
       </div>
     </div>
@@ -397,34 +394,16 @@ function SyncDirectionTab({ direction, onChange }: SyncDirectionTabProps) {
     <div className="space-y-4">
       <h3 className="text-lg font-semibold mb-4">Sync Direction</h3>
       <div className="space-y-2">
-        <label className="flex items-center p-3 border rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
-          <input
-            type="radio"
-            name="direction"
-            value="one-way"
-            checked={direction === 'one-way'}
-            onChange={() => onChange('one-way')}
-            className="mr-3"
-          />
-          <div>
-            <span className="text-sm font-medium">One-way (Integration → Castiel)</span>
-            <p className="text-xs text-gray-500 mt-1">Data flows from the integration to Castiel only</p>
-          </div>
-        </label>
-        <label className="flex items-center p-3 border rounded hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
-          <input
-            type="radio"
-            name="direction"
-            value="bidirectional"
-            checked={direction === 'bidirectional'}
-            onChange={() => onChange('bidirectional')}
-            className="mr-3"
-          />
-          <div>
-            <span className="text-sm font-medium">Two-way (Bidirectional)</span>
-            <p className="text-xs text-gray-500 mt-1">Data flows both ways between the integration and Castiel</p>
-          </div>
-        </label>
+        <Label>Direction</Label>
+        <Select value={direction} onValueChange={(v) => onChange(v as 'one-way' | 'bidirectional')}>
+          <SelectTrigger className="w-full max-w-md">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="one-way">One-way (Integration → Castiel)</SelectItem>
+            <SelectItem value="bidirectional">Two-way (Bidirectional)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
@@ -462,12 +441,9 @@ function SyncFiltersTab({ filters = [], onChange }: SyncFiltersTabProps) {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Sync Filters</h3>
-        <button
-          onClick={addFilter}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-        >
+        <Button type="button" size="sm" onClick={addFilter}>
           Add Filter
-        </button>
+        </Button>
       </div>
       <p className="text-sm text-gray-500 mb-4">
         Configure filters to limit which records are synced. Only records matching all filters will be synced.
@@ -479,56 +455,63 @@ function SyncFiltersTab({ filters = [], onChange }: SyncFiltersTabProps) {
           {filters.map((filter, index) => (
             <div key={index} className="p-4 border rounded">
               <div className="grid grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-xs font-medium mb-1">Entity Type</label>
-                  <input
+                <div className="space-y-1">
+                  <Label className="text-xs">Entity Type</Label>
+                  <Input
                     type="text"
                     value={filter.entityType}
                     onChange={(e) => updateFilter(index, { entityType: e.target.value })}
-                    className="w-full px-2 py-1 border rounded text-sm"
+                    className="h-8 text-sm"
                     placeholder="Opportunity"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1">Field</label>
-                  <input
+                <div className="space-y-1">
+                  <Label className="text-xs">Field</Label>
+                  <Input
                     type="text"
                     value={filter.field}
                     onChange={(e) => updateFilter(index, { field: e.target.value })}
-                    className="w-full px-2 py-1 border rounded text-sm"
+                    className="h-8 text-sm"
                     placeholder="StageName"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1">Operator</label>
-                  <select
+                <div className="space-y-1">
+                  <Label className="text-xs">Operator</Label>
+                  <Select
                     value={filter.operator}
-                    onChange={(e) => updateFilter(index, { operator: e.target.value as any })}
-                    className="w-full px-2 py-1 border rounded text-sm"
+                    onValueChange={(v) => updateFilter(index, { operator: v as 'equals' | 'contains' | 'greaterThan' | 'lessThan' | 'in' })}
                   >
-                    <option value="equals">Equals</option>
-                    <option value="contains">Contains</option>
-                    <option value="greaterThan">Greater Than</option>
-                    <option value="lessThan">Less Than</option>
-                    <option value="in">In</option>
-                  </select>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="equals">Equals</SelectItem>
+                      <SelectItem value="contains">Contains</SelectItem>
+                      <SelectItem value="greaterThan">Greater Than</SelectItem>
+                      <SelectItem value="lessThan">Less Than</SelectItem>
+                      <SelectItem value="in">In</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1">Value</label>
+                <div className="space-y-1">
+                  <Label className="text-xs">Value</Label>
                   <div className="flex gap-2">
-                    <input
+                    <Input
                       type="text"
-                      value={filter.value}
+                      value={filter.value === undefined || filter.value === null ? '' : String(filter.value)}
                       onChange={(e) => updateFilter(index, { value: e.target.value })}
-                      className="flex-1 px-2 py-1 border rounded text-sm"
+                      className="h-8 flex-1 text-sm"
                       placeholder="Value"
                     />
-                    <button
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
                       onClick={() => removeFilter(index)}
-                      className="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded text-sm hover:bg-red-200 dark:hover:bg-red-800"
                     >
                       ×
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

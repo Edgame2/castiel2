@@ -7,6 +7,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -133,120 +144,112 @@ export default function SystemDataLakePage() {
       <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 space-y-4">
         <div className="grid gap-4 max-w-xl">
           <div>
-            <label className="block text-sm font-medium mb-1">Account name</label>
-            <input
+            <Label className="block mb-1">Account name</Label>
+            <Input
               type="text"
               value={config?.accountName ?? ''}
               onChange={(e) => update({ accountName: e.target.value || undefined })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="w-full"
               placeholder="Storage account name"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Container name</label>
-            <input
+            <Label className="block mb-1">Container name</Label>
+            <Input
               type="text"
               value={config?.containerName ?? ''}
               onChange={(e) => update({ containerName: e.target.value || undefined })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="w-full"
               placeholder="Container name"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Connection string (masked)</label>
-            <input
+            <Label className="block mb-1">Connection string (masked)</Label>
+            <Input
               type="password"
               value={config?.connectionString ?? ''}
               onChange={(e) => update({ connectionString: e.target.value || undefined })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="w-full"
               placeholder="Leave blank to keep existing"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Sync strategy</label>
-            <select
-              value={config?.syncStrategy ?? 'hybrid'}
-              onChange={(e) => update({ syncStrategy: e.target.value as DataLakeConfig['syncStrategy'] })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="real-time">Real-time</option>
-              <option value="batch">Batch</option>
-              <option value="hybrid">Hybrid</option>
-            </select>
+            <Label className="block mb-1">Sync strategy</Label>
+            <Select value={config?.syncStrategy ?? 'hybrid'} onValueChange={(v) => update({ syncStrategy: v as DataLakeConfig['syncStrategy'] })}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="real-time">Real-time</SelectItem>
+                <SelectItem value="batch">Batch</SelectItem>
+                <SelectItem value="hybrid">Hybrid</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Batch sync frequency</label>
-            <select
-              value={config?.batchSyncFrequency ?? 'daily'}
-              onChange={(e) => update({ batchSyncFrequency: e.target.value as DataLakeConfig['batchSyncFrequency'] })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="hourly">Hourly</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-            </select>
+            <Label className="block mb-1">Batch sync frequency</Label>
+            <Select value={config?.batchSyncFrequency ?? 'daily'} onValueChange={(v) => update({ batchSyncFrequency: v as DataLakeConfig['batchSyncFrequency'] })}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hourly">Hourly</SelectItem>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Retry max</label>
-              <input
+              <Label className="block mb-1">Retry max</Label>
+              <Input
                 type="number"
                 min={0}
                 value={config?.retryMaxRetries ?? 3}
                 onChange={(e) => update({ retryMaxRetries: parseInt(e.target.value, 10) || undefined })}
-                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                className="w-full"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Retry delay (s)</label>
-              <input
+              <Label className="block mb-1">Retry delay (s)</Label>
+              <Input
                 type="number"
                 min={0}
                 value={config?.retryDelaySeconds ?? 60}
                 onChange={(e) => update({ retryDelaySeconds: parseInt(e.target.value, 10) || undefined })}
-                className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                className="w-full"
               />
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="compression"
               checked={config?.compressionEnabled ?? true}
-              onChange={(e) => update({ compressionEnabled: e.target.checked })}
-              className="rounded border-gray-300"
+              onCheckedChange={(c) => update({ compressionEnabled: !!c })}
             />
-            <label htmlFor="compression" className="text-sm">Compression enabled</label>
+            <Label htmlFor="compression" className="text-sm font-normal">Compression enabled</Label>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Compression format</label>
-            <select
-              value={config?.compressionFormat ?? 'snappy'}
-              onChange={(e) => update({ compressionFormat: e.target.value as DataLakeConfig['compressionFormat'] })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="gzip">gzip</option>
-              <option value="snappy">snappy</option>
-              <option value="lz4">lz4</option>
-            </select>
+            <Label className="block mb-1">Compression format</Label>
+            <Select value={config?.compressionFormat ?? 'snappy'} onValueChange={(v) => update({ compressionFormat: v as DataLakeConfig['compressionFormat'] })}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gzip">gzip</SelectItem>
+                <SelectItem value="snappy">snappy</SelectItem>
+                <SelectItem value="lz4">lz4</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div className="flex gap-2 pt-4">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!dirty || saving}
-            className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium disabled:opacity-50 hover:bg-blue-700"
-          >
+          <Button type="button" onClick={handleSave} disabled={!dirty || saving}>
             {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button
-            type="button"
-            onClick={() => { fetchConfig(); setDirty(false); }}
-            className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
+          </Button>
+          <Button type="button" variant="outline" onClick={() => { fetchConfig(); setDirty(false); }}>
             Reset
-          </button>
+          </Button>
         </div>
       </div>
       <Link href="/admin/system" className="inline-block mt-4 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">← Back to System Configuration</Link>

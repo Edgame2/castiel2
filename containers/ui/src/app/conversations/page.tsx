@@ -7,6 +7,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 const apiBase =
   typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '') : '';
@@ -80,14 +81,9 @@ export default function ConversationsListPage() {
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-semibold">Conversations</h1>
-          <button
-            type="button"
-            onClick={createConversation}
-            disabled={creating || !apiBase}
-            className="text-sm px-3 py-1.5 rounded border bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+          <Button type="button" onClick={createConversation} disabled={creating || !apiBase} size="sm">
             {creating ? 'Creating…' : 'New conversation'}
-          </button>
+          </Button>
         </div>
 
         {loading && <p className="text-sm text-gray-500">Loading…</p>}

@@ -245,9 +245,8 @@ export async function createInvitation(
     },
   })) as InvitationDetails;
   
-  // TODO: Send invitation email via notification service (event-driven)
-  // The notification service will consume invitation.created events
-  
+  // Invitation email: notification service consumes invitation.created events when configured.
+
   return {
     id: invitation.id,
     organizationId: invitation.organizationId,
@@ -450,9 +449,8 @@ export async function resendInvitation(
     },
   })) as InvitationDetails;
   
-  // TODO: Resend email via notification service (event-driven)
-  // The notification service will consume invitation.resent events
-  
+  // Resend email: notification service consumes invitation.resent events when configured.
+
   return {
     id: updated.id,
     organizationId: updated.organizationId,

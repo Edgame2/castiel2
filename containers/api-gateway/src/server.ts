@@ -10,6 +10,7 @@ import { loadConfig } from './config';
 import { ProxyService } from './services/ProxyService';
 import { registerRoutes } from './routes';
 import { createRateLimitMiddleware } from './middleware/rateLimit';
+import { createInMemoryStore, createRedisStore } from './middleware/rateLimitStore';
 
 let app: FastifyInstance | null = null;
 
@@ -25,9 +26,10 @@ export async function buildApp(): Promise<FastifyInstance> {
     bodyLimit: 10485760, // 10MB
   });
 
-  // Register CORS
+  // Register CORS (origin from config or env fallback)
+  const corsOrigin = config.cors?.origin ?? process.env.FRONTEND_URL ?? '*';
   await fastify.register(cors, {
-    origin: process.env.FRONTEND_URL || '*',
+    origin: corsOrigin,
     credentials: true,
   });
 
@@ -44,11 +46,17 @@ export async function buildApp(): Promise<FastifyInstance> {
     circuitBreaker: config.circuit_breaker,
   });
 
-  // Register rate limiting middleware
-  const rateLimitMiddleware = createRateLimitMiddleware({
-    max: config.rate_limit?.max || 100,
-    timeWindow: config.rate_limit?.timeWindow || 60000,
-  });
+  // Rate limit store: Redis when configured (multi-instance), else in-memory
+  const rateLimitStore = config.redis?.url
+    ? createRedisStore(config.redis.url)
+    : createInMemoryStore();
+  const rateLimitMiddleware = createRateLimitMiddleware(
+    {
+      max: config.rate_limit?.max || 100,
+      timeWindow: config.rate_limit?.timeWindow || 60000,
+    },
+    rateLimitStore
+  );
 
   // Apply rate limiting to all routes (except health checks)
   fastify.addHook('onRequest', async (request, reply) => {

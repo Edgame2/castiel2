@@ -7,11 +7,9 @@
 
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import type { RecommendationItem } from '@/components/recommendations/RecommendationsCard';
-
-const apiBase =
-  typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '') : '';
+import { apiFetch, getApiBaseUrl } from '@/lib/api';
 
 const SOURCE_LABELS: Record<string, string> = {
   vector_search: 'Similar opportunities',
@@ -21,7 +19,7 @@ const SOURCE_LABELS: Record<string, string> = {
   ml: 'ML model',
 };
 
-export default function RecommendationsListPage() {
+function RecommendationsListContent() {
   const searchParams = useSearchParams();
   const opportunityId = searchParams.get('opportunityId') ?? undefined;
 
@@ -30,7 +28,7 @@ export default function RecommendationsListPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchRecommendations = useCallback(() => {
-    if (!apiBase) {
+    if (!getApiBaseUrl()) {
       setLoading(false);
       setError('API base URL not configured');
       return;
@@ -40,8 +38,7 @@ export default function RecommendationsListPage() {
     const params = new URLSearchParams();
     if (opportunityId) params.set('opportunityId', opportunityId);
     params.set('limit', '50');
-    const url = `${apiBase}/api/v1/recommendations?${params.toString()}`;
-    fetch(url, { credentials: 'include' })
+    apiFetch(`/api/v1/recommendations?${params.toString()}`)
       .then((r) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load recommendations');
         return r.json();
@@ -122,5 +119,20 @@ export default function RecommendationsListPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function RecommendationsListPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-6">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-xl font-semibold mb-4">Recommendations</h1>
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        </div>
+      </div>
+    }>
+      <RecommendationsListContent />
+    </Suspense>
   );
 }

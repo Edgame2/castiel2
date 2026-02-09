@@ -63,6 +63,12 @@
           "properties": {
             "url": { "type": "string", "format": "uri" }
           }
+        },
+        "web_search": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
         }
       }
     },

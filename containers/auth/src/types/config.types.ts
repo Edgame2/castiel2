@@ -103,6 +103,12 @@ export interface AuthConfig {
     password_reset?: boolean;
     email_verification?: boolean;
     multi_factor_auth?: boolean;
+    api_keys?: boolean;
+  };
+  rate_limit?: {
+    enabled?: boolean;
+    window_seconds?: number;
+    max_per_window?: number;
   };
 }
 

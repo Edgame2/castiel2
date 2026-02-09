@@ -67,6 +67,28 @@ export class ReasoningService {
   }
 
   /**
+   * Synchronous reason (inline): run reasoning and return output without persisting a task (dataflow §10.1).
+   */
+  async reasonSync(
+    tenantId: string,
+    body: { query: string; context?: string[]; type?: ReasoningType }
+  ): Promise<ReasoningTask['output']> {
+    if (!tenantId || !body?.query) {
+      throw new BadRequestError('tenantId and query are required');
+    }
+    const task: ReasoningTask = {
+      id: 'sync',
+      tenantId,
+      type: body.type ?? ReasoningType.CHAIN_OF_THOUGHT,
+      status: ReasoningStatus.PENDING,
+      input: { query: body.query, context: body.context },
+      createdAt: new Date(),
+      createdBy: 'sync',
+    };
+    return this.performReasoning(task, {});
+  }
+
+  /**
    * Execute reasoning (async)
    * Note: This is a placeholder - actual reasoning would use AI services
    */

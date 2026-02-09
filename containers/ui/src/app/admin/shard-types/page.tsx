@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -76,15 +77,9 @@ export default function ShardTypesPage() {
         Manage shard type definitions and schemas (Super Admin only)
       </p>
       <div className="mb-4">
-        <button
-          type="button"
-          onClick={fetchShardTypes}
-          disabled={loading}
-          className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
-          title="Refetch shard types"
-        >
+        <Button type="button" variant="outline" onClick={fetchShardTypes} disabled={loading} title="Refetch shard types">
           Refresh
-        </button>
+        </Button>
       </div>
 
       {loading && (
@@ -104,9 +99,7 @@ export default function ShardTypesPage() {
           <div className="p-4 border-b">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Shard Type Definitions</h2>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                Add Shard Type
-              </button>
+              <Button>Add Shard Type</Button>
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -155,9 +148,9 @@ export default function ShardTypesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <button className="text-blue-600 hover:underline mr-3">Edit</button>
-                        <button className="text-blue-600 hover:underline mr-3">Validate</button>
-                        <button className="text-blue-600 hover:underline">Stats</button>
+                        <Button variant="link" className="text-blue-600 p-0 h-auto mr-3">Edit</Button>
+                        <Button variant="link" className="text-blue-600 p-0 h-auto mr-3">Validate</Button>
+                        <Button variant="link" className="text-blue-600 p-0 h-auto">Stats</Button>
                       </td>
                     </tr>
                   ))

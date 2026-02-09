@@ -17,6 +17,7 @@ cosmos_db:
   containers:
     results: web_search_results
     cache: web_search_cache
+    schedules: web_search_schedules
 
 # JWT Configuration (shared with auth service)
 jwt:
@@ -36,6 +37,8 @@ services:
     url: ${CONTEXT_SERVICE_URL:-http://localhost:3034}
   embeddings:
     url: ${EMBEDDINGS_URL:-http://localhost:3035}
+  shard_manager:
+    url: ${SHARD_MANAGER_URL:-http://localhost:3002}
 
 # RabbitMQ Configuration
 rabbitmq:
@@ -43,6 +46,13 @@ rabbitmq:
   exchange: coder_events
   queue: web-search_service
   bindings: []
+
+# External search provider (Phase 4.2). API key in env only.
+# web_search_provider: bing | google | none (use AI/mock)
+external_search:
+  provider: ${WEB_SEARCH_PROVIDER:-none}
+  base_url: ${WEB_SEARCH_BASE_URL:-}
+  # API key from env WEB_SEARCH_API_KEY only (never in config file)
 
 # Feature Flags
 features: {}

@@ -171,6 +171,33 @@ export async function initializeEventConsumer(): Promise<void> {
       // Note: Shard updates don't always trigger recommendations; only specific shard types (opportunity, etc.) would
     });
 
+    // Handle opportunity outcome (dataflow Phase 2.3: record won/lost for accepted recommendations)
+    consumer.on('opportunity.outcome.recorded', async (event) => {
+      const tenantId = event.tenantId ?? event.data?.tenantId;
+      const opportunityId = event.data?.opportunityId;
+      const outcome = event.data?.outcome as 'won' | 'lost' | undefined;
+      if (!tenantId || !opportunityId || (outcome !== 'won' && outcome !== 'lost')) {
+        log.warn('opportunity.outcome.recorded missing tenantId, opportunityId, or valid outcome', {
+          hasData: !!event.data,
+          service: 'recommendations',
+        });
+        return;
+      }
+      if (!recommendationsService) {
+        log.error('Recommendations service not initialized', { service: 'recommendations' });
+        return;
+      }
+      try {
+        await recommendationsService.recordOutcomeForOpportunityClose(tenantId, opportunityId, outcome);
+      } catch (error: unknown) {
+        log.error(
+          'Failed to record outcome for opportunity close',
+          error instanceof Error ? error : new Error(String(error)),
+          { opportunityId, tenantId, outcome, service: 'recommendations' }
+        );
+      }
+    });
+
     await consumer.start();
     log.info('Event consumer initialized and started', { service: 'recommendations' });
   } catch (error) {

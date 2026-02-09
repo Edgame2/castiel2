@@ -7,6 +7,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -337,15 +341,9 @@ export default function SystemSettingsPage() {
         Manage system-wide settings (Super Admin only)
       </p>
       <div className="mb-4">
-        <button
-          type="button"
-          onClick={fetchSettings}
-          disabled={loading}
-          className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
-          title="Refetch system settings"
-        >
+        <Button type="button" variant="outline" size="sm" onClick={fetchSettings} disabled={loading} title="Refetch system settings">
           Refresh
-        </button>
+        </Button>
       </div>
 
       {loading && (
@@ -364,46 +362,18 @@ export default function SystemSettingsPage() {
         <div className="rounded-lg border bg-white dark:bg-gray-900">
           <div className="border-b">
             <nav className="flex gap-4 px-4">
-              <button
-                onClick={() => setActiveTab('rate-limits')}
-                className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                  activeTab === 'rate-limits'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
+              <Button variant={activeTab === 'rate-limits' ? 'default' : 'ghost'} size="sm" className="rounded-b-none border-b-2 border-transparent data-[state=active]:border-primary" onClick={() => setActiveTab('rate-limits')}>
                 Rate Limits
-              </button>
-              <button
-                onClick={() => setActiveTab('capacity')}
-                className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                  activeTab === 'capacity'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
+              </Button>
+              <Button variant={activeTab === 'capacity' ? 'default' : 'ghost'} size="sm" className="rounded-b-none border-b-2 border-transparent" onClick={() => setActiveTab('capacity')}>
                 Processing Capacity
-              </button>
-              <button
-                onClick={() => setActiveTab('queues')}
-                className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                  activeTab === 'queues'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
+              </Button>
+              <Button variant={activeTab === 'queues' ? 'default' : 'ghost'} size="sm" className="rounded-b-none border-b-2 border-transparent" onClick={() => setActiveTab('queues')}>
                 Queue Configuration
-              </button>
-              <button
-                onClick={() => setActiveTab('features')}
-                className={`px-4 py-3 text-sm font-medium border-b-2 ${
-                  activeTab === 'features'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
+              </Button>
+              <Button variant={activeTab === 'features' ? 'default' : 'ghost'} size="sm" className="rounded-b-none border-b-2 border-transparent" onClick={() => setActiveTab('features')}>
                 Feature Flags
-              </button>
+              </Button>
             </nav>
           </div>
 
@@ -413,9 +383,9 @@ export default function SystemSettingsPage() {
                 <h3 className="text-lg font-semibold mb-4">Rate Limits</h3>
                 <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Global</h4>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Requests per Second</label>
-                    <input
+                  <div className="space-y-2">
+                    <Label>Requests per Second</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={rateLimitDraft?.requestsPerSecond ?? settings.rateLimits?.global?.requestsPerSecond ?? ''}
@@ -424,13 +394,12 @@ export default function SystemSettingsPage() {
                           prev ? { ...prev, requestsPerSecond: Number(e.target.value) || 0 } : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!rateLimitDraft}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Requests per Minute</label>
-                    <input
+                  <div className="space-y-2">
+                    <Label>Requests per Minute</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={rateLimitDraft?.requestsPerMinute ?? settings.rateLimits?.global?.requestsPerMinute ?? ''}
@@ -439,13 +408,12 @@ export default function SystemSettingsPage() {
                           prev ? { ...prev, requestsPerMinute: Number(e.target.value) || 0 } : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!rateLimitDraft}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Requests per Hour</label>
-                    <input
+                  <div className="space-y-2">
+                    <Label>Requests per Hour</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={rateLimitDraft?.requestsPerHour ?? settings.rateLimits?.global?.requestsPerHour ?? ''}
@@ -454,7 +422,6 @@ export default function SystemSettingsPage() {
                           prev ? { ...prev, requestsPerHour: Number(e.target.value) || 0 } : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!rateLimitDraft}
                     />
                   </div>
@@ -468,14 +435,9 @@ export default function SystemSettingsPage() {
                   <p className="text-sm text-red-600 dark:text-red-400 mt-2">{rateLimitsError}</p>
                 )}
                 <div className="flex items-center gap-2 mt-4">
-                  <button
-                    type="button"
-                    onClick={handleSaveRateLimits}
-                    disabled={!apiBaseUrl || !rateLimitDraft || rateLimitsSaving}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
-                  >
+                  <Button type="button" onClick={handleSaveRateLimits} disabled={!apiBaseUrl || !rateLimitDraft || rateLimitsSaving} size="sm">
                     {rateLimitsSaving ? 'Saving…' : 'Save rate limits'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -485,9 +447,9 @@ export default function SystemSettingsPage() {
                 <h3 className="text-lg font-semibold mb-4">Processing Capacity</h3>
                 <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Light processors</h4>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Min instances</label>
-                    <input
+                  <div className="space-y-2">
+                    <Label>Min instances</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={capacityDraft?.lightProcessors?.minInstances ?? settings.capacity?.lightProcessors?.minInstances ?? ''}
@@ -504,13 +466,12 @@ export default function SystemSettingsPage() {
                             : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!capacityDraft}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Max instances</label>
-                    <input
+                  <div className="space-y-2">
+                    <Label>Max instances</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={capacityDraft?.lightProcessors?.maxInstances ?? settings.capacity?.lightProcessors?.maxInstances ?? ''}
@@ -527,13 +488,12 @@ export default function SystemSettingsPage() {
                             : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!capacityDraft}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Prefetch</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Prefetch</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={capacityDraft?.lightProcessors?.prefetch ?? settings.capacity?.lightProcessors?.prefetch ?? ''}
@@ -550,13 +510,12 @@ export default function SystemSettingsPage() {
                             : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!capacityDraft}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Concurrent processing</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Concurrent processing</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={capacityDraft?.lightProcessors?.concurrentProcessing ?? settings.capacity?.lightProcessors?.concurrentProcessing ?? ''}
@@ -573,13 +532,12 @@ export default function SystemSettingsPage() {
                             : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!capacityDraft}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Memory limit (MB)</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Memory limit (MB)</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={capacityDraft?.lightProcessors?.memoryLimitMB ?? settings.capacity?.lightProcessors?.memoryLimitMB ?? ''}
@@ -596,13 +554,12 @@ export default function SystemSettingsPage() {
                             : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!capacityDraft}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Auto-scale threshold</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Auto-scale threshold</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={capacityDraft?.lightProcessors?.autoScaleThreshold ?? settings.capacity?.lightProcessors?.autoScaleThreshold ?? ''}
@@ -619,7 +576,6 @@ export default function SystemSettingsPage() {
                             : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!capacityDraft}
                     />
                   </div>
@@ -627,8 +583,8 @@ export default function SystemSettingsPage() {
                 <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 mt-4">Heavy processors</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Min instances</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Min instances</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={capacityDraft?.heavyProcessors?.minInstances ?? settings.capacity?.heavyProcessors?.minInstances ?? ''}
@@ -645,13 +601,12 @@ export default function SystemSettingsPage() {
                             : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!capacityDraft}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Max instances</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Max instances</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={capacityDraft?.heavyProcessors?.maxInstances ?? settings.capacity?.heavyProcessors?.maxInstances ?? ''}
@@ -668,13 +623,12 @@ export default function SystemSettingsPage() {
                             : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!capacityDraft}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Prefetch</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Prefetch</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={capacityDraft?.heavyProcessors?.prefetch ?? settings.capacity?.heavyProcessors?.prefetch ?? ''}
@@ -691,13 +645,12 @@ export default function SystemSettingsPage() {
                             : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!capacityDraft}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Concurrent processing</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Concurrent processing</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={capacityDraft?.heavyProcessors?.concurrentProcessing ?? settings.capacity?.heavyProcessors?.concurrentProcessing ?? ''}
@@ -714,13 +667,12 @@ export default function SystemSettingsPage() {
                             : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!capacityDraft}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Memory limit (MB)</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Memory limit (MB)</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={capacityDraft?.heavyProcessors?.memoryLimitMB ?? settings.capacity?.heavyProcessors?.memoryLimitMB ?? ''}
@@ -737,13 +689,12 @@ export default function SystemSettingsPage() {
                             : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!capacityDraft}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Auto-scale threshold</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Auto-scale threshold</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={capacityDraft?.heavyProcessors?.autoScaleThreshold ?? settings.capacity?.heavyProcessors?.autoScaleThreshold ?? ''}
@@ -760,7 +711,6 @@ export default function SystemSettingsPage() {
                             : null
                         )
                       }
-                      className="w-full px-3 py-2 border rounded"
                       readOnly={!capacityDraft}
                     />
                   </div>
@@ -769,14 +719,9 @@ export default function SystemSettingsPage() {
                   <p className="text-sm text-red-600 dark:text-red-400 mt-2">{capacityError}</p>
                 )}
                 <div className="flex items-center gap-2 mt-4">
-                  <button
-                    type="button"
-                    onClick={handleSaveCapacity}
-                    disabled={!apiBaseUrl || !capacityDraft || capacitySaving}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
-                  >
+                  <Button type="button" size="sm" onClick={handleSaveCapacity} disabled={!apiBaseUrl || !capacityDraft || capacitySaving}>
                     {capacitySaving ? 'Saving…' : 'Save capacity'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -787,8 +732,8 @@ export default function SystemSettingsPage() {
                 <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">DLQ</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Max retries</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Max retries</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={queueConfigDraft?.dlq?.maxRetries ?? settings.queueConfig?.dlq?.maxRetries ?? ''}
@@ -807,8 +752,8 @@ export default function SystemSettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Alert threshold</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Alert threshold</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={queueConfigDraft?.dlq?.alertThreshold ?? settings.queueConfig?.dlq?.alertThreshold ?? ''}
@@ -830,55 +775,51 @@ export default function SystemSettingsPage() {
                 <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 mt-4">Priority</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="queue-priority-enabled"
                       checked={queueConfigDraft?.priority?.enabled ?? settings.queueConfig?.priority?.enabled ?? false}
-                      onChange={(e) =>
+                      onCheckedChange={(checked) =>
                         setQueueConfigDraft((prev) =>
                           prev
                             ? {
                                 ...prev,
-                                priority: { ...prev.priority, enabled: e.target.checked },
+                                priority: { ...prev.priority, enabled: !!checked },
                               }
                             : null
                         )
                       }
                       disabled={!queueConfigDraft}
-                      className="rounded"
                     />
-                    <label htmlFor="queue-priority-enabled" className="text-sm font-medium">
+                    <Label htmlFor="queue-priority-enabled" className="text-sm font-medium">
                       Enabled
-                    </label>
+                    </Label>
                   </div>
                 </div>
                 <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 mt-4">Auto-scaling</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="queue-autoscaling-enabled"
                       checked={queueConfigDraft?.autoScaling?.enabled ?? settings.queueConfig?.autoScaling?.enabled ?? false}
-                      onChange={(e) =>
+                      onCheckedChange={(checked) =>
                         setQueueConfigDraft((prev) =>
                           prev
                             ? {
                                 ...prev,
-                                autoScaling: { ...prev.autoScaling, enabled: e.target.checked },
+                                autoScaling: { ...prev.autoScaling, enabled: !!checked },
                               }
                             : null
                         )
                       }
                       disabled={!queueConfigDraft}
-                      className="rounded"
                     />
-                    <label htmlFor="queue-autoscaling-enabled" className="text-sm font-medium">
+                    <Label htmlFor="queue-autoscaling-enabled" className="text-sm font-medium">
                       Enabled
-                    </label>
+                    </Label>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Scale up threshold</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Scale up threshold</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={queueConfigDraft?.autoScaling?.scaleUpThreshold ?? settings.queueConfig?.autoScaling?.scaleUpThreshold ?? ''}
@@ -897,8 +838,8 @@ export default function SystemSettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Scale down threshold</label>
-                    <input
+                    <Label className="mb-1 block text-sm font-medium">Scale down threshold</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={queueConfigDraft?.autoScaling?.scaleDownThreshold ?? settings.queueConfig?.autoScaling?.scaleDownThreshold ?? ''}
@@ -921,14 +862,9 @@ export default function SystemSettingsPage() {
                   <p className="text-sm text-red-600 dark:text-red-400 mt-2">{queueConfigError}</p>
                 )}
                 <div className="flex items-center gap-2 mt-4">
-                  <button
-                    type="button"
-                    onClick={handleSaveQueueConfig}
-                    disabled={!apiBaseUrl || !queueConfigDraft || queueConfigSaving}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
-                  >
+                  <Button type="button" size="sm" onClick={handleSaveQueueConfig} disabled={!apiBaseUrl || !queueConfigDraft || queueConfigSaving}>
                     {queueConfigSaving ? 'Saving…' : 'Save queue config'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -953,14 +889,15 @@ export default function SystemSettingsPage() {
                           >
                             {value ? 'Enabled' : 'Disabled'}
                           </span>
-                          <button
+                          <Button
                             type="button"
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleToggleFeatureFlag(key, !value)}
                             disabled={!apiBaseUrl || featureFlagToggling !== null}
-                            className="px-3 py-1 text-sm border rounded hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:pointer-events-none"
                           >
                             {featureFlagToggling === key ? '…' : value ? 'Disable' : 'Enable'}
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ))

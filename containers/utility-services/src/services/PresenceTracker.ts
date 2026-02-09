@@ -25,8 +25,7 @@ export class PresenceTracker {
       return false;
     }
 
-    // TODO: Implement Redis-based presence tracking in Phase 5
-    // For now, return false (offline)
+    // Redis-based presence: implement in Phase 5
     return false;
   }
 
@@ -38,7 +37,7 @@ export class PresenceTracker {
       return;
     }
 
-    // TODO: Implement in Phase 5
+    // Implement in Phase 5 (Redis heartbeat)
   }
 
   /**
@@ -49,7 +48,7 @@ export class PresenceTracker {
       return null;
     }
 
-    // TODO: Implement in Phase 5
+    // Implement in Phase 5 (Redis last-seen)
     return null;
   }
 }

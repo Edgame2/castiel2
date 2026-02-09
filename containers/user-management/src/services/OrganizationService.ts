@@ -99,9 +99,8 @@ export async function createOrganization(
     },
   })) as { id: string; name: string; slug: string };
   
-  // TODO: Create Account for organization (requires accountService)
-  // This will be handled via API call to account service or event-driven approach
-  
+  // Account creation for organization: via account service or event when integrated.
+
   // Seed system roles for this organization
   const { seedOrganizationRoles } = await import('./seedService.js');
   await seedOrganizationRoles(organization.id);

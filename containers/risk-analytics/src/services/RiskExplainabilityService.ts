@@ -17,6 +17,10 @@ export interface RiskExplainability {
   technical?: string;
   riskBreakdown: RiskBreakdown[];
   calculatedAt: Date | string;
+  /** When reasoning-engine is configured: chain-of-thought steps (dataflow §11). */
+  reasoningSteps?: { id: string; order: number; type: string; content: string; reasoning?: string; confidence?: number }[];
+  /** When reasoning-engine is configured: conclusion from sync reason (dataflow §11). */
+  conclusion?: string;
 }
 
 export interface RiskBreakdown {
@@ -31,18 +35,27 @@ export interface RiskBreakdown {
 export class RiskExplainabilityService {
   private config: ReturnType<typeof loadConfig>;
   private _aiServiceClient: ServiceClient;
+  private _reasoningEngineClient: ServiceClient | null = null;
   private app: FastifyInstance | null = null;
 
   constructor(app?: FastifyInstance) {
     this.app = app || null;
     this.config = loadConfig();
-    
     this._aiServiceClient = new ServiceClient({
       baseURL: this.config.services.ai_service?.url || '',
       timeout: 30000,
       retries: 3,
       circuitBreaker: { enabled: true },
     });
+    const reasoningUrl = this.config.services.reasoning_engine?.url;
+    if (reasoningUrl) {
+      this._reasoningEngineClient = new ServiceClient({
+        baseURL: reasoningUrl,
+        timeout: 60000,
+        retries: 1,
+        circuitBreaker: { enabled: true },
+      });
+    }
   }
 
   private getServiceToken(tenantId: string): string {
@@ -83,6 +96,29 @@ export class RiskExplainabilityService {
         riskBreakdown,
         calculatedAt: new Date(),
       };
+
+      if (this._reasoningEngineClient && this.app) {
+        try {
+          const query = `Why is this opportunity at risk? ${summary}`;
+          const token = this.getServiceToken(tenantId);
+          const res = await this._reasoningEngineClient.post<{
+            steps?: { id: string; order: number; type: string; content: string; reasoning?: string; confidence?: number }[];
+            conclusion?: string;
+          }>(
+            '/api/v1/reasoning/reason',
+            { query, context: [detailed], type: 'chain_of_thought' },
+            { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': tenantId } }
+          );
+          if (res?.steps?.length) explainability.reasoningSteps = res.steps;
+          if (res?.conclusion) explainability.conclusion = res.conclusion;
+        } catch (err: unknown) {
+          log.warn('Reasoning-engine sync reason failed, returning explainability without reasoningSteps', {
+            error: err instanceof Error ? err.message : String(err),
+            evaluationId: evaluation.evaluationId,
+            service: 'risk-analytics',
+          });
+        }
+      }
 
       return explainability;
     } catch (error: unknown) {

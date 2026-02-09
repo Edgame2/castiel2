@@ -7,6 +7,16 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const AUDIT_PAGE_TITLE = 'Audit | Admin | Castiel';
 
@@ -185,55 +195,70 @@ export default function SecurityAuditPage() {
             <h2 className="text-sm font-semibold mb-3">Filters</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div>
-                <label className="block font-medium mb-1">Start date</label>
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <Label className="block font-medium mb-1">Start date</Label>
+                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full h-8" />
               </div>
               <div>
-                <label className="block font-medium mb-1">End date</label>
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <Label className="block font-medium mb-1">End date</Label>
+                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full h-8" />
               </div>
               <div>
-                <label className="block font-medium mb-1">User ID</label>
-                <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="Optional" className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <Label className="block font-medium mb-1">User ID</Label>
+                <Input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="Optional" className="w-full h-8" />
               </div>
               <div>
-                <label className="block font-medium mb-1">Action</label>
-                <input type="text" value={action} onChange={(e) => setAction(e.target.value)} placeholder="Optional" className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <Label className="block font-medium mb-1">Action</Label>
+                <Input type="text" value={action} onChange={(e) => setAction(e.target.value)} placeholder="Optional" className="w-full h-8" />
               </div>
               <div>
-                <label className="block font-medium mb-1">Category</label>
-                <select value={category} onChange={(e) => setCategory(e.target.value as LogCategory | '')} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700">
-                  <option value="">All</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                <Label className="block font-medium mb-1">Category</Label>
+                <Select value={category || '_all'} onValueChange={(v) => setCategory(v === '_all' ? '' : (v as LogCategory))}>
+                  <SelectTrigger className="w-full h-8">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">All</SelectItem>
+                    {CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <label className="block font-medium mb-1">Severity</label>
-                <select value={severity} onChange={(e) => setSeverity(e.target.value as LogSeverity | '')} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700">
-                  <option value="">All</option>
-                  {SEVERITIES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+                <Label className="block font-medium mb-1">Severity</Label>
+                <Select value={severity || '_all'} onValueChange={(v) => setSeverity(v === '_all' ? '' : (v as LogSeverity))}>
+                  <SelectTrigger className="w-full h-8">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">All</SelectItem>
+                    {SEVERITIES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <label className="block font-medium mb-1">Resource type</label>
-                <input type="text" value={resourceType} onChange={(e) => setResourceType(e.target.value)} placeholder="Optional" className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <Label className="block font-medium mb-1">Resource type</Label>
+                <Input type="text" value={resourceType} onChange={(e) => setResourceType(e.target.value)} placeholder="Optional" className="w-full h-8" />
               </div>
               <div>
-                <label className="block font-medium mb-1">Sort order (§10.4)</label>
-                <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700" aria-label="Sort order">
-                  <option value="desc">Newest first</option>
-                  <option value="asc">Oldest first</option>
-                </select>
+                <Label className="block font-medium mb-1">Sort order (§10.4)</Label>
+                <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as 'asc' | 'desc')}>
+                  <SelectTrigger className="w-full h-8" aria-label="Sort order">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="desc">Newest first</SelectItem>
+                    <SelectItem value="asc">Oldest first</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="flex gap-2 mt-3">
-              <button type="button" onClick={() => fetchLogs(0)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" aria-label="Apply filters and load first page">Apply</button>
-              <button type="button" onClick={() => fetchLogs(offset)} disabled={loading} className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50" title="Refetch current page" aria-label="Refresh audit log page">Refresh</button>
-              <button type="button" onClick={handleExport} className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700" aria-label="Request CSV export of audit logs">Request CSV export</button>
+              <Button type="button" onClick={() => fetchLogs(0)} aria-label="Apply filters and load first page">Apply</Button>
+              <Button type="button" variant="outline" onClick={() => fetchLogs(offset)} disabled={loading} title="Refetch current page" aria-label="Refresh audit log page">Refresh</Button>
+              <Button type="button" variant="outline" onClick={handleExport} aria-label="Request CSV export of audit logs">Request CSV export</Button>
             </div>
             {exportJobId && <p className="text-sm text-green-600 dark:text-green-400 mt-2">Export job created: {exportJobId}. Check status at GET /api/v1/export/{exportJobId}</p>}
             {exportError && <p className="text-sm text-red-600 dark:text-red-400 mt-2">Export error: {exportError}</p>}
@@ -276,9 +301,9 @@ export default function SecurityAuditPage() {
                     </table>
                   </div>
                   <div className="flex gap-4 mt-3 text-sm">
-                    <button type="button" disabled={offset === 0} onClick={() => fetchLogs(Math.max(0, offset - LIMIT))} className="px-3 py-1 border rounded disabled:opacity-50">Prev</button>
+                    <Button type="button" variant="outline" size="sm" disabled={offset === 0} onClick={() => fetchLogs(Math.max(0, offset - LIMIT))}>Prev</Button>
                     <span>Offset {offset} – {offset + items.length} of {total}</span>
-                    <button type="button" disabled={!hasMore} onClick={() => fetchLogs(offset + LIMIT)} className="px-3 py-1 border rounded disabled:opacity-50">Next</button>
+                    <Button type="button" variant="outline" size="sm" disabled={!hasMore} onClick={() => fetchLogs(offset + LIMIT)}>Next</Button>
                   </div>
                 </>
               )}

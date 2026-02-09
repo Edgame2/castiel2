@@ -328,7 +328,8 @@ export class QuotaService {
       }
 
       const actual = portfolio.totalDealValue;
-      const forecasted = portfolio.totalDealValue; // TODO: Get from forecasting service
+      // Forecasted: use totalDealValue until forecasting service is integrated.
+      const forecasted = portfolio.totalDealValue;
       const riskAdjusted = portfolio.riskAdjustedValue;
       const attainment = (actual / quota.target.amount) * 100;
       const riskAdjustedAttainment = (riskAdjusted / quota.target.amount) * 100;

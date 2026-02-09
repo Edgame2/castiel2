@@ -31,7 +31,7 @@ export class AgentService {
     const offset = input.offset ?? 0;
 
     let query = 'SELECT * FROM c WHERE c.tenantId = @tenantId';
-    const parameters: { name: string; value: unknown }[] = [{ name: '@tenantId', value: input.tenantId }];
+    const parameters: { name: string; value: string | number }[] = [{ name: '@tenantId', value: input.tenantId }];
     if (input.scope) {
       query += ' AND c.scope = @scope';
       parameters.push({ name: '@scope', value: input.scope });

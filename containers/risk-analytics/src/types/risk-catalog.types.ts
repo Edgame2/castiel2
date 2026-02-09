@@ -85,6 +85,7 @@ export interface RiskExplainability {
   evidence: {
     sourceShards: string[];
     matchedRules?: string[];
+    mentions?: string[];
     aiReasoning?: string;
     historicalPatterns?: Array<{
       similarOpportunityId: string;

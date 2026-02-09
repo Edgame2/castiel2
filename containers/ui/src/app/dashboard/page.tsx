@@ -3,7 +3,13 @@
  * Links to manager view and opportunities.
  */
 
-import Link from 'next/link';
+import type { Metadata } from "next";
+import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Dashboard | Castiel",
+  description: "Manager and executive dashboard views",
+};
 
 export default function DashboardPage() {
   return (

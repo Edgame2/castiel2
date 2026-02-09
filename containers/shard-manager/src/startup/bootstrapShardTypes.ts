@@ -125,6 +125,45 @@ const SYSTEM_SHARD_TYPES: Omit<CreateShardTypeInput, 'tenantId' | 'createdBy'>[]
       },
     },
   },
+  {
+    name: 'c_usage',
+    description: 'Product/customer usage data (Snowflake or custom); level, features, trends, lastActive, adoptionScore',
+    isSystem: true,
+    schema: {
+      type: 'object',
+      properties: {
+        tenantId: { type: 'string' },
+        accountId: { type: 'string' },
+        opportunityId: { type: 'string' },
+        level: { type: 'string' },
+        features: { type: 'object' },
+        trends: { type: 'object' },
+        lastActive: { type: 'string', format: 'date-time' },
+        adoptionScore: { type: 'number' },
+        createdAt: { type: 'string', format: 'date-time' },
+      },
+    },
+  },
+  {
+    name: 'c_search',
+    description: 'Stored search (web, on-demand or recurring); query, searchType, resultCount',
+    isSystem: true,
+    schema: {
+      type: 'object',
+      properties: {
+        tenantId: { type: 'string' },
+        query: { type: 'string' },
+        searchType: { type: 'string' },
+        userId: { type: 'string' },
+        opportunityId: { type: 'string' },
+        accountId: { type: 'string' },
+        createdAt: { type: 'string', format: 'date-time' },
+        resultCount: { type: 'number' },
+        scheduledSearchId: { type: 'string' },
+        scope: { type: 'string' },
+      },
+    },
+  },
 ];
 
 export interface BootstrapShardTypesConfig {

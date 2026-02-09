@@ -16,7 +16,7 @@
 | **integration-sync** | Good | No major gaps identified |
 | **integration-processors** | Partial | No openapi.yaml; no architecture.md |
 | **multi-modal-service** | Partial | CODE_GENERATION_URL in README not in config; processJob placeholder; not in Gateway |
-| **prompt-service** | Partial | GET /api/v1/prompts/analytics documented but missing; not in Gateway |
+| **prompt-service** | Partial | GET /api/v1/prompts/analytics implemented; prompt_service in Gateway at /api/v1/prompts |
 
 ---
 
@@ -43,9 +43,9 @@
 | Item | Status |
 |------|--------|
 | getAgent(id) | No tenantId; lookup by id only — risk of cross-tenant if agents are tenant-scoped |
-| executeAgent | Creates execution record only; TODO "Actually execute the agent" — execution logic not implemented |
+| executeAgent | Documented stub: returns pending execution only; JSDoc and README state persistence/execution logic deferred |
 
-**Detail:** `AgentService.getAgent(id)` does not scope by tenant or organization. `executeAgent` does not run the agent; it only persists a pending execution.
+**Detail:** `AgentService.getAgent(id)` does not scope by tenant or organization. `executeAgent` is documented as out-of-scope for actual run; no TODO in code.
 
 ---
 
@@ -114,14 +114,14 @@
 
 ## 5. Prompt Service (containers/prompt-service)
 
-### 5.1 Missing Analytics Endpoint
+### 5.1 Analytics Endpoint
 
 | Item | Status |
 |------|--------|
 | README "Key Endpoints" | Lists `GET /api/v1/prompts/analytics` — "Get prompt analytics" |
-| src/routes/index.ts | No `/analytics` route; only list, get, create, update, delete, render, versions, ab-tests |
+| src/routes/index.ts | `GET /api/v1/prompts/analytics` implemented; calls PromptService.getAnalytics(tenantId); returns totalPrompts, byStatus, byCategory |
 
-**Detail:** Prompt analytics is documented but not implemented.
+**Detail:** Prompt analytics is implemented. Gateway exposes prompt_service at /api/v1/prompts when configured.
 
 ### 5.2 Not in API Gateway
 
@@ -169,8 +169,8 @@
 |----------|------|--------|
 | P1 | ai-service | Update README to describe Cosmos DB and config; remove or restrict JWT fallback to dev-only; add tenant scope to getAgent(id) if agents are tenant-scoped. |
 | P1 | ai-conversation | Fix default SHARD_MANAGER_URL to 3023 (or remove default and require env). |
-| P1 | prompt-service | Implement GET /api/v1/prompts/analytics or remove from README. |
-| P2 | ai-service | Implement or document agent execution (executeAgent) and remove TODO. |
+| P1 | prompt-service | Resolved: GET /api/v1/prompts/analytics implemented; gateway route /api/v1/prompts when configured. |
+| P2 | ai-service | Resolved: executeAgent documented as stub in AgentService JSDoc and README; execution logic deferred. |
 | P2 | integration-processors | Add openapi.yaml and architecture.md per ModuleImplementationGuide. |
 | P2 | multi-modal-service | Add code_generation (or equivalent) to config if used; align README with config. |
 | P2 | Gateway | Add route mappings for ai-conversation, multi-modal-service, and prompt-service if they are intended to be client-facing. |

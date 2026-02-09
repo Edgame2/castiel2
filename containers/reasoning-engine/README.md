@@ -69,7 +69,7 @@ npm start
 
 ## API Reference
 
-See [OpenAPI Spec](./openapi.yaml)
+See [OpenAPI Spec](./openapi.yaml). Sync inline reasoning (dataflow §10.1): **POST /api/v1/reasoning/reason** — body `{ query, context?, type? }`; returns `{ steps, reasoning, conclusion, confidence }` without creating a task.
 
 ## Architecture
 

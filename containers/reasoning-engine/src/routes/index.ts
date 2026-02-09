@@ -16,6 +16,53 @@ import {
 export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
   const reasoningService = new ReasoningService();
 
+  // ===== SYNC REASON (inline, no task persisted) — dataflow §10.1 =====
+  app.post<{ Body: { query: string; context?: string[]; type?: string } }>(
+    '/api/v1/reasoning/reason',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Synchronous reasoning: return steps and conclusion without creating a task',
+        tags: ['Reasoning'],
+        body: {
+          type: 'object',
+          required: ['query'],
+          properties: {
+            query: { type: 'string' },
+            context: { type: 'array', items: { type: 'string' } },
+            type: {
+              type: 'string',
+              enum: ['chain_of_thought', 'tree_of_thought', 'analogical', 'counterfactual', 'causal', 'probabilistic', 'meta_reasoning', 'custom'],
+            },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            description: 'Reasoning result (steps, reasoning, conclusion, confidence)',
+            properties: {
+              steps: { type: 'array' },
+              reasoning: { type: 'string' },
+              conclusion: { type: 'string' },
+              confidence: { type: 'number' },
+              alternatives: { type: 'array' },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const body = request.body;
+      const result = await reasoningService.reasonSync(tenantId, {
+        query: body.query,
+        context: body.context,
+        type: body.type as any,
+      });
+      reply.send(result);
+    }
+  );
+
   // ===== REASONING TASK ROUTES =====
 
   /**

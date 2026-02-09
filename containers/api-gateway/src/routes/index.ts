@@ -51,6 +51,7 @@ export async function registerRoutes(
   if (config.services.integration_manager?.url) {
     routeMappings.push({ path: '/api/v1/admin/settings', service: 'integration_manager', serviceUrl: config.services.integration_manager.url, stripPrefix: false });
     routeMappings.push({ path: '/api/v1/admin/integrations', service: 'integration_manager', serviceUrl: config.services.integration_manager.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/integrations', service: 'integration_manager', serviceUrl: config.services.integration_manager.url, stripPrefix: false });
   }
   if (config.services.shard_manager?.url) {
     routeMappings.push({ path: '/api/v1/admin/shard-types', service: 'shard_manager', serviceUrl: config.services.shard_manager.url, stripPrefix: false });
@@ -70,6 +71,13 @@ export async function registerRoutes(
   }
   if (config.services.multi_modal_service?.url) {
     routeMappings.push({ path: '/api/v1/multimodal', service: 'multi_modal_service', serviceUrl: config.services.multi_modal_service.url, stripPrefix: false });
+  }
+  if (config.services.web_search?.url) {
+    routeMappings.push({ path: '/api/v1/schedules', service: 'web_search', serviceUrl: config.services.web_search.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/web-search', service: 'web_search', serviceUrl: config.services.web_search.url, stripPrefix: false });
+  }
+  if (config.services.search_service?.url) {
+    routeMappings.push({ path: '/api/v1/search', service: 'search_service', serviceUrl: config.services.search_service.url, stripPrefix: false });
   }
   if (config.services.risk_analytics?.url) {
     routeMappings.push({ path: '/api/v1', service: 'risk_analytics', serviceUrl: config.services.risk_analytics.url, stripPrefix: false });

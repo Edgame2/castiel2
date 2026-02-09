@@ -164,8 +164,7 @@ export function StakeholderGraph({
                 x={p.x}
                 y={p.y + (isOpp ? 22 : 18)}
                 textAnchor="middle"
-                className="fill-gray-700 dark:fill-gray-300"
-                style={{ fontSize: 10 }}
+                className="fill-gray-700 dark:fill-gray-300 text-[10px]"
               >
                 {short}
               </text>

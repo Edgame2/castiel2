@@ -25,7 +25,9 @@ cosmos_db:
     sso_configs: auth_sso_configs
     oauth2_clients: auth_oauth2_clients
     mfa_secrets: auth_mfa_secrets
-  
+    mfa_backup_codes: auth_mfa_backup_codes
+    api_keys: auth_api_keys
+
 # Legacy database.url for backward compatibility during migration
 database:
   url: ${DATABASE_URL:-}  # Not used with Cosmos DB, kept for migration period
@@ -110,6 +112,12 @@ rabbitmq:
     - "user.created"
     - "user.updated"
 
+# Per-IP rate limiting for public auth routes (login, register, forgot-password, etc.)
+rate_limit:
+  enabled: ${AUTH_RATE_LIMIT_ENABLED:-true}
+  window_seconds: ${AUTH_RATE_LIMIT_WINDOW_SECONDS:-60}
+  max_per_window: ${AUTH_RATE_LIMIT_MAX_PER_WINDOW:-30}
+
 # Feature Flags
 features:
   oauth_google: ${FEATURE_OAUTH_GOOGLE:-true}
@@ -118,4 +126,5 @@ features:
   password_reset: ${FEATURE_PASSWORD_RESET:-true}
   email_verification: ${FEATURE_EMAIL_VERIFICATION:-true}
   multi_factor_auth: ${FEATURE_MFA:-false}
+  api_keys: ${FEATURE_API_KEYS:-false}
 

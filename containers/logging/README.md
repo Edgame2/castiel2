@@ -77,6 +77,7 @@ pnpm start
 | defaults.hash_chain.enabled | boolean | true | Enable tamper-evident logging |
 | defaults.redaction.enabled | boolean | true | Enable sensitive data redaction |
 | defaults.retention.default_days | number | 90 | Default retention period |
+| **data_collection** | object | - | Enable/disable what is stored in the main audit log. AND of severity, category, resource_type, event_type. When absent, all events are collected. Event type supports wildcards (*, #). See `config/default.yaml` and `config/schema.json`. |
 
 See `config/default.yaml` for full configuration options.
 
@@ -97,6 +98,7 @@ See [OpenAPI Specification](./docs/openapi.yaml)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | `/config/data-collection` | Get data collection config (view-only; controls which events are stored). |
 | POST | `/api/v1/logs` | Create audit log entry |
 | POST | `/api/v1/logs/batch` | Create multiple log entries |
 | GET | `/api/v1/logs` | List logs with filters |

@@ -7,6 +7,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -221,64 +225,36 @@ export default function ActionCatalogRelationshipsPage() {
 
       {apiBaseUrl && (
         <div className="mb-4 flex flex-wrap gap-4 items-center">
-          <Link
-            href="/admin/action-catalog/relationships/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium inline-block"
-            aria-label="New link (page)"
-          >
-            New link
-          </Link>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
-            aria-label="Add link (modal)"
-          >
-            Add link (modal)
-          </button>
-          <div>
-            <label className="block text-sm font-medium mb-1">Search (§2.3)</label>
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Risk or recommendation name…"
-              className="w-56 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-              aria-label="Search by risk or recommendation name"
-            />
+          <Button asChild size="sm">
+            <Link href="/admin/action-catalog/relationships/new" aria-label="New link (page)">New link</Link>
+            </Button>
+          <Button type="button" variant="outline" size="sm" onClick={openCreate} aria-label="Add link (modal)">Add link (modal)</Button>
+          <div className="space-y-1">
+            <Label className="text-sm">Search (§2.3)</Label>
+            <Input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Risk or recommendation name…" className="w-56 text-sm" aria-label="Search by risk or recommendation name" />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Sort by (§2.3)</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="w-36 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-              aria-label="Sort by"
-            >
-              <option value="">Default</option>
-              <option value="risk">Risk name</option>
-              <option value="recommendation">Recommendation name</option>
-            </select>
+          <div className="space-y-1">
+            <Label className="text-sm">Sort by (§2.3)</Label>
+            <Select value={sortBy || '_default'} onValueChange={(v) => setSortBy(v === '_default' ? '' : (v as typeof sortBy))} aria-label="Sort by">
+              <SelectTrigger className="w-36 text-sm"><SelectValue placeholder="Default" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_default">Default</SelectItem>
+                <SelectItem value="risk">Risk name</SelectItem>
+                <SelectItem value="recommendation">Recommendation name</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Order</label>
-            <select
-              value={sortDir}
-              onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
-              className="w-32 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-              aria-label="Sort direction"
-            >
-              <option value="asc">Ascending</option>
-              <option value="desc">Descending</option>
-            </select>
+          <div className="space-y-1">
+            <Label className="text-sm">Order</Label>
+            <Select value={sortDir} onValueChange={(v) => setSortDir(v as 'asc' | 'desc')} aria-label="Sort direction">
+              <SelectTrigger className="w-32 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="asc">Ascending</SelectItem>
+                <SelectItem value="desc">Descending</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <button
-            type="button"
-            onClick={fetchData}
-            className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-          >
-            Refresh
-          </button>
+          <Button type="button" variant="outline" size="sm" onClick={fetchData}>Refresh</Button>
         </div>
       )}
 
@@ -291,13 +267,7 @@ export default function ActionCatalogRelationshipsPage() {
       {error && (
         <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4">
           <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
-          <button
-            type="button"
-            onClick={() => fetchData()}
-            className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-          >
-            Retry
-          </button>
+          <Button type="button" variant="link" size="sm" className="mt-2 p-0 h-auto" onClick={() => fetchData()}>Retry</Button>
         </div>
       )}
 
@@ -305,15 +275,7 @@ export default function ActionCatalogRelationshipsPage() {
         <>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <h2 className="text-lg font-semibold">Relationships</h2>
-            <button
-              type="button"
-              onClick={fetchData}
-              disabled={loading}
-              className="px-3 py-1.5 text-sm font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
-              aria-label="Refresh relationships"
-            >
-              Refresh
-            </button>
+            <Button type="button" variant="outline" size="sm" onClick={fetchData} disabled={loading} aria-label="Refresh relationships">Refresh</Button>
           </div>
           <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50" aria-label="Relationship analytics">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">§2.3.3 Relationship Analytics</h2>
@@ -370,13 +332,7 @@ export default function ActionCatalogRelationshipsPage() {
                         </Link>
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => openDelete(rel)}
-                          className="text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                        >
-                          Remove
-                        </button>
+                        <Button type="button" variant="link" size="sm" className="text-destructive p-0 h-auto" onClick={() => openDelete(rel)}>Remove</Button>
                       </td>
                     </tr>
                   );
@@ -394,45 +350,33 @@ export default function ActionCatalogRelationshipsPage() {
             <h2 id="modal-create-rel-title" className="text-lg font-semibold mb-4">Add risk–recommendation link</h2>
             {formError && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{formError}</p>}
             <form onSubmit={handleCreate} className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">Risk</label>
-                <select
-                  value={createForm.riskId}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, riskId: e.target.value }))}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                  required
-                >
-                  <option value="">Select risk</option>
-                  {risks.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.displayName}
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-2">
+                <Label>Risk</Label>
+                <Select value={createForm.riskId || '_none'} onValueChange={(v) => setCreateForm((f) => ({ ...f, riskId: v === '_none' ? '' : v }))} required>
+                  <SelectTrigger><SelectValue placeholder="Select risk" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">Select risk</SelectItem>
+                    {risks.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.displayName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Recommendation (mitigates this risk)</label>
-                <select
-                  value={createForm.recommendationId}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, recommendationId: e.target.value }))}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                  required
-                >
-                  <option value="">Select recommendation</option>
-                  {recommendations.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.displayName}
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-2">
+                <Label>Recommendation (mitigates this risk)</Label>
+                <Select value={createForm.recommendationId || '_none'} onValueChange={(v) => setCreateForm((f) => ({ ...f, recommendationId: v === '_none' ? '' : v }))} required>
+                  <SelectTrigger><SelectValue placeholder="Select recommendation" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">Select recommendation</SelectItem>
+                    {recommendations.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.displayName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex gap-2 pt-2">
-                <button type="submit" disabled={formSaving} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium">
-                  Add link
-                </button>
-                <button type="button" onClick={closeModal} className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm">
-                  Cancel
-                </button>
+                <Button type="submit" size="sm" disabled={formSaving}>Add link</Button>
+                <Button type="button" variant="outline" size="sm" onClick={closeModal}>Cancel</Button>
               </div>
             </form>
           </div>
@@ -448,17 +392,8 @@ export default function ActionCatalogRelationshipsPage() {
             </p>
             {formError && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{formError}</p>}
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={formSaving}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
-              >
-                Remove
-              </button>
-              <button type="button" onClick={closeModal} className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm">
-                Cancel
-              </button>
+              <Button type="button" variant="destructive" size="sm" onClick={handleDelete} disabled={formSaving}>Remove</Button>
+              <Button type="button" variant="outline" size="sm" onClick={closeModal}>Cancel</Button>
             </div>
           </div>
         </div>

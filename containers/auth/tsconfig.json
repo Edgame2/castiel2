@@ -12,7 +12,8 @@
     "resolveJsonModule": true,
     "declaration": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@coder/shared/database": ["../node_modules/@coder/shared/dist/database/index"]
     }
   },
   "include": ["src/**/*"],

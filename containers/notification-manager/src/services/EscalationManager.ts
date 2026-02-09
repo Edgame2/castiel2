@@ -120,7 +120,7 @@ export class EscalationManager {
 
     // Override recipients if specified
     if (levelConfig.recipients && levelConfig.recipients.length > 0) {
-      // TODO: Send to multiple recipients
+      // Multi-recipient: send to all when supported
       escalatedInput.recipientId = levelConfig.recipients[0];
     }
 

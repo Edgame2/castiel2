@@ -174,6 +174,26 @@ const QUEUE_DEFINITIONS: QueueDefinition[] = [
       },
     },
   },
+  {
+    name: 'usage_ingestion',
+    routingKeys: ['usage.ingested'],
+    options: {
+      durable: true,
+      arguments: {
+        'x-dead-letter-exchange': 'coder_events.dlx',
+        'x-dead-letter-routing-key': 'usage.ingestion.dlq',
+        'x-message-ttl': 86400000,
+      },
+    },
+  },
+  {
+    name: 'usage_ingestion.dlq',
+    routingKeys: ['usage.ingestion.dlq'],
+    options: {
+      durable: true,
+      arguments: { 'x-message-ttl': 604800000 },
+    },
+  },
 ];
 
 /**

@@ -7,6 +7,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -134,102 +138,81 @@ export default function SystemApiSecurityPage() {
       <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 space-y-4">
         <div className="grid gap-4 max-w-xl">
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="rateLimit"
               checked={config?.rateLimitEnabled ?? true}
-              onChange={(e) => update({ rateLimitEnabled: e.target.checked })}
-              className="rounded border-gray-300"
+              onCheckedChange={(c) => update({ rateLimitEnabled: !!c })}
             />
-            <label htmlFor="rateLimit" className="text-sm">Rate limit enabled</label>
+            <Label htmlFor="rateLimit" className="text-sm font-normal">Rate limit enabled</Label>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Requests per minute</label>
-            <input
+            <Label className="block mb-1">Requests per minute</Label>
+            <Input
               type="number"
               min={1}
               value={config?.requestsPerMinute ?? 100}
               onChange={(e) => update({ requestsPerMinute: parseInt(e.target.value, 10) || undefined })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="w-full"
             />
           </div>
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="perTenant"
               checked={config?.perTenant ?? true}
-              onChange={(e) => update({ perTenant: e.target.checked })}
-              className="rounded border-gray-300"
+              onCheckedChange={(c) => update({ perTenant: !!c })}
             />
-            <label htmlFor="perTenant" className="text-sm">Per-tenant rate limit</label>
+            <Label htmlFor="perTenant" className="text-sm font-normal">Per-tenant rate limit</Label>
           </div>
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="perUser"
               checked={config?.perUser ?? false}
-              onChange={(e) => update({ perUser: e.target.checked })}
-              className="rounded border-gray-300"
+              onCheckedChange={(c) => update({ perUser: !!c })}
             />
-            <label htmlFor="perUser" className="text-sm">Per-user rate limit</label>
+            <Label htmlFor="perUser" className="text-sm font-normal">Per-user rate limit</Label>
           </div>
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="cors"
               checked={config?.corsEnabled ?? true}
-              onChange={(e) => update({ corsEnabled: e.target.checked })}
-              className="rounded border-gray-300"
+              onCheckedChange={(c) => update({ corsEnabled: !!c })}
             />
-            <label htmlFor="cors" className="text-sm">CORS enabled</label>
+            <Label htmlFor="cors" className="text-sm font-normal">CORS enabled</Label>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Allowed origins (comma-separated)</label>
-            <input
+            <Label className="block mb-1">Allowed origins (comma-separated)</Label>
+            <Input
               type="text"
               value={(config?.allowedOrigins ?? []).join(', ')}
               onChange={(e) => update({ allowedOrigins: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="w-full"
               placeholder="https://app.example.com"
             />
           </div>
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="dataAtRest"
               checked={config?.dataAtRestEncryption ?? true}
-              onChange={(e) => update({ dataAtRestEncryption: e.target.checked })}
-              className="rounded border-gray-300"
+              onCheckedChange={(c) => update({ dataAtRestEncryption: !!c })}
             />
-            <label htmlFor="dataAtRest" className="text-sm">Data at rest encryption</label>
+            <Label htmlFor="dataAtRest" className="text-sm font-normal">Data at rest encryption</Label>
           </div>
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="dataInTransit"
               checked={config?.dataInTransitEncryption ?? true}
-              onChange={(e) => update({ dataInTransitEncryption: e.target.checked })}
-              className="rounded border-gray-300"
+              onCheckedChange={(c) => update({ dataInTransitEncryption: !!c })}
             />
-            <label htmlFor="dataInTransit" className="text-sm">Data in transit encryption</label>
+            <Label htmlFor="dataInTransit" className="text-sm font-normal">Data in transit encryption</Label>
           </div>
         </div>
         <div className="flex gap-2 pt-4">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!dirty || saving}
-            className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium disabled:opacity-50 hover:bg-blue-700"
-          >
+          <Button type="button" onClick={handleSave} disabled={!dirty || saving}>
             {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button
-            type="button"
-            onClick={() => { fetchConfig(); setDirty(false); }}
-            className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
+          </Button>
+          <Button type="button" variant="outline" onClick={() => { fetchConfig(); setDirty(false); }}>
             Reset
-          </button>
+          </Button>
         </div>
       </div>
       <Link href="/admin/system" className="inline-block mt-4 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">← Back to System Configuration</Link>

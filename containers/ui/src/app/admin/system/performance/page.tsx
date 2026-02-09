@@ -7,6 +7,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -261,15 +265,9 @@ export default function SystemPerformancePage() {
         <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <h2 className="text-lg font-semibold">Performance (§8.1)</h2>
-            <button
-              type="button"
-              onClick={() => { setLoading(true); fetchConfig().finally(() => setLoading(false)); }}
-              disabled={loading}
-              className="px-3 py-1.5 text-sm font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
-              aria-label="Refresh performance config"
-            >
+            <Button type="button" variant="outline" size="sm" onClick={() => { setLoading(true); fetchConfig().finally(() => setLoading(false)); }} disabled={loading} aria-label="Refresh performance config">
               Refresh
-            </button>
+            </Button>
           </div>
           <section>
             <h3 className="text-sm font-semibold mb-3">Latency targets (ms)</h3>
@@ -278,42 +276,42 @@ export default function SystemPerformancePage() {
                 <div key={key} className="border rounded p-3 space-y-2">
                   <div className="font-medium text-sm">{LABELS[key]}</div>
                   <div className="grid grid-cols-3 gap-2">
-                    <label className="text-xs text-gray-500">
-                      p50
-                      <input
+                    <div>
+                      <Label className="text-xs text-muted-foreground">p50</Label>
+                      <Input
                         type="number"
                         min={0}
-                        className="ml-1 w-full rounded border px-2 py-1 text-sm dark:bg-gray-800"
+                        className="mt-0.5 w-full h-8 text-sm"
                         value={config.latencyTargets[key].p50}
                         onChange={(e) =>
                           updateLatency(key, 'p50', parseInt(e.target.value, 10) || 0)
                         }
                       />
-                    </label>
-                    <label className="text-xs text-gray-500">
-                      p95
-                      <input
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">p95</Label>
+                      <Input
                         type="number"
                         min={0}
-                        className="ml-1 w-full rounded border px-2 py-1 text-sm dark:bg-gray-800"
+                        className="mt-0.5 w-full h-8 text-sm"
                         value={config.latencyTargets[key].p95}
                         onChange={(e) =>
                           updateLatency(key, 'p95', parseInt(e.target.value, 10) || 0)
                         }
                       />
-                    </label>
-                    <label className="text-xs text-gray-500">
-                      p99
-                      <input
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">p99</Label>
+                      <Input
                         type="number"
                         min={0}
-                        className="ml-1 w-full rounded border px-2 py-1 text-sm dark:bg-gray-800"
+                        className="mt-0.5 w-full h-8 text-sm"
                         value={config.latencyTargets[key].p99}
                         onChange={(e) =>
                           updateLatency(key, 'p99', parseInt(e.target.value, 10) || 0)
                         }
                       />
-                    </label>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -323,69 +321,69 @@ export default function SystemPerformancePage() {
           <section>
             <h3 className="text-sm font-semibold mb-3">Throughput targets</h3>
             <div className="flex flex-wrap gap-4">
-              <label className="text-sm">
-                Predictions/sec
-                <input
+              <div>
+                <Label className="text-sm">Predictions/sec</Label>
+                <Input
                   type="number"
                   min={1}
-                  className="ml-2 w-24 rounded border px-2 py-1 dark:bg-gray-800"
+                  className="mt-1 w-24 h-8"
                   value={config.throughputTargets.predictionsPerSecond}
                   onChange={(e) =>
                     updateThroughput('predictionsPerSecond', parseInt(e.target.value, 10) || 1)
                   }
                 />
-              </label>
-              <label className="text-sm">
-                Batch size
-                <input
+              </div>
+              <div>
+                <Label className="text-sm">Batch size</Label>
+                <Input
                   type="number"
                   min={1}
-                  className="ml-2 w-24 rounded border px-2 py-1 dark:bg-gray-800"
+                  className="mt-1 w-24 h-8"
                   value={config.throughputTargets.batchSize}
                   onChange={(e) =>
                     updateThroughput('batchSize', parseInt(e.target.value, 10) || 1)
                   }
                 />
-              </label>
-              <label className="text-sm">
-                Concurrent requests
-                <input
+              </div>
+              <div>
+                <Label className="text-sm">Concurrent requests</Label>
+                <Input
                   type="number"
                   min={1}
-                  className="ml-2 w-24 rounded border px-2 py-1 dark:bg-gray-800"
+                  className="mt-1 w-24 h-8"
                   value={config.throughputTargets.concurrentRequests}
                   onChange={(e) =>
                     updateThroughput('concurrentRequests', parseInt(e.target.value, 10) || 1)
                   }
                 />
-              </label>
+              </div>
             </div>
           </section>
 
           <section>
             <h3 className="text-sm font-semibold mb-3">Alerts</h3>
             <div className="flex flex-wrap items-center gap-4">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="alertIfExceeded"
                   checked={config.alerts.alertIfExceeded}
-                  onChange={(e) => updateAlerts('alertIfExceeded', e.target.checked)}
+                  onCheckedChange={(c) => updateAlerts('alertIfExceeded', !!c)}
                 />
-                Alert when target exceeded
-              </label>
-              <label className="text-sm">
-                Alert if over target by (%)
-                <input
+                <Label htmlFor="alertIfExceeded" className="text-sm font-normal">Alert when target exceeded</Label>
+              </div>
+              <div>
+                <Label className="text-sm">Alert if over target by (%)</Label>
+                <Input
                   type="number"
                   min={0}
                   max={100}
-                  className="ml-2 w-20 rounded border px-2 py-1 dark:bg-gray-800"
+                  className="mt-1 w-20 h-8"
                   value={config.alerts.alertThreshold}
                   onChange={(e) =>
                     updateAlerts('alertThreshold', parseInt(e.target.value, 10) || 0)
                   }
                 />
-              </label>
+              </div>
             </div>
           </section>
 
@@ -397,14 +395,9 @@ export default function SystemPerformancePage() {
 
           {dirty && (
             <div className="pt-2">
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-              >
+              <Button type="button" onClick={handleSave} disabled={saving}>
                 {saving ? 'Saving…' : 'Save'}
-              </button>
+              </Button>
             </div>
           )}
         </div>

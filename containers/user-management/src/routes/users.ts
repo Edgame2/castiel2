@@ -7,6 +7,7 @@
  * - GET /api/v1/users - List users (tenant/org-scoped; requires organization context)
  * - GET /api/v1/users/:id - Get user profile by id (tenant-scoped + RBAC)
  * - PUT /api/v1/users/me - Update current user profile
+ * - PUT /api/v1/users/:id - Admin update user profile (tenant-scoped + RBAC; use /me for self)
  * - GET /api/v1/users/me/sessions - List user sessions
  * - DELETE /api/v1/users/me/sessions/:sessionId - Revoke a session
  * - POST /api/v1/users/me/sessions/revoke-all-others - Revoke all other sessions
@@ -251,6 +252,80 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
         return;
       }
   }) as any
+  );
+
+  // Admin update user profile by id (tenant-scoped + RBAC: same org or Super Admin; use /me for self)
+  fastify.put(
+    '/api/v1/users/:id',
+    { preHandler: authenticateRequest },
+    (async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Body: {
+          name?: string;
+          firstName?: string;
+          lastName?: string;
+          phoneNumber?: string;
+          avatarUrl?: string;
+          function?: string;
+          speciality?: string;
+          timezone?: string;
+          language?: string;
+        };
+      }>,
+      reply: FastifyReply
+    ) => {
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const { id } = request.params;
+        if (id === requestUser.id) {
+          reply.code(400).send({ error: 'Use PUT /api/v1/users/me to update your own profile' });
+          return;
+        }
+        await ensureCanAccessUser(requestUser.id, id, (request as any).organizationId);
+        const updates = request.body;
+        if (Object.keys(updates).length === 0) {
+          reply.code(400).send({ error: 'At least one field must be provided for update' });
+          return;
+        }
+        const profile = await userService.updateUserProfile(id, updates);
+        const organizationId = (request as any).organizationId;
+        const metadata = extractEventMetadata(request);
+        await publishEventSafely({
+          ...createBaseEvent('user.profile_updated', id, organizationId, undefined, {
+            userId: id,
+            changes: updates,
+            updatedBy: requestUser.id,
+          }),
+          timestamp: new Date().toISOString(),
+          actorId: requestUser.id,
+          metadata,
+        } as UserManagementEvent);
+        return { data: profile };
+      } catch (error: any) {
+        log.error('Admin update user profile error', error, { route: 'PUT /api/v1/users/:id', userId: (request as any).user?.id, targetId: request.params?.id, service: 'user-management' });
+        if (error.message?.includes('not found')) {
+          reply.code(404).send({ error: error.message });
+          return;
+        }
+        if (error.message?.includes('Permission denied')) {
+          reply.code(403).send({ error: error.message });
+          return;
+        }
+        if (error.message?.includes('must be') || error.message?.includes('Invalid') || error.message?.includes('format')) {
+          reply.code(400).send({ error: error.message });
+          return;
+        }
+        reply.code(500).send({
+          error: 'Failed to update user profile',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
+      }
+    }) as any
   );
 
   // List user sessions

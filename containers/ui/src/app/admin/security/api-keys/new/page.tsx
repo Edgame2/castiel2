@@ -3,6 +3,9 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -64,26 +67,28 @@ export default function AdminSecurityApiKeyNewPage() {
         {!created?.key && (
           <form onSubmit={handleSubmit} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
             <div>
-              <label htmlFor="orgId" className="block text-sm font-medium mb-1">Organization ID</label>
-              <input id="orgId" type="text" value={orgId} onChange={(e) => setOrgId(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+              <Label htmlFor="orgId" className="block mb-1">Organization ID</Label>
+              <Input id="orgId" type="text" value={orgId} onChange={(e) => setOrgId(e.target.value)} className="w-full" required />
             </div>
             <div>
-              <label htmlFor="name" className="block text-sm font-medium mb-1">Key name</label>
-              <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+              <Label htmlFor="name" className="block mb-1">Key name</Label>
+              <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full" required />
             </div>
             <div>
-              <label htmlFor="scope" className="block text-sm font-medium mb-1">Scope (optional)</label>
-              <input id="scope" type="text" value={scope} onChange={(e) => setScope(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+              <Label htmlFor="scope" className="block mb-1">Scope (optional)</Label>
+              <Input id="scope" type="text" value={scope} onChange={(e) => setScope(e.target.value)} className="w-full" />
             </div>
             <div>
-              <label htmlFor="expiresAt" className="block text-sm font-medium mb-1">Expires at (optional)</label>
-              <input id="expiresAt" type="text" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} placeholder="e.g. 2026-12-31" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+              <Label htmlFor="expiresAt" className="block mb-1">Expires at (optional)</Label>
+              <Input id="expiresAt" type="text" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} placeholder="e.g. 2026-12-31" className="w-full" />
             </div>
             <div className="flex gap-2">
-              <button type="submit" disabled={submitting || !orgId.trim() || !name.trim()} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+              <Button type="submit" disabled={submitting || !orgId.trim() || !name.trim()}>
                 {submitting ? 'Creating…' : 'Create API key'}
-              </button>
-              <Link href="/admin/security/api-keys" className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/admin/security/api-keys">Cancel</Link>
+              </Button>
             </div>
           </form>
         )}

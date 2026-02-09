@@ -35,6 +35,7 @@ export interface AIConversationConfig {
     shard_manager?: { url: string };
     embeddings?: { url: string };
     search_service?: { url: string };
+    reasoning_engine?: { url: string };
   };
   rabbitmq: {
     url: string;

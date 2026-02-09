@@ -137,6 +137,18 @@
           "properties": {
             "url": { "type": "string", "format": "uri" }
           }
+        },
+        "web_search": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
+        },
+        "search_service": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string", "format": "uri" }
+          }
         }
       }
     },
@@ -152,6 +164,18 @@
       "properties": {
         "threshold": { "type": ["integer", "string"], "minimum": 1 },
         "timeout": { "type": ["integer", "string"], "minimum": 1 }
+      }
+    },
+    "cors": {
+      "type": "object",
+      "properties": {
+        "origin": { "type": "string" }
+      }
+    },
+    "redis": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" }
       }
     }
   }

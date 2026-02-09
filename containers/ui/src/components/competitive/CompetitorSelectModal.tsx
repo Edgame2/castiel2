@@ -7,6 +7,8 @@
 
 import * as Dialog from '@radix-ui/react-dialog';
 import { useState, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export type CompetitorSelectModalProps = {
   isOpen: boolean;
@@ -132,24 +134,25 @@ export function CompetitorSelectModal({
               <p className="text-sm text-gray-500">Loading…</p>
             ) : (
               <>
-                <input
+                <Input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search competitors…"
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+                  className="w-full"
                 />
-                <ul className="max-h-48 overflow-y-auto rounded border border-gray-200 dark:border-gray-600 divide-y divide-gray-200 dark:divide-gray-600">
+                <ul className="max-h-48 overflow-y-auto rounded border border-input divide-y divide-border">
                   {filtered.map((c) => (
                     <li key={c.id}>
-                      <button
+                      <Button
                         type="button"
+                        variant={selectedId === c.id ? 'secondary' : 'ghost'}
+                        className="w-full justify-start text-sm font-normal"
                         onClick={() => setSelectedId(selectedId === c.id ? null : c.id)}
-                        className={`w-full text-left px-3 py-2 text-sm ${selectedId === c.id ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                       >
                         {c.name}
-                        {c.industry ? <span className="text-gray-500 ml-1">({c.industry})</span> : null}
-                      </button>
+                        {c.industry ? <span className="text-muted-foreground ml-1">({c.industry})</span> : null}
+                      </Button>
                     </li>
                   ))}
                 </ul>
@@ -159,17 +162,13 @@ export function CompetitorSelectModal({
             {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
             <div className="flex justify-end gap-2">
               <Dialog.Close asChild>
-                <button type="button" className="rounded border px-3 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
+                <Button type="button" variant="outline" size="sm">
                   Cancel
-                </button>
+                </Button>
               </Dialog.Close>
-              <button
-                type="submit"
-                disabled={loading || linking || !selectedId}
-                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
-              >
+              <Button type="submit" size="sm" disabled={loading || linking || !selectedId}>
                 {linking ? 'Linking…' : 'Link'}
-              </button>
+              </Button>
             </div>
           </form>
         </Dialog.Content>

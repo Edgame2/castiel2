@@ -46,6 +46,12 @@ export interface GatewayConfig {
     threshold: number;
     timeout: number;
   };
+  cors?: {
+    origin: string;
+  };
+  redis?: {
+    url: string;
+  };
 }
 
 export function loadConfig(): GatewayConfig {
@@ -57,8 +63,13 @@ export function loadConfig(): GatewayConfig {
   if (config.rate_limit?.timeWindow && typeof config.rate_limit.timeWindow === 'string') {
     config.rate_limit.timeWindow = parseInt(config.rate_limit.timeWindow, 10);
   }
-  if (config.circuit_breaker && typeof config.circuit_breaker.timeout === 'string') {
-    config.circuit_breaker.timeout = parseInt(config.circuit_breaker.timeout, 10);
+  if (config.circuit_breaker) {
+    if (typeof config.circuit_breaker.threshold === 'string') {
+      config.circuit_breaker.threshold = parseInt(config.circuit_breaker.threshold, 10);
+    }
+    if (typeof config.circuit_breaker.timeout === 'string') {
+      config.circuit_breaker.timeout = parseInt(config.circuit_breaker.timeout, 10);
+    }
   }
   if (process.env.PORT) config.server.port = parseInt(process.env.PORT, 10);
   if (process.env.HOST) config.server.host = process.env.HOST;

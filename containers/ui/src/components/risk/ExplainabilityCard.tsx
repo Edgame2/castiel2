@@ -17,6 +17,15 @@ export type ExplainabilityDriver = {
   direction: 'increases' | 'decreases';
 };
 
+export type ReasoningStep = {
+  id: string;
+  order: number;
+  type: string;
+  content: string;
+  reasoning?: string;
+  confidence?: number;
+};
+
 export type ExplainabilityCardProps = {
   /** Pre-loaded drivers; when unset and opportunityId is set, fetches from API */
   topDrivers?: ExplainabilityDriver[];
@@ -28,6 +37,10 @@ export type ExplainabilityCardProps = {
   modelId?: string;
   /** When set and topDrivers unset, fetches from risk-explainability or win-probability/explain */
   opportunityId?: string;
+  /** Optional: chain-of-thought steps when reasoning-engine is wired (dataflow §11) */
+  reasoningSteps?: ReasoningStep[];
+  /** Optional: conclusion from reasoning-engine */
+  conclusion?: string;
 };
 
 const apiBase = typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '') : '';
@@ -39,9 +52,13 @@ export function ExplainabilityCard({
   title,
   modelId,
   opportunityId,
+  reasoningSteps: reasoningStepsProp,
+  conclusion: conclusionProp,
 }: ExplainabilityCardProps) {
   const [topDrivers, setTopDrivers] = useState<ExplainabilityDriver[]>(topDriversProp ?? []);
   const [riskScore, setRiskScore] = useState<number | undefined>(riskScoreProp);
+  const [reasoningSteps, setReasoningSteps] = useState<ReasoningStep[]>(reasoningStepsProp ?? []);
+  const [conclusion, setConclusion] = useState<string | undefined>(conclusionProp);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,6 +66,8 @@ export function ExplainabilityCard({
     if (topDriversProp != null) {
       setTopDrivers(topDriversProp);
       setRiskScore(riskScoreProp);
+      if (reasoningStepsProp != null) setReasoningSteps(reasoningStepsProp);
+      if (conclusionProp !== undefined) setConclusion(conclusionProp);
       setLoading(false);
       setError(null);
       return;
@@ -68,16 +87,20 @@ export function ExplainabilityCard({
         if (!r.ok) throw new Error(r.statusText || 'Fetch failed');
         return r.json();
       })
-      .then((data: { topDrivers?: ExplainabilityDriver[]; riskScore?: number }) => {
+      .then((data: { topDrivers?: ExplainabilityDriver[]; riskScore?: number; reasoningSteps?: ReasoningStep[]; conclusion?: string }) => {
         setTopDrivers(Array.isArray(data.topDrivers) ? data.topDrivers : []);
         if (typeof data.riskScore === 'number') setRiskScore(data.riskScore);
+        if (Array.isArray(data.reasoningSteps)) setReasoningSteps(data.reasoningSteps);
+        if (typeof data.conclusion === 'string') setConclusion(data.conclusion);
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
-  }, [opportunityId, variant, topDriversProp, riskScoreProp]);
+  }, [opportunityId, variant, topDriversProp, riskScoreProp, reasoningStepsProp, conclusionProp]);
 
   const drivers = topDriversProp ?? topDrivers;
   const score = riskScoreProp ?? riskScore;
+  const steps = reasoningStepsProp ?? reasoningSteps;
+  const conclusionText = conclusionProp ?? conclusion;
   const t = title ?? (variant === 'win_probability' ? 'Win probability drivers' : 'Risk drivers');
 
   return (
@@ -111,6 +134,22 @@ export function ExplainabilityCard({
             </li>
           ))}
         </ul>
+      )}
+      {!loading && !error && steps.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Reasoning</p>
+          <ol className="list-decimal list-inside space-y-1 text-xs text-gray-600 dark:text-gray-400">
+            {steps.sort((a, b) => a.order - b.order).map((s) => (
+              <li key={s.id}>
+                {s.content}
+                {s.reasoning && <span className="block ml-4 mt-0.5 text-gray-500 dark:text-gray-500">{s.reasoning}</span>}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {!loading && !error && conclusionText && (
+        <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">{conclusionText}</p>
       )}
       {modelId && (
         <p className="text-xs mt-2">

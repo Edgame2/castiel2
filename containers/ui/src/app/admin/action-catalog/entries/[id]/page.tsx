@@ -7,6 +7,11 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -152,35 +157,38 @@ export default function ActionCatalogEntryDetailPage() {
                 {entry.createdAt && <p><span className="text-gray-500">Created:</span> {new Date(entry.createdAt).toLocaleString()}</p>}
                 {entry.updatedAt && <p><span className="text-gray-500">Updated:</span> {new Date(entry.updatedAt).toLocaleString()}</p>}
                 <div className="flex gap-2 mt-4">
-                  <button type="button" onClick={() => setEditing(true)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Edit</button>
-                  <button type="button" onClick={() => setDeleteConfirm(true)} className="px-4 py-2 border border-red-600 text-red-600 rounded hover:bg-red-50 dark:hover:bg-red-900/20">Delete</button>
+                  <Button type="button" onClick={() => setEditing(true)}>Edit</Button>
+                  <Button type="button" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" onClick={() => setDeleteConfirm(true)}>Delete</Button>
                 </div>
               </div>
             ) : (
               <form onSubmit={handleSave} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
-                <div>
-                  <label htmlFor="displayName" className="block text-sm font-medium mb-1">Display name</label>
-                  <input id="displayName" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+                <div className="space-y-2">
+                  <Label htmlFor="displayName">Display name</Label>
+                  <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
                 </div>
-                <div>
-                  <label htmlFor="category" className="block text-sm font-medium mb-1">Category</label>
-                  <input id="category" type="text" value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Input id="category" value={category} onChange={(e) => setCategory(e.target.value)} />
                 </div>
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium mb-1">Description</label>
-                  <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
                 </div>
-                <div>
-                  <label htmlFor="status" className="block text-sm font-medium mb-1">Status</label>
-                  <select id="status" value={status} onChange={(e) => setStatus(e.target.value as EntryStatus)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700">
-                    <option value="active">Active</option>
-                    <option value="draft">Draft</option>
-                    <option value="deprecated">Deprecated</option>
-                  </select>
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={status} onValueChange={(v) => setStatus(v as EntryStatus)}>
+                    <SelectTrigger id="status"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="deprecated">Deprecated</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex gap-2">
-                  <button type="submit" disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Save</button>
-                  <button type="button" onClick={() => setEditing(false)} className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</button>
+                  <Button type="submit" disabled={saving}>Save</Button>
+                  <Button type="button" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
                 </div>
               </form>
             )}
@@ -189,8 +197,8 @@ export default function ActionCatalogEntryDetailPage() {
               <div className="mt-4 p-4 border rounded-lg border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
                 <p className="text-sm mb-2">Delete this entry? This cannot be undone.</p>
                 <div className="flex gap-2">
-                  <button type="button" onClick={handleDelete} disabled={deleting} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50">Delete</button>
-                  <button type="button" onClick={() => setDeleteConfirm(false)} className="px-4 py-2 border rounded dark:border-gray-700">Cancel</button>
+                  <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting}>Delete</Button>
+                  <Button type="button" variant="outline" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
                 </div>
               </div>
             )}

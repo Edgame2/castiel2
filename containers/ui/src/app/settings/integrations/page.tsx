@@ -7,6 +7,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -213,12 +224,9 @@ export default function IntegrationsPage() {
             Manage your connected integrations and connect new ones
           </p>
         </div>
-        <button
-          onClick={() => setShowConnectModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-        >
+        <Button onClick={() => setShowConnectModal(true)} size="sm">
           Connect Integration
-        </button>
+        </Button>
       </div>
 
       {loading && (
@@ -241,12 +249,9 @@ export default function IntegrationsPage() {
             {integrations.length === 0 ? (
               <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 text-center">
                 <p className="text-sm text-gray-500 mb-4">No integrations connected yet</p>
-                <button
-                  onClick={() => setShowConnectModal(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                >
+                <Button onClick={() => setShowConnectModal(true)} size="sm">
                   Connect Your First Integration
-                </button>
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -282,25 +287,26 @@ export default function IntegrationsPage() {
                       </p>
                     )}
                     <div className="flex gap-2">
-                      <Link
-                        href={`/settings/integrations/${integration.id}`}
-                        className="flex-1 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-700 text-center"
-                      >
-                        Configure
-                      </Link>
-                      <button
+                      <Button variant="secondary" size="sm" className="flex-1 text-xs" asChild>
+                        <Link href={`/settings/integrations/${integration.id}`}>Configure</Link>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
                         onClick={() => handleTestConnection(integration.id)}
                         disabled={testingId === integration.id}
-                        className="px-3 py-1.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs hover:bg-blue-200 dark:hover:bg-blue-800 disabled:opacity-50"
+                        className="text-xs"
                       >
                         {testingId === integration.id ? 'Testing...' : 'Test'}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-800"
                         onClick={() => handleDisconnect(integration.id)}
-                        className="px-3 py-1.5 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded text-xs hover:bg-red-200 dark:hover:bg-red-800"
                       >
                         Disconnect
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -402,72 +408,45 @@ function ConnectIntegrationModal({
       <div className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-md w-full mx-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Connect Integration</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
             ×
-          </button>
+          </Button>
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Integration Type</label>
-          <select
+          <Label className="block mb-2">Integration Type</Label>
+          <Select
             value={type.id}
-            onChange={(e) => {
-              const newType = availableTypes.find((t) => t.id === e.target.value);
+            onValueChange={(v) => {
+              const newType = availableTypes.find((t) => t.id === v);
               if (newType) setSelectedType(newType);
             }}
-            className="w-full px-3 py-2 border rounded"
           >
-            {availableTypes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.displayName}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {availableTypes.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.displayName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Authentication Method</label>
-          <div className="flex gap-4">
-            {supportsOAuth && (
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="authMethod"
-                  value="oauth"
-                  checked={authMethod === 'oauth'}
-                  onChange={() => setAuthMethod('oauth')}
-                  className="mr-2"
-                />
-                OAuth 2.0
-              </label>
-            )}
-            {supportsApiKey && (
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="authMethod"
-                  value="apikey"
-                  checked={authMethod === 'apikey'}
-                  onChange={() => setAuthMethod('apikey')}
-                  className="mr-2"
-                />
-                API Key
-              </label>
-            )}
-            {supportsServiceAccount && (
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="authMethod"
-                  value="serviceaccount"
-                  checked={authMethod === 'serviceaccount'}
-                  onChange={() => setAuthMethod('serviceaccount')}
-                  className="mr-2"
-                />
-                Service Account
-              </label>
-            )}
-          </div>
+          <Label className="block mb-2">Authentication Method</Label>
+          <Select value={authMethod} onValueChange={(v) => setAuthMethod(v as 'oauth' | 'apikey' | 'serviceaccount')}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {supportsOAuth && <SelectItem value="oauth">OAuth 2.0</SelectItem>}
+              {supportsApiKey && <SelectItem value="apikey">API Key</SelectItem>}
+              {supportsServiceAccount && <SelectItem value="serviceaccount">Service Account</SelectItem>}
+            </SelectContent>
+          </Select>
         </div>
 
         {authMethod === 'oauth' && supportsOAuth && (
@@ -476,54 +455,51 @@ function ConnectIntegrationModal({
               Click the button below to authorize this integration with OAuth 2.0. You will be redirected to the
               integration provider to grant permissions.
             </p>
-            <button
-              onClick={() => onOAuthConnect(type)}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
+            <Button onClick={() => onOAuthConnect(type)} className="w-full">
               Connect with {type.displayName}
-            </button>
+            </Button>
           </div>
         )}
 
         {authMethod === 'apikey' && supportsApiKey && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">API Key *</label>
-              <input
+              <Label className="block mb-1">API Key *</Label>
+              <Input
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                className="w-full px-3 py-2 border rounded"
                 placeholder="Enter your API key"
+                className="w-full"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">API Secret (optional)</label>
-              <input
+              <Label className="block mb-1">API Secret (optional)</Label>
+              <Input
                 type="password"
                 value={apiSecret}
                 onChange={(e) => setApiSecret(e.target.value)}
-                className="w-full px-3 py-2 border rounded"
                 placeholder="Enter your API secret"
+                className="w-full"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Instance URL (optional)</label>
-              <input
+              <Label className="block mb-1">Instance URL (optional)</Label>
+              <Input
                 type="url"
                 value={instanceUrl}
                 onChange={(e) => setInstanceUrl(e.target.value)}
-                className="w-full px-3 py-2 border rounded"
                 placeholder="https://your-instance.com"
+                className="w-full"
               />
             </div>
-            <button
+            <Button
               onClick={() => onApiKeyConnect(type, apiKey, apiSecret || undefined, instanceUrl || undefined)}
               disabled={!apiKey}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full"
             >
               Connect
-            </button>
+            </Button>
           </div>
         )}
 
@@ -532,26 +508,26 @@ function ConnectIntegrationModal({
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Paste the contents of your service account JSON key file (e.g. Google Workspace domain-wide delegation).
             </p>
-            <textarea
+            <Textarea
               value={serviceAccountJson}
               onChange={(e) => setServiceAccountJson(e.target.value)}
-              className="w-full px-3 py-2 border rounded font-mono text-sm min-h-[120px]"
+              className="w-full font-mono text-sm min-h-[120px]"
               placeholder='{"type": "service_account", "project_id": "...", ...}'
             />
-            <button
+            <Button
               onClick={() => onServiceAccountConnect(type, serviceAccountJson)}
               disabled={!serviceAccountJson.trim()}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full"
             >
               Connect
-            </button>
+            </Button>
           </div>
         )}
 
         <div className="mt-4 flex justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:underline">
+          <Button variant="ghost" onClick={onClose}>
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     </div>

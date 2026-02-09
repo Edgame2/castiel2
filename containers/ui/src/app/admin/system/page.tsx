@@ -7,6 +7,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function SystemPage() {
   useEffect(() => {
@@ -34,14 +35,9 @@ export default function SystemPage() {
             Performance targets, Data Lake, logging, and API security (Super Admin §8).
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-          title="Reload page (§8)"
-        >
+        <Button type="button" variant="outline" onClick={() => window.location.reload()} title="Reload page (§8)">
           Refresh
-        </button>
+        </Button>
       </div>
       <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
         <span className="text-sm font-medium text-gray-900 dark:text-gray-100 border-b-2 border-blue-600 pb-2 -mb-0.5">

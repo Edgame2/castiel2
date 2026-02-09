@@ -10,69 +10,69 @@
 
 | Area | Status | Critical Gaps |
 |------|--------|---------------|
-| **API Gateway** | Partial | Circuit breaker not in use (axios used instead of ServiceClient); docs/config port mismatch; rate limit in-memory only; circuit breaker config unused |
+| **API Gateway** | Partial | Rate limit in-memory only (P2: Redis for multi-instance). Port and circuit breaker aligned: docs 3002; ProxyService uses ServiceClient.requestWithFullResponse and config circuit_breaker.threshold/timeout. |
 
 ---
 
 ## 1. Documentation vs Configuration
 
-### 1.1 Port
+### 1.1 Port — Resolved
 
 | Item | Value |
 |------|--------|
-| README "Port" / architecture.md | 3001 |
+| README "Port" / architecture.md | 3002 (default) |
 | config/default.yaml `server.port` | `${PORT:-3002}` (default 3002) |
 
-**Detail:** README and architecture state the gateway runs on port 3001. The config default is 3002. Either the docs are outdated or the default was changed without updating README and architecture.md.
+**Detail:** README and architecture state the gateway default port is 3002, consistent with config.
 
 ---
 
-## 2. Circuit Breaker
+## 2. Circuit Breaker — Resolved
 
-### 2.1 Circuit Breaker Not Applied
+### 2.1 Circuit Breaker Applied
 
 | Item | Status |
 |------|--------|
-| README / OpenAPI | Claim "Circuit Breakers: Automatic circuit breaking (via ServiceClient)" |
-| ProxyService | Creates ServiceClient with `circuitBreaker: { enabled: true, ... }` |
-| proxyRequest() | Uses **axios** for the outgoing request; ServiceClient is never used for the call |
+| ProxyService.proxyRequest() | Uses `ServiceClient.requestWithFullResponse()` for the outgoing request; circuit breaker is applied |
+| server.ts | Passes `config.circuit_breaker` into `new ProxyService({ circuitBreaker: config.circuit_breaker })` |
 
-**Detail:** In `src/services/ProxyService.ts`, `registerRoute()` creates a `ServiceClient` with circuit breaker options, but `proxyRequest()` builds the request with `axios.request()` (lines 124–131). The ServiceClient is only used to obtain the service URL indirectly via the mapping; the actual HTTP call does not go through ServiceClient, so the circuit breaker never runs. The code does handle a "Circuit breaker" error message (line 136), but the breaker is not invoked.
+**Detail:** The actual HTTP call goes through ServiceClient; circuit breaker runs and returns 503 when open.
 
-### 2.2 Circuit Breaker Config Unused
+### 2.2 Circuit Breaker Config From Config
 
 | Item | Status |
 |------|--------|
 | config/default.yaml | `circuit_breaker.threshold`, `circuit_breaker.timeout` defined |
-| ProxyService | Hardcodes `threshold: 5`, `timeout: 30000` when constructing ServiceClient |
-
-**Detail:** Gateway config exposes circuit breaker settings, but ProxyService does not read them. Even if the proxy were switched to use ServiceClient for requests, the config would need to be passed into ProxyService.
-
----
-
-## 3. Rate Limiting
-
-### 3.1 In-Memory Store Only
-
-| Item | Status |
-|------|--------|
-| rateLimit.ts | In-memory store with comment "should use Redis in production" |
-| Redis or shared store | **Missing** |
-
-**Detail:** Rate limiting is per user/tenant (and per IP for unauthenticated requests) and is applied correctly. With multiple gateway instances, each instance has its own in-memory counter, so limits are not global. For production scale-out, a shared store (e.g. Redis) is recommended.
+| config/index.ts | Parses threshold and timeout to numbers when loaded as strings (env substitution) |
+| ProxyService | Uses `this.circuitBreakerConfig` (from constructor) when creating each ServiceClient |
 
 ---
 
-## 4. CORS and Config
+## 3. Rate Limiting — Resolved (optional Redis)
 
-### 4.1 CORS Not in Config
+### 3.1 Store: In-Memory or Redis
 
 | Item | Status |
 |------|--------|
-| server.ts | `origin: process.env.FRONTEND_URL || '*'` |
-| config/default.yaml | No `cors` or `frontend_url` section |
+| config/default.yaml | Optional `redis.url` (env `REDIS_URL`); when set, rate limit store uses Redis |
+| rateLimitStore.ts | `createInMemoryStore()` (default) and `createRedisStore(redisUrl)`; middleware accepts store |
+| server.ts | Creates Redis store when `config.redis?.url` is set, else in-memory |
 
-**Detail:** CORS origin is driven only by environment variable. There is no CORS section in the gateway config or schema for consistency with other options.
+**Detail:** Rate limits are per user/tenant (and per IP when unauthenticated). With Redis configured, limits are shared across gateway instances. Without Redis, single-instance in-memory store is used.
+
+---
+
+## 4. CORS and Config — Resolved
+
+### 4.1 CORS in Config
+
+| Item | Status |
+|------|--------|
+| config/default.yaml | `cors.origin: \${FRONTEND_URL:-*}` |
+| config/schema.json | `cors.origin` (string) in schema |
+| server.ts | Uses `config.cors?.origin ?? process.env.FRONTEND_URL ?? '*'` |
+
+**Detail:** CORS origin is config-driven with env substitution; server falls back to env then '*' if unset.
 
 ---
 

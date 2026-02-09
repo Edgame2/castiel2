@@ -50,7 +50,7 @@ export class ReportService {
       reportType: input.reportType,
       description: input.description,
       metrics,
-      insights: [], // TODO: Generate insights
+      insights: [], // Insight generation deferred; populate when AI/analytics pipeline is integrated
       period: input.period,
       startDate: input.startDate,
       endDate: input.endDate,

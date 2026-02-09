@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -102,15 +103,9 @@ export default function MonitoringDashboardPage() {
         Monitor system health, queues, processors, and performance (Super Admin only)
       </p>
       <div className="mb-4">
-        <button
-          type="button"
-          onClick={fetchMonitoringData}
-          disabled={loading}
-          className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
-          title="Refetch monitoring data"
-        >
+        <Button type="button" variant="outline" onClick={fetchMonitoringData} disabled={loading} title="Refetch monitoring data">
           Refresh
-        </button>
+        </Button>
       </div>
 
       {!apiBaseUrl && (

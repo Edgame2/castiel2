@@ -7,6 +7,18 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -417,13 +429,9 @@ export default function FeedbackGlobalSettingsPage() {
               {applyToAllResult.failed.length} failed: {applyToAllResult.failed.map((f) => `${f.tenantId}: ${f.error}`).join('; ')}
             </p>
           )}
-          <button
-            type="button"
-            onClick={() => setApplyToAllResult(null)}
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          >
+          <Button type="button" variant="link" size="sm" className="text-sm p-0 h-auto" onClick={() => setApplyToAllResult(null)}>
             Dismiss
-          </button>
+          </Button>
         </div>
       )}
 
@@ -431,15 +439,16 @@ export default function FeedbackGlobalSettingsPage() {
         <section className="rounded-lg border bg-white dark:bg-gray-900 p-6">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <h2 className="text-lg font-semibold">Global feedback config</h2>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => { setLoading(true); fetchConfig().finally(() => setLoading(false)); }}
               disabled={loading}
-              className="px-3 py-1.5 text-sm font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
               aria-label="Refresh global feedback config"
             >
               Refresh
-            </button>
+            </Button>
           </div>
           {config === null && (
             <p className="text-sm text-gray-500 mb-4">No config set. Save below to create.</p>
@@ -461,55 +470,53 @@ export default function FeedbackGlobalSettingsPage() {
           </div>
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-2 gap-4 max-w-md">
-              <div>
-                <label className="block text-sm font-medium mb-1">Default limit</label>
-                <input
+              <div className="space-y-2">
+                <Label>Default limit</Label>
+                <Input
                   type="number"
                   min={0}
                   value={formConfig.defaultLimit ?? 5}
                   onChange={(e) => updateConfig({ defaultLimit: parseInt(e.target.value, 10) || 0 })}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                  className="w-full"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Min limit</label>
-                <input
+              <div className="space-y-2">
+                <Label>Min limit</Label>
+                <Input
                   type="number"
                   min={0}
                   value={formConfig.minLimit ?? 3}
                   onChange={(e) => updateConfig({ minLimit: parseInt(e.target.value, 10) || 0 })}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                  className="w-full"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Max limit</label>
-                <input
+              <div className="space-y-2">
+                <Label>Max limit</Label>
+                <Input
                   type="number"
                   min={0}
                   value={formConfig.maxLimit ?? 10}
                   onChange={(e) => updateConfig({ maxLimit: parseInt(e.target.value, 10) || 0 })}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                  className="w-full"
                 />
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="allowTenantOverride"
                 checked={formConfig.allowTenantOverride !== false}
-                onChange={(e) => updateConfig({ allowTenantOverride: e.target.checked })}
-                className="rounded border-gray-300 dark:border-gray-600"
+                onCheckedChange={(c) => updateConfig({ allowTenantOverride: !!c })}
                 aria-describedby="allow-tenant-override-desc"
               />
-              <label htmlFor="allowTenantOverride" className="text-sm font-medium">
+              <Label htmlFor="allowTenantOverride" className="text-sm font-medium cursor-pointer">
                 Allow tenant override (§1.2.1)
-              </label>
+              </Label>
             </div>
             <p id="allow-tenant-override-desc" className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
               When enabled, Super Admin can override feedback limit per tenant.
             </p>
             <div className="max-w-md" id="default-limit-slider-desc">
-              <label className="block text-sm font-medium mb-1">Default limit (slider §1.2.1)</label>
+              <Label className="mb-1">Default limit (slider §1.2.1)</Label>
               <input
                 type="range"
                 min={formConfig.minLimit ?? 3}
@@ -526,18 +533,17 @@ export default function FeedbackGlobalSettingsPage() {
                 {formConfig.minLimit ?? 3} – {formConfig.maxLimit ?? 10}
               </span>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Available types (comma-separated IDs)</label>
-              <input
-                type="text"
+            <div className="space-y-2">
+              <Label>Available types (comma-separated IDs)</Label>
+              <Input
                 value={(formConfig.availableTypes ?? []).join(', ')}
                 onChange={(e) => updateConfig({ availableTypes: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
                 placeholder="e.g. type1, type2"
-                className="w-full max-w-md px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                className="max-w-md"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Default active types (§1.2.1): drag to reorder</label>
+              <Label className="mb-1">Default active types (§1.2.1): drag to reorder</Label>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                 Order defines default for new tenants. Drag items to reorder; use Add to append IDs.
               </p>
@@ -560,60 +566,55 @@ export default function FeedbackGlobalSettingsPage() {
                       aria-label={`Type ${id}. Drag to reorder.`}
                     >
                       <span className="flex-1 font-mono text-gray-800 dark:text-gray-200">{id}</span>
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive text-xs h-auto py-0"
                         onClick={() => removeDefaultActiveType(id)}
-                        className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-xs"
                         aria-label={`Remove ${id}`}
                       >
                         Remove
-                      </button>
+                      </Button>
                     </li>
                   ))
                 )}
               </ul>
               <div className="flex gap-2 items-center max-w-md">
-                <input
-                  type="text"
+                <Input
                   value={addTypeInput}
                   onChange={(e) => setAddTypeInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addDefaultActiveTypes())}
                   placeholder="Add type ID(s), comma-separated"
-                  className="flex-1 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                  className="flex-1 text-sm"
                   aria-label="Add type IDs"
                 />
-                <button
-                  type="button"
-                  onClick={addDefaultActiveTypes}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-                >
+                <Button type="button" variant="outline" size="sm" onClick={addDefaultActiveTypes}>
                   Add
-                </button>
+                </Button>
               </div>
             </div>
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
               <h3 className="text-sm font-medium mb-2">Pattern detection (§1.2.2)</h3>
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     id="patternEnabled"
                     checked={pd.enabled}
-                    onChange={(e) => updatePattern({ enabled: e.target.checked })}
-                    className="rounded"
+                    onCheckedChange={(c) => updatePattern({ enabled: !!c })}
                   />
-                  <label htmlFor="patternEnabled" className="text-sm">Enabled</label>
+                  <Label htmlFor="patternEnabled" className="text-sm cursor-pointer">Enabled</Label>
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Min sample size</label>
-                  <input
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Min sample size</Label>
+                  <Input
                     type="number"
                     min={1}
                     value={pd.minSampleSize}
                     onChange={(e) => updatePattern({ minSampleSize: parseInt(e.target.value, 10) || 1 })}
-                    className="w-full max-w-xs px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                    className="max-w-xs text-sm"
                   />
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mt-1 mb-0.5">Min sample size (slider §1.2.2)</label>
+                  <Label className="text-xs text-muted-foreground mt-1 block">Min sample size (slider §1.2.2)</Label>
                   <input
                     type="range"
                     min={1}
@@ -626,9 +627,9 @@ export default function FeedbackGlobalSettingsPage() {
                   <span className="text-xs text-gray-500 dark:text-gray-400">1 – 200</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 max-w-lg">
-                  <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Ignore rate (0–1)</label>
-                    <input
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Ignore rate (0–1)</Label>
+                    <Input
                       type="number"
                       min={0}
                       max={1}
@@ -639,12 +640,12 @@ export default function FeedbackGlobalSettingsPage() {
                           thresholds: { ...pd.thresholds, ignoreRate: parseFloat(e.target.value) || 0 },
                         })
                       }
-                      className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                      className="text-sm"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action rate (0–1)</label>
-                    <input
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Action rate (0–1)</Label>
+                    <Input
                       type="number"
                       min={0}
                       max={1}
@@ -655,12 +656,12 @@ export default function FeedbackGlobalSettingsPage() {
                           thresholds: { ...pd.thresholds, actionRate: parseFloat(e.target.value) || 0 },
                         })
                       }
-                      className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                      className="text-sm"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Sentiment threshold (0–1)</label>
-                    <input
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Sentiment threshold (0–1)</Label>
+                    <Input
                       type="number"
                       min={0}
                       max={1}
@@ -671,7 +672,7 @@ export default function FeedbackGlobalSettingsPage() {
                           thresholds: { ...pd.thresholds, sentimentThreshold: parseFloat(e.target.value) ?? 0.3 },
                         })
                       }
-                      className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                      className="text-sm"
                     />
                   </div>
                 </div>
@@ -689,61 +690,56 @@ export default function FeedbackGlobalSettingsPage() {
                 </div>
                 <div className="flex flex-wrap gap-4">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="autoSuppress"
                       checked={pd.autoSuppressEnabled}
-                      onChange={(e) => updatePattern({ autoSuppressEnabled: e.target.checked })}
-                      className="rounded"
+                      onCheckedChange={(c) => updatePattern({ autoSuppressEnabled: !!c })}
                     />
-                    <label htmlFor="autoSuppress" className="text-sm">Auto-suppress based on patterns</label>
+                    <Label htmlFor="autoSuppress" className="text-sm cursor-pointer">Auto-suppress based on patterns</Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="autoBoost"
                       checked={pd.autoBoostEnabled}
-                      onChange={(e) => updatePattern({ autoBoostEnabled: e.target.checked })}
-                      className="rounded"
+                      onCheckedChange={(c) => updatePattern({ autoBoostEnabled: !!c })}
                     />
-                    <label htmlFor="autoBoost" className="text-sm">Auto-boost based on patterns</label>
+                    <Label htmlFor="autoBoost" className="text-sm cursor-pointer">Auto-boost based on patterns</Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="notifyOnPattern"
                       checked={pd.notifyOnPattern}
-                      onChange={(e) => updatePattern({ notifyOnPattern: e.target.checked })}
-                      className="rounded"
+                      onCheckedChange={(c) => updatePattern({ notifyOnPattern: !!c })}
                     />
-                    <label htmlFor="notifyOnPattern" className="text-sm">Notify admins of detected patterns</label>
+                    <Label htmlFor="notifyOnPattern" className="text-sm cursor-pointer">Notify admins of detected patterns</Label>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Pattern report frequency</label>
-                  <select
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Pattern report frequency</Label>
+                  <Select
                     value={pd.patternReportFrequency}
-                    onChange={(e) =>
-                      updatePattern({
-                        patternReportFrequency: e.target.value as PatternReportFrequency,
-                      })
-                    }
-                    className="w-full max-w-xs px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                    onValueChange={(v) => updatePattern({ patternReportFrequency: v as PatternReportFrequency })}
                   >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
+                    <SelectTrigger className="max-w-xs text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => setPatternTestModalOpen(true)}
-                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
                     title="Run pattern detection against historical feedback data (§1.2.2)"
                   >
                     Test with historical data (§1.2.2)
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -755,132 +751,116 @@ export default function FeedbackGlobalSettingsPage() {
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-4 items-center">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="requireFeedback"
                       checked={fc.requireFeedback}
-                      onChange={(e) => updateFeedbackCollection({ requireFeedback: e.target.checked })}
-                      className="rounded"
+                      onCheckedChange={(c) => updateFeedbackCollection({ requireFeedback: !!c })}
                     />
-                    <label htmlFor="requireFeedback" className="text-sm cursor-help" title="When enabled, users must submit feedback on recommendations (e.g. after viewing).">Require feedback</label>
+                    <Label htmlFor="requireFeedback" className="text-sm cursor-help" title="When enabled, users must submit feedback on recommendations (e.g. after viewing).">Require feedback</Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-600 dark:text-gray-400 cursor-help" title="Require feedback after this many days since recommendation was shown (0 = immediately).">Require after (days)</span>
-                    <input
+                    <span className="text-xs text-muted-foreground cursor-help" title="Require feedback after this many days since recommendation was shown (0 = immediately).">Require after (days)</span>
+                    <Input
                       type="number"
                       min={0}
                       value={fc.requireFeedbackAfterDays}
                       onChange={(e) => updateFeedbackCollection({ requireFeedbackAfterDays: parseInt(e.target.value, 10) || 0 })}
-                      className="w-20 px-2 py-1 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                      className="w-20 text-sm h-8"
                     />
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 items-center">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="allowComments"
                       checked={fc.allowComments}
-                      onChange={(e) => updateFeedbackCollection({ allowComments: e.target.checked })}
-                      className="rounded"
+                      onCheckedChange={(c) => updateFeedbackCollection({ allowComments: !!c })}
                     />
-                    <label htmlFor="allowComments" className="text-sm cursor-help" title="Users can add a free-text comment with their feedback.">Allow comments</label>
+                    <Label htmlFor="allowComments" className="text-sm cursor-help" title="Users can add a free-text comment with their feedback.">Allow comments</Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-600 dark:text-gray-400 cursor-help" title="Maximum character length for feedback comments.">Max comment length</span>
-                    <input
+                    <span className="text-xs text-muted-foreground cursor-help" title="Maximum character length for feedback comments.">Max comment length</span>
+                    <Input
                       type="number"
                       min={1}
                       value={fc.maxCommentLength}
                       onChange={(e) => updateFeedbackCollection({ maxCommentLength: parseInt(e.target.value, 10) || 500 })}
-                      className="w-24 px-2 py-1 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                      className="w-24 text-sm h-8"
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="moderateComments"
                       checked={fc.moderateComments}
-                      onChange={(e) => updateFeedbackCollection({ moderateComments: e.target.checked })}
-                      className="rounded"
+                      onCheckedChange={(c) => updateFeedbackCollection({ moderateComments: !!c })}
                     />
-                    <label htmlFor="moderateComments" className="text-sm cursor-help" title="Comments are held for review before being stored or visible.">Moderate comments</label>
+                    <Label htmlFor="moderateComments" className="text-sm cursor-help" title="Comments are held for review before being stored or visible.">Moderate comments</Label>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 items-center">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="allowMultipleSelection"
                       checked={fc.allowMultipleSelection}
-                      onChange={(e) => updateFeedbackCollection({ allowMultipleSelection: e.target.checked })}
-                      className="rounded"
+                      onCheckedChange={(c) => updateFeedbackCollection({ allowMultipleSelection: !!c })}
                     />
-                    <label htmlFor="allowMultipleSelection" className="text-sm cursor-help" title="Users can select more than one feedback type per recommendation (e.g. helpful + will act).">Allow multiple selection</label>
+                    <Label htmlFor="allowMultipleSelection" className="text-sm cursor-help" title="Users can select more than one feedback type per recommendation (e.g. helpful + will act).">Allow multiple selection</Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-600 dark:text-gray-400 cursor-help" title="When multiple selection is allowed, maximum number of types per feedback.">Max selections per feedback</span>
-                    <input
+                    <span className="text-xs text-muted-foreground cursor-help" title="When multiple selection is allowed, maximum number of types per feedback.">Max selections per feedback</span>
+                    <Input
                       type="number"
                       min={1}
                       value={fc.maxSelectionsPerFeedback}
                       onChange={(e) => updateFeedbackCollection({ maxSelectionsPerFeedback: parseInt(e.target.value, 10) || 1 })}
-                      className="w-20 px-2 py-1 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                      className="w-20 text-sm h-8"
                     />
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 items-center">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="allowFeedbackEdit"
                       checked={fc.allowFeedbackEdit}
-                      onChange={(e) => updateFeedbackCollection({ allowFeedbackEdit: e.target.checked })}
-                      className="rounded"
+                      onCheckedChange={(c) => updateFeedbackCollection({ allowFeedbackEdit: !!c })}
                     />
-                    <label htmlFor="allowFeedbackEdit" className="text-sm cursor-help" title="Users can change their feedback within the edit window.">Allow feedback edit</label>
+                    <Label htmlFor="allowFeedbackEdit" className="text-sm cursor-help" title="Users can change their feedback within the edit window.">Allow feedback edit</Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-600 dark:text-gray-400 cursor-help" title="Number of days after submission during which feedback can be edited.">Edit window (days)</span>
-                    <input
+                    <span className="text-xs text-muted-foreground cursor-help" title="Number of days after submission during which feedback can be edited.">Edit window (days)</span>
+                    <Input
                       type="number"
                       min={0}
                       value={fc.editWindowDays}
                       onChange={(e) => updateFeedbackCollection({ editWindowDays: parseInt(e.target.value, 10) || 0 })}
-                      className="w-20 px-2 py-1 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                      className="w-20 text-sm h-8"
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="trackFeedbackHistory"
                       checked={fc.trackFeedbackHistory}
-                      onChange={(e) => updateFeedbackCollection({ trackFeedbackHistory: e.target.checked })}
-                      className="rounded"
+                      onCheckedChange={(c) => updateFeedbackCollection({ trackFeedbackHistory: !!c })}
                     />
-                    <label htmlFor="trackFeedbackHistory" className="text-sm cursor-help" title="Store a history of changes when feedback is edited (for audit and analytics).">Track feedback history</label>
+                    <Label htmlFor="trackFeedbackHistory" className="text-sm cursor-help" title="Store a history of changes when feedback is edited (for audit and analytics).">Track feedback history</Label>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-4 items-center">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="allowAnonymousFeedback"
                       checked={fc.allowAnonymousFeedback}
-                      onChange={(e) => updateFeedbackCollection({ allowAnonymousFeedback: e.target.checked })}
-                      className="rounded"
+                      onCheckedChange={(c) => updateFeedbackCollection({ allowAnonymousFeedback: !!c })}
                     />
-                    <label htmlFor="allowAnonymousFeedback" className="text-sm cursor-help" title="Users can submit feedback without their identity being stored.">Allow anonymous feedback</label>
+                    <Label htmlFor="allowAnonymousFeedback" className="text-sm cursor-help" title="Users can submit feedback without their identity being stored.">Allow anonymous feedback</Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="anonymousForNegative"
                       checked={fc.anonymousForNegative}
-                      onChange={(e) => updateFeedbackCollection({ anonymousForNegative: e.target.checked })}
-                      className="rounded"
+                      onCheckedChange={(c) => updateFeedbackCollection({ anonymousForNegative: !!c })}
                     />
-                    <label htmlFor="anonymousForNegative" className="text-sm cursor-help" title="Only negative feedback can be submitted anonymously; other feedback requires identity.">Anonymous for negative only</label>
+                    <Label htmlFor="anonymousForNegative" className="text-sm cursor-help" title="Only negative feedback can be submitted anonymously; other feedback requires identity.">Anonymous for negative only</Label>
                   </div>
                 </div>
                 <div className="rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3 text-sm mt-3 space-y-3">
@@ -892,15 +872,17 @@ export default function FeedbackGlobalSettingsPage() {
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Your feedback {fc.requireFeedback ? `(required after ${fc.requireFeedbackAfterDays} day${fc.requireFeedbackAfterDays === 1 ? '' : 's'})` : '(optional)'}</p>
                     <div className="flex flex-wrap gap-1 mb-2">
                       {Array.from({ length: Math.min(formConfig.defaultLimit ?? 5, 5) }, (_, i) => (
-                        <button
+                        <Button
                           key={i}
                           type="button"
                           disabled
-                          className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-default"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs pointer-events-none"
                           aria-hidden
                         >
                           {['Helpful', 'Will act', 'Not relevant', 'Dismiss', 'Other'][i]}
-                        </button>
+                        </Button>
                       ))}
                       {(formConfig.defaultLimit ?? 5) > 5 && (
                         <span className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400">+{(formConfig.defaultLimit ?? 5) - 5} more</span>
@@ -911,12 +893,12 @@ export default function FeedbackGlobalSettingsPage() {
                     )}
                     {fc.allowComments && (
                       <div className="mt-2">
-                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Comment (max {fc.maxCommentLength} chars)</label>
-                        <textarea
+                        <Label className="text-xs text-muted-foreground mb-0.5 block">Comment (max {fc.maxCommentLength} chars)</Label>
+                        <Textarea
                           readOnly
                           rows={2}
                           placeholder="Optional comment…"
-                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs bg-gray-50 dark:bg-gray-800 resize-none"
+                          className="text-xs resize-none bg-muted"
                           aria-hidden
                         />
                         {fc.moderateComments && <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">Moderated before storage</p>}
@@ -936,22 +918,22 @@ export default function FeedbackGlobalSettingsPage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-3 items-center">
-              <button
+              <Button
                 type="submit"
                 disabled={saving || validationErrors.length > 0}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? 'Saving…' : 'Save global config'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
+                className="border-amber-600 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                 onClick={handleApplyToAllTenants}
                 disabled={applyingToAll}
-                className="px-4 py-2 border border-amber-600 text-amber-700 dark:text-amber-300 rounded hover:bg-amber-50 dark:hover:bg-amber-900/20 disabled:opacity-50 text-sm"
                 title="Apply current global config to all existing tenant configs (§1.2.1)"
               >
                 {applyingToAll ? 'Applying…' : 'Apply to all existing tenants (§1.2.1)'}
-              </button>
+              </Button>
             </div>
           </form>
         </section>
@@ -999,7 +981,7 @@ export default function FeedbackGlobalSettingsPage() {
             )}
             <div className="flex flex-wrap gap-2 justify-end">
               {!patternTestResult && (
-                <button
+                <Button
                   type="button"
                   onClick={async () => {
                     if (!apiBaseUrl) return;
@@ -1023,18 +1005,18 @@ export default function FeedbackGlobalSettingsPage() {
                     }
                   }}
                   disabled={patternTestLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
                 >
                   {patternTestLoading ? 'Running…' : 'Run test'}
-                </button>
+                </Button>
               )}
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => { setPatternTestModalOpen(false); setPatternTestResult(null); setPatternTestError(null); }}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
               >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>

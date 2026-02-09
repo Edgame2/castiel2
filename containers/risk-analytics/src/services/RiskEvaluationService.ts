@@ -283,6 +283,64 @@ export class RiskEvaluationService {
         service: 'risk-analytics',
       });
 
+      // Step 2b: Load shardTypeAnalysisPolicy and fetch related shards via vector search (dataflow §1.6)
+      let relatedShards: Array<{ id: string; enrichmentData?: Record<string, unknown>; metadata?: { enrichment?: Record<string, unknown> } }> = [];
+      const mlConfig = await this.tenantMLConfigService.getByTenantId(request.tenantId);
+      const shardTypeAnalysisPolicy = mlConfig?.shardTypeAnalysisPolicy ?? {};
+      const shardTypeIdsForRisk = Object.entries(shardTypeAnalysisPolicy)
+        .filter(([, v]) => v?.useForRiskAnalysis === true)
+        .map(([k]) => k);
+      if (shardTypeIdsForRisk.length > 0 && this.config.services.search_service?.url && opportunityShard) {
+        try {
+          const queryText = [
+            opportunityShard.structuredData?.description,
+            opportunityShard.structuredData?.summary,
+            opportunityShard.structuredData?.stage,
+            String(opportunityShard.structuredData?.amount ?? ''),
+          ]
+            .filter(Boolean)
+            .join(' ') || request.opportunityId;
+          const token = this.getServiceToken(request.tenantId);
+          const vectorRes = await this.searchServiceClient.post<{
+            results?: Array<{ shardId: string; shard?: Record<string, unknown> }>;
+          }>(
+            '/api/v1/search/vector',
+            {
+              query: queryText,
+              shardTypeIds: shardTypeIdsForRisk,
+              limit: 20,
+              includeShard: true,
+              tenantId: request.tenantId,
+              userId: (request as { triggeredByUserId?: string }).triggeredByUserId ?? 'system',
+            },
+            { headers: { Authorization: `Bearer ${token}`, 'X-Tenant-ID': request.tenantId } }
+          );
+          const results = vectorRes?.results ?? [];
+          for (const r of results) {
+            const shard = r.shard as { id?: string; enrichmentData?: Record<string, unknown>; metadata?: { enrichment?: Record<string, unknown> } } | undefined;
+            if (shard?.id) {
+              relatedShards.push({
+                id: shard.id,
+                enrichmentData: shard.enrichmentData,
+                metadata: shard.metadata,
+              });
+            }
+          }
+          log.debug('Related shards for risk', {
+            opportunityId: request.opportunityId,
+            count: relatedShards.length,
+            shardTypeIds: shardTypeIdsForRisk,
+            service: 'risk-analytics',
+          });
+        } catch (e) {
+          log.warn('Vector search for related shards failed', {
+            error: (e as Error).message,
+            opportunityId: request.opportunityId,
+            service: 'risk-analytics',
+          });
+        }
+      }
+
       // Step 3: Perform risk evaluation using learned weights
       let detectedRisks = await this.detectRisks(
         opportunityShard,
@@ -290,6 +348,16 @@ export class RiskEvaluationService {
         weights,
         request.options
       );
+
+      // Step 3a: Add risks derived from related shards' enrichmentData (dataflow §1.6)
+      if (relatedShards.length > 0) {
+        const relatedRisks = this.detectRisksFromRelatedShards(
+          relatedShards,
+          catalog,
+          request.opportunityId
+        );
+        detectedRisks = this.deduplicateRisks([...detectedRisks, ...relatedRisks]);
+      }
 
       // Step 3b. Optional: declining sentiment risk (Phase 2)
       if (this.config.feature_flags?.declining_sentiment_risk) {
@@ -817,6 +885,110 @@ export class RiskEvaluationService {
       });
       return [];
     }
+  }
+
+  /**
+   * Detect risks from related shards' enrichmentData (or metadata.enrichment).
+   * Ensures at least one risk driver can be derived from related-shard enrichment when policy allows (dataflow §1.6).
+   */
+  private detectRisksFromRelatedShards(
+    relatedShards: Array<{
+      id: string;
+      enrichmentData?: Record<string, unknown>;
+      metadata?: { enrichment?: Record<string, unknown> };
+    }>,
+    catalog: RiskCatalog[],
+    opportunityId: string
+  ): DetectedRisk[] {
+    const risks: DetectedRisk[] = [];
+    for (const shard of relatedShards) {
+      const enrichment = shard.enrichmentData ?? shard.metadata?.enrichment;
+      if (!enrichment || typeof enrichment !== 'object') continue;
+
+      const sentiment = enrichment.sentiment as { score?: number; label?: string } | undefined;
+      if (sentiment != null && typeof sentiment.score === 'number' && sentiment.score < 0.35) {
+        const catalogRisk = catalog.find((r) => r.riskId === 'negative_sentiment') ?? catalog[0];
+        if (catalogRisk?.isActive) {
+          risks.push({
+            riskId: catalogRisk.riskId,
+            riskName: catalogRisk.name,
+            category: catalogRisk.category,
+            contribution: catalogRisk.defaultPonderation,
+            ponderation: catalogRisk.defaultPonderation,
+            confidence: 0.75,
+            explainability: {
+              detectionMethod: 'rule',
+              confidence: 0.75,
+              evidence: {
+                sourceShards: [shard.id, opportunityId],
+                matchedRules: ['related_shard_sentiment'],
+              },
+              reasoning: {
+                summary: 'Negative sentiment in related communications',
+                standard: `Related content (shard ${shard.id}) has negative sentiment (score ${sentiment.score}).`,
+              },
+              assumptions: [],
+              confidenceContributors: [],
+            },
+            sourceShards: [shard.id, opportunityId],
+            lifecycleState: 'identified',
+          });
+        } else {
+          risks.push({
+            riskId: 'negative_sentiment',
+            riskName: 'Negative sentiment',
+            category: 'Operational',
+            contribution: 0.05,
+            ponderation: 1,
+            confidence: 0.75,
+            explainability: {
+              detectionMethod: 'rule',
+              confidence: 0.75,
+              evidence: { sourceShards: [shard.id, opportunityId], matchedRules: ['related_shard_sentiment'] },
+              reasoning: {
+                summary: 'Negative sentiment in related communications',
+                standard: `Related content (shard ${shard.id}) has negative sentiment (score ${sentiment.score}).`,
+              },
+              assumptions: [],
+              confidenceContributors: [],
+            },
+            sourceShards: [shard.id, opportunityId],
+            lifecycleState: 'identified',
+          });
+        }
+      }
+
+      const competitorMentions = enrichment.competitorMentions ?? (enrichment as { competitorDetection?: { mentions?: string[] } }).competitorDetection?.mentions;
+      const mentions = Array.isArray(competitorMentions) ? competitorMentions : [];
+      if (mentions.length > 0) {
+        risks.push({
+          riskId: 'competitor_mentioned',
+          riskName: 'Competitor mentioned',
+          category: 'Competitive',
+          contribution: 0.1,
+          ponderation: 1,
+          confidence: 0.8,
+          explainability: {
+            detectionMethod: 'rule',
+            confidence: 0.8,
+            evidence: {
+              sourceShards: [shard.id, opportunityId],
+              matchedRules: ['related_shard_competitor'],
+              mentions,
+            },
+            reasoning: {
+              summary: 'Competitor mentioned in related content',
+              standard: `Related content (shard ${shard.id}) mentions competitor(s): ${mentions.join(', ')}.`,
+            },
+            assumptions: [],
+            confidenceContributors: [],
+          },
+          sourceShards: [shard.id, opportunityId],
+          lifecycleState: 'identified',
+        });
+      }
+    }
+    return risks;
   }
 
   /**

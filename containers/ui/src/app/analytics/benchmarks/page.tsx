@@ -8,6 +8,8 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { BenchmarkComparison } from '@/components/analytics/BenchmarkComparison';
 import { ClusterVisualization } from '@/components/analytics/ClusterVisualization';
 
@@ -140,36 +142,36 @@ export default function IndustryBenchmarksPage() {
       </p>
 
       <div className="flex flex-wrap gap-4 mb-6">
-        <label className="flex items-center gap-2">
-          <span className="text-sm">Industry</span>
-          <input
+        <div className="flex items-center gap-2">
+          <Label className="text-sm shrink-0">Industry</Label>
+          <Input
             type="text"
             value={industryId}
             onChange={(e) => setIndustryId(e.target.value)}
             placeholder="e.g. general"
-            className="rounded border px-2 py-1 text-sm w-32"
+            className="w-32 h-8 text-sm"
           />
-        </label>
-        <label className="flex items-center gap-2">
-          <span className="text-sm">Period (YYYY-MM)</span>
-          <input
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-sm shrink-0">Period (YYYY-MM)</Label>
+          <Input
             type="text"
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
             placeholder="optional"
-            className="rounded border px-2 py-1 text-sm w-28"
+            className="w-28 h-8 text-sm"
           />
-        </label>
-        <label className="flex items-center gap-2">
-          <span className="text-sm">Opportunity ID</span>
-          <input
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-sm shrink-0">Opportunity ID</Label>
+          <Input
             type="text"
             value={opportunityId}
             onChange={(e) => setOpportunityId(e.target.value)}
             placeholder="optional"
-            className="rounded border px-2 py-1 text-sm w-36"
+            className="w-36 h-8 text-sm"
           />
-        </label>
+        </div>
       </div>
 
       {errorBenchmarks && (

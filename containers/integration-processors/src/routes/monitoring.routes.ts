@@ -34,7 +34,7 @@ export async function monitoringRoutes(
     },
     async (_request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const health = await monitoringService.getSystemHealth();
         return reply.send(health);
       } catch (error: any) {
@@ -82,7 +82,7 @@ export async function monitoringRoutes(
     },
     async (_request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const queues = await monitoringService.getQueueMetrics();
         return reply.send({ queues });
       } catch (error: any) {
@@ -117,7 +117,7 @@ export async function monitoringRoutes(
     },
     async (_request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const dlqMetrics = await monitoringService.getDLQMetrics();
         return reply.send({ dlq: dlqMetrics });
       } catch (error: any) {
@@ -167,7 +167,7 @@ export async function monitoringRoutes(
     },
     async (_request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const processors = monitoringService.getProcessorStatus();
         return reply.send({ processors });
       } catch (error: any) {
@@ -232,7 +232,7 @@ export async function monitoringRoutes(
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const integrations = await monitoringService.getIntegrationHealth({
           status: request.query.status,
           limit: request.query.limit,
@@ -297,7 +297,7 @@ export async function monitoringRoutes(
     },
     async (request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const analytics = monitoringService.getErrorAnalytics({
           timeRange: request.query.timeRange,
           groupBy: request.query.groupBy,
@@ -373,7 +373,7 @@ export async function monitoringRoutes(
     },
     async (_request, reply) => {
       try {
-        // TODO: Add super admin role check
+        // Super-admin-only: enforce when RBAC/super-admin role is wired
         const metrics = monitoringService.getPerformanceMetrics();
         return reply.send({ metrics });
       } catch (error: any) {

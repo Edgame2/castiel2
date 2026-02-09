@@ -88,3 +88,124 @@ paths:
         '503':
           description: Service is not ready
 
+  /users:
+    get:
+      tags:
+        - Users
+      summary: List users
+      description: List users (tenant/org-scoped). Requires organizationId in query or session context.
+      parameters:
+        - name: organizationId
+          in: query
+          schema:
+            type: string
+          description: Organization context (required if not in session)
+      responses:
+        '200':
+          description: List of users
+        '400':
+          description: Organization context required
+        '401':
+          description: Not authenticated
+        '403':
+          description: Not a member of organization
+
+  /users/me:
+    get:
+      tags:
+        - Users
+      summary: Get current user profile
+      responses:
+        '200':
+          description: Current user profile
+        '401':
+          description: Not authenticated
+        '404':
+          description: Profile not found
+    put:
+      tags:
+        - Users
+      summary: Update current user profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                firstName: { type: string }
+                lastName: { type: string }
+                phoneNumber: { type: string }
+                avatarUrl: { type: string }
+                function: { type: string }
+                speciality: { type: string }
+                timezone: { type: string }
+                language: { type: string }
+      responses:
+        '200':
+          description: Updated profile
+        '400':
+          description: Validation error
+        '401':
+          description: Not authenticated
+        '404':
+          description: Profile not found
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user profile by id
+      description: Tenant-scoped + RBAC (self, same org, or Super Admin).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User profile
+        '401':
+          description: Not authenticated
+        '403':
+          description: Permission denied
+        '404':
+          description: User not found
+    put:
+      tags:
+        - Users
+      summary: Admin update user profile
+      description: Update another user's profile (same org or Super Admin). Use PUT /users/me for self.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                firstName: { type: string }
+                lastName: { type: string }
+                phoneNumber: { type: string }
+                avatarUrl: { type: string }
+                function: { type: string }
+                speciality: { type: string }
+                timezone: { type: string }
+                language: { type: string }
+      responses:
+        '200':
+          description: Updated profile
+        '400':
+          description: Use /users/me for self, or validation error
+        '401':
+          description: Not authenticated
+        '403':
+          description: Permission denied
+        '404':
+          description: User not found

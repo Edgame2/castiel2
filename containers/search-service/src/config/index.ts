@@ -13,6 +13,7 @@ export interface SearchServiceConfig {
   services: {
     embeddings?: { url: string };
     shard_manager?: { url: string };
+    web_search?: { url: string };
     logging?: { url: string };
     ai_service?: { url: string };
   };

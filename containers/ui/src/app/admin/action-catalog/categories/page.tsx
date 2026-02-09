@@ -8,6 +8,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -461,90 +467,55 @@ export default function ActionCatalogCategoriesPage() {
 
       {apiBaseUrl && (
         <div className="mb-4 flex flex-wrap gap-4 items-center">
-          <Link
-            href="/admin/action-catalog/categories/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium inline-block"
-            aria-label="Create category (page)"
-          >
-            New category
-          </Link>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="px-4 py-2 border rounded dark:border-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium"
-            aria-label="Add category (modal)"
-          >
+          <Button asChild size="sm">
+            <Link href="/admin/action-catalog/categories/new" aria-label="Create category (page)">New category</Link>
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={openCreate} aria-label="Add category (modal)">
             Add category (modal)
-          </button>
-          <button
-            type="button"
-            onClick={openMerge}
-            disabled={categories.length < 2}
-            className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Merge categories (§2.2.1)"
-            aria-label="Merge categories (§2.2.1)"
-          >
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={openMerge} disabled={categories.length < 2} title="Merge categories (§2.2.1)" aria-label="Merge categories (§2.2.1)">
             Merge categories
-          </button>
-          <div>
-            <label className="block text-sm font-medium mb-1">Type (§2.2.1)</label>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as CategoryType | '')}
-              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-            >
-              <option value="">All</option>
-              <option value="risk">Risk</option>
-              <option value="recommendation">Recommendation</option>
-              <option value="both">Both</option>
-            </select>
+          </Button>
+          <div className="space-y-1">
+            <Label>Type (§2.2.1)</Label>
+            <Select value={typeFilter || '_all'} onValueChange={(v) => setTypeFilter(v === '_all' ? '' : (v as CategoryType))}>
+              <SelectTrigger className="w-40 h-9"><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                <SelectItem value="risk">Risk</SelectItem>
+                <SelectItem value="recommendation">Recommendation</SelectItem>
+                <SelectItem value="both">Both</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Search (§2.2.1)</label>
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Name or description…"
-              className="w-48 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-              aria-label="Search categories by name or description"
-            />
+          <div className="space-y-1">
+            <Label>Search (§2.2.1)</Label>
+            <Input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Name or description…" className="w-48 h-9 text-sm" aria-label="Search categories by name or description" />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Sort by (§2.2.1)</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="w-36 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-              aria-label="Sort by"
-            >
-              <option value="">Default</option>
-              <option value="displayName">Name</option>
-              <option value="type">Type</option>
-              <option value="order">Order</option>
-              <option value="entriesCount">Entries count</option>
-            </select>
+          <div className="space-y-1">
+            <Label>Sort by (§2.2.1)</Label>
+            <Select value={sortBy || '_default'} onValueChange={(v) => setSortBy(v === '_default' ? '' : (v as typeof sortBy))}>
+              <SelectTrigger className="w-36 h-9" aria-label="Sort by"><SelectValue placeholder="Default" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_default">Default</SelectItem>
+                <SelectItem value="displayName">Name</SelectItem>
+                <SelectItem value="type">Type</SelectItem>
+                <SelectItem value="order">Order</SelectItem>
+                <SelectItem value="entriesCount">Entries count</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Order</label>
-            <select
-              value={sortDir}
-              onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
-              className="w-32 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-              aria-label="Sort direction"
-            >
-              <option value="asc">Ascending</option>
-              <option value="desc">Descending</option>
-            </select>
+          <div className="space-y-1">
+            <Label>Order</Label>
+            <Select value={sortDir} onValueChange={(v) => setSortDir(v as 'asc' | 'desc')}>
+              <SelectTrigger className="w-32 h-9" aria-label="Sort direction"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="asc">Ascending</SelectItem>
+                <SelectItem value="desc">Descending</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <button
-            type="button"
-            onClick={fetchCategories}
-            className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-            aria-label="Refresh categories"
-          >
-            Refresh
-          </button>
+          <Button type="button" variant="outline" size="sm" onClick={fetchCategories} aria-label="Refresh categories">Refresh</Button>
         </div>
       )}
 
@@ -557,13 +528,7 @@ export default function ActionCatalogCategoriesPage() {
       {error && (
         <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4">
           <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
-          <button
-            type="button"
-            onClick={() => fetchCategories()}
-            className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-          >
-            Retry
-          </button>
+          <Button type="button" variant="link" size="sm" className="mt-2" onClick={() => fetchCategories()}>Retry</Button>
         </div>
       )}
 
@@ -571,15 +536,7 @@ export default function ActionCatalogCategoriesPage() {
         <>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <h2 className="text-lg font-semibold">Categories</h2>
-            <button
-              type="button"
-              onClick={fetchCategories}
-              disabled={loading}
-              className="px-3 py-1.5 text-sm font-medium rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
-              aria-label="Refresh categories"
-            >
-              Refresh
-            </button>
+            <Button type="button" variant="outline" size="sm" onClick={fetchCategories} disabled={loading} aria-label="Refresh categories">Refresh</Button>
           </div>
           {sorted.length > 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-2" aria-live="polite">
@@ -646,41 +603,13 @@ export default function ActionCatalogCategoriesPage() {
                     const canMoveDown = orderIndex >= 0 && orderIndex < orderedIds.length - 1 && !reorderLoading;
                     return (
                       <>
-                        <button
-                          type="button"
-                          onClick={() => handleMoveUp(cat.id)}
-                          disabled={!canMoveUp}
-                          className="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Move up (§2.2.1)"
-                        >
-                          ↑ Up
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleMoveDown(cat.id)}
-                          disabled={!canMoveDown}
-                          className="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Move down (§2.2.1)"
-                        >
-                          ↓ Down
-                        </button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => handleMoveUp(cat.id)} disabled={!canMoveUp} title="Move up (§2.2.1)">↑ Up</Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => handleMoveDown(cat.id)} disabled={!canMoveDown} title="Move down (§2.2.1)">↓ Down</Button>
                       </>
                     );
                   })()}
-                  <button
-                    type="button"
-                    onClick={() => openEdit(cat)}
-                    className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openDelete(cat)}
-                    className="text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                  >
-                    Delete
-                  </button>
+                  <Button type="button" variant="link" size="sm" className="text-blue-600 dark:text-blue-400" onClick={() => openEdit(cat)}>Edit</Button>
+                  <Button type="button" variant="link" size="sm" className="text-destructive" onClick={() => openDelete(cat)}>Delete</Button>
                 </div>
               </div>
             ))
@@ -696,127 +625,59 @@ export default function ActionCatalogCategoriesPage() {
               <h2 id="modal-create-title" className="text-lg font-semibold mb-4">Create category</h2>
               {formError && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{formError}</p>}
               <form onSubmit={handleCreate} className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Display name</label>
-                  <input
-                    type="text"
-                    value={createForm.displayName}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, displayName: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                    required
-                  />
+                <div className="space-y-2">
+                  <Label>Display name</Label>
+                  <Input value={createForm.displayName} onChange={(e) => setCreateForm((f) => ({ ...f, displayName: e.target.value }))} required />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Type</label>
-                  <select
-                    value={createForm.type}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, type: e.target.value as CategoryType }))}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                  >
-                    <option value="risk">Risk</option>
-                    <option value="recommendation">Recommendation</option>
-                    <option value="both">Both</option>
-                  </select>
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={createForm.type} onValueChange={(v) => setCreateForm((f) => ({ ...f, type: v as CategoryType }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="risk">Risk</SelectItem>
+                      <SelectItem value="recommendation">Recommendation</SelectItem>
+                      <SelectItem value="both">Both</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Icon (§2.2.2 picker with search)</label>
-                  <input
-                    type="search"
-                    value={iconSearch}
-                    onChange={(e) => setIconSearch(e.target.value)}
-                    placeholder="Search icons…"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 mb-2 text-sm"
-                    aria-label="Search icon"
-                  />
+                <div className="space-y-2">
+                  <Label>Icon (§2.2.2 picker with search)</Label>
+                  <Input type="search" value={iconSearch} onChange={(e) => setIconSearch(e.target.value)} placeholder="Search icons…" className="mb-2 text-sm" aria-label="Search icon" />
                   <div className="flex flex-wrap gap-2 mb-2">
                     {filteredIconOptions.map((o) => (
-                      <button
-                        key={`${o.emoji}-${o.label}`}
-                        type="button"
-                        onClick={() => setCreateForm((f) => ({ ...f, icon: o.emoji }))}
-                        className={`w-9 h-9 rounded border text-lg flex items-center justify-center ${
-                          createForm.icon === o.emoji
-                            ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30'
-                            : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
-                        }`}
-                        title={o.label}
-                      >
-                        {o.emoji}
-                      </button>
+                      <Button key={`${o.emoji}-${o.label}`} type="button" variant={createForm.icon === o.emoji ? 'secondary' : 'outline'} size="icon" className="w-9 h-9 text-lg" onClick={() => setCreateForm((f) => ({ ...f, icon: o.emoji }))} title={o.label}>{o.emoji}</Button>
                     ))}
                   </div>
-                  <input
-                    type="text"
-                    value={createForm.icon}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, icon: e.target.value }))}
-                    placeholder="Custom emoji"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                    aria-label="Custom icon"
-                  />
+                  <Input value={createForm.icon} onChange={(e) => setCreateForm((f) => ({ ...f, icon: e.target.value }))} placeholder="Custom emoji" className="text-sm" aria-label="Custom icon" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Color (§2.2.2 picker with presets)</label>
+                <div className="space-y-2">
+                  <Label>Color (§2.2.2 picker with presets)</Label>
                   <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      type="color"
-                      value={normalizeHex(createForm.color)}
-                      onChange={(e) => setCreateForm((f) => ({ ...f, color: e.target.value }))}
-                      className="w-10 h-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
-                      aria-label="Color picker"
-                    />
-                    <input
-                      type="text"
-                      value={createForm.color}
-                      onChange={(e) => setCreateForm((f) => ({ ...f, color: e.target.value }))}
-                      className="w-24 px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm font-mono"
-                      placeholder="#6b7280"
-                    />
+                    <Input type="color" value={normalizeHex(createForm.color)} onChange={(e) => setCreateForm((f) => ({ ...f, color: e.target.value }))} className="w-10 h-10 p-1 rounded border cursor-pointer" aria-label="Color picker" />
+                    <Input value={createForm.color} onChange={(e) => setCreateForm((f) => ({ ...f, color: e.target.value }))} placeholder="#6b7280" className="w-24 h-9 text-sm font-mono" />
                     <div className="flex gap-1">
                       {COLOR_PRESETS.map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setCreateForm((f) => ({ ...f, color: c }))}
-                          className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600"
-                          style={{ backgroundColor: c }}
-                          title={c}
-                        />
+                        <Button key={c} type="button" variant="outline" size="icon" className="w-6 h-6 rounded" style={{ backgroundColor: c }} title={c} onClick={() => setCreateForm((f) => ({ ...f, color: c }))} />
                       ))}
                     </div>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description (§2.2.2 rich text / Markdown)</label>
-                  <textarea
-                    value={createForm.description}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
-                    rows={3}
-                    placeholder="Supports **bold**, *italic*, lists, links…"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                  />
+                <div className="space-y-2">
+                  <Label>Description (§2.2.2 rich text / Markdown)</Label>
+                  <Textarea value={createForm.description} onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))} rows={3} placeholder="Supports **bold**, *italic*, lists, links…" className="text-sm" />
                   {createForm.description && (
                     <div className="mt-1 p-2 rounded bg-gray-50 dark:bg-gray-800/50 text-sm prose prose-sm dark:prose-invert max-w-none">
                       <ReactMarkdown>{createForm.description}</ReactMarkdown>
                     </div>
                   )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Order</label>
-                  <input
-                    type="number"
-                    value={createForm.order}
-                    onChange={(e) => setCreateForm((f) => ({ ...f, order: parseInt(e.target.value, 10) || 0 }))}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                    min={0}
-                  />
+                <div className="space-y-2">
+                  <Label>Order</Label>
+                  <Input type="number" value={createForm.order} onChange={(e) => setCreateForm((f) => ({ ...f, order: parseInt(e.target.value, 10) || 0 }))} min={0} />
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button type="submit" disabled={formSaving} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium">
-                    Create
-                  </button>
-                  <button type="button" onClick={closeModal} className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm">
-                    Cancel
-                  </button>
+                  <Button type="submit" disabled={formSaving} size="sm">Create</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={closeModal}>Cancel</Button>
                 </div>
               </form>
             </div>
@@ -831,126 +692,59 @@ export default function ActionCatalogCategoriesPage() {
               <h2 id="modal-edit-title" className="text-lg font-semibold mb-4">Edit category</h2>
               {formError && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{formError}</p>}
               <form onSubmit={handleUpdate} className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Display name</label>
-                  <input
-                    type="text"
-                    value={editForm.displayName}
-                    onChange={(e) => setEditForm((f) => ({ ...f, displayName: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                    required
-                  />
+                <div className="space-y-2">
+                  <Label>Display name</Label>
+                  <Input value={editForm.displayName} onChange={(e) => setEditForm((f) => ({ ...f, displayName: e.target.value }))} required />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Type</label>
-                  <select
-                    value={editForm.type}
-                    onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value as CategoryType }))}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                  >
-                    <option value="risk">Risk</option>
-                    <option value="recommendation">Recommendation</option>
-                    <option value="both">Both</option>
-                  </select>
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={editForm.type} onValueChange={(v) => setEditForm((f) => ({ ...f, type: v as CategoryType }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="risk">Risk</SelectItem>
+                      <SelectItem value="recommendation">Recommendation</SelectItem>
+                      <SelectItem value="both">Both</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Icon (§2.2.2 picker with search)</label>
-                  <input
-                    type="search"
-                    value={iconSearch}
-                    onChange={(e) => setIconSearch(e.target.value)}
-                    placeholder="Search icons…"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 mb-2 text-sm"
-                    aria-label="Search icon"
-                  />
+                <div className="space-y-2">
+                  <Label>Icon (§2.2.2 picker with search)</Label>
+                  <Input type="search" value={iconSearch} onChange={(e) => setIconSearch(e.target.value)} placeholder="Search icons…" className="mb-2 text-sm" aria-label="Search icon" />
                   <div className="flex flex-wrap gap-2 mb-2">
                     {filteredIconOptions.map((o) => (
-                      <button
-                        key={`${o.emoji}-${o.label}`}
-                        type="button"
-                        onClick={() => setEditForm((f) => ({ ...f, icon: o.emoji }))}
-                        className={`w-9 h-9 rounded border text-lg flex items-center justify-center ${
-                          editForm.icon === o.emoji
-                            ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/30'
-                            : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
-                        }`}
-                        title={o.label}
-                      >
-                        {o.emoji}
-                      </button>
+                      <Button key={`${o.emoji}-${o.label}`} type="button" variant={editForm.icon === o.emoji ? 'secondary' : 'outline'} size="icon" className="w-9 h-9 text-lg" onClick={() => setEditForm((f) => ({ ...f, icon: o.emoji }))} title={o.label}>{o.emoji}</Button>
                     ))}
                   </div>
-                  <input
-                    type="text"
-                    value={editForm.icon}
-                    onChange={(e) => setEditForm((f) => ({ ...f, icon: e.target.value }))}
-                    placeholder="Custom emoji"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                    aria-label="Custom icon"
-                  />
+                  <Input value={editForm.icon} onChange={(e) => setEditForm((f) => ({ ...f, icon: e.target.value }))} placeholder="Custom emoji" className="text-sm" aria-label="Custom icon" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Color (§2.2.2 picker with presets)</label>
+                <div className="space-y-2">
+                  <Label>Color (§2.2.2 picker with presets)</Label>
                   <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      type="color"
-                      value={normalizeHex(editForm.color)}
-                      onChange={(e) => setEditForm((f) => ({ ...f, color: e.target.value }))}
-                      className="w-10 h-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
-                      aria-label="Color picker"
-                    />
-                    <input
-                      type="text"
-                      value={editForm.color}
-                      onChange={(e) => setEditForm((f) => ({ ...f, color: e.target.value }))}
-                      className="w-24 px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm font-mono"
-                    />
+                    <Input type="color" value={normalizeHex(editForm.color)} onChange={(e) => setEditForm((f) => ({ ...f, color: e.target.value }))} className="w-10 h-10 p-1 rounded border cursor-pointer" aria-label="Color picker" />
+                    <Input value={editForm.color} onChange={(e) => setEditForm((f) => ({ ...f, color: e.target.value }))} className="w-24 h-9 text-sm font-mono" />
                     <div className="flex gap-1">
                       {COLOR_PRESETS.map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setEditForm((f) => ({ ...f, color: c }))}
-                          className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600"
-                          style={{ backgroundColor: c }}
-                          title={c}
-                        />
+                        <Button key={c} type="button" variant="outline" size="icon" className="w-6 h-6 rounded" style={{ backgroundColor: c }} title={c} onClick={() => setEditForm((f) => ({ ...f, color: c }))} />
                       ))}
                     </div>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description (§2.2.2 rich text / Markdown)</label>
-                  <textarea
-                    value={editForm.description}
-                    onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
-                    rows={3}
-                    placeholder="Supports **bold**, *italic*, lists, links…"
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                  />
+                <div className="space-y-2">
+                  <Label>Description (§2.2.2 rich text / Markdown)</Label>
+                  <Textarea value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} rows={3} placeholder="Supports **bold**, *italic*, lists, links…" className="text-sm" />
                   {editForm.description && (
                     <div className="mt-1 p-2 rounded bg-gray-50 dark:bg-gray-800/50 text-sm prose prose-sm dark:prose-invert max-w-none">
                       <ReactMarkdown>{editForm.description}</ReactMarkdown>
                     </div>
                   )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Order</label>
-                  <input
-                    type="number"
-                    value={editForm.order}
-                    onChange={(e) => setEditForm((f) => ({ ...f, order: parseInt(e.target.value, 10) || 0 }))}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                    min={0}
-                  />
+                <div className="space-y-2">
+                  <Label>Order</Label>
+                  <Input type="number" value={editForm.order} onChange={(e) => setEditForm((f) => ({ ...f, order: parseInt(e.target.value, 10) || 0 }))} min={0} />
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <button type="submit" disabled={formSaving} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium">
-                    Save
-                  </button>
-                  <button type="button" onClick={closeModal} className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm">
-                    Cancel
-                  </button>
+                  <Button type="submit" disabled={formSaving} size="sm">Save</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={closeModal}>Cancel</Button>
                 </div>
               </form>
             </div>
@@ -969,36 +763,22 @@ export default function ActionCatalogCategoriesPage() {
             </p>
             {formError && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{formError}</p>}
             {categories.filter((c) => c.id !== editCategory.id).length > 0 && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Reassign entries to</label>
-                <select
-                  value={deleteReassignTo}
-                  onChange={(e) => setDeleteReassignTo(e.target.value)}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                >
-                  <option value="">— None (entries keep category id)</option>
-                  {categories
-                    .filter((c) => c.id !== editCategory.id)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.displayName}
-                      </option>
+              <div className="mb-4 space-y-2">
+                <Label>Reassign entries to</Label>
+                <Select value={deleteReassignTo || '_none'} onValueChange={(v) => setDeleteReassignTo(v === '_none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="— None (entries keep category id)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— None (entries keep category id)</SelectItem>
+                    {categories.filter((c) => c.id !== editCategory.id).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.displayName}</SelectItem>
                     ))}
-                </select>
+                  </SelectContent>
+                </Select>
               </div>
             )}
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={formSaving}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
-              >
-                Delete
-              </button>
-              <button type="button" onClick={closeModal} className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm">
-                Cancel
-              </button>
+              <Button type="button" variant="destructive" size="sm" onClick={handleDelete} disabled={formSaving}>Delete</Button>
+              <Button type="button" variant="outline" size="sm" onClick={closeModal}>Cancel</Button>
             </div>
           </div>
         </div>
@@ -1012,52 +792,34 @@ export default function ActionCatalogCategoriesPage() {
               Merge the source category into the target. All entries in the source will be moved to the target; the source category will be deleted.
             </p>
             <form onSubmit={handleMerge} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Source category (will be deleted)</label>
-                <select
-                  value={mergeSourceId}
-                  onChange={(e) => setMergeSourceId(e.target.value)}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                  required
-                  aria-label="Source category"
-                >
-                  <option value="">— Select —</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.displayName} ({c.id})
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-2">
+                <Label>Source category (will be deleted)</Label>
+                <Select value={mergeSourceId || '_'} onValueChange={(v) => setMergeSourceId(v === '_' ? '' : v)} aria-label="Source category">
+                  <SelectTrigger><SelectValue placeholder="— Select —" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_">— Select —</SelectItem>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.displayName} ({c.id})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Target category (entries move here)</label>
-                <select
-                  value={mergeTargetId}
-                  onChange={(e) => setMergeTargetId(e.target.value)}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                  required
-                  aria-label="Target category"
-                >
-                  <option value="">— Select —</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.displayName} ({c.id})
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-2">
+                <Label>Target category (entries move here)</Label>
+                <Select value={mergeTargetId || '_'} onValueChange={(v) => setMergeTargetId(v === '_' ? '' : v)} aria-label="Target category">
+                  <SelectTrigger><SelectValue placeholder="— Select —" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_">— Select —</SelectItem>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.displayName} ({c.id})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               {formError && <p className="text-sm text-red-600 dark:text-red-400">{formError}</p>}
               <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={formSaving}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
-                >
-                  {formSaving ? 'Merging…' : 'Merge'}
-                </button>
-                <button type="button" onClick={closeModal} disabled={formSaving} className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm">
-                  Cancel
-                </button>
+                <Button type="submit" disabled={formSaving} size="sm">{formSaving ? 'Merging…' : 'Merge'}</Button>
+                <Button type="button" variant="outline" size="sm" onClick={closeModal} disabled={formSaving}>Cancel</Button>
               </div>
             </form>
           </div>

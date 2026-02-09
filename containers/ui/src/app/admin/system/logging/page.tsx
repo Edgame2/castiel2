@@ -7,6 +7,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -129,76 +140,66 @@ export default function SystemLoggingPage() {
       <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 space-y-4">
         <div className="grid gap-4 max-w-xl">
           <div>
-            <label className="block text-sm font-medium mb-1">Log level</label>
-            <select
-              value={config?.logLevel ?? 'info'}
-              onChange={(e) => update({ logLevel: e.target.value as LoggingConfig['logLevel'] })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="debug">debug</option>
-              <option value="info">info</option>
-              <option value="warn">warn</option>
-              <option value="error">error</option>
-            </select>
+            <Label className="block mb-1">Log level</Label>
+            <Select value={config?.logLevel ?? 'info'} onValueChange={(v) => update({ logLevel: v as LoggingConfig['logLevel'] })}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="debug">debug</SelectItem>
+                <SelectItem value="info">info</SelectItem>
+                <SelectItem value="warn">warn</SelectItem>
+                <SelectItem value="error">error</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Retention (days)</label>
-            <input
+            <Label className="block mb-1">Retention (days)</Label>
+            <Input
               type="number"
               min={1}
               value={config?.retentionDays ?? 30}
               onChange={(e) => update({ retentionDays: parseInt(e.target.value, 10) || undefined })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="w-full"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Archive after (days)</label>
-            <input
+            <Label className="block mb-1">Archive after (days)</Label>
+            <Input
               type="number"
               min={1}
               value={config?.archiveAfterDays ?? 90}
               onChange={(e) => update({ archiveAfterDays: parseInt(e.target.value, 10) || undefined })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="w-full"
             />
           </div>
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="sampling"
               checked={config?.samplingEnabled ?? false}
-              onChange={(e) => update({ samplingEnabled: e.target.checked })}
-              className="rounded border-gray-300"
+              onCheckedChange={(c) => update({ samplingEnabled: !!c })}
             />
-            <label htmlFor="sampling" className="text-sm">Sampling enabled</label>
+            <Label htmlFor="sampling" className="text-sm font-normal">Sampling enabled</Label>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Sample rate (%)</label>
-            <input
+            <Label className="block mb-1">Sample rate (%)</Label>
+            <Input
               type="number"
               min={0}
               max={100}
               value={config?.sampleRate ?? 100}
               onChange={(e) => update({ sampleRate: parseInt(e.target.value, 10) || undefined })}
-              className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="w-full"
             />
           </div>
         </div>
         <div className="flex gap-2 pt-4">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!dirty || saving}
-            className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium disabled:opacity-50 hover:bg-blue-700"
-          >
+          <Button type="button" onClick={handleSave} disabled={!dirty || saving}>
             {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button
-            type="button"
-            onClick={() => { fetchConfig(); setDirty(false); }}
-            className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800"
-          >
+          </Button>
+          <Button type="button" variant="outline" onClick={() => { fetchConfig(); setDirty(false); }}>
             Reset
-          </button>
+          </Button>
         </div>
       </div>
       <Link href="/admin/system" className="inline-block mt-4 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">← Back to System Configuration</Link>

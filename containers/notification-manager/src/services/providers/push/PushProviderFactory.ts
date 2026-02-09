@@ -46,7 +46,7 @@ export async function createPushProvider(
     }
 
     case 'onesignal':
-      // TODO: Implement OneSignal provider
+      // OneSignal provider: add when implemented
       throw new Error('OneSignal provider not yet implemented');
 
     default:

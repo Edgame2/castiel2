@@ -7,6 +7,8 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -75,14 +77,14 @@ export default function SystemLoggingConfigPage() {
         </p>
 
         <div className="mb-4">
-          <label htmlFor="search" className="block text-sm font-medium mb-1">Search (filter display)</label>
-          <input
+          <Label htmlFor="search" className="block mb-1">Search (filter display)</Label>
+          <Input
             id="search"
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter by key or value…"
-            className="w-full max-w-md px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+            className="max-w-md"
           />
         </div>
 

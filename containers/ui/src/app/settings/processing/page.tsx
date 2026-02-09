@@ -7,6 +7,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -29,7 +40,7 @@ interface EmailProcessingConfig {
   filters?: Array<{
     field: string;
     operator: 'equals' | 'contains' | 'matches';
-    value: any;
+    value: string | number | boolean;
   }>;
 }
 
@@ -210,13 +221,9 @@ export default function ProcessingSettingsPage() {
             Configure how documents, emails, and meetings are processed
           </p>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-        >
+        <Button onClick={handleSave} disabled={saving}>
           {saving ? 'Saving...' : 'Save Settings'}
-        </button>
+        </Button>
       </div>
 
       {error && (
@@ -228,46 +235,54 @@ export default function ProcessingSettingsPage() {
       <div className="rounded-lg border bg-white dark:bg-gray-900">
         <div className="border-b">
           <nav className="flex gap-4 px-4">
-            <button
-              onClick={() => setActiveSection('documents')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`rounded-none border-b-2 -mb-px ${
                 activeSection === 'documents'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
+              onClick={() => setActiveSection('documents')}
             >
               Document Processing
-            </button>
-            <button
-              onClick={() => setActiveSection('emails')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`rounded-none border-b-2 -mb-px ${
                 activeSection === 'emails'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
+              onClick={() => setActiveSection('emails')}
             >
               Email Processing
-            </button>
-            <button
-              onClick={() => setActiveSection('meetings')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`rounded-none border-b-2 -mb-px ${
                 activeSection === 'meetings'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
+              onClick={() => setActiveSection('meetings')}
             >
               Meeting Processing
-            </button>
-            <button
-              onClick={() => setActiveSection('priorities')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 ${
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`rounded-none border-b-2 -mb-px ${
                 activeSection === 'priorities'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
+              onClick={() => setActiveSection('priorities')}
             >
               Processing Priorities
-            </button>
+            </Button>
           </nav>
         </div>
 
@@ -350,86 +365,83 @@ function DocumentProcessingSettings({ config, onChange }: DocumentProcessingSett
       <h3 className="text-lg font-semibold mb-4">Document Processing Configuration</h3>
 
       <div className="space-y-4">
-        <label className="flex items-center p-3 border rounded">
-          <input
-            type="checkbox"
+        <div className="flex items-start gap-3 p-3 border rounded">
+          <Checkbox
+            id="doc-enabled"
             checked={config.enabled}
-            onChange={(e) => onChange({ ...config, enabled: e.target.checked })}
-            className="mr-3"
+            onCheckedChange={(c) => onChange({ ...config, enabled: !!c })}
           />
-          <div>
-            <span className="text-sm font-medium">Enable Document Processing</span>
-            <p className="text-xs text-gray-500">Process and extract data from documents</p>
+          <div className="grid gap-1.5 leading-none">
+            <Label htmlFor="doc-enabled" className="text-sm font-medium cursor-pointer">
+              Enable Document Processing
+            </Label>
+            <p className="text-xs text-muted-foreground">Process and extract data from documents</p>
           </div>
-        </label>
+        </div>
 
         {config.enabled && (
           <>
-            <label className="flex items-center p-3 border rounded">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-3 p-3 border rounded">
+              <Checkbox
+                id="doc-text"
                 checked={config.textExtraction}
-                onChange={(e) => onChange({ ...config, textExtraction: e.target.checked })}
-                className="mr-3"
+                onCheckedChange={(c) => onChange({ ...config, textExtraction: !!c })}
               />
-              <span className="text-sm font-medium">Enable Text Extraction</span>
-            </label>
+              <Label htmlFor="doc-text" className="text-sm font-medium cursor-pointer">Enable Text Extraction</Label>
+            </div>
 
-            <label className="flex items-center p-3 border rounded">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-3 p-3 border rounded">
+              <Checkbox
+                id="doc-ocr"
                 checked={config.ocrForImages}
-                onChange={(e) => onChange({ ...config, ocrForImages: e.target.checked })}
-                className="mr-3"
+                onCheckedChange={(c) => onChange({ ...config, ocrForImages: !!c })}
               />
-              <span className="text-sm font-medium">Enable OCR for Images</span>
-            </label>
+              <Label htmlFor="doc-ocr" className="text-sm font-medium cursor-pointer">Enable OCR for Images</Label>
+            </div>
 
-            <label className="flex items-center p-3 border rounded">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-3 p-3 border rounded">
+              <Checkbox
+                id="doc-content"
                 checked={config.contentAnalysis}
-                onChange={(e) => onChange({ ...config, contentAnalysis: e.target.checked })}
-                className="mr-3"
+                onCheckedChange={(c) => onChange({ ...config, contentAnalysis: !!c })}
               />
-              <span className="text-sm font-medium">Enable Content Analysis (LLM)</span>
-            </label>
+              <Label htmlFor="doc-content" className="text-sm font-medium cursor-pointer">Enable Content Analysis (LLM)</Label>
+            </div>
 
-            <label className="flex items-center p-3 border rounded">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-3 p-3 border rounded">
+              <Checkbox
+                id="doc-entity"
                 checked={config.entityExtraction}
-                onChange={(e) => onChange({ ...config, entityExtraction: e.target.checked })}
-                className="mr-3"
+                onCheckedChange={(c) => onChange({ ...config, entityExtraction: !!c })}
               />
-              <span className="text-sm font-medium">Enable Entity Extraction</span>
-            </label>
+              <Label htmlFor="doc-entity" className="text-sm font-medium cursor-pointer">Enable Entity Extraction</Label>
+            </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Maximum Document Size (MB)</label>
-              <input
+            <div className="space-y-2">
+              <Label htmlFor="doc-max-mb">Maximum Document Size (MB)</Label>
+              <Input
+                id="doc-max-mb"
                 type="number"
                 value={config.maxDocumentSizeMB}
                 onChange={(e) => onChange({ ...config, maxDocumentSizeMB: parseInt(e.target.value) || 50 })}
-                className="w-full px-3 py-2 border rounded"
-                min="1"
-                max="500"
+                min={1}
+                max={500}
+                className="w-full"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Supported File Types</label>
+            <div className="space-y-2">
+              <Label>Supported File Types</Label>
               <div className="grid grid-cols-4 gap-2">
                 {DEFAULT_FILE_TYPES.map((fileType) => (
-                  <label key={fileType} className="flex items-center p-2 border rounded">
-                    <input
-                      type="checkbox"
+                  <div key={fileType} className="flex items-center gap-2 p-2 border rounded">
+                    <Checkbox
+                      id={`file-${fileType}`}
                       checked={config.supportedFileTypes.includes(fileType)}
-                      onChange={() => toggleFileType(fileType)}
-                      className="mr-2"
+                      onCheckedChange={() => toggleFileType(fileType)}
                     />
-                    <span className="text-xs">{fileType.toUpperCase()}</span>
-                  </label>
+                    <Label htmlFor={`file-${fileType}`} className="text-xs cursor-pointer">{fileType.toUpperCase()}</Label>
+                  </div>
                 ))}
               </div>
             </div>
@@ -451,60 +463,55 @@ function EmailProcessingSettings({ config, onChange }: EmailProcessingSettingsPr
       <h3 className="text-lg font-semibold mb-4">Email Processing Configuration</h3>
 
       <div className="space-y-4">
-        <label className="flex items-center p-3 border rounded">
-          <input
-            type="checkbox"
+        <div className="flex items-start gap-3 p-3 border rounded">
+          <Checkbox
+            id="email-enabled"
             checked={config.enabled}
-            onChange={(e) => onChange({ ...config, enabled: e.target.checked })}
-            className="mr-3"
+            onCheckedChange={(c) => onChange({ ...config, enabled: !!c })}
           />
-          <div>
-            <span className="text-sm font-medium">Enable Email Processing</span>
-            <p className="text-xs text-gray-500">Process and analyze email content</p>
+          <div className="grid gap-1.5 leading-none">
+            <Label htmlFor="email-enabled" className="text-sm font-medium cursor-pointer">Enable Email Processing</Label>
+            <p className="text-xs text-muted-foreground">Process and analyze email content</p>
           </div>
-        </label>
+        </div>
 
         {config.enabled && (
           <>
-            <label className="flex items-center p-3 border rounded">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-3 p-3 border rounded">
+              <Checkbox
+                id="email-sentiment"
                 checked={config.sentimentAnalysis}
-                onChange={(e) => onChange({ ...config, sentimentAnalysis: e.target.checked })}
-                className="mr-3"
+                onCheckedChange={(c) => onChange({ ...config, sentimentAnalysis: !!c })}
               />
-              <span className="text-sm font-medium">Enable Sentiment Analysis</span>
-            </label>
+              <Label htmlFor="email-sentiment" className="text-sm font-medium cursor-pointer">Enable Sentiment Analysis</Label>
+            </div>
 
-            <label className="flex items-center p-3 border rounded">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-3 p-3 border rounded">
+              <Checkbox
+                id="email-action"
                 checked={config.actionItemExtraction}
-                onChange={(e) => onChange({ ...config, actionItemExtraction: e.target.checked })}
-                className="mr-3"
+                onCheckedChange={(c) => onChange({ ...config, actionItemExtraction: !!c })}
               />
-              <span className="text-sm font-medium">Enable Action Item Extraction</span>
-            </label>
+              <Label htmlFor="email-action" className="text-sm font-medium cursor-pointer">Enable Action Item Extraction</Label>
+            </div>
 
-            <label className="flex items-center p-3 border rounded">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-3 p-3 border rounded">
+              <Checkbox
+                id="email-attachments"
                 checked={config.processAttachments}
-                onChange={(e) => onChange({ ...config, processAttachments: e.target.checked })}
-                className="mr-3"
+                onCheckedChange={(c) => onChange({ ...config, processAttachments: !!c })}
               />
-              <span className="text-sm font-medium">Process Attachments</span>
-            </label>
+              <Label htmlFor="email-attachments" className="text-sm font-medium cursor-pointer">Process Attachments</Label>
+            </div>
 
-            <label className="flex items-center p-3 border rounded">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-3 p-3 border rounded">
+              <Checkbox
+                id="email-spam"
                 checked={config.filterSpam}
-                onChange={(e) => onChange({ ...config, filterSpam: e.target.checked })}
-                className="mr-3"
+                onCheckedChange={(c) => onChange({ ...config, filterSpam: !!c })}
               />
-              <span className="text-sm font-medium">Filter Spam</span>
-            </label>
+              <Label htmlFor="email-spam" className="text-sm font-medium cursor-pointer">Filter Spam</Label>
+            </div>
           </>
         )}
       </div>
@@ -523,91 +530,85 @@ function MeetingProcessingSettings({ config, onChange }: MeetingProcessingSettin
       <h3 className="text-lg font-semibold mb-4">Meeting Processing Configuration</h3>
 
       <div className="space-y-4">
-        <label className="flex items-center p-3 border rounded">
-          <input
-            type="checkbox"
+        <div className="flex items-start gap-3 p-3 border rounded">
+          <Checkbox
+            id="meeting-enabled"
             checked={config.enabled}
-            onChange={(e) => onChange({ ...config, enabled: e.target.checked })}
-            className="mr-3"
+            onCheckedChange={(c) => onChange({ ...config, enabled: !!c })}
           />
-          <div>
-            <span className="text-sm font-medium">Enable Meeting Transcription</span>
-            <p className="text-xs text-gray-500">Transcribe and analyze meeting recordings</p>
+          <div className="grid gap-1.5 leading-none">
+            <Label htmlFor="meeting-enabled" className="text-sm font-medium cursor-pointer">Enable Meeting Transcription</Label>
+            <p className="text-xs text-muted-foreground">Transcribe and analyze meeting recordings</p>
           </div>
-        </label>
+        </div>
 
         {config.enabled && (
           <>
-            <label className="flex items-center p-3 border rounded">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-3 p-3 border rounded">
+              <Checkbox
+                id="meeting-trans"
                 checked={config.transcription}
-                onChange={(e) => onChange({ ...config, transcription: e.target.checked })}
-                className="mr-3"
+                onCheckedChange={(c) => onChange({ ...config, transcription: !!c })}
               />
-              <span className="text-sm font-medium">Enable Transcription</span>
-            </label>
-
-            <label className="flex items-center p-3 border rounded">
-              <input
-                type="checkbox"
-                checked={config.speakerDiarization}
-                onChange={(e) => onChange({ ...config, speakerDiarization: e.target.checked })}
-                className="mr-3"
-              />
-              <span className="text-sm font-medium">Enable Speaker Diarization</span>
-            </label>
-
-            <label className="flex items-center p-3 border rounded">
-              <input
-                type="checkbox"
-                checked={config.keyMomentDetection}
-                onChange={(e) => onChange({ ...config, keyMomentDetection: e.target.checked })}
-                className="mr-3"
-              />
-              <span className="text-sm font-medium">Enable Key Moment Detection</span>
-            </label>
-
-            <label className="flex items-center p-3 border rounded">
-              <input
-                type="checkbox"
-                checked={config.actionItemExtraction}
-                onChange={(e) => onChange({ ...config, actionItemExtraction: e.target.checked })}
-                className="mr-3"
-              />
-              <span className="text-sm font-medium">Enable Action Item Extraction</span>
-            </label>
-
-            <label className="flex items-center p-3 border rounded">
-              <input
-                type="checkbox"
-                checked={config.dealSignalDetection}
-                onChange={(e) => onChange({ ...config, dealSignalDetection: e.target.checked })}
-                className="mr-3"
-              />
-              <span className="text-sm font-medium">Enable Deal Signal Detection</span>
-            </label>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Transcription Quality</label>
-              <select
-                value={config.transcriptionQuality}
-                onChange={(e) =>
-                  onChange({
-                    ...config,
-                    transcriptionQuality: e.target.value as 'standard' | 'high',
-                  })
-                }
-                className="w-full px-3 py-2 border rounded"
-              >
-                <option value="standard">Standard</option>
-                <option value="high">High</option>
-              </select>
+              <Label htmlFor="meeting-trans" className="text-sm font-medium cursor-pointer">Enable Transcription</Label>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Maximum Recording Duration (minutes)</label>
-              <input
+            <div className="flex items-center gap-3 p-3 border rounded">
+              <Checkbox
+                id="meeting-diar"
+                checked={config.speakerDiarization}
+                onCheckedChange={(c) => onChange({ ...config, speakerDiarization: !!c })}
+              />
+              <Label htmlFor="meeting-diar" className="text-sm font-medium cursor-pointer">Enable Speaker Diarization</Label>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 border rounded">
+              <Checkbox
+                id="meeting-key"
+                checked={config.keyMomentDetection}
+                onCheckedChange={(c) => onChange({ ...config, keyMomentDetection: !!c })}
+              />
+              <Label htmlFor="meeting-key" className="text-sm font-medium cursor-pointer">Enable Key Moment Detection</Label>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 border rounded">
+              <Checkbox
+                id="meeting-action"
+                checked={config.actionItemExtraction}
+                onCheckedChange={(c) => onChange({ ...config, actionItemExtraction: !!c })}
+              />
+              <Label htmlFor="meeting-action" className="text-sm font-medium cursor-pointer">Enable Action Item Extraction</Label>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 border rounded">
+              <Checkbox
+                id="meeting-deal"
+                checked={config.dealSignalDetection}
+                onCheckedChange={(c) => onChange({ ...config, dealSignalDetection: !!c })}
+              />
+              <Label htmlFor="meeting-deal" className="text-sm font-medium cursor-pointer">Enable Deal Signal Detection</Label>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Transcription Quality</Label>
+              <Select
+                value={config.transcriptionQuality}
+                onValueChange={(v) => onChange({ ...config, transcriptionQuality: v as 'standard' | 'high' })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">Standard</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="meeting-max-min">Maximum Recording Duration (minutes)</Label>
+              <Input
+                id="meeting-max-min"
                 type="number"
                 value={config.maxRecordingDurationMinutes}
                 onChange={(e) =>
@@ -616,9 +617,9 @@ function MeetingProcessingSettings({ config, onChange }: MeetingProcessingSettin
                     maxRecordingDurationMinutes: parseInt(e.target.value) || 120,
                   })
                 }
-                className="w-full px-3 py-2 border rounded"
-                min="1"
-                max="480"
+                min={1}
+                max={480}
+                className="w-full"
               />
             </div>
           </>
@@ -671,20 +672,24 @@ function ProcessingPriorities({ priorities, onChange }: ProcessingPrioritiesProp
               <span className="text-sm font-medium w-32">{priority.dataType}</span>
               <span className="text-xs text-gray-500">Priority: {priority.priority}</span>
               <div className="flex-1" />
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => moveUp(index)}
                 disabled={index === 0}
-                className="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                className="px-2 text-xs"
               >
                 ↑
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => moveDown(index)}
                 disabled={index === priorities.length - 1}
-                className="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                className="px-2 text-xs"
               >
                 ↓
-              </button>
+              </Button>
             </div>
           ))}
       </div>

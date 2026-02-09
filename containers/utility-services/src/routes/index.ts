@@ -582,7 +582,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     // Metrics endpoint (no auth required for Prometheus)
     fastify.get('/metrics', async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        // TODO: Get metrics from MetricsCollector when integrated
+        // Metrics: use MetricsCollector when integrated; placeholder until then
         const metrics = `# Utility Services Metrics
 # HELP notifications_sent_total Total notifications sent
 # TYPE notifications_sent_total counter

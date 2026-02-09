@@ -38,14 +38,8 @@ export class MLFieldRecalculationJob {
     log.info('Starting ML field recalculation...', { service: 'integration-processors' });
 
     try {
-      // Note: This implementation queries opportunities per tenant
-      // In a production system, you would need a way to get all tenant IDs
-      // For now, this is a placeholder that can be enhanced when tenant list API is available
-      // Alternative: Trigger this job per tenant via scheduled events
-
+      // Tenant list from user-management or config when API is available; or trigger per tenant from workflow-orchestrator
       // Get list of tenant IDs
-      // TODO: Get tenant IDs from user-management service or configuration
-      // For now, we'll need to enhance this when tenant list API is available
       const tenantIds = await this.getTenantIds();
 
       if (tenantIds.length === 0) {
@@ -116,14 +110,11 @@ export class MLFieldRecalculationJob {
   }
 
   /**
-   * Get list of tenant IDs
-   * TODO: Enhance when tenant list API is available
-   * For now, returns empty array - job will be a no-op until tenant list is available
+   * Get list of tenant IDs (enhance when tenant list API is available).
+   * Returns empty until then; job can also be triggered per tenant from workflow-orchestrator.
    */
   private async getTenantIds(): Promise<string[]> {
-    // Placeholder: In production, this would query user-management service or get from config
-    // For now, return empty array - this needs to be implemented when tenant list API is available
-    // Alternative: This job could be triggered per tenant via scheduled events from workflow-orchestrator
+    // Query user-management or config when tenant list API is available
 
     // Example implementation (commented out until tenant API is available):
     // try {

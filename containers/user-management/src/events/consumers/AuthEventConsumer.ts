@@ -15,7 +15,7 @@ interface AuthEvent {
 }
 
 export class AuthEventConsumer {
-  private connection: amqp.ChannelModel | null = null;
+  private connection: Awaited<ReturnType<typeof amqp.connect>> | null = null;
   private channel: amqp.Channel | null = null;
   private isShuttingDown = false;
 
@@ -113,7 +113,7 @@ export class AuthEventConsumer {
     this.isShuttingDown = true;
     try {
       if (this.channel) await this.channel.close();
-      if (this.connection) await (this.connection as amqp.Connection).close();
+      if (this.connection) await (this.connection as unknown as { close(): Promise<void> }).close();
     } catch (error) {
       log.error('Error closing auth event consumer', error, { service: 'user-management' });
     }

@@ -129,9 +129,7 @@ export class InsightService {
       }
     }
 
-    // Generate insight using AI Service
-    // TODO: Implement actual AI generation
-    // For now, create a placeholder insight
+    // Generate placeholder insight; actual AI generation is deferred (see README).
     const insightInput: CreateInsightInput = {
       tenantId: request.tenantId,
       userId: request.userId,

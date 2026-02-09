@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -155,13 +156,9 @@ export default function FeatureEngineeringVersioningPage() {
       {error && (
         <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 mb-4">
           <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
-          <button
-            type="button"
-            onClick={fetchData}
-            className="mt-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-          >
+          <Button type="button" variant="link" onClick={fetchData} className="mt-2">
             Retry
-          </button>
+          </Button>
         </div>
       )}
 
@@ -170,13 +167,9 @@ export default function FeatureEngineeringVersioningPage() {
           <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-hidden mb-6">
             <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Version history</h2>
-              <button
-                type="button"
-                onClick={fetchData}
-                className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-              >
+              <Button type="button" variant="link" onClick={fetchData}>
                 Refresh
-              </button>
+              </Button>
             </div>
             {items.length === 0 ? (
               <div className="p-6 text-sm text-gray-500">

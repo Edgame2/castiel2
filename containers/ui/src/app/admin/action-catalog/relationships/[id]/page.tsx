@@ -8,6 +8,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -147,13 +148,9 @@ export default function ActionCatalogRelationshipDetailPage() {
                     <p className="text-xs text-gray-400 mt-0.5">{relationship.recommendationId}</p>
                   </div>
                   <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <button
-                      type="button"
-                      onClick={() => setDeleteConfirm(true)}
-                      className="px-4 py-2 border border-red-600 text-red-600 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-                    >
+                    <Button type="button" variant="outline" className="border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => setDeleteConfirm(true)}>
                       Remove link
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -161,8 +158,8 @@ export default function ActionCatalogRelationshipDetailPage() {
                   <div className="mt-4 p-4 border rounded-lg border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
                     <p className="text-sm mb-2">Remove this link between risk and recommendation?</p>
                     <div className="flex gap-2">
-                      <button type="button" onClick={handleDelete} disabled={deleting} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50">Remove</button>
-                      <button type="button" onClick={() => setDeleteConfirm(false)} className="px-4 py-2 border rounded dark:border-gray-700">Cancel</button>
+                      <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting}>Remove</Button>
+                      <Button type="button" variant="outline" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
                     </div>
                   </div>
                 )}

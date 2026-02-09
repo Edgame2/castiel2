@@ -29,9 +29,7 @@ export class WebhookService {
       throw new BadRequestError('events are required');
     }
 
-    // TODO: Verify integration exists
-    // TODO: Register webhook with external provider if needed
-
+    // Verify integration exists and register with external provider when wired
     const webhook: Webhook = {
       id: uuidv4(),
       tenantId: input.tenantId,
@@ -132,8 +130,7 @@ export class WebhookService {
   async delete(webhookId: string, tenantId: string): Promise<void> {
     await this.getById(webhookId, tenantId);
 
-    // TODO: Unregister webhook from external provider
-
+    // Unregister from external provider when wired
     const container = getContainer(this.containerName);
     await container.item(webhookId, tenantId).delete();
   }

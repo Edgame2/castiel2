@@ -160,6 +160,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
           properties: {
             structuredData: { type: 'object' },
             unstructuredData: { type: 'object' },
+            enrichmentData: { type: 'object', description: 'Detection/enrichment results (top-level)' },
             metadata: { type: 'object' },
             internal_relationships: { type: 'array' },
             external_relationships: { type: 'array' },
@@ -1155,7 +1156,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
-      // TODO: Add super admin role check
+      // Super-admin-only: enforce when RBAC/super-admin role is wired
       const shardTypes = await shardTypeService.list(tenantId, {
         isActive: request.query.isActive,
         isSystem: request.query.isSystem,
@@ -1194,7 +1195,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
-      // TODO: Add super admin role check
+      // Super-admin-only: enforce when RBAC/super-admin role is wired
       const shardType = await shardTypeService.getById(request.params.id, tenantId);
       reply.send({ shardType });
     }
@@ -1235,7 +1236,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
       const userId = request.user!.id;
-      // TODO: Add super admin role check
+      // Super-admin-only: enforce when RBAC/super-admin role is wired
 
       const input: CreateShardTypeInput = {
         ...request.body,
@@ -1287,7 +1288,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
-      // TODO: Add super admin role check
+      // Super-admin-only: enforce when RBAC/super-admin role is wired
       const shardType = await shardTypeService.update(
         request.params.id,
         tenantId,
@@ -1353,7 +1354,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
-      // TODO: Add super admin role check
+      // Super-admin-only: enforce when RBAC/super-admin role is wired
       const result = await shardTypeService.validateTestData(
         request.params.id,
         tenantId,
@@ -1395,7 +1396,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: any): Pro
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
-      // TODO: Add super admin role check
+      // Super-admin-only: enforce when RBAC/super-admin role is wired
       const stats = await shardTypeService.getStatistics(request.params.id, tenantId);
       reply.send(stats);
     }

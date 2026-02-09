@@ -8,6 +8,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import * as XLSX from 'xlsx';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -216,7 +222,6 @@ export default function ActionCatalogEntriesPage() {
   const [exportIncludeVersionHistory, setExportIncludeVersionHistory] = useState(true);
   /** §2.1.1 Views: Table (default) | Timeline (by creation date) | Card (with previews) | Graph (visual links) */
   const [viewMode, setViewMode] = useState<'table' | 'timeline' | 'card' | 'graph'>('table');
-  const selectAllRef = useRef<HTMLInputElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [importing, setImporting] = useState(false);
   /** §2.1.6 Test Catalog Entry: entry under test (opens placeholder modal) */
@@ -483,13 +488,6 @@ export default function ActionCatalogEntriesPage() {
     return arr;
   })();
 
-  useEffect(() => {
-    const el = selectAllRef.current;
-    if (!el) return;
-    const n = sorted.length;
-    const sel = selectedEntryIds.size;
-    el.indeterminate = n > 0 && sel > 0 && sel < n;
-  }, [selectedEntryIds.size, sorted.length]);
 
   const openCreate = () => {
     setCreateForm({
@@ -1448,135 +1446,119 @@ export default function ActionCatalogEntriesPage() {
           >
             New entry
           </Link>
-          <button
+          <Button
             type="button"
             onClick={openCreate}
             className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm font-medium"
             aria-label="Create entry (modal)"
           >
             Create entry (modal)
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={openCreateUnified}
             className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-sm font-medium"
             aria-label="Create risk and recommendation (§2.1.4)"
           >
             Create risk + recommendation (§2.1.4)
-          </button>
+          </Button>
           <div>
-            <label className="block text-sm font-medium mb-1">Type</label>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as 'risk' | 'recommendation' | '')}
-              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="">All</option>
-              <option value="risk">Risk</option>
-              <option value="recommendation">Recommendation</option>
-            </select>
+            <Label className="block text-sm font-medium mb-1">Type</Label>
+            <Select value={typeFilter || '_all'} onValueChange={(v) => setTypeFilter(v === '_all' ? '' : (v as 'risk' | 'recommendation'))}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                <SelectItem value="risk">Risk</SelectItem>
+                <SelectItem value="recommendation">Recommendation</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Category (§2.1.1)</label>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="">All</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <Label className="block text-sm font-medium mb-1">Category (§2.1.1)</Label>
+            <Select value={categoryFilter || '_all'} onValueChange={(v) => setCategoryFilter(v === '_all' ? '' : v)}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Scope (§2.1.1)</label>
-            <select
-              value={scopeFilter}
-              onChange={(e) => setScopeFilter(e.target.value as '' | 'global' | 'tenant')}
-              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="">All</option>
-              <option value="global">Global</option>
-              <option value="tenant">Tenant</option>
-            </select>
+            <Label className="block text-sm font-medium mb-1">Scope (§2.1.1)</Label>
+            <Select value={scopeFilter || '_all'} onValueChange={(v) => setScopeFilter(v === '_all' ? '' : (v as 'global' | 'tenant'))}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                <SelectItem value="global">Global</SelectItem>
+                <SelectItem value="tenant">Tenant</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Status (§2.1.1)</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'active' | 'draft' | 'deprecated' | '')}
-              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="">All</option>
-              <option value="active">Active</option>
-              <option value="draft">Draft</option>
-              <option value="deprecated">Deprecated</option>
-            </select>
+            <Label className="block text-sm font-medium mb-1">Status (§2.1.1)</Label>
+            <Select value={statusFilter || '_all'} onValueChange={(v) => setStatusFilter(v === '_all' ? '' : (v as 'active' | 'draft' | 'deprecated'))}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="deprecated">Deprecated</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Industry (§2.1.1)</label>
-            <select
-              value={industryFilter}
-              onChange={(e) => setIndustryFilter(e.target.value)}
-              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="">All</option>
-              {industries.map((i) => (
-                <option key={i} value={i}>
-                  {i}
-                </option>
-              ))}
-            </select>
+            <Label className="block text-sm font-medium mb-1">Industry (§2.1.1)</Label>
+            <Select value={industryFilter || '_all'} onValueChange={(v) => setIndustryFilter(v === '_all' ? '' : v)}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                {industries.map((i) => (
+                  <SelectItem key={i} value={i}>{i}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Stage (§2.1.1)</label>
-            <select
-              value={stageFilter}
-              onChange={(e) => setStageFilter(e.target.value)}
-              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="">All</option>
-              {stages.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+            <Label className="block text-sm font-medium mb-1">Stage (§2.1.1)</Label>
+            <Select value={stageFilter || '_all'} onValueChange={(v) => setStageFilter(v === '_all' ? '' : v)}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                {stages.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Methodology (§2.1.1)</label>
-            <select
-              value={methodologyFilter}
-              onChange={(e) => setMethodologyFilter(e.target.value)}
-              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="">All</option>
-              {methodologies.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+            <Label className="block text-sm font-medium mb-1">Methodology (§2.1.1)</Label>
+            <Select value={methodologyFilter || '_all'} onValueChange={(v) => setMethodologyFilter(v === '_all' ? '' : v)}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                {methodologies.map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Effectiveness (§2.1.1)</label>
-            <select
-              value={effectivenessFilter}
-              onChange={(e) => setEffectivenessFilter(e.target.value as '' | 'high' | 'medium' | 'low')}
-              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="">All</option>
-              <option value="high">High (≥0.7)</option>
-              <option value="medium">Medium (0.4–0.7)</option>
-              <option value="low">Low (&lt;0.4)</option>
-            </select>
+            <Label className="block text-sm font-medium mb-1">Effectiveness (§2.1.1)</Label>
+            <Select value={effectivenessFilter || '_all'} onValueChange={(v) => setEffectivenessFilter(v === '_all' ? '' : (v as 'high' | 'medium' | 'low'))}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="All" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                <SelectItem value="high">High (≥0.7)</SelectItem>
+                <SelectItem value="medium">Medium (0.4–0.7)</SelectItem>
+                <SelectItem value="low">Low (&lt;0.4)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Search (§2.1.1)</label>
-            <input
+            <Label className="block text-sm font-medium mb-1">Search (§2.1.1)</Label>
+            <Input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -1585,15 +1567,15 @@ export default function ActionCatalogEntriesPage() {
               aria-label="Search by name or description"
             />
           </div>
-          <button
+          <Button
             type="button"
             onClick={fetchEntries}
             className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
             aria-label="Refresh entries"
           >
             Refresh
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={handleExportAll}
             disabled={entries.length === 0}
@@ -1601,8 +1583,8 @@ export default function ActionCatalogEntriesPage() {
             title="Export all entries as JSON (§2.4.2)"
           >
             Export all (JSON)
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={handleExportAllCsv}
             disabled={entries.length === 0}
@@ -1610,8 +1592,8 @@ export default function ActionCatalogEntriesPage() {
             title="Export all entries as CSV (§2.4.2)"
           >
             Export all (CSV)
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={() => setExportDialogOpen(true)}
             disabled={entries.length === 0}
@@ -1619,8 +1601,8 @@ export default function ActionCatalogEntriesPage() {
             title="Export with options: relationships, statistics, version history (§2.4.2)"
           >
             Export…
-          </button>
-          <input
+          </Button>
+          <Input
             ref={importInputRef}
             type="file"
             accept=".json,.csv,application/json,text/csv"
@@ -1628,7 +1610,7 @@ export default function ActionCatalogEntriesPage() {
             onChange={handleImportFile}
             aria-label="Import catalog JSON or CSV (§2.4.1)"
           />
-          <button
+          <Button
             type="button"
             onClick={() => importInputRef.current?.click()}
             disabled={importing}
@@ -1636,12 +1618,12 @@ export default function ActionCatalogEntriesPage() {
             title="Import entries from JSON or CSV (§2.4.1)"
           >
             {importing ? 'Importing…' : 'Import catalog (JSON or CSV §2.4.1)'}
-          </button>
+          </Button>
           </div>
           <div className="flex flex-wrap gap-4 items-end">
             <div>
-              <label className="block text-sm font-medium mb-1">Created by (§2.1.1)</label>
-              <input
+              <Label className="block text-sm font-medium mb-1">Created by (§2.1.1)</Label>
+              <Input
                 type="text"
                 value={createdByQuery}
                 onChange={(e) => setCreatedByQuery(e.target.value)}
@@ -1651,8 +1633,8 @@ export default function ActionCatalogEntriesPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Date from (§2.1.1)</label>
-              <input
+              <Label className="block text-sm font-medium mb-1">Date from (§2.1.1)</Label>
+              <Input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
@@ -1661,8 +1643,8 @@ export default function ActionCatalogEntriesPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Date to (§2.1.1)</label>
-              <input
+              <Label className="block text-sm font-medium mb-1">Date to (§2.1.1)</Label>
+              <Input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
@@ -1671,56 +1653,52 @@ export default function ActionCatalogEntriesPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Sort by (§2.1.1)</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                aria-label="Sort by"
-              >
-                <option value="">Default</option>
-                <option value="name">Name</option>
-                <option value="category">Category</option>
-                <option value="status">Status</option>
-                <option value="type">Type</option>
-                <option value="effectiveness">Effectiveness</option>
-                <option value="createdAt">Date created</option>
-              </select>
+              <Label className="block text-sm font-medium mb-1">Sort by (§2.1.1)</Label>
+              <Select value={sortBy || '_default'} onValueChange={(v) => setSortBy(v === '_default' ? '' : (v as typeof sortBy))}>
+                <SelectTrigger className="w-40 text-sm" aria-label="Sort by"><SelectValue placeholder="Default" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_default">Default</SelectItem>
+                  <SelectItem value="name">Name</SelectItem>
+                  <SelectItem value="category">Category</SelectItem>
+                  <SelectItem value="status">Status</SelectItem>
+                  <SelectItem value="type">Type</SelectItem>
+                  <SelectItem value="effectiveness">Effectiveness</SelectItem>
+                  <SelectItem value="createdAt">Date created</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Order</label>
-              <select
-                value={sortDir}
-                onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
-                className="w-32 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                aria-label="Sort direction"
-              >
-                <option value="asc">Ascending</option>
-                <option value="desc">Descending</option>
-              </select>
+              <Label className="block text-sm font-medium mb-1">Order</Label>
+              <Select value={sortDir} onValueChange={(v) => setSortDir(v as 'asc' | 'desc')}>
+                <SelectTrigger className="w-32 text-sm" aria-label="Sort direction"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="asc">Ascending</SelectItem>
+                  <SelectItem value="desc">Descending</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           {selectedEntryIds.size > 0 && (
             <div className="flex flex-wrap items-center gap-3 py-2 px-3 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
               <span className="text-sm font-medium">{selectedEntryIds.size} selected</span>
-              <button
+              <Button
                 type="button"
                 onClick={handleBulkDuplicate}
                 disabled={bulkInProgress}
                 className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
               >
                 {bulkDuplicating ? 'Duplicating…' : 'Duplicate selected (§2.4)'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={handleBulkDeprecate}
                 disabled={bulkInProgress}
                 className="px-3 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50 text-sm font-medium"
               >
                 {bulkDeprecating ? 'Deprecating…' : 'Bulk deprecation (§2.4)'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={handleExportSelected}
                 disabled={bulkInProgress}
@@ -1728,8 +1706,8 @@ export default function ActionCatalogEntriesPage() {
                 title="Export selected as JSON (§2.4.2)"
               >
                 Export selected (JSON)
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={handleExportSelectedCsv}
                 disabled={bulkInProgress}
@@ -1737,15 +1715,15 @@ export default function ActionCatalogEntriesPage() {
                 title="Export selected as CSV (§2.4.2)"
               >
                 Export selected (CSV)
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={clearSelection}
                 disabled={bulkInProgress}
                 className="px-3 py-1.5 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
               >
                 Clear selection
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -1768,7 +1746,7 @@ export default function ActionCatalogEntriesPage() {
           <div className="p-4 border-b flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold">Entries</h2>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={fetchEntries}
                 disabled={loading}
@@ -1776,36 +1754,36 @@ export default function ActionCatalogEntriesPage() {
                 aria-label="Refresh entries"
               >
                 Refresh
-              </button>
+              </Button>
               <div className="flex gap-1" role="group" aria-label="View mode (§2.1.1)">
-              <button
+              <Button
                 type="button"
                 onClick={() => setViewMode('table')}
                 className={`px-3 py-1.5 text-sm font-medium rounded border ${viewMode === 'table' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
               >
                 Table
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => setViewMode('card')}
                 className={`px-3 py-1.5 text-sm font-medium rounded border ${viewMode === 'card' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
               >
                 Card (§2.1.1)
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => setViewMode('timeline')}
                 className={`px-3 py-1.5 text-sm font-medium rounded border ${viewMode === 'timeline' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
               >
                 Timeline (§2.1.1)
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => setViewMode('graph')}
                 className={`px-3 py-1.5 text-sm font-medium rounded border ${viewMode === 'graph' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-700 dark:text-blue-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
               >
                 Graph (§2.1.1)
-              </button>
+              </Button>
             </div>
             </div>
           </div>
@@ -1849,27 +1827,27 @@ export default function ActionCatalogEntriesPage() {
                                   {new Date(e.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                               )}
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() => openEdit(e)}
                                 className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                               >
                                 Edit
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                 type="button"
                                 onClick={() => handleDuplicate(e)}
                                 className="text-sm text-gray-600 dark:text-gray-400 hover:underline"
                               >
                                 Duplicate
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                 type="button"
                                 onClick={() => setTestEntry(e)}
                                 className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
                               >
                                 Test
-                              </button>
+                              </Button>
                             </li>
                           ))}
                         </ul>
@@ -1882,14 +1860,12 @@ export default function ActionCatalogEntriesPage() {
           ) : viewMode === 'card' ? (
             <div className="p-4" role="region" aria-label="Entries as cards">
               <div className="flex items-center gap-2 mb-3">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={sorted.length > 0 && sorted.every((e) => selectedEntryIds.has(e.id))}
-                  onChange={() => {
+                  onCheckedChange={() => {
                     if (selectedEntryIds.size === sorted.length) clearSelection();
                     else selectAllOnPage();
                   }}
-                  className="rounded border-gray-300 dark:border-gray-600"
                   aria-label="Select all on page"
                 />
                 <span className="text-sm text-gray-600 dark:text-gray-400">Select all</span>
@@ -1901,11 +1877,10 @@ export default function ActionCatalogEntriesPage() {
                     className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 p-4 flex flex-col min-h-0"
                   >
                     <div className="flex items-start gap-2 mb-2">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={selectedEntryIds.has(e.id)}
-                        onChange={() => toggleSelection(e.id)}
-                        className="mt-0.5 rounded border-gray-300 dark:border-gray-600 shrink-0"
+                        onCheckedChange={() => toggleSelection(e.id)}
+                        className="mt-0.5 shrink-0"
                         aria-label={`Select ${e.displayName || e.name}`}
                         onClick={(ev) => ev.stopPropagation()}
                       />
@@ -1939,34 +1914,34 @@ export default function ActionCatalogEntriesPage() {
                       </p>
                     )}
                     <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                      <button
+                      <Button
                         type="button"
                         onClick={() => openEdit(e)}
                         className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                       >
                         Edit
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         onClick={() => handleDuplicate(e)}
                         className="text-sm text-gray-600 dark:text-gray-400 hover:underline"
                       >
                         Duplicate
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         onClick={() => setTestEntry(e)}
                         className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
                       >
                         Test
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
                         onClick={() => handleDelete(e.id)}
                         className="text-sm text-red-600 dark:text-red-400 hover:underline"
                       >
                         Delete
-                      </button>
+                      </Button>
                     </div>
                   </article>
                 ))}
@@ -2115,15 +2090,12 @@ export default function ActionCatalogEntriesPage() {
                 <thead>
                   <tr className="border-b bg-gray-50 dark:bg-gray-800">
                     <th className="text-left py-2 px-4 w-10">
-                      <input
-                        ref={selectAllRef}
-                        type="checkbox"
+                      <Checkbox
                         checked={sorted.length > 0 && sorted.every((e) => selectedEntryIds.has(e.id))}
-                        onChange={() => {
+                        onCheckedChange={() => {
                           if (selectedEntryIds.size === sorted.length) clearSelection();
                           else selectAllOnPage();
                         }}
-                        className="rounded border-gray-300 dark:border-gray-600"
                         aria-label="Select all on page"
                       />
                     </th>
@@ -2139,11 +2111,9 @@ export default function ActionCatalogEntriesPage() {
                   {sorted.map((e) => (
                     <tr key={e.id} className="border-b">
                       <td className="py-2 px-4">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={selectedEntryIds.has(e.id)}
-                          onChange={() => toggleSelection(e.id)}
-                          className="rounded border-gray-300 dark:border-gray-600"
+                          onCheckedChange={() => toggleSelection(e.id)}
                           aria-label={`Select ${e.displayName || e.name}`}
                         />
                       </td>
@@ -2161,34 +2131,34 @@ export default function ActionCatalogEntriesPage() {
                       <td className="py-2 px-4">{e.version ?? '—'}</td>
                       <td className="py-2 px-4">
                         <div className="flex gap-2">
-                          <button
+                          <Button
                             type="button"
                             onClick={() => openEdit(e)}
                             className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
                           >
                             Edit
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
                             onClick={() => handleDuplicate(e)}
                             className="text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 text-sm"
                           >
                             Duplicate
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
                             onClick={() => setTestEntry(e)}
                             className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 text-sm"
                           >
                             Test
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
                             onClick={() => handleDelete(e.id)}
                             className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm"
                           >
                             Delete
-                          </button>
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -2219,8 +2189,8 @@ export default function ActionCatalogEntriesPage() {
               {testEntry.type && <span className="ml-2 text-gray-500">({testEntry.type})</span>}
             </p>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Input sample data</label>
-              <textarea
+              <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Input sample data</Label>
+              <Textarea
                 ref={testSampleTextareaRef}
                 value={testSampleJson}
                 onChange={(e) => setTestSampleJson(e.target.value)}
@@ -2237,13 +2207,13 @@ export default function ActionCatalogEntriesPage() {
               Testing playground will also support: select from real opportunities, generate synthetic data, view detection confidence and rendered template, and test outcomes (success rate, sentiment, action rate). Full implementation coming soon.
             </p>
             <div className="flex justify-end">
-              <button
+              <Button
                 type="button"
                 onClick={() => { setTestEntry(null); setTestSampleJson(''); }}
                 className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 text-sm"
               >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -2261,80 +2231,70 @@ export default function ActionCatalogEntriesPage() {
             <h2 id="export-dialog-title" className="text-lg font-semibold mb-4">Export catalog (§2.4.2)</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Scope</label>
-                <select
-                  value={exportScope}
-                  onChange={(e) => setExportScope(e.target.value as 'all' | 'selected')}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                  aria-label="Export scope"
-                >
-                  <option value="all">All entries</option>
-                  <option value="selected">Selected only ({selectedEntryIds.size})</option>
-                </select>
+                <Label className="block text-sm font-medium mb-1">Scope</Label>
+                <Select value={exportScope} onValueChange={(v) => setExportScope(v as 'all' | 'selected')}>
+                  <SelectTrigger className="w-full text-sm" aria-label="Export scope"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All entries</SelectItem>
+                    <SelectItem value="selected">Selected only ({selectedEntryIds.size})</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Format</label>
-                <select
-                  value={exportFormat}
-                  onChange={(e) => setExportFormat(e.target.value as 'json' | 'csv' | 'excel')}
-                  className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                  aria-label="Export format"
-                >
-                  <option value="json">JSON</option>
-                  <option value="csv">CSV</option>
-                  <option value="excel">Excel (.xlsx)</option>
-                </select>
+                <Label className="block text-sm font-medium mb-1">Format</Label>
+                <Select value={exportFormat} onValueChange={(v) => setExportFormat(v as 'json' | 'csv' | 'excel')}>
+                  <SelectTrigger className="w-full text-sm" aria-label="Export format"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="json">JSON</SelectItem>
+                    <SelectItem value="csv">CSV</SelectItem>
+                    <SelectItem value="excel">Excel (.xlsx)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2 border-t border-gray-200 dark:border-gray-700 pt-3">
-                <label className="block text-sm font-medium">Include</label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                <Label className="block text-sm font-medium">Include</Label>
+                <Label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
                     checked={exportIncludeRelationships}
-                    onChange={(e) => setExportIncludeRelationships(e.target.checked)}
-                    className="rounded border-gray-300 dark:border-gray-600"
+                    onCheckedChange={(c) => setExportIncludeRelationships(!!c)}
                     aria-label="Include relationships"
                   />
                   <span className="text-sm">Relationships (mitigatesRisks, mitigatingRecommendations)</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                </Label>
+                <Label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
                     checked={exportIncludeStatistics}
-                    onChange={(e) => setExportIncludeStatistics(e.target.checked)}
-                    className="rounded border-gray-300 dark:border-gray-600"
+                    onCheckedChange={(c) => setExportIncludeStatistics(!!c)}
                     aria-label="Include statistics"
                   />
                   <span className="text-sm">Statistics (usage: timesGenerated, avgFeedbackSentiment, etc.)</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                </Label>
+                <Label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
                     checked={exportIncludeVersionHistory}
-                    onChange={(e) => setExportIncludeVersionHistory(e.target.checked)}
-                    className="rounded border-gray-300 dark:border-gray-600"
+                    onCheckedChange={(c) => setExportIncludeVersionHistory(!!c)}
                     aria-label="Include version history"
                   />
                   <span className="text-sm">Version (version field)</span>
-                </label>
+                </Label>
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">
-              <button
+              <Button
                 type="button"
                 onClick={() => setExportDialogOpen(false)}
                 className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={handleExportFromDialog}
                 disabled={(exportScope === 'selected' && selectedEntryIds.size === 0) || (exportScope === 'all' && entries.length === 0)}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
               >
                 Export
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -2353,19 +2313,18 @@ export default function ActionCatalogEntriesPage() {
               {createWizardStep === 1 && (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Type</label>
-                    <select
-                      value={createForm.type}
-                      onChange={(e) => setCreateForm((f) => ({ ...f, type: e.target.value as 'risk' | 'recommendation' }))}
-                      className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-                    >
-                      <option value="risk">Risk</option>
-                      <option value="recommendation">Recommendation</option>
-                    </select>
+                    <Label className="block text-sm font-medium mb-1">Type</Label>
+                    <Select value={createForm.type} onValueChange={(v) => setCreateForm((f) => ({ ...f, type: v as 'risk' | 'recommendation' }))}>
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="risk">Risk</SelectItem>
+                        <SelectItem value="recommendation">Recommendation</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Category</label>
-                    <input
+                    <Label className="block text-sm font-medium mb-1">Category</Label>
+                    <Input
                       type="text"
                       value={createForm.category}
                       onChange={(e) => setCreateForm((f) => ({ ...f, category: e.target.value }))}
@@ -2374,8 +2333,8 @@ export default function ActionCatalogEntriesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Subcategory (optional)</label>
-                    <input
+                    <Label className="block text-sm font-medium mb-1">Subcategory (optional)</Label>
+                    <Input
                       type="text"
                       value={createForm.subcategory}
                       onChange={(e) => setCreateForm((f) => ({ ...f, subcategory: e.target.value }))}
@@ -2384,8 +2343,8 @@ export default function ActionCatalogEntriesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Name (slug)</label>
-                    <input
+                    <Label className="block text-sm font-medium mb-1">Name (slug)</Label>
+                    <Input
                       type="text"
                       value={createForm.name}
                       onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
@@ -2395,8 +2354,8 @@ export default function ActionCatalogEntriesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Display name</label>
-                    <input
+                    <Label className="block text-sm font-medium mb-1">Display name</Label>
+                    <Input
                       type="text"
                       value={createForm.displayName}
                       onChange={(e) => setCreateForm((f) => ({ ...f, displayName: e.target.value }))}
@@ -2405,8 +2364,8 @@ export default function ActionCatalogEntriesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Description</label>
-                    <textarea
+                    <Label className="block text-sm font-medium mb-1">Description</Label>
+                    <Textarea
                       value={createForm.description}
                       onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
                       rows={2}
@@ -2421,46 +2380,50 @@ export default function ActionCatalogEntriesPage() {
                     <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Risk details</span>
                     <div className="space-y-2">
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Severity</label>
-                        <select
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Severity</Label>
+                        <Select
                           value={createForm.riskDetails.severity}
-                          onChange={(e) =>
+                          onValueChange={(v) =>
                             setCreateForm((f) => ({
                               ...f,
-                              riskDetails: { ...f.riskDetails, severity: e.target.value as RiskSeverity },
+                              riskDetails: { ...f.riskDetails, severity: v as RiskSeverity },
                             }))
                           }
-                          className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                         >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                          <option value="critical">Critical</option>
-                        </select>
+                          <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="critical">Critical</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Impact type</label>
-                        <select
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Impact type</Label>
+                        <Select
                           value={createForm.riskDetails.impactType}
-                          onChange={(e) =>
+                          onValueChange={(v) =>
                             setCreateForm((f) => ({
                               ...f,
-                              riskDetails: { ...f.riskDetails, impactType: e.target.value as RiskImpactType },
+                              riskDetails: { ...f.riskDetails, impactType: v as RiskImpactType },
                             }))
                           }
-                          className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                         >
-                          <option value="commercial">Commercial</option>
-                          <option value="technical">Technical</option>
-                          <option value="legal">Legal</option>
-                          <option value="competitive">Competitive</option>
-                          <option value="timeline">Timeline</option>
-                          <option value="resource">Resource</option>
-                        </select>
+                          <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="commercial">Commercial</SelectItem>
+                            <SelectItem value="technical">Technical</SelectItem>
+                            <SelectItem value="legal">Legal</SelectItem>
+                            <SelectItem value="competitive">Competitive</SelectItem>
+                            <SelectItem value="timeline">Timeline</SelectItem>
+                            <SelectItem value="resource">Resource</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Indicators (comma-separated)</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Indicators (comma-separated)</Label>
+                        <Input
                           type="text"
                           value={createForm.riskDetails.indicators.join(', ')}
                           onChange={(e) =>
@@ -2477,8 +2440,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Mitigating recommendations (IDs, comma-separated)</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Mitigating recommendations (IDs, comma-separated)</Label>
+                        <Input
                           type="text"
                           value={createForm.riskDetails.mitigatingRecommendations.join(', ')}
                           onChange={(e) =>
@@ -2498,8 +2461,8 @@ export default function ActionCatalogEntriesPage() {
                         <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Impact assessment (§2.1.2)</span>
                         <div className="grid grid-cols-3 gap-2">
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Win prob. decrease (%)</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Win prob. decrease (%)</Label>
+                            <Input
                               type="number"
                               min={0}
                               max={100}
@@ -2519,8 +2482,8 @@ export default function ActionCatalogEntriesPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Revenue at risk ($)</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Revenue at risk ($)</Label>
+                            <Input
                               type="number"
                               min={0}
                               value={createForm.riskDetails.impact?.revenueAtRisk ?? ''}
@@ -2539,8 +2502,8 @@ export default function ActionCatalogEntriesPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Timeline delay (days)</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Timeline delay (days)</Label>
+                            <Input
                               type="number"
                               min={0}
                               value={createForm.riskDetails.impact?.timelineDelay ?? ''}
@@ -2560,8 +2523,8 @@ export default function ActionCatalogEntriesPage() {
                           </div>
                         </div>
                         <div className="mt-1.5">
-                          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Impact description</label>
-                          <textarea
+                          <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Impact description</Label>
+                          <Textarea
                             value={createForm.riskDetails.impact?.description ?? ''}
                             onChange={(e) =>
                               setCreateForm((f) => ({
@@ -2582,8 +2545,8 @@ export default function ActionCatalogEntriesPage() {
                         <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">ML features (§2.1.2)</span>
                         <div className="flex gap-2 flex-wrap">
                           <div className="flex-1 min-w-0">
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Feature names (comma-separated)</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Feature names (comma-separated)</Label>
+                            <Input
                               type="text"
                               value={(createForm.riskDetails.mlFeatures ?? []).join(', ')}
                               onChange={(e) =>
@@ -2600,8 +2563,8 @@ export default function ActionCatalogEntriesPage() {
                             />
                           </div>
                           <div className="w-24">
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Threshold</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Threshold</Label>
+                            <Input
                               type="number"
                               value={createForm.riskDetails.mlThreshold ?? ''}
                               onChange={(e) => {
@@ -2626,30 +2589,32 @@ export default function ActionCatalogEntriesPage() {
                     <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Recommendation details</span>
                     <div className="space-y-2">
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Recommendation type</label>
-                        <select
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Recommendation type</Label>
+                        <Select
                           value={createForm.recommendationDetails.recommendationType}
-                          onChange={(e) =>
+                          onValueChange={(v) =>
                             setCreateForm((f) => ({
                               ...f,
                               recommendationDetails: {
                                 ...f.recommendationDetails,
-                                recommendationType: e.target.value as RecommendationTypeCatalog,
+                                recommendationType: v as RecommendationTypeCatalog,
                               },
                             }))
                           }
-                          className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                         >
-                          <option value="next_action">Next action</option>
-                          <option value="risk_mitigation">Risk mitigation</option>
-                          <option value="reactivation">Reactivation</option>
-                          <option value="content">Content</option>
-                          <option value="methodology">Methodology</option>
-                        </select>
+                          <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="next_action">Next action</SelectItem>
+                            <SelectItem value="risk_mitigation">Risk mitigation</SelectItem>
+                            <SelectItem value="reactivation">Reactivation</SelectItem>
+                            <SelectItem value="content">Content</SelectItem>
+                            <SelectItem value="methodology">Methodology</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action template: title</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action template: title</Label>
+                        <Input
                           type="text"
                           value={createForm.recommendationDetails.actionTemplate.title}
                           onChange={(e) =>
@@ -2666,8 +2631,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action template: description</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action template: description</Label>
+                        <Input
                           type="text"
                           value={createForm.recommendationDetails.actionTemplate.description}
                           onChange={(e) =>
@@ -2684,8 +2649,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action items (comma-separated)</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action items (comma-separated)</Label>
+                        <Input
                           type="text"
                           value={createForm.recommendationDetails.actionTemplate.actionItemsTemplate.join(', ')}
                           onChange={(e) =>
@@ -2705,8 +2670,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Reasoning template</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Reasoning template</Label>
+                        <Input
                           type="text"
                           value={createForm.recommendationDetails.actionTemplate.reasoningTemplate}
                           onChange={(e) =>
@@ -2723,8 +2688,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Expected outcome template</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Expected outcome template</Label>
+                        <Input
                           type="text"
                           value={createForm.recommendationDetails.actionTemplate.expectedOutcomeTemplate}
                           onChange={(e) =>
@@ -2741,8 +2706,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Mitigates risks (IDs, comma-separated)</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Mitigates risks (IDs, comma-separated)</Label>
+                        <Input
                           type="text"
                           value={createForm.recommendationDetails.mitigatesRisks.join(', ')}
                           onChange={(e) =>
@@ -2759,8 +2724,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Required data (comma-separated)</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Required data (comma-separated)</Label>
+                        <Input
                           type="text"
                           value={createForm.recommendationDetails.requiredData.join(', ')}
                           onChange={(e) =>
@@ -2778,34 +2743,36 @@ export default function ActionCatalogEntriesPage() {
                       </div>
                       <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
                         <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Action type (§2.1.3)</span>
-                        <select
-                          value={createForm.recommendationDetails.actionType ?? ''}
-                          onChange={(e) =>
+                        <Select
+                          value={createForm.recommendationDetails.actionType ?? '_'}
+                          onValueChange={(v) =>
                             setCreateForm((f) => ({
                               ...f,
                               recommendationDetails: {
                                 ...f.recommendationDetails,
-                                actionType: (e.target.value || undefined) as RecommendationActionType | undefined,
+                                actionType: (v === '_' ? undefined : v) as RecommendationActionType | undefined,
                               },
                             }))
                           }
-                          className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                         >
-                          <option value="">—</option>
-                          <option value="meeting">Meeting</option>
-                          <option value="email">Email</option>
-                          <option value="task">Task</option>
-                          <option value="document">Document</option>
-                          <option value="question">Question</option>
-                          <option value="analysis">Analysis</option>
-                        </select>
+                          <SelectTrigger className="w-full text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_">—</SelectItem>
+                            <SelectItem value="meeting">Meeting</SelectItem>
+                            <SelectItem value="email">Email</SelectItem>
+                            <SelectItem value="task">Task</SelectItem>
+                            <SelectItem value="document">Document</SelectItem>
+                            <SelectItem value="question">Question</SelectItem>
+                            <SelectItem value="analysis">Analysis</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
                         <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Expected outcome (§2.1.3)</span>
                         <div className="space-y-1.5">
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Description</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Description</Label>
+                            <Input
                               type="text"
                               value={createForm.recommendationDetails.expectedOutcome?.description ?? ''}
                               onChange={(e) =>
@@ -2823,8 +2790,8 @@ export default function ActionCatalogEntriesPage() {
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Quantified impact</label>
-                              <input
+                              <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Quantified impact</Label>
+                              <Input
                                 type="text"
                                 value={createForm.recommendationDetails.expectedOutcome?.quantifiedImpact ?? ''}
                                 onChange={(e) =>
@@ -2841,54 +2808,58 @@ export default function ActionCatalogEntriesPage() {
                               />
                             </div>
                             <div>
-                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Impact type</label>
-                              <select
-                                value={createForm.recommendationDetails.expectedOutcome?.impactType ?? ''}
-                                onChange={(e) =>
+                              <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Impact type</Label>
+                              <Select
+                                value={createForm.recommendationDetails.expectedOutcome?.impactType ?? '_'}
+                                onValueChange={(v) =>
                                   setCreateForm((f) => ({
                                     ...f,
                                     recommendationDetails: {
                                       ...f.recommendationDetails,
-                                      expectedOutcome: { ...(f.recommendationDetails.expectedOutcome ?? DEFAULT_EXPECTED_OUTCOME), impactType: (e.target.value || undefined) as RecommendationExpectedOutcome['impactType'] },
+                                      expectedOutcome: { ...(f.recommendationDetails.expectedOutcome ?? DEFAULT_EXPECTED_OUTCOME), impactType: (v === '_' ? undefined : v) as RecommendationExpectedOutcome['impactType'] },
                                     },
                                   }))
                                 }
-                                className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                               >
-                                <option value="">—</option>
-                                <option value="probability">Probability</option>
-                                <option value="revenue">Revenue</option>
-                                <option value="timeline">Timeline</option>
-                                <option value="risk_reduction">Risk reduction</option>
-                                <option value="efficiency">Efficiency</option>
-                              </select>
+                                <SelectTrigger className="w-full text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="_">—</SelectItem>
+                                  <SelectItem value="probability">Probability</SelectItem>
+                                  <SelectItem value="revenue">Revenue</SelectItem>
+                                  <SelectItem value="timeline">Timeline</SelectItem>
+                                  <SelectItem value="risk_reduction">Risk reduction</SelectItem>
+                                  <SelectItem value="efficiency">Efficiency</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                           </div>
                           <div className="flex gap-2">
                             <div>
-                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Confidence</label>
-                              <select
-                                value={createForm.recommendationDetails.expectedOutcome?.confidence ?? ''}
-                                onChange={(e) =>
+                              <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Confidence</Label>
+                              <Select
+                                value={createForm.recommendationDetails.expectedOutcome?.confidence ?? '_'}
+                                onValueChange={(v) =>
                                   setCreateForm((f) => ({
                                     ...f,
                                     recommendationDetails: {
                                       ...f.recommendationDetails,
-                                      expectedOutcome: { ...(f.recommendationDetails.expectedOutcome ?? DEFAULT_EXPECTED_OUTCOME), confidence: (e.target.value || undefined) as 'low' | 'medium' | 'high' },
+                                      expectedOutcome: { ...(f.recommendationDetails.expectedOutcome ?? DEFAULT_EXPECTED_OUTCOME), confidence: (v === '_' ? undefined : v) as 'low' | 'medium' | 'high' },
                                     },
                                   }))
                                 }
-                                className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                               >
-                                <option value="">—</option>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                              </select>
+                                <SelectTrigger className="w-full text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="_">—</SelectItem>
+                                  <SelectItem value="low">Low</SelectItem>
+                                  <SelectItem value="medium">Medium</SelectItem>
+                                  <SelectItem value="high">High</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                             <div className="flex-1">
-                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Evidence</label>
-                              <input
+                              <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Evidence</Label>
+                              <Input
                                 type="text"
                                 value={createForm.recommendationDetails.expectedOutcome?.evidence ?? ''}
                                 onChange={(e) =>
@@ -2911,50 +2882,54 @@ export default function ActionCatalogEntriesPage() {
                         <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Implementation (§2.1.3)</span>
                         <div className="grid grid-cols-3 gap-2">
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Effort</label>
-                            <select
-                              value={createForm.recommendationDetails.implementation?.effort ?? ''}
-                              onChange={(e) =>
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Effort</Label>
+                            <Select
+                              value={createForm.recommendationDetails.implementation?.effort ?? '_'}
+                              onValueChange={(v) =>
                                 setCreateForm((f) => ({
                                   ...f,
                                   recommendationDetails: {
                                     ...f.recommendationDetails,
-                                    implementation: { ...(f.recommendationDetails.implementation ?? DEFAULT_IMPLEMENTATION), effort: (e.target.value || undefined) as 'low' | 'medium' | 'high' },
+                                    implementation: { ...(f.recommendationDetails.implementation ?? DEFAULT_IMPLEMENTATION), effort: (v === '_' ? undefined : v) as 'low' | 'medium' | 'high' },
                                   },
                                 }))
                               }
-                              className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                             >
-                              <option value="">—</option>
-                              <option value="low">Low</option>
-                              <option value="medium">Medium</option>
-                              <option value="high">High</option>
-                            </select>
+                              <SelectTrigger className="w-full text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="_">—</SelectItem>
+                                <SelectItem value="low">Low</SelectItem>
+                                <SelectItem value="medium">Medium</SelectItem>
+                                <SelectItem value="high">High</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Complexity</label>
-                            <select
-                              value={createForm.recommendationDetails.implementation?.complexity ?? ''}
-                              onChange={(e) =>
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Complexity</Label>
+                            <Select
+                              value={createForm.recommendationDetails.implementation?.complexity ?? '_'}
+                              onValueChange={(v) =>
                                 setCreateForm((f) => ({
                                   ...f,
                                   recommendationDetails: {
                                     ...f.recommendationDetails,
-                                    implementation: { ...(f.recommendationDetails.implementation ?? DEFAULT_IMPLEMENTATION), complexity: (e.target.value || undefined) as 'simple' | 'moderate' | 'complex' },
+                                    implementation: { ...(f.recommendationDetails.implementation ?? DEFAULT_IMPLEMENTATION), complexity: (v === '_' ? undefined : v) as 'simple' | 'moderate' | 'complex' },
                                   },
                                 }))
                               }
-                              className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                             >
-                              <option value="">—</option>
-                              <option value="simple">Simple</option>
-                              <option value="moderate">Moderate</option>
-                              <option value="complex">Complex</option>
-                            </select>
+                              <SelectTrigger className="w-full text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="_">—</SelectItem>
+                                <SelectItem value="simple">Simple</SelectItem>
+                                <SelectItem value="moderate">Moderate</SelectItem>
+                                <SelectItem value="complex">Complex</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Estimated time</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Estimated time</Label>
+                            <Input
                               type="text"
                               value={createForm.recommendationDetails.implementation?.estimatedTime ?? ''}
                               onChange={(e) =>
@@ -2979,8 +2954,8 @@ export default function ActionCatalogEntriesPage() {
               {createWizardStep === 3 && (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Applicable industries (comma-separated)</label>
-                    <input
+                    <Label className="block text-sm font-medium mb-1">Applicable industries (comma-separated)</Label>
+                    <Input
                       type="text"
                       value={createForm.applicableIndustries.join(', ')}
                       onChange={(e) =>
@@ -2994,8 +2969,8 @@ export default function ActionCatalogEntriesPage() {
                     />
                   </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Applicable stages (comma-separated)</label>
-                  <input
+                  <Label className="block text-sm font-medium mb-1">Applicable stages (comma-separated)</Label>
+                  <Input
                     type="text"
                     value={createForm.applicableStages.join(', ')}
                     onChange={(e) =>
@@ -3009,8 +2984,8 @@ export default function ActionCatalogEntriesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Applicable methodologies (comma-separated)</label>
-                  <input
+                  <Label className="block text-sm font-medium mb-1">Applicable methodologies (comma-separated)</Label>
+                  <Input
                     type="text"
                     value={createForm.applicableMethodologies.join(', ')}
                     onChange={(e) =>
@@ -3024,32 +2999,30 @@ export default function ActionCatalogEntriesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Opportunity types (§2.1.2/§2.1.3)</label>
+                  <Label className="block text-sm font-medium mb-1">Opportunity types (§2.1.2/§2.1.3)</Label>
                   <div className="flex flex-wrap gap-3">
                     {OPPORTUNITY_TYPES.map((ot) => (
-                      <label key={ot} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
+                      <Label key={ot} className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
                           checked={createForm.applicableOpportunityTypes.includes(ot)}
-                          onChange={(e) =>
+                          onCheckedChange={(checked) =>
                             setCreateForm((f) => ({
                               ...f,
-                              applicableOpportunityTypes: e.target.checked
+                              applicableOpportunityTypes: checked
                                 ? [...f.applicableOpportunityTypes, ot]
                                 : f.applicableOpportunityTypes.filter((x) => x !== ot),
                             }))
                           }
-                          className="rounded border-gray-300 dark:border-gray-600"
                         />
                         <span className="text-sm capitalize">{ot.replace('_', ' ')}</span>
-                      </label>
+                      </Label>
                     ))}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Min amount ($)</label>
-                    <input
+                    <Label className="block text-sm font-medium mb-1">Min amount ($)</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={createForm.minAmount ?? ''}
@@ -3064,8 +3037,8 @@ export default function ActionCatalogEntriesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Max amount ($)</label>
-                    <input
+                    <Label className="block text-sm font-medium mb-1">Max amount ($)</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={createForm.maxAmount ?? ''}
@@ -3090,76 +3063,68 @@ export default function ActionCatalogEntriesPage() {
                       <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Risk detection (§2.1.2)</span>
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             id="createAutoDetect"
                             checked={createForm.riskDetails.autoDetect ?? false}
-                            onChange={(e) =>
+                            onCheckedChange={(c) =>
                               setCreateForm((f) => ({
                                 ...f,
-                                riskDetails: { ...f.riskDetails, autoDetect: e.target.checked },
+                                riskDetails: { ...f.riskDetails, autoDetect: !!c },
                               }))
                             }
-                            className="rounded"
                           />
-                          <label htmlFor="createAutoDetect" className="text-sm">Auto-detect this risk</label>
+                          <Label htmlFor="createAutoDetect" className="text-sm">Auto-detect this risk</Label>
                         </div>
                         <span className="block text-xs text-gray-600 dark:text-gray-400 mt-2">Notification rules</span>
                         <div className="flex flex-wrap gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
+                          <Label className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
                               checked={createForm.riskDetails.notificationRules?.notifyOwner ?? true}
-                              onChange={(e) =>
+                              onCheckedChange={(c) =>
                                 setCreateForm((f) => ({
                                   ...f,
                                   riskDetails: {
                                     ...f.riskDetails,
-                                    notificationRules: { ...(f.riskDetails.notificationRules ?? DEFAULT_RISK_NOTIFICATION_RULES), notifyOwner: e.target.checked },
+                                    notificationRules: { ...(f.riskDetails.notificationRules ?? DEFAULT_RISK_NOTIFICATION_RULES), notifyOwner: !!c },
                                   },
                                 }))
                               }
-                              className="rounded"
                             />
                             <span className="text-sm">Notify owner</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
+                          </Label>
+                          <Label className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
                               checked={createForm.riskDetails.notificationRules?.notifyManager ?? false}
-                              onChange={(e) =>
+                              onCheckedChange={(c) =>
                                 setCreateForm((f) => ({
                                   ...f,
                                   riskDetails: {
                                     ...f.riskDetails,
-                                    notificationRules: { ...(f.riskDetails.notificationRules ?? DEFAULT_RISK_NOTIFICATION_RULES), notifyManager: e.target.checked },
+                                    notificationRules: { ...(f.riskDetails.notificationRules ?? DEFAULT_RISK_NOTIFICATION_RULES), notifyManager: !!c },
                                   },
                                 }))
                               }
-                              className="rounded"
                             />
                             <span className="text-sm">Notify manager</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
+                          </Label>
+                          <Label className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
                               checked={createForm.riskDetails.notificationRules?.escalateIfCritical ?? false}
-                              onChange={(e) =>
+                              onCheckedChange={(c) =>
                                 setCreateForm((f) => ({
                                   ...f,
                                   riskDetails: {
                                     ...f.riskDetails,
-                                    notificationRules: { ...(f.riskDetails.notificationRules ?? DEFAULT_RISK_NOTIFICATION_RULES), escalateIfCritical: e.target.checked },
+                                    notificationRules: { ...(f.riskDetails.notificationRules ?? DEFAULT_RISK_NOTIFICATION_RULES), escalateIfCritical: !!c },
                                   },
                                 }))
                               }
-                              className="rounded"
                             />
                             <span className="text-sm">Escalate if critical</span>
-                          </label>
+                          </Label>
                           <div className="flex items-center gap-2">
-                            <label htmlFor="createEscalationDelay" className="text-sm whitespace-nowrap">Escalation delay (hours)</label>
-                            <input
+                            <Label htmlFor="createEscalationDelay" className="text-sm whitespace-nowrap">Escalation delay (hours)</Label>
+                            <Input
                               id="createEscalationDelay"
                               type="number"
                               min={0}
@@ -3183,70 +3148,70 @@ export default function ActionCatalogEntriesPage() {
                   <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Decision rules</span>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         id="createAutoGenerate"
                         checked={createForm.decisionRules.autoGenerate}
-                        onChange={(e) =>
+                        onCheckedChange={(c) =>
                           setCreateForm((f) => ({
                             ...f,
-                            decisionRules: { ...f.decisionRules, autoGenerate: e.target.checked },
+                            decisionRules: { ...f.decisionRules, autoGenerate: !!c },
                           }))
                         }
-                        className="rounded"
                       />
-                      <label htmlFor="createAutoGenerate" className="text-sm">Auto-generate</label>
+                      <Label htmlFor="createAutoGenerate" className="text-sm">Auto-generate</Label>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Priority</label>
-                      <select
+                      <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Priority</Label>
+                      <Select
                         value={createForm.decisionRules.priority}
-                        onChange={(e) =>
+                        onValueChange={(v) =>
                           setCreateForm((f) => ({
                             ...f,
-                            decisionRules: { ...f.decisionRules, priority: e.target.value as DecisionRulesPriority },
+                            decisionRules: { ...f.decisionRules, priority: v as DecisionRulesPriority },
                           }))
                         }
-                        className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                       >
-                        <option value="critical">Critical</option>
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                      </select>
+                        <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="critical">Critical</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="low">Low</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Urgency</label>
-                      <select
+                      <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Urgency</Label>
+                      <Select
                         value={createForm.decisionRules.urgency}
-                        onChange={(e) =>
+                        onValueChange={(v) =>
                           setCreateForm((f) => ({
                             ...f,
-                            decisionRules: { ...f.decisionRules, urgency: e.target.value as DecisionRulesUrgency },
+                            decisionRules: { ...f.decisionRules, urgency: v as DecisionRulesUrgency },
                           }))
                         }
-                        className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                       >
-                        <option value="immediate">Immediate</option>
-                        <option value="this_week">This week</option>
-                        <option value="this_month">This month</option>
-                        <option value="flexible">Flexible</option>
-                      </select>
+                        <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="immediate">Immediate</SelectItem>
+                          <SelectItem value="this_week">This week</SelectItem>
+                          <SelectItem value="this_month">This month</SelectItem>
+                          <SelectItem value="flexible">Flexible</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         id="createSuppressIfSimilar"
                         checked={createForm.decisionRules.suppressIfSimilarExists}
-                        onChange={(e) =>
+                        onCheckedChange={(c) =>
                           setCreateForm((f) => ({
                             ...f,
-                            decisionRules: { ...f.decisionRules, suppressIfSimilarExists: e.target.checked },
+                            decisionRules: { ...f.decisionRules, suppressIfSimilarExists: !!c },
                           }))
                         }
-                        className="rounded"
                       />
-                      <label htmlFor="createSuppressIfSimilar" className="text-sm">Suppress if similar exists</label>
+                      <Label htmlFor="createSuppressIfSimilar" className="text-sm">Suppress if similar exists</Label>
                     </div>
                   </div>
                 </div>
@@ -3293,16 +3258,16 @@ export default function ActionCatalogEntriesPage() {
 
               <div className="flex flex-wrap justify-end gap-2 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
                 {createWizardStep > 1 && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setCreateWizardStep((s) => s - 1)}
                     className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
                     Back
-                  </button>
+                  </Button>
                 )}
                 {createWizardStep < 5 && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       if (createWizardStep === 1 && (!createForm.name.trim() || !createForm.displayName.trim() || !createForm.category.trim())) {
@@ -3315,31 +3280,31 @@ export default function ActionCatalogEntriesPage() {
                     className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
                     Next
-                  </button>
+                  </Button>
                 )}
                 {createWizardStep === 5 && (
                   <>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => handleCreateSubmit('draft')}
                       disabled={formSaving}
                       className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
                     >
                       {formSaving ? 'Saving…' : 'Save as Draft'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => handleCreateSubmit('active')}
                       disabled={formSaving}
                       className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                     >
                       {formSaving ? 'Creating…' : 'Activate'}
-                    </button>
+                    </Button>
                   </>
                 )}
-                <button type="button" onClick={closeModal} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
+                <Button type="button" onClick={closeModal} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -3359,8 +3324,8 @@ export default function ActionCatalogEntriesPage() {
               {unifiedWizardStep === 1 && (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Category (shared)</label>
-                    <input
+                    <Label className="block text-sm font-medium mb-1">Category (shared)</Label>
+                    <Input
                       type="text"
                       value={unifiedForm.category}
                       onChange={(e) => setUnifiedForm((f) => ({ ...f, category: e.target.value }))}
@@ -3369,8 +3334,8 @@ export default function ActionCatalogEntriesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Subcategory (optional)</label>
-                    <input
+                    <Label className="block text-sm font-medium mb-1">Subcategory (optional)</Label>
+                    <Input
                       type="text"
                       value={unifiedForm.subcategory}
                       onChange={(e) => setUnifiedForm((f) => ({ ...f, subcategory: e.target.value }))}
@@ -3380,17 +3345,17 @@ export default function ActionCatalogEntriesPage() {
                   <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
                     <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Risk — basic</span>
                     <div className="space-y-2">
-                      <input type="text" value={unifiedForm.riskName} onChange={(e) => setUnifiedForm((f) => ({ ...f, riskName: e.target.value }))} placeholder="Name (slug)" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
-                      <input type="text" value={unifiedForm.riskDisplayName} onChange={(e) => setUnifiedForm((f) => ({ ...f, riskDisplayName: e.target.value }))} placeholder="Display name" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
-                      <textarea value={unifiedForm.riskDescription} onChange={(e) => setUnifiedForm((f) => ({ ...f, riskDescription: e.target.value }))} placeholder="Description" rows={2} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                      <Input type="text" value={unifiedForm.riskName} onChange={(e) => setUnifiedForm((f) => ({ ...f, riskName: e.target.value }))} placeholder="Name (slug)" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+                      <Input type="text" value={unifiedForm.riskDisplayName} onChange={(e) => setUnifiedForm((f) => ({ ...f, riskDisplayName: e.target.value }))} placeholder="Display name" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+                      <Textarea value={unifiedForm.riskDescription} onChange={(e) => setUnifiedForm((f) => ({ ...f, riskDescription: e.target.value }))} placeholder="Description" rows={2} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
                     </div>
                   </div>
                   <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
                     <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Recommendation — basic</span>
                     <div className="space-y-2">
-                      <input type="text" value={unifiedForm.recName} onChange={(e) => setUnifiedForm((f) => ({ ...f, recName: e.target.value }))} placeholder="Name (slug)" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
-                      <input type="text" value={unifiedForm.recDisplayName} onChange={(e) => setUnifiedForm((f) => ({ ...f, recDisplayName: e.target.value }))} placeholder="Display name" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
-                      <textarea value={unifiedForm.recDescription} onChange={(e) => setUnifiedForm((f) => ({ ...f, recDescription: e.target.value }))} placeholder="Description" rows={2} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                      <Input type="text" value={unifiedForm.recName} onChange={(e) => setUnifiedForm((f) => ({ ...f, recName: e.target.value }))} placeholder="Name (slug)" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+                      <Input type="text" value={unifiedForm.recDisplayName} onChange={(e) => setUnifiedForm((f) => ({ ...f, recDisplayName: e.target.value }))} placeholder="Display name" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+                      <Textarea value={unifiedForm.recDescription} onChange={(e) => setUnifiedForm((f) => ({ ...f, recDescription: e.target.value }))} placeholder="Description" rows={2} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
                     </div>
                   </div>
                 </div>
@@ -3400,20 +3365,34 @@ export default function ActionCatalogEntriesPage() {
                 <div className="space-y-2">
                   <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Risk details</span>
                   <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Severity</label>
-                    <select value={unifiedForm.riskDetails.severity} onChange={(e) => setUnifiedForm((f) => ({ ...f, riskDetails: { ...f.riskDetails, severity: e.target.value as RiskSeverity } }))} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm">
-                      <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option>
-                    </select>
+                    <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Severity</Label>
+                    <Select value={unifiedForm.riskDetails.severity} onValueChange={(v) => setUnifiedForm((f) => ({ ...f, riskDetails: { ...f.riskDetails, severity: v as RiskSeverity } }))}>
+                    <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Impact type</label>
-                    <select value={unifiedForm.riskDetails.impactType} onChange={(e) => setUnifiedForm((f) => ({ ...f, riskDetails: { ...f.riskDetails, impactType: e.target.value as RiskImpactType } }))} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm">
-                      <option value="commercial">Commercial</option><option value="technical">Technical</option><option value="legal">Legal</option><option value="competitive">Competitive</option><option value="timeline">Timeline</option><option value="resource">Resource</option>
-                    </select>
+                    <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Impact type</Label>
+                    <Select value={unifiedForm.riskDetails.impactType} onValueChange={(v) => setUnifiedForm((f) => ({ ...f, riskDetails: { ...f.riskDetails, impactType: v as RiskImpactType } }))}>
+                      <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="commercial">Commercial</SelectItem>
+                        <SelectItem value="technical">Technical</SelectItem>
+                        <SelectItem value="legal">Legal</SelectItem>
+                        <SelectItem value="competitive">Competitive</SelectItem>
+                        <SelectItem value="timeline">Timeline</SelectItem>
+                        <SelectItem value="resource">Resource</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Indicators (comma-separated)</label>
-                    <input type="text" value={unifiedForm.riskDetails.indicators.join(', ')} onChange={(e) => setUnifiedForm((f) => ({ ...f, riskDetails: { ...f.riskDetails, indicators: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) } }))} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" placeholder="e.g. stalled, no activity" />
+                    <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Indicators (comma-separated)</Label>
+                    <Input type="text" value={unifiedForm.riskDetails.indicators.join(', ')} onChange={(e) => setUnifiedForm((f) => ({ ...f, riskDetails: { ...f.riskDetails, indicators: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) } }))} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" placeholder="e.g. stalled, no activity" />
                   </div>
                   <p className="text-xs text-gray-500 mt-2">Link to recommendation will be set automatically after create.</p>
                 </div>
@@ -3423,22 +3402,29 @@ export default function ActionCatalogEntriesPage() {
                 <div className="space-y-2">
                   <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Recommendation details (linked to risk automatically)</span>
                   <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Recommendation type</label>
-                    <select value={unifiedForm.recommendationDetails.recommendationType} onChange={(e) => setUnifiedForm((f) => ({ ...f, recommendationDetails: { ...f.recommendationDetails, recommendationType: e.target.value as RecommendationTypeCatalog } }))} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm">
-                      <option value="next_action">Next action</option><option value="risk_mitigation">Risk mitigation</option><option value="reactivation">Reactivation</option><option value="content">Content</option><option value="methodology">Methodology</option>
-                    </select>
+                    <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Recommendation type</Label>
+                    <Select value={unifiedForm.recommendationDetails.recommendationType} onValueChange={(v) => setUnifiedForm((f) => ({ ...f, recommendationDetails: { ...f.recommendationDetails, recommendationType: v as RecommendationTypeCatalog } }))}>
+                      <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="next_action">Next action</SelectItem>
+                        <SelectItem value="risk_mitigation">Risk mitigation</SelectItem>
+                        <SelectItem value="reactivation">Reactivation</SelectItem>
+                        <SelectItem value="content">Content</SelectItem>
+                        <SelectItem value="methodology">Methodology</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action template: title</label>
-                    <input type="text" value={unifiedForm.recommendationDetails.actionTemplate.title} onChange={(e) => setUnifiedForm((f) => ({ ...f, recommendationDetails: { ...f.recommendationDetails, actionTemplate: { ...f.recommendationDetails.actionTemplate, title: e.target.value } } }))} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" placeholder="e.g. Schedule discovery call" />
+                    <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action template: title</Label>
+                    <Input type="text" value={unifiedForm.recommendationDetails.actionTemplate.title} onChange={(e) => setUnifiedForm((f) => ({ ...f, recommendationDetails: { ...f.recommendationDetails, actionTemplate: { ...f.recommendationDetails.actionTemplate, title: e.target.value } } }))} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" placeholder="e.g. Schedule discovery call" />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action template: description</label>
-                    <input type="text" value={unifiedForm.recommendationDetails.actionTemplate.description} onChange={(e) => setUnifiedForm((f) => ({ ...f, recommendationDetails: { ...f.recommendationDetails, actionTemplate: { ...f.recommendationDetails.actionTemplate, description: e.target.value } } }))} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" />
+                    <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action template: description</Label>
+                    <Input type="text" value={unifiedForm.recommendationDetails.actionTemplate.description} onChange={(e) => setUnifiedForm((f) => ({ ...f, recommendationDetails: { ...f.recommendationDetails, actionTemplate: { ...f.recommendationDetails.actionTemplate, description: e.target.value } } }))} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Required data (comma-separated)</label>
-                    <input type="text" value={unifiedForm.recommendationDetails.requiredData.join(', ')} onChange={(e) => setUnifiedForm((f) => ({ ...f, recommendationDetails: { ...f.recommendationDetails, requiredData: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) } }))} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" placeholder="e.g. stage, amount" />
+                    <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Required data (comma-separated)</Label>
+                    <Input type="text" value={unifiedForm.recommendationDetails.requiredData.join(', ')} onChange={(e) => setUnifiedForm((f) => ({ ...f, recommendationDetails: { ...f.recommendationDetails, requiredData: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) } }))} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm" placeholder="e.g. stage, amount" />
                   </div>
                 </div>
               )}
@@ -3446,36 +3432,36 @@ export default function ActionCatalogEntriesPage() {
               {unifiedWizardStep === 4 && (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Applicable industries (comma-separated)</label>
-                    <input type="text" value={unifiedForm.applicableIndustries.join(', ')} onChange={(e) => setUnifiedForm((f) => ({ ...f, applicableIndustries: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) }))} placeholder="e.g. technology, healthcare" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                    <Label className="block text-sm font-medium mb-1">Applicable industries (comma-separated)</Label>
+                    <Input type="text" value={unifiedForm.applicableIndustries.join(', ')} onChange={(e) => setUnifiedForm((f) => ({ ...f, applicableIndustries: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) }))} placeholder="e.g. technology, healthcare" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Applicable stages (comma-separated)</label>
-                    <input type="text" value={unifiedForm.applicableStages.join(', ')} onChange={(e) => setUnifiedForm((f) => ({ ...f, applicableStages: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) }))} placeholder="e.g. discovery, negotiation" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                    <Label className="block text-sm font-medium mb-1">Applicable stages (comma-separated)</Label>
+                    <Input type="text" value={unifiedForm.applicableStages.join(', ')} onChange={(e) => setUnifiedForm((f) => ({ ...f, applicableStages: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) }))} placeholder="e.g. discovery, negotiation" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Applicable methodologies (comma-separated)</label>
-                    <input type="text" value={unifiedForm.applicableMethodologies.join(', ')} onChange={(e) => setUnifiedForm((f) => ({ ...f, applicableMethodologies: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) }))} placeholder="e.g. MEDDIC, Challenger" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                    <Label className="block text-sm font-medium mb-1">Applicable methodologies (comma-separated)</Label>
+                    <Input type="text" value={unifiedForm.applicableMethodologies.join(', ')} onChange={(e) => setUnifiedForm((f) => ({ ...f, applicableMethodologies: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) }))} placeholder="e.g. MEDDIC, Challenger" className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Opportunity types</label>
+                    <Label className="block text-sm font-medium mb-1">Opportunity types</Label>
                     <div className="flex flex-wrap gap-3">
                       {OPPORTUNITY_TYPES.map((ot) => (
-                        <label key={ot} className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" checked={unifiedForm.applicableOpportunityTypes.includes(ot)} onChange={(e) => setUnifiedForm((f) => ({ ...f, applicableOpportunityTypes: e.target.checked ? [...f.applicableOpportunityTypes, ot] : f.applicableOpportunityTypes.filter((x) => x !== ot) }))} className="rounded border-gray-300 dark:border-gray-600" />
+                        <Label key={ot} className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox checked={unifiedForm.applicableOpportunityTypes.includes(ot)} onCheckedChange={(checked) => setUnifiedForm((f) => ({ ...f, applicableOpportunityTypes: checked ? [...f.applicableOpportunityTypes, ot] : f.applicableOpportunityTypes.filter((x) => x !== ot) }))} />
                           <span className="text-sm capitalize">{ot.replace('_', ' ')}</span>
-                        </label>
+                        </Label>
                       ))}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Min amount ($)</label>
-                      <input type="number" value={unifiedForm.minAmount ?? ''} onChange={(e) => setUnifiedForm((f) => ({ ...f, minAmount: e.target.value === '' ? undefined : Number(e.target.value) }))} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                      <Label className="block text-sm font-medium mb-1">Min amount ($)</Label>
+                      <Input type="number" value={unifiedForm.minAmount ?? ''} onChange={(e) => setUnifiedForm((f) => ({ ...f, minAmount: e.target.value === '' ? undefined : Number(e.target.value) }))} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Max amount ($)</label>
-                      <input type="number" value={unifiedForm.maxAmount ?? ''} onChange={(e) => setUnifiedForm((f) => ({ ...f, maxAmount: e.target.value === '' ? undefined : Number(e.target.value) }))} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                      <Label className="block text-sm font-medium mb-1">Max amount ($)</Label>
+                      <Input type="number" value={unifiedForm.maxAmount ?? ''} onChange={(e) => setUnifiedForm((f) => ({ ...f, maxAmount: e.target.value === '' ? undefined : Number(e.target.value) }))} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
                     </div>
                   </div>
                 </div>
@@ -3483,26 +3469,38 @@ export default function ActionCatalogEntriesPage() {
 
               {unifiedWizardStep === 5 && (
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={unifiedForm.decisionRules.autoGenerate} onChange={(e) => setUnifiedForm((f) => ({ ...f, decisionRules: { ...f.decisionRules, autoGenerate: e.target.checked } }))} className="rounded border-gray-300 dark:border-gray-600" />
+                  <Label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox checked={unifiedForm.decisionRules.autoGenerate} onCheckedChange={(c) => setUnifiedForm((f) => ({ ...f, decisionRules: { ...f.decisionRules, autoGenerate: !!c } }))} />
                     <span className="text-sm">Auto-generate</span>
-                  </label>
+                  </Label>
                   <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Priority</label>
-                    <select value={unifiedForm.decisionRules.priority} onChange={(e) => setUnifiedForm((f) => ({ ...f, decisionRules: { ...f.decisionRules, priority: e.target.value as DecisionRulesPriority } }))} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm">
-                      <option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
-                    </select>
+                    <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Priority</Label>
+                    <Select value={unifiedForm.decisionRules.priority} onValueChange={(v) => setUnifiedForm((f) => ({ ...f, decisionRules: { ...f.decisionRules, priority: v as DecisionRulesPriority } }))}>
+                      <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="critical">Critical</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Urgency</label>
-                    <select value={unifiedForm.decisionRules.urgency} onChange={(e) => setUnifiedForm((f) => ({ ...f, decisionRules: { ...f.decisionRules, urgency: e.target.value as DecisionRulesUrgency } }))} className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm">
-                      <option value="immediate">Immediate</option><option value="this_week">This week</option><option value="this_month">This month</option><option value="flexible">Flexible</option>
-                    </select>
+                    <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Urgency</Label>
+                    <Select value={unifiedForm.decisionRules.urgency} onValueChange={(v) => setUnifiedForm((f) => ({ ...f, decisionRules: { ...f.decisionRules, urgency: v as DecisionRulesUrgency } }))}>
+                      <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="immediate">Immediate</SelectItem>
+                        <SelectItem value="this_week">This week</SelectItem>
+                        <SelectItem value="this_month">This month</SelectItem>
+                        <SelectItem value="flexible">Flexible</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={unifiedForm.decisionRules.suppressIfSimilarExists} onChange={(e) => setUnifiedForm((f) => ({ ...f, decisionRules: { ...f.decisionRules, suppressIfSimilarExists: e.target.checked } }))} className="rounded border-gray-300 dark:border-gray-600" />
+                  <Label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox checked={unifiedForm.decisionRules.suppressIfSimilarExists} onCheckedChange={(c) => setUnifiedForm((f) => ({ ...f, decisionRules: { ...f.decisionRules, suppressIfSimilarExists: !!c } }))} />
                     <span className="text-sm">Suppress if similar exists</span>
-                  </label>
+                  </Label>
                 </div>
               )}
 
@@ -3516,18 +3514,18 @@ export default function ActionCatalogEntriesPage() {
 
               <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                 {unifiedWizardStep < 6 && (
-                  <button type="button" onClick={() => setUnifiedWizardStep((s) => s + 1)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Next</button>
+                  <Button type="button" onClick={() => setUnifiedWizardStep((s) => s + 1)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Next</Button>
                 )}
                 {unifiedWizardStep > 1 && unifiedWizardStep < 6 && (
-                  <button type="button" onClick={() => setUnifiedWizardStep((s) => s - 1)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Back</button>
+                  <Button type="button" onClick={() => setUnifiedWizardStep((s) => s - 1)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Back</Button>
                 )}
                 {unifiedWizardStep === 6 && (
                   <>
-                    <button type="button" onClick={() => handleCreateUnifiedSubmit('draft')} disabled={formSaving} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50">{formSaving ? 'Saving…' : 'Save as Draft'}</button>
-                    <button type="button" onClick={() => handleCreateUnifiedSubmit('active')} disabled={formSaving} className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50">{formSaving ? 'Creating…' : 'Activate'}</button>
+                    <Button type="button" onClick={() => handleCreateUnifiedSubmit('draft')} disabled={formSaving} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50">{formSaving ? 'Saving…' : 'Save as Draft'}</Button>
+                    <Button type="button" onClick={() => handleCreateUnifiedSubmit('active')} disabled={formSaving} className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50">{formSaving ? 'Creating…' : 'Activate'}</Button>
                   </>
                 )}
-                <button type="button" onClick={closeModal} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</button>
+                <Button type="button" onClick={closeModal} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</Button>
               </div>
             </div>
           </div>
@@ -3541,7 +3539,7 @@ export default function ActionCatalogEntriesPage() {
               <h2 id="modal-title" className="text-lg font-semibold mb-2">{modalTitle}</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Version: {editVersion ?? '—'}</p>
               <div className="mb-4 border border-gray-200 dark:border-gray-700 rounded">
-                <button
+                <Button
                   type="button"
                   onClick={() => setEditVersionHistoryOpen((o) => !o)}
                   className="w-full px-3 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-between"
@@ -3549,7 +3547,7 @@ export default function ActionCatalogEntriesPage() {
                 >
                   Version history (§2.1.5)
                   <span className="text-gray-400">{editVersionHistoryOpen ? '▼' : '▶'}</span>
-                </button>
+                </Button>
                 {editVersionHistoryOpen && (
                   <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-600 dark:text-gray-400">
                     <p>Current version: {editVersion ?? '—'}</p>
@@ -3558,7 +3556,7 @@ export default function ActionCatalogEntriesPage() {
                 )}
               </div>
               <div className="mb-4 border border-gray-200 dark:border-gray-700 rounded">
-                <button
+                <Button
                   type="button"
                   onClick={() => setEditChangeImpactOpen((o) => !o)}
                   className="w-full px-3 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-between"
@@ -3566,7 +3564,7 @@ export default function ActionCatalogEntriesPage() {
                 >
                   Change impact (§2.1.5)
                   <span className="text-gray-400">{editChangeImpactOpen ? '▼' : '▶'}</span>
-                </button>
+                </Button>
                 {editChangeImpactOpen && (
                   <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-sm text-gray-600 dark:text-gray-400">
                     {editEntryType === 'risk' && (
@@ -3606,8 +3604,8 @@ export default function ActionCatalogEntriesPage() {
               {formError && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{formError}</p>}
               <form onSubmit={handleUpdate} className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Display name</label>
-                  <input
+                  <Label className="block text-sm font-medium mb-1">Display name</Label>
+                  <Input
                     type="text"
                     value={editForm.displayName}
                     onChange={(e) => setEditForm((f) => ({ ...f, displayName: e.target.value }))}
@@ -3616,8 +3614,8 @@ export default function ActionCatalogEntriesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Subcategory (optional)</label>
-                  <input
+                  <Label className="block text-sm font-medium mb-1">Subcategory (optional)</Label>
+                  <Input
                     type="text"
                     value={editForm.subcategory}
                     onChange={(e) => setEditForm((f) => ({ ...f, subcategory: e.target.value }))}
@@ -3626,8 +3624,8 @@ export default function ActionCatalogEntriesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
+                  <Label className="block text-sm font-medium mb-1">Description</Label>
+                  <Textarea
                     value={editForm.description}
                     onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
                     rows={2}
@@ -3639,46 +3637,50 @@ export default function ActionCatalogEntriesPage() {
                     <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Risk details</span>
                     <div className="space-y-2">
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Severity</label>
-                        <select
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Severity</Label>
+                        <Select
                           value={editForm.riskDetails.severity}
-                          onChange={(e) =>
+                          onValueChange={(v) =>
                             setEditForm((f) => ({
                               ...f,
-                              riskDetails: { ...f.riskDetails, severity: e.target.value as RiskSeverity },
+                              riskDetails: { ...f.riskDetails, severity: v as RiskSeverity },
                             }))
                           }
-                          className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                         >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                          <option value="critical">Critical</option>
-                        </select>
+                          <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="critical">Critical</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Impact type</label>
-                        <select
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Impact type</Label>
+                        <Select
                           value={editForm.riskDetails.impactType}
-                          onChange={(e) =>
+                          onValueChange={(v) =>
                             setEditForm((f) => ({
                               ...f,
-                              riskDetails: { ...f.riskDetails, impactType: e.target.value as RiskImpactType },
+                              riskDetails: { ...f.riskDetails, impactType: v as RiskImpactType },
                             }))
                           }
-                          className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                         >
-                          <option value="commercial">Commercial</option>
-                          <option value="technical">Technical</option>
-                          <option value="legal">Legal</option>
-                          <option value="competitive">Competitive</option>
-                          <option value="timeline">Timeline</option>
-                          <option value="resource">Resource</option>
-                        </select>
+                          <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="commercial">Commercial</SelectItem>
+                            <SelectItem value="technical">Technical</SelectItem>
+                            <SelectItem value="legal">Legal</SelectItem>
+                            <SelectItem value="competitive">Competitive</SelectItem>
+                            <SelectItem value="timeline">Timeline</SelectItem>
+                            <SelectItem value="resource">Resource</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Indicators (comma-separated)</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Indicators (comma-separated)</Label>
+                        <Input
                           type="text"
                           value={editForm.riskDetails.indicators.join(', ')}
                           onChange={(e) =>
@@ -3695,8 +3697,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Mitigating recommendations (IDs, comma-separated)</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Mitigating recommendations (IDs, comma-separated)</Label>
+                        <Input
                           type="text"
                           value={editForm.riskDetails.mitigatingRecommendations.join(', ')}
                           onChange={(e) =>
@@ -3716,8 +3718,8 @@ export default function ActionCatalogEntriesPage() {
                         <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Impact assessment (§2.1.2)</span>
                         <div className="grid grid-cols-3 gap-2 mb-1.5">
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Win prob. decrease (%)</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Win prob. decrease (%)</Label>
+                            <Input
                               type="number"
                               min={0}
                               max={100}
@@ -3736,8 +3738,8 @@ export default function ActionCatalogEntriesPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Revenue at risk ($)</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Revenue at risk ($)</Label>
+                            <Input
                               type="number"
                               min={0}
                               value={editForm.riskDetails.impact?.revenueAtRisk ?? ''}
@@ -3755,8 +3757,8 @@ export default function ActionCatalogEntriesPage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Timeline delay (days)</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Timeline delay (days)</Label>
+                            <Input
                               type="number"
                               min={0}
                               value={editForm.riskDetails.impact?.timelineDelay ?? ''}
@@ -3775,8 +3777,8 @@ export default function ActionCatalogEntriesPage() {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Impact description</label>
-                          <textarea
+                          <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Impact description</Label>
+                          <Textarea
                             value={editForm.riskDetails.impact?.description ?? ''}
                             onChange={(e) =>
                               setEditForm((f) => ({
@@ -3796,8 +3798,8 @@ export default function ActionCatalogEntriesPage() {
                         <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">ML features (§2.1.2)</span>
                         <div className="flex gap-2 flex-wrap">
                           <div className="flex-1 min-w-0">
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Feature names (comma-separated)</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Feature names (comma-separated)</Label>
+                            <Input
                               type="text"
                               value={(editForm.riskDetails.mlFeatures ?? []).join(', ')}
                               onChange={(e) =>
@@ -3814,8 +3816,8 @@ export default function ActionCatalogEntriesPage() {
                             />
                           </div>
                           <div className="w-24">
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Threshold</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Threshold</Label>
+                            <Input
                               type="number"
                               value={editForm.riskDetails.mlThreshold ?? ''}
                               onChange={(e) => {
@@ -3833,75 +3835,67 @@ export default function ActionCatalogEntriesPage() {
                       <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
                         <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Risk detection (§2.1.2)</span>
                         <div className="flex items-center gap-2 mb-1.5">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             id="editAutoDetect"
                             checked={editForm.riskDetails.autoDetect ?? false}
-                            onChange={(e) =>
+                            onCheckedChange={(c) =>
                               setEditForm((f) => ({
                                 ...f,
-                                riskDetails: { ...f.riskDetails, autoDetect: e.target.checked },
+                                riskDetails: { ...f.riskDetails, autoDetect: !!c },
                               }))
                             }
-                            className="rounded"
                           />
-                          <label htmlFor="editAutoDetect" className="text-sm">Auto-detect this risk</label>
+                          <Label htmlFor="editAutoDetect" className="text-sm">Auto-detect this risk</Label>
                         </div>
                         <div className="flex flex-wrap gap-4 items-center">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
+                          <Label className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
                               checked={editForm.riskDetails.notificationRules?.notifyOwner ?? true}
-                              onChange={(e) =>
+                              onCheckedChange={(c) =>
                                 setEditForm((f) => ({
                                   ...f,
                                   riskDetails: {
                                     ...f.riskDetails,
-                                    notificationRules: { ...(f.riskDetails.notificationRules ?? DEFAULT_RISK_NOTIFICATION_RULES), notifyOwner: e.target.checked },
+                                    notificationRules: { ...(f.riskDetails.notificationRules ?? DEFAULT_RISK_NOTIFICATION_RULES), notifyOwner: !!c },
                                   },
                                 }))
                               }
-                              className="rounded"
                             />
                             <span className="text-sm">Notify owner</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
+                          </Label>
+                          <Label className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
                               checked={editForm.riskDetails.notificationRules?.notifyManager ?? false}
-                              onChange={(e) =>
+                              onCheckedChange={(c) =>
                                 setEditForm((f) => ({
                                   ...f,
                                   riskDetails: {
                                     ...f.riskDetails,
-                                    notificationRules: { ...(f.riskDetails.notificationRules ?? DEFAULT_RISK_NOTIFICATION_RULES), notifyManager: e.target.checked },
+                                    notificationRules: { ...(f.riskDetails.notificationRules ?? DEFAULT_RISK_NOTIFICATION_RULES), notifyManager: !!c },
                                   },
                                 }))
                               }
-                              className="rounded"
                             />
                             <span className="text-sm">Notify manager</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
+                          </Label>
+                          <Label className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
                               checked={editForm.riskDetails.notificationRules?.escalateIfCritical ?? false}
-                              onChange={(e) =>
+                              onCheckedChange={(c) =>
                                 setEditForm((f) => ({
                                   ...f,
                                   riskDetails: {
                                     ...f.riskDetails,
-                                    notificationRules: { ...(f.riskDetails.notificationRules ?? DEFAULT_RISK_NOTIFICATION_RULES), escalateIfCritical: e.target.checked },
+                                    notificationRules: { ...(f.riskDetails.notificationRules ?? DEFAULT_RISK_NOTIFICATION_RULES), escalateIfCritical: !!c },
                                   },
                                 }))
                               }
-                              className="rounded"
                             />
                             <span className="text-sm">Escalate if critical</span>
-                          </label>
+                          </Label>
                           <div className="flex items-center gap-2">
-                            <label htmlFor="editEscalationDelay" className="text-sm whitespace-nowrap">Escalation delay (h)</label>
-                            <input
+                            <Label htmlFor="editEscalationDelay" className="text-sm whitespace-nowrap">Escalation delay (h)</Label>
+                            <Input
                               id="editEscalationDelay"
                               type="number"
                               min={0}
@@ -3928,30 +3922,32 @@ export default function ActionCatalogEntriesPage() {
                     <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Recommendation details</span>
                     <div className="space-y-2">
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Recommendation type</label>
-                        <select
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Recommendation type</Label>
+                        <Select
                           value={editForm.recommendationDetails.recommendationType}
-                          onChange={(e) =>
+                          onValueChange={(v) =>
                             setEditForm((f) => ({
                               ...f,
                               recommendationDetails: {
                                 ...f.recommendationDetails,
-                                recommendationType: e.target.value as RecommendationTypeCatalog,
+                                recommendationType: v as RecommendationTypeCatalog,
                               },
                             }))
                           }
-                          className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                         >
-                          <option value="next_action">Next action</option>
-                          <option value="risk_mitigation">Risk mitigation</option>
-                          <option value="reactivation">Reactivation</option>
-                          <option value="content">Content</option>
-                          <option value="methodology">Methodology</option>
-                        </select>
+                          <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="next_action">Next action</SelectItem>
+                            <SelectItem value="risk_mitigation">Risk mitigation</SelectItem>
+                            <SelectItem value="reactivation">Reactivation</SelectItem>
+                            <SelectItem value="content">Content</SelectItem>
+                            <SelectItem value="methodology">Methodology</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action template: title</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action template: title</Label>
+                        <Input
                           type="text"
                           value={editForm.recommendationDetails.actionTemplate.title}
                           onChange={(e) =>
@@ -3968,8 +3964,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action template: description</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action template: description</Label>
+                        <Input
                           type="text"
                           value={editForm.recommendationDetails.actionTemplate.description}
                           onChange={(e) =>
@@ -3986,8 +3982,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action items (comma-separated)</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Action items (comma-separated)</Label>
+                        <Input
                           type="text"
                           value={editForm.recommendationDetails.actionTemplate.actionItemsTemplate.join(', ')}
                           onChange={(e) =>
@@ -4007,8 +4003,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Reasoning template</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Reasoning template</Label>
+                        <Input
                           type="text"
                           value={editForm.recommendationDetails.actionTemplate.reasoningTemplate}
                           onChange={(e) =>
@@ -4025,8 +4021,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Expected outcome template</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Expected outcome template</Label>
+                        <Input
                           type="text"
                           value={editForm.recommendationDetails.actionTemplate.expectedOutcomeTemplate}
                           onChange={(e) =>
@@ -4043,8 +4039,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Mitigates risks (IDs, comma-separated)</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Mitigates risks (IDs, comma-separated)</Label>
+                        <Input
                           type="text"
                           value={editForm.recommendationDetails.mitigatesRisks.join(', ')}
                           onChange={(e) =>
@@ -4061,8 +4057,8 @@ export default function ActionCatalogEntriesPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Required data (comma-separated)</label>
-                        <input
+                        <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Required data (comma-separated)</Label>
+                        <Input
                           type="text"
                           value={editForm.recommendationDetails.requiredData.join(', ')}
                           onChange={(e) =>
@@ -4080,34 +4076,36 @@ export default function ActionCatalogEntriesPage() {
                       </div>
                       <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
                         <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Action type (§2.1.3)</span>
-                        <select
-                          value={editForm.recommendationDetails.actionType ?? ''}
-                          onChange={(e) =>
+                        <Select
+                          value={editForm.recommendationDetails.actionType ?? '_'}
+                          onValueChange={(v) =>
                             setEditForm((f) => ({
                               ...f,
                               recommendationDetails: {
                                 ...f.recommendationDetails,
-                                actionType: (e.target.value || undefined) as RecommendationActionType | undefined,
+                                actionType: (v === '_' ? undefined : v) as RecommendationActionType | undefined,
                               },
                             }))
                           }
-                          className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                         >
-                          <option value="">—</option>
-                          <option value="meeting">Meeting</option>
-                          <option value="email">Email</option>
-                          <option value="task">Task</option>
-                          <option value="document">Document</option>
-                          <option value="question">Question</option>
-                          <option value="analysis">Analysis</option>
-                        </select>
+                          <SelectTrigger className="w-full text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_">—</SelectItem>
+                            <SelectItem value="meeting">Meeting</SelectItem>
+                            <SelectItem value="email">Email</SelectItem>
+                            <SelectItem value="task">Task</SelectItem>
+                            <SelectItem value="document">Document</SelectItem>
+                            <SelectItem value="question">Question</SelectItem>
+                            <SelectItem value="analysis">Analysis</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
                         <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Expected outcome (§2.1.3)</span>
                         <div className="space-y-1.5">
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Description</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Description</Label>
+                            <Input
                               type="text"
                               value={editForm.recommendationDetails.expectedOutcome?.description ?? ''}
                               onChange={(e) =>
@@ -4124,8 +4122,8 @@ export default function ActionCatalogEntriesPage() {
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Quantified impact</label>
-                              <input
+                              <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Quantified impact</Label>
+                              <Input
                                 type="text"
                                 value={editForm.recommendationDetails.expectedOutcome?.quantifiedImpact ?? ''}
                                 onChange={(e) =>
@@ -4141,54 +4139,58 @@ export default function ActionCatalogEntriesPage() {
                               />
                             </div>
                             <div>
-                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Impact type</label>
-                              <select
-                                value={editForm.recommendationDetails.expectedOutcome?.impactType ?? ''}
-                                onChange={(e) =>
+                              <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Impact type</Label>
+                              <Select
+                                value={editForm.recommendationDetails.expectedOutcome?.impactType ?? '_'}
+                                onValueChange={(v) =>
                                   setEditForm((f) => ({
                                     ...f,
                                     recommendationDetails: {
                                       ...f.recommendationDetails,
-                                      expectedOutcome: { ...(f.recommendationDetails.expectedOutcome ?? DEFAULT_EXPECTED_OUTCOME), impactType: (e.target.value || undefined) as RecommendationExpectedOutcome['impactType'] },
+                                      expectedOutcome: { ...(f.recommendationDetails.expectedOutcome ?? DEFAULT_EXPECTED_OUTCOME), impactType: (v === '_' ? undefined : v) as RecommendationExpectedOutcome['impactType'] },
                                     },
                                   }))
                                 }
-                                className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                               >
-                                <option value="">—</option>
-                                <option value="probability">Probability</option>
-                                <option value="revenue">Revenue</option>
-                                <option value="timeline">Timeline</option>
-                                <option value="risk_reduction">Risk reduction</option>
-                                <option value="efficiency">Efficiency</option>
-                              </select>
+                                <SelectTrigger className="w-full text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="_">—</SelectItem>
+                                  <SelectItem value="probability">Probability</SelectItem>
+                                  <SelectItem value="revenue">Revenue</SelectItem>
+                                  <SelectItem value="timeline">Timeline</SelectItem>
+                                  <SelectItem value="risk_reduction">Risk reduction</SelectItem>
+                                  <SelectItem value="efficiency">Efficiency</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                           </div>
                           <div className="flex gap-2">
                             <div>
-                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Confidence</label>
-                              <select
-                                value={editForm.recommendationDetails.expectedOutcome?.confidence ?? ''}
-                                onChange={(e) =>
+                              <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Confidence</Label>
+                              <Select
+                                value={editForm.recommendationDetails.expectedOutcome?.confidence ?? '_'}
+                                onValueChange={(v) =>
                                   setEditForm((f) => ({
                                     ...f,
                                     recommendationDetails: {
                                       ...f.recommendationDetails,
-                                      expectedOutcome: { ...(f.recommendationDetails.expectedOutcome ?? DEFAULT_EXPECTED_OUTCOME), confidence: (e.target.value || undefined) as 'low' | 'medium' | 'high' },
+                                      expectedOutcome: { ...(f.recommendationDetails.expectedOutcome ?? DEFAULT_EXPECTED_OUTCOME), confidence: (v === '_' ? undefined : v) as 'low' | 'medium' | 'high' },
                                     },
                                   }))
                                 }
-                                className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                               >
-                                <option value="">—</option>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                              </select>
+                                <SelectTrigger className="w-full text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="_">—</SelectItem>
+                                  <SelectItem value="low">Low</SelectItem>
+                                  <SelectItem value="medium">Medium</SelectItem>
+                                  <SelectItem value="high">High</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                             <div className="flex-1">
-                              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Evidence</label>
-                              <input
+                              <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Evidence</Label>
+                              <Input
                                 type="text"
                                 value={editForm.recommendationDetails.expectedOutcome?.evidence ?? ''}
                                 onChange={(e) =>
@@ -4210,50 +4212,54 @@ export default function ActionCatalogEntriesPage() {
                         <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Implementation (§2.1.3)</span>
                         <div className="grid grid-cols-3 gap-2">
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Effort</label>
-                            <select
-                              value={editForm.recommendationDetails.implementation?.effort ?? ''}
-                              onChange={(e) =>
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Effort</Label>
+                            <Select
+                              value={editForm.recommendationDetails.implementation?.effort ?? '_'}
+                              onValueChange={(v) =>
                                 setEditForm((f) => ({
                                   ...f,
                                   recommendationDetails: {
                                     ...f.recommendationDetails,
-                                    implementation: { ...(f.recommendationDetails.implementation ?? DEFAULT_IMPLEMENTATION), effort: (e.target.value || undefined) as 'low' | 'medium' | 'high' },
+                                    implementation: { ...(f.recommendationDetails.implementation ?? DEFAULT_IMPLEMENTATION), effort: (v === '_' ? undefined : v) as 'low' | 'medium' | 'high' },
                                   },
                                 }))
                               }
-                              className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                             >
-                              <option value="">—</option>
-                              <option value="low">Low</option>
-                              <option value="medium">Medium</option>
-                              <option value="high">High</option>
-                            </select>
+                              <SelectTrigger className="w-full text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="_">—</SelectItem>
+                                <SelectItem value="low">Low</SelectItem>
+                                <SelectItem value="medium">Medium</SelectItem>
+                                <SelectItem value="high">High</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Complexity</label>
-                            <select
-                              value={editForm.recommendationDetails.implementation?.complexity ?? ''}
-                              onChange={(e) =>
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Complexity</Label>
+                            <Select
+                              value={editForm.recommendationDetails.implementation?.complexity ?? '_'}
+                              onValueChange={(v) =>
                                 setEditForm((f) => ({
                                   ...f,
                                   recommendationDetails: {
                                     ...f.recommendationDetails,
-                                    implementation: { ...(f.recommendationDetails.implementation ?? DEFAULT_IMPLEMENTATION), complexity: (e.target.value || undefined) as 'simple' | 'moderate' | 'complex' },
+                                    implementation: { ...(f.recommendationDetails.implementation ?? DEFAULT_IMPLEMENTATION), complexity: (v === '_' ? undefined : v) as 'simple' | 'moderate' | 'complex' },
                                   },
                                 }))
                               }
-                              className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                             >
-                              <option value="">—</option>
-                              <option value="simple">Simple</option>
-                              <option value="moderate">Moderate</option>
-                              <option value="complex">Complex</option>
-                            </select>
+                              <SelectTrigger className="w-full text-sm"><SelectValue placeholder="—" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="_">—</SelectItem>
+                                <SelectItem value="simple">Simple</SelectItem>
+                                <SelectItem value="moderate">Moderate</SelectItem>
+                                <SelectItem value="complex">Complex</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Estimated time</label>
-                            <input
+                            <Label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Estimated time</Label>
+                            <Input
                               type="text"
                               value={editForm.recommendationDetails.implementation?.estimatedTime ?? ''}
                               onChange={(e) =>
@@ -4275,8 +4281,8 @@ export default function ActionCatalogEntriesPage() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium mb-1">Applicable industries (comma-separated)</label>
-                  <input
+                  <Label className="block text-sm font-medium mb-1">Applicable industries (comma-separated)</Label>
+                  <Input
                     type="text"
                     value={editForm.applicableIndustries.join(', ')}
                     onChange={(e) =>
@@ -4290,8 +4296,8 @@ export default function ActionCatalogEntriesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Applicable stages (comma-separated)</label>
-                  <input
+                  <Label className="block text-sm font-medium mb-1">Applicable stages (comma-separated)</Label>
+                  <Input
                     type="text"
                     value={editForm.applicableStages.join(', ')}
                     onChange={(e) =>
@@ -4305,8 +4311,8 @@ export default function ActionCatalogEntriesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Applicable methodologies (comma-separated)</label>
-                  <input
+                  <Label className="block text-sm font-medium mb-1">Applicable methodologies (comma-separated)</Label>
+                  <Input
                     type="text"
                     value={editForm.applicableMethodologies.join(', ')}
                     onChange={(e) =>
@@ -4320,32 +4326,30 @@ export default function ActionCatalogEntriesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Opportunity types</label>
+                  <Label className="block text-sm font-medium mb-1">Opportunity types</Label>
                   <div className="flex flex-wrap gap-3">
                     {OPPORTUNITY_TYPES.map((ot) => (
-                      <label key={ot} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
+                      <Label key={ot} className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
                           checked={editForm.applicableOpportunityTypes.includes(ot)}
-                          onChange={(e) =>
+                          onCheckedChange={(checked) =>
                             setEditForm((f) => ({
                               ...f,
-                              applicableOpportunityTypes: e.target.checked
+                              applicableOpportunityTypes: checked
                                 ? [...f.applicableOpportunityTypes, ot]
                                 : f.applicableOpportunityTypes.filter((x) => x !== ot),
                             }))
                           }
-                          className="rounded border-gray-300 dark:border-gray-600"
                         />
                         <span className="text-sm capitalize">{ot.replace('_', ' ')}</span>
-                      </label>
+                      </Label>
                     ))}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Min amount ($)</label>
-                    <input
+                    <Label className="block text-sm font-medium mb-1">Min amount ($)</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={editForm.minAmount ?? ''}
@@ -4359,8 +4363,8 @@ export default function ActionCatalogEntriesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Max amount ($)</label>
-                    <input
+                    <Label className="block text-sm font-medium mb-1">Max amount ($)</Label>
+                    <Input
                       type="number"
                       min={0}
                       value={editForm.maxAmount ?? ''}
@@ -4378,92 +4382,94 @@ export default function ActionCatalogEntriesPage() {
                   <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Decision rules</span>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         id="editAutoGenerate"
                         checked={editForm.decisionRules.autoGenerate}
-                        onChange={(e) =>
+                        onCheckedChange={(c) =>
                           setEditForm((f) => ({
                             ...f,
-                            decisionRules: { ...f.decisionRules, autoGenerate: e.target.checked },
+                            decisionRules: { ...f.decisionRules, autoGenerate: !!c },
                           }))
                         }
-                        className="rounded"
                       />
-                      <label htmlFor="editAutoGenerate" className="text-sm">Auto-generate</label>
+                      <Label htmlFor="editAutoGenerate" className="text-sm">Auto-generate</Label>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Priority</label>
-                      <select
+                      <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Priority</Label>
+                      <Select
                         value={editForm.decisionRules.priority}
-                        onChange={(e) =>
+                        onValueChange={(v) =>
                           setEditForm((f) => ({
                             ...f,
-                            decisionRules: { ...f.decisionRules, priority: e.target.value as DecisionRulesPriority },
+                            decisionRules: { ...f.decisionRules, priority: v as DecisionRulesPriority },
                           }))
                         }
-                        className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                       >
-                        <option value="critical">Critical</option>
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                      </select>
+                        <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="critical">Critical</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="low">Low</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Urgency</label>
-                      <select
+                      <Label className="block text-xs text-gray-600 dark:text-gray-400 mb-0.5">Urgency</Label>
+                      <Select
                         value={editForm.decisionRules.urgency}
-                        onChange={(e) =>
+                        onValueChange={(v) =>
                           setEditForm((f) => ({
                             ...f,
-                            decisionRules: { ...f.decisionRules, urgency: e.target.value as DecisionRulesUrgency },
+                            decisionRules: { ...f.decisionRules, urgency: v as DecisionRulesUrgency },
                           }))
                         }
-                        className="w-full px-2 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
                       >
-                        <option value="immediate">Immediate</option>
-                        <option value="this_week">This week</option>
-                        <option value="this_month">This month</option>
-                        <option value="flexible">Flexible</option>
-                      </select>
+                        <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="immediate">Immediate</SelectItem>
+                          <SelectItem value="this_week">This week</SelectItem>
+                          <SelectItem value="this_month">This month</SelectItem>
+                          <SelectItem value="flexible">Flexible</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         id="editSuppressIfSimilar"
                         checked={editForm.decisionRules.suppressIfSimilarExists}
-                        onChange={(e) =>
+                        onCheckedChange={(c) =>
                           setEditForm((f) => ({
                             ...f,
-                            decisionRules: { ...f.decisionRules, suppressIfSimilarExists: e.target.checked },
+                            decisionRules: { ...f.decisionRules, suppressIfSimilarExists: !!c },
                           }))
                         }
-                        className="rounded"
                       />
-                      <label htmlFor="editSuppressIfSimilar" className="text-sm">Suppress if similar exists</label>
+                      <Label htmlFor="editSuppressIfSimilar" className="text-sm">Suppress if similar exists</Label>
                     </div>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Status</label>
-                  <select
+                  <Label className="block text-sm font-medium mb-1">Status</Label>
+                  <Select
                     value={editForm.status}
-                    onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value as 'active' | 'deprecated' | 'draft' }))}
-                    className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                    onValueChange={(v) => setEditForm((f) => ({ ...f, status: v as 'active' | 'deprecated' | 'draft' }))}
                   >
-                    <option value="active">Active</option>
-                    <option value="draft">Draft</option>
-                    <option value="deprecated">Deprecated</option>
-                  </select>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="deprecated">Deprecated</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex justify-end gap-2 pt-4">
-                  <button type="button" onClick={closeModal} className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <Button type="button" onClick={closeModal} className="px-4 py-2 border rounded dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800">
                     Cancel
-                  </button>
-                  <button type="submit" disabled={formSaving} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                  </Button>
+                  <Button type="submit" disabled={formSaving} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
                     {formSaving ? 'Saving…' : 'Save'}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>

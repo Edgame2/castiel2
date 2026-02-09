@@ -8,6 +8,10 @@
 
 import * as Dialog from '@radix-ui/react-dialog';
 import { useState, useCallback, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type MitigationAction = {
   id: string;
@@ -161,80 +165,76 @@ export function CreateRemediationWorkflowModal({
             Select actions for opportunity {opportunityId}. At least one step required.
           </Dialog.Description>
           <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Risk ID (optional)</label>
-            <input
+            <Label className="text-xs">Risk ID (optional)</Label>
+            <Input
               type="text"
               value={riskId}
               onChange={(e) => setRiskId(e.target.value)}
               placeholder="Link to risk evaluation"
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+              className="w-full"
             />
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">Assigned to (optional)</label>
-            <input
+            <Label className="text-xs">Assigned to (optional)</Label>
+            <Input
               type="text"
               value={assignedTo}
               onChange={(e) => setAssignedTo(e.target.value)}
               placeholder="User or email"
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+              className="w-full"
             />
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Steps (select or add custom)</label>
+              <Label className="text-xs mb-1 block">Steps (select or add custom)</Label>
               {actionsLoading ? (
-                <p className="text-xs text-gray-500">Loading actions…</p>
+                <p className="text-xs text-muted-foreground">Loading actions…</p>
               ) : actions.length === 0 ? (
-                <p className="text-xs text-gray-500">No mitigation actions. Add custom steps below.</p>
+                <p className="text-xs text-muted-foreground">No mitigation actions. Add custom steps below.</p>
               ) : (
                 <ul className="space-y-1 max-h-36 overflow-y-auto">
                   {actions.map((a) => (
                     <li key={a.actionId} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         id={`act-${a.actionId}`}
                         checked={selectedIds.includes(a.actionId)}
-                        onChange={() => toggleAction(a.actionId)}
-                        className="rounded"
+                        onCheckedChange={() => toggleAction(a.actionId)}
                       />
-                      <label htmlFor={`act-${a.actionId}`} className="text-sm truncate" title={a.description}>{a.title}</label>
+                      <Label htmlFor={`act-${a.actionId}`} className="text-sm truncate cursor-pointer" title={a.description}>{a.title}</Label>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
             <div className="flex gap-2">
-              <input
+              <Input
                 type="text"
                 value={customInput}
                 onChange={(e) => setCustomInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustom())}
                 placeholder="Custom step"
-                className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+                className="flex-1"
               />
-              <button type="button" onClick={addCustom} className="rounded border px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
+              <Button type="button" variant="outline" size="sm" onClick={addCustom}>
                 Add
-              </button>
+              </Button>
             </div>
             {customSteps.length > 0 && (
               <ul className="space-y-1">
                 {customSteps.map((c, i) => (
                   <li key={i} className="flex items-center justify-between text-sm">
                     <span className="truncate">{c.description}</span>
-                    <button type="button" onClick={() => removeCustom(i)} className="text-red-600 hover:underline text-xs">Remove</button>
+                    <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive h-auto py-0 text-xs" onClick={() => removeCustom(i)}>
+                      Remove
+                    </Button>
                   </li>
                 ))}
               </ul>
             )}
-            {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+            {error && <p className="text-xs text-destructive">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
               <Dialog.Close asChild>
-                <button type="button" className="rounded border px-3 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+                <Button type="button" variant="outline" size="sm">Cancel</Button>
               </Dialog.Close>
-              <button
-                type="submit"
-                disabled={!canSubmit}
-                className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
-              >
+              <Button type="submit" disabled={!canSubmit} size="sm">
                 {submitLoading ? 'Creating…' : 'Create'}
-              </button>
+              </Button>
             </div>
           </form>
         </Dialog.Content>
@@ -260,13 +260,9 @@ export function CreateRemediationWorkflowButton({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
-      >
+      <Button type="button" size="sm" onClick={() => setOpen(true)}>
         Create workflow
-      </button>
+      </Button>
       <CreateRemediationWorkflowModal
         isOpen={open}
         onClose={() => setOpen(false)}

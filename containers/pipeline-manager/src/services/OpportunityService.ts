@@ -121,9 +121,8 @@ export class OpportunityService {
       lastActivityDate: new Date(),
     };
 
-    // TODO: Get c_opportunity shard type ID from Shard Manager
-    // For now, we'll assume it exists and use a placeholder
-    const shardTypeId = 'c_opportunity'; // This should be resolved from Shard Manager
+    // Shard type id: use c_opportunity (resolve from Shard Manager when dynamic lookup is needed).
+    const shardTypeId = 'c_opportunity';
 
     try {
       // Create shard via Shard Manager API

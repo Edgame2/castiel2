@@ -65,10 +65,7 @@ type SessionUserIdRow = { userId: string };
 /** Result shape from organizationMembership findMany with role */
 type MembershipWithRole = { role: { isSuperAdmin: boolean } };
 
-// TODO: These should be accessed via API calls to auth-service
-// For now, we'll need to import from a shared location or make API calls
-// import { revokeSession, revokeAllUserSessions } from '../services/sessionService';
-// import { listUserOrganizations } from '../services/organizationService';
+// Session and organization data: prefer auth-service API when integrated (see architecture).
 
 /**
  * User profile data

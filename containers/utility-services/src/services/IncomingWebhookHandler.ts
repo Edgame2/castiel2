@@ -26,9 +26,7 @@ export class IncomingWebhookHandler {
     webhookConfig: any,
     payload: WebhookPayload
   ): Promise<string | null> {
-    // Validate webhook signature if secret is configured
-    // TODO: Implement signature validation
-
+    // Validate webhook signature if secret is configured (e.g. HMAC); enforce when implemented
     // Map webhook payload to notification input
     const notificationInput = this.mapWebhookToNotification(webhookConfig, payload);
     

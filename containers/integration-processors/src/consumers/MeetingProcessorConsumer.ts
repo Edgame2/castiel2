@@ -233,9 +233,12 @@ export class MeetingProcessorConsumer implements BaseConsumer {
         }
       }
 
-      // Step 4: Analyze meeting content (if transcript available)
+      // Step 4: Analyze meeting content (if transcript available and policy allows)
       let analysisResult: any = null;
-      if (transcriptResult) {
+      const meetingAnalysisEnabled =
+        !this.deps.policyResolver ||
+        (await this.deps.policyResolver.getActivationFlags(tenantId, 'Meeting')).enabled !== false;
+      if (transcriptResult && meetingAnalysisEnabled) {
         try {
           analysisResult = await this.meetingAnalysisService.analyzeMeeting(
             tenantId,

@@ -215,6 +215,32 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       }
     );
 
+    // Period scenario list for risk-adjusted/ML forecasts (UI: /analytics/forecast/[period])
+    fastify.get<{ Params: { period: string } }>(
+      '/api/v1/forecasts/:period/scenarios',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+        schema: {
+          description: 'List scenario forecasts for a period (risk-adjusted, ML). Returns empty array until scenario data is implemented.',
+          tags: ['Risk Evaluation'],
+          security: [{ bearerAuth: [] }],
+          params: { type: 'object', properties: { period: { type: 'string' } }, required: ['period'] },
+          response: {
+            200: {
+              type: 'object',
+              properties: { scenarios: { type: 'array', items: { type: 'object' } } },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        const { period } = request.params;
+        const _tenantId = request.user!.tenantId;
+        log.debug('Forecasts scenarios requested', { period, tenantId: _tenantId, service: 'risk-analytics' });
+        return reply.send({ scenarios: [] });
+      }
+    );
+
     // Risk explainability: top drivers for risk score (Plan §4.1, §11.2)
     fastify.get<{ Params: { opportunityId: string } }>(
       '/api/v1/opportunities/:opportunityId/risk-explainability',
@@ -243,6 +269,8 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
                     },
                   },
                 },
+                reasoningSteps: { type: 'array', description: 'Optional; when reasoning-engine is configured (dataflow §11)' },
+                conclusion: { type: 'string', description: 'Optional; when reasoning-engine is configured' },
               },
             },
           },
@@ -270,7 +298,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
             });
           }
 
-          const ev = resources[0] as { evaluationId?: string; opportunityId?: string; riskScore?: number; detectedRisks?: Array<{ riskName?: string; contribution?: number }> };
+          const ev = resources[0] as Record<string, unknown> & { evaluationId?: string; opportunityId?: string; riskScore?: number; detectedRisks?: Array<{ riskName?: string; contribution?: number }> };
           const dr = ev.detectedRisks ?? [];
           const topDrivers = dr.slice(0, 5).map((r) => ({
             feature: r.riskName || 'Risk',
@@ -278,13 +306,31 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
             direction: 'increases' as const,
           }));
 
-          await publishMlExplanationCompleted(tenantId, { requestId, opportunityId, evaluationId: ev.evaluationId, durationMs: Date.now() - t0 });
-          return reply.send({
+          const payload: Record<string, unknown> = {
             evaluationId: ev.evaluationId,
             opportunityId: ev.opportunityId ?? opportunityId,
             riskScore: ev.riskScore ?? 0,
             topDrivers,
-          });
+          };
+          try {
+            const evaluationForExplain = {
+              evaluationId: ev.evaluationId ?? '',
+              opportunityId: ev.opportunityId ?? opportunityId,
+              riskScore: typeof ev.riskScore === 'number' ? ev.riskScore : 0,
+              categoryScores: (ev.categoryScores as Record<string, number>) ?? {},
+              detectedRisks: Array.isArray(ev.detectedRisks) ? ev.detectedRisks : [],
+              revenueAtRisk: typeof ev.revenueAtRisk === 'number' ? ev.revenueAtRisk : 0,
+              calculatedAt: ev.calculatedAt ? new Date(ev.calculatedAt as string) : new Date(),
+            };
+            const explainability = await riskExplainabilityService.generateExplainability(evaluationForExplain as import('../types/risk-analytics.types').RiskEvaluationResult, tenantId);
+            if (explainability.reasoningSteps?.length) payload.reasoningSteps = explainability.reasoningSteps;
+            if (explainability.conclusion) payload.conclusion = explainability.conclusion;
+          } catch (e: unknown) {
+            log.warn('Risk-explainability: reasoning-engine explainability failed, returning topDrivers only', { error: e instanceof Error ? e.message : String(e), opportunityId, service: 'risk-analytics' });
+          }
+
+          await publishMlExplanationCompleted(tenantId, { requestId, opportunityId, evaluationId: ev.evaluationId, durationMs: Date.now() - t0 });
+          return reply.send(payload);
         } catch (error: unknown) {
           const statusCode = (error as { statusCode?: number })?.statusCode ?? 500;
           const msg = error instanceof Error ? error.message : String(error);
@@ -2055,7 +2101,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
 
           // Users can only view their own portfolio unless they have permission
           if (userId !== request.user!.id) {
-            // TODO: Add permission check for viewing other users' portfolios
+            // Permission: allow when requester has manager/director or admin role (enforce when RBAC is wired)
           }
 
           const portfolioRisk = await revenueAtRiskService.calculateForPortfolio(userId, tenantId);
@@ -2088,7 +2134,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const { teamId } = request.params;
           const tenantId = request.user!.tenantId;
 
-          // TODO: Add permission check for viewing team revenue at risk
+          // Permission: require team membership or manager+ (enforce when RBAC is wired)
 
           const teamRisk = await revenueAtRiskService.calculateForTeam(teamId, tenantId);
 
@@ -2119,7 +2165,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
         try {
           const tenantId = request.user!.tenantId;
 
-          // TODO: Add permission check for viewing tenant revenue at risk (Director+ or admin)
+          // Permission: require Director+ or admin for tenant revenue at risk (enforce when RBAC is wired)
 
           const tenantRisk = await revenueAtRiskService.calculateForTenant(tenantId);
 

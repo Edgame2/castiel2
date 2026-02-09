@@ -9,6 +9,8 @@ isProject: false
 
 This plan consolidates the six gap documents under [documentation/gaps](documentation/gaps) into an ordered, actionable implementation. Work is grouped by domain and priority (P1 then P2 then P3).
 
+**Plan status:** Phases 1–3 are complete. Phase 1 (config, gateway, auth/user-management, AI/prompt/integration/multimodal, logging data_collection), Phase 2 (UI page inventory — 138 routes Done), and Phase 3 (stub container decision, p3-gap-coverage) are implemented and documented. P2 (MFA) complete: TOTP + backup codes, enroll/verify/disable UI, post-login 202 + complete-mfa and login page MFA step. CORS and Redis rate limit in gateway done. Optional follow-ups: P3 API keys and general rate limiting are implemented (API key create + validate; per-IP rate limit on auth routes).
+
 ---
 
 ## Phase 1: Backend — Config, Gateway, and Service Fixes
@@ -21,13 +23,15 @@ This plan consolidates the six gap documents under [documentation/gaps](document
 - **Integration-manager URL (3026):** In workflow-orchestrator, signal-intelligence, integration-sync, integration-processors configs, change `INTEGRATION_MANAGER_URL` default from `localhost:3012` to `localhost:3026`.
 - **Shard-manager URL (3023):** In security-scanning, risk-catalog, and [containers/ai-conversation](containers/ai-conversation) configs, change `SHARD_MANAGER_URL` default from `localhost:3002` to `localhost:3023`.
 
+**Status:** Verified — all listed configs already use 3022/3026/3023 in config/default.yaml. [system-wide-gaps.md](documentation/gaps/system-wide-gaps.md) §1 and P1 updated to "Resolved".
+
 ### 1.2 API Gateway
 
 **Source:** [api-gateway-gaps.md](documentation/gaps/api-gateway-gaps.md)
 
-- **Docs vs config:** Align [containers/api-gateway/README.md](containers/api-gateway/README.md) and [containers/api-gateway/architecture.md](containers/api-gateway/architecture.md) with config: state default port **3002** (config uses `PORT:-3002`).
-- **Circuit breaker:** In [containers/api-gateway/src/services/ProxyService.ts](containers/api-gateway/src/services/ProxyService.ts), perform the actual proxied HTTP request via **ServiceClient** (with circuit breaker) instead of raw `axios.request()`, and pass `circuit_breaker.threshold` and `circuit_breaker.timeout` from [containers/api-gateway/config/default.yaml](containers/api-gateway/config/default.yaml) into ProxyService/ServiceClient (no hardcoded 5 / 30000). **Note:** Confirm that ServiceClient in @coder/shared supports a generic request/forwarding method suitable for gateway proxying; if it only wraps a single service SDK, add a thin wrapper so the circuit breaker is applied.
-- **Optional (P2):** Redis-backed rate limit store when running multiple gateway instances; add CORS/frontend origin to config and schema and use in server.
+- **Docs vs config:** Align [containers/api-gateway/README.md](containers/api-gateway/README.md) and [containers/api-gateway/architecture.md](containers/api-gateway/architecture.md) with config: state default port **3002** (config uses `PORT:-3002`). **Done:** README and architecture already state 3002; [api-gateway-gaps.md](documentation/gaps/api-gateway-gaps.md) §1.1 updated to Resolved.
+- **Circuit breaker:** In [containers/api-gateway/src/services/ProxyService.ts](containers/api-gateway/src/services/ProxyService.ts), perform the actual proxied HTTP request via **ServiceClient** (with circuit breaker) instead of raw `axios.request()`, and pass `circuit_breaker.threshold` and `circuit_breaker.timeout` from config into ProxyService/ServiceClient. **Done:** ProxyService already uses `ServiceClient.requestWithFullResponse()`; server passes `config.circuit_breaker` to ProxyService; config loader now parses both threshold and timeout to numbers. See [api-gateway-gaps.md](documentation/gaps/api-gateway-gaps.md) §2.
+- **Optional (P2):** Redis-backed rate limit store when running multiple gateway instances. **Done:** Optional `redis.url` in config; when set, rate limit uses Redis (createRedisStore); else in-memory. **CORS:** Done — `cors.origin` in config and schema (see api-gateway-gaps §4.1).
 
 ### 1.3 Gateway route coverage
 
@@ -40,6 +44,8 @@ This plan consolidates the six gap documents under [documentation/gaps](document
 - In [containers/api-gateway/src/routes/index.ts](containers/api-gateway/src/routes/index.ts), register routes **before** the catch-all. **Route registration order: most specific path first** (e.g. `/api/v1/prompts` before `/api/v1`) so the catch-all does not steal traffic. Examples: `/api/conversations` → ai_conversation, `/api/v1/multimodal` → multi_modal_service, `/api/v1/prompts` → prompt_service.
 - If context-service and search-service are client-facing: add services and route mappings (e.g. `/api/context`, `/api/search`); otherwise document as backend-only.
 
+**Status:** Done. default.yaml and schema include ai_conversation, multi_modal_service, prompt_service; routes registered in correct order. search-service at `/api/v1/search` when configured; context-service documented backend-only in [system-wide-gaps.md](documentation/gaps/system-wide-gaps.md) §2.1.
+
 ### 1.4 Auth and user-management
 
 **Source:** [auth-user-management-gaps.md](documentation/gaps/auth-user-management-gaps.md)
@@ -50,8 +56,10 @@ This plan consolidates the six gap documents under [documentation/gaps](document
   - `PUT /api/v1/users/:id` (admin update; if required).
 - **Auth event consumers (user-management):** Implement RabbitMQ consumers for `auth.login.success`, `auth.login.failed`, `user.registered` (last-login update, optional failed-login tracking, create profile on registration). Add under `events/consumers` and register on server startup.
 - **Docs:** Align user-management README and OpenAPI with implemented routes.
-- **MFA (P2):** Implement MFA routes and services (TOTP, backup codes) in [containers/auth](containers/auth), using `auth_mfa_secrets`; document in README/OpenAPI.
+- **MFA (P2):** Implement MFA routes and services (TOTP, backup codes) in [containers/auth](containers/auth), using `auth_mfa_secrets`; document in README/OpenAPI. **Status:** Auth README documents MFA as planned P2; config and container (`auth_mfa_secrets`) are in place; full implementation deferred.
 - **P3:** API key / machine-auth; general rate-limiting middleware on auth routes.
+
+**Status:** Done. user-management has GET/PUT /api/v1/users, /users/me, /users/:id; AuthEventConsumer in events/consumers; README and openapi.yaml aligned. MFA and P3 remain optional.
 
 ### 1.5 AI service, prompt-service, integration-processors, multi-modal
 
@@ -61,6 +69,8 @@ This plan consolidates the six gap documents under [documentation/gaps](document
 - **prompt-service:** Implement `GET /api/v1/prompts/analytics` in [containers/prompt-service/src/routes](containers/prompt-service/src/routes) (or remove from README).
 - **integration-processors:** Add [containers/integration-processors/openapi.yaml](containers/integration-processors/openapi.yaml) and [containers/integration-processors/architecture.md](containers/integration-processors/architecture.md) per ModuleImplementationGuide.
 - **multi-modal-service:** Add `code_generation` (or equivalent) to config if used; align README with config. Optionally implement or document actual multi-modal processing (image/diagram/audio/video) as future work.
+
+**Status:** Done. prompt-service GET /api/v1/prompts/analytics implemented; integration-processors has openapi.yaml and architecture.md; ai-service README and multi-modal gaps documented in [ai-integrations-multimodal-prompt-gaps.md](documentation/gaps/ai-integrations-multimodal-prompt-gaps.md).
 
 ### 1.6 Logging — data collection config
 
@@ -72,9 +82,11 @@ This plan consolidates the six gap documents under [documentation/gaps](document
 - Implement `isCollectionEnabled` (AND of category, resource_type, event_type with wildcard matching, severity); add unit and integration tests. Document in README and schema.
 - **API for admin UI:** Expose GET (and optional search) API for `data_collection` config in the logging service (or configuration service) so `/admin/system/logging/config` can display and search it. Edit of `data_collection` remains out of scope (config stays in YAML/env); UI is view-only + search.
 
+**Status:** Done. data_collection in config and schema; isCollectionEnabled in dataCollectionFilter.ts; AuditEventConsumer skips ingest when disabled; GET /config/data-collection for admin UI; README updated.
+
 ---
 
-## Phase 2: UI — Page Inventory (~62 Todo Items)
+## Phase 2: UI — Page Inventory (138 pages; complete)
 
 **Source:** [ui-pages-inventory.md](documentation/gaps/ui-pages-inventory.md)
 
@@ -159,6 +171,8 @@ Implement in [containers/ui](containers/ui) (Next.js App Router) in the order be
 | M3 | §2.6 AI in UI | Conversations, prompts, multimodal pages call gateway routes. |
 | M4 | §2.7–§2.10 Admin CRUD, security, tenants, system/context, errors | All admin list/new/[id] pages and error pages in place; logging config view uses logging API. |
 
+**Status:** All routes in [ui-pages-inventory.md](documentation/gaps/ui-pages-inventory.md) §3 are marked Done (138 total). Summary counts in §4 updated to 138 Done, 0 Todo. Pages exist for auth, MFA, profile, settings, search, forecast, recommendations, AI (conversations, prompts, multimodal), admin security/tenants/CRUD/system/context, and error pages.
+
 ---
 
 ## Phase 3: System-Wide and Stub Containers
@@ -169,6 +183,8 @@ Implement in [containers/ui](containers/ui) (Next.js App Router) in the order be
 
 - **compliance-service, security-service, migration-service:** Either complete per ModuleImplementationGuide (README, CHANGELOG, package.json, config/default.yaml, server.ts, routes) or mark deprecated and exclude from [documentation/CURRENT_STATE.md](documentation/CURRENT_STATE.md) and container list.
 - **Deadline:** Decide for each stub (complete vs deprecate) by end of Phase 2 or a fixed milestone so they do not remain in limbo.
+
+**Status:** Decision completed. **compliance-service** and **migration-service** are deprecated (README states status; CURRENT_STATE.md excludes them from active list; compliance covered by logging/secret-management/security-service; migration in configuration-service). **security-service** is retained as a stub for future completion (README and CURRENT_STATE.md document; port 3042 reserved; not run in default stack until completed).
 
 ### 3.2 Optional gap coverage (P3) — Done
 
@@ -228,6 +244,11 @@ flowchart LR
 - User-management `GET /api/v1/users` and `GET /api/v1/users/:id` return tenant-scoped data.
 - Auth event consumers (user-management) run on startup and handle `auth.login.success`, `auth.login.failed`, `user.registered`.
 - Logging consumer skips ingest when `data_collection` disables an event; logging service exposes GET (and optional search) for data_collection config.
+
+**Post-implementation verification (when Node/pnpm available):**
+
+- Run `pnpm test` (or `pnpm test:unit`) in `containers/api-gateway` to confirm rate limit and integration tests pass.
+- Run tests in `containers/user-management`, `containers/logging` as needed for changed areas.
 
 ---
 

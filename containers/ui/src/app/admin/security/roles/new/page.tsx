@@ -3,6 +3,11 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -85,16 +90,16 @@ export default function AdminSecurityRoleNewPage() {
         {error && <p className="text-sm text-red-600 dark:text-red-400 mb-4" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
           <div>
-            <label htmlFor="orgId" className="block text-sm font-medium mb-1">Organization ID</label>
-            <input id="orgId" type="text" value={orgId} onChange={(e) => setOrgId(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+            <Label htmlFor="orgId" className="block mb-1">Organization ID</Label>
+            <Input id="orgId" type="text" value={orgId} onChange={(e) => setOrgId(e.target.value)} className="w-full" required />
           </div>
           <div>
-            <label htmlFor="name" className="block text-sm font-medium mb-1">Role name</label>
-            <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+            <Label htmlFor="name" className="block mb-1">Role name</Label>
+            <Input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full" required />
           </div>
           <div>
-            <label htmlFor="description" className="block text-sm font-medium mb-1">Description (optional)</label>
-            <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+            <Label htmlFor="description" className="block mb-1">Description (optional)</Label>
+            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full" />
           </div>
           <div>
             <span className="block text-sm font-medium mb-2">Permissions</span>
@@ -102,20 +107,28 @@ export default function AdminSecurityRoleNewPage() {
             {!permsLoading && permissions.length > 0 && (
               <div className="max-h-48 overflow-y-auto border rounded p-2 dark:border-gray-700 space-y-1">
                 {permissions.map((p) => (
-                  <label key={p.id} className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={permissionIds.includes(p.id)} onChange={() => togglePermission(p.id)} />
-                    {p.displayName ?? p.code ?? p.id}
-                  </label>
+                  <div key={p.id} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      id={`perm-${p.id}`}
+                      checked={permissionIds.includes(p.id)}
+                      onCheckedChange={() => togglePermission(p.id)}
+                    />
+                    <Label htmlFor={`perm-${p.id}`} className="font-normal cursor-pointer">
+                      {p.displayName ?? p.code ?? p.id}
+                    </Label>
+                  </div>
                 ))}
               </div>
             )}
             {!permsLoading && permissions.length === 0 && orgId.trim() && <p className="text-sm text-gray-500">No permissions found.</p>}
           </div>
           <div className="flex gap-2">
-            <button type="submit" disabled={submitting || !orgId.trim() || !name.trim()} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+            <Button type="submit" disabled={submitting || !orgId.trim() || !name.trim()}>
               {submitting ? 'Creating…' : 'Create role'}
-            </button>
-            <Link href="/admin/security/roles" className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/admin/security/roles">Cancel</Link>
+            </Button>
           </div>
         </form>
         <p className="mt-4"><Link href="/admin/security/roles" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">Back to Roles</Link></p>

@@ -8,6 +8,18 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -224,15 +236,15 @@ export default function SalesMethodologyConfigPage() {
 
       {apiBaseUrl && (
         <div className="mb-4">
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={() => { setLoading(true); fetchConfig().finally(() => setLoading(false)); }}
             disabled={loading}
-            className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
             title="Refetch methodology config"
           >
             Refresh
-          </button>
+          </Button>
         </div>
       )}
 
@@ -265,102 +277,93 @@ export default function SalesMethodologyConfigPage() {
           <div className="p-6">
             <nav className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-6" role="tablist">
               {TABS.map((tab) => (
-                <button
+                <Button
                   key={tab.id}
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   role="tab"
                   aria-selected={activeTab === tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2 text-sm font-medium rounded-t border-b-2 -mb-px transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-900'
-                      : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  className={`rounded-t border-b-2 -mb-px ${
+                    activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {tab.label}
-                </button>
+                </Button>
               ))}
             </nav>
 
             {activeTab === 'basic' && (
               <section className="space-y-4" role="tabpanel" aria-labelledby="tab-basic">
                 <h2 className="text-lg font-semibold">Basic info (§3.1.2)</h2>
-                <div>
-                  <label htmlFor="methodologyType" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Methodology type
-                  </label>
-                  <select
-                    id="methodologyType"
+                <div className="space-y-2">
+                  <Label htmlFor="methodologyType">Methodology type</Label>
+                  <Select
                     value={formData.methodologyType}
-                    onChange={(e) => setConfig((c) => (c ? { ...c, methodologyType: e.target.value as MethodologyType } : null))}
-                    className="w-full max-w-xs px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                    onValueChange={(v) => setConfig((c) => (c ? { ...c, methodologyType: v as MethodologyType } : null))}
                   >
-                    <option value="MEDDIC">MEDDIC</option>
-                    <option value="MEDDPICC">MEDDPICC</option>
-                    <option value="Challenger">Challenger</option>
-                    <option value="Sandler">Sandler</option>
-                    <option value="SPIN">SPIN</option>
-                    <option value="Custom">Custom</option>
-                  </select>
+                    <SelectTrigger id="methodologyType" className="w-full max-w-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MEDDIC">MEDDIC</SelectItem>
+                      <SelectItem value="MEDDPICC">MEDDPICC</SelectItem>
+                      <SelectItem value="Challenger">Challenger</SelectItem>
+                      <SelectItem value="Sandler">Sandler</SelectItem>
+                      <SelectItem value="SPIN">SPIN</SelectItem>
+                      <SelectItem value="Custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label htmlFor="methodologyName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Name
-                  </label>
-                  <input
+                <div className="space-y-2">
+                  <Label htmlFor="methodologyName">Name</Label>
+                  <Input
                     id="methodologyName"
-                    type="text"
                     value={formData.name ?? ''}
                     onChange={(e) => setConfig((c) => (c ? { ...c, name: e.target.value } : null))}
-                    className="w-full max-w-md px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                    className="max-w-md"
                     placeholder="Optional display name"
                   />
                 </div>
-                <div>
-                  <label htmlFor="methodologyDisplayName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Display name
-                  </label>
-                  <input
+                <div className="space-y-2">
+                  <Label htmlFor="methodologyDisplayName">Display name</Label>
+                  <Input
                     id="methodologyDisplayName"
-                    type="text"
                     value={formData.displayName ?? ''}
                     onChange={(e) => setConfig((c) => (c ? { ...c, displayName: e.target.value } : null))}
-                    className="w-full max-w-md px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+                    className="max-w-md"
                     placeholder="Optional UI display name"
                   />
                 </div>
-                <div>
-                  <label htmlFor="methodologyDescription" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Description
-                  </label>
-                  <textarea
+                <div className="space-y-2">
+                  <Label htmlFor="methodologyDescription">Description</Label>
+                  <Textarea
                     id="methodologyDescription"
                     value={formData.description ?? ''}
                     onChange={(e) => setConfig((c) => (c ? { ...c, description: e.target.value } : null))}
-                    className="w-full max-w-md px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 min-h-[80px]"
+                    className="max-w-md min-h-[80px]"
                     placeholder="Optional description"
                     rows={3}
                   />
                 </div>
                 <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="methodologyActive"
                       checked={formData.isActive ?? true}
-                      onChange={(e) => setConfig((c) => (c ? { ...c, isActive: e.target.checked } : null))}
-                      className="rounded"
+                      onCheckedChange={(c) => setConfig((cfg) => (cfg ? { ...cfg, isActive: !!c } : null))}
                     />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Active</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <Label htmlFor="methodologyActive" className="text-sm font-medium cursor-pointer">Active</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="methodologyDefault"
                       checked={formData.isDefault ?? false}
-                      onChange={(e) => setConfig((c) => (c ? { ...c, isDefault: e.target.checked } : null))}
-                      className="rounded"
+                      onCheckedChange={(c) => setConfig((cfg) => (cfg ? { ...cfg, isDefault: !!c } : null))}
                     />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Default methodology</span>
-                  </label>
+                    <Label htmlFor="methodologyDefault" className="text-sm font-medium cursor-pointer">Default methodology</Label>
+                  </div>
                 </div>
               </section>
             )}
@@ -368,14 +371,14 @@ export default function SalesMethodologyConfigPage() {
             {activeTab === 'stages' && (
               <section className="space-y-4" role="tabpanel" aria-labelledby="tab-stages">
                 <h2 className="text-lg font-semibold">Stages</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   JSON array of stages (stageId, stageName, displayName, order, requirements, exitCriteria, typicalDurationDays, expectedActivities).
                 </p>
-                <textarea
+                <Textarea
                   value={stagesJson}
                   onChange={(e) => setStagesJson(e.target.value)}
                   rows={12}
-                  className="w-full px-3 py-2 border rounded font-mono text-sm dark:bg-gray-800 dark:border-gray-700"
+                  className="w-full font-mono text-sm"
                   spellCheck={false}
                 />
               </section>
@@ -384,14 +387,14 @@ export default function SalesMethodologyConfigPage() {
             {activeTab === 'required' && (
               <section className="space-y-4" role="tabpanel" aria-labelledby="tab-required">
                 <h2 className="text-lg font-semibold">Required fields</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   JSON array of required fields (fieldName, stages, dataType). Stages is an array of stage IDs that require this field.
                 </p>
-                <textarea
+                <Textarea
                   value={requiredFieldsJson}
                   onChange={(e) => setRequiredFieldsJson(e.target.value)}
                   rows={8}
-                  className="w-full px-3 py-2 border rounded font-mono text-sm dark:bg-gray-800 dark:border-gray-700"
+                  className="w-full font-mono text-sm"
                   spellCheck={false}
                 />
               </section>
@@ -400,14 +403,14 @@ export default function SalesMethodologyConfigPage() {
             {activeTab === 'risks' && (
               <section className="space-y-4" role="tabpanel" aria-labelledby="tab-risks">
                 <h2 className="text-lg font-semibold">Risks</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   JSON array of methodology-specific risks (riskId, stage, description, severity). Link to risk catalog by riskId.
                 </p>
-                <textarea
+                <Textarea
                   value={risksJson}
                   onChange={(e) => setRisksJson(e.target.value)}
                   rows={8}
-                  className="w-full px-3 py-2 border rounded font-mono text-sm dark:bg-gray-800 dark:border-gray-700"
+                  className="w-full font-mono text-sm"
                   spellCheck={false}
                 />
               </section>
@@ -424,41 +427,38 @@ export default function SalesMethodologyConfigPage() {
                   return (
                     <>
                       <div className="space-y-2">
-                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Feature engineering</h3>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
+                        <h3 className="text-sm font-medium">Feature engineering</h3>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="fe-enabled"
                             checked={fe.enabled}
-                            onChange={(e) =>
-                              setConfig((c) =>
-                                c
+                            onCheckedChange={(c) =>
+                              setConfig((cfg) =>
+                                cfg
                                   ? {
-                                      ...c,
+                                      ...cfg,
                                       integrationConfig: {
-                                        ...(c.integrationConfig ?? defaultIntegrationConfig),
-                                        featureEngineering: { ...fe, enabled: e.target.checked },
+                                        ...(cfg.integrationConfig ?? defaultIntegrationConfig),
+                                        featureEngineering: { ...fe, enabled: !!c },
                                       },
                                     }
                                   : null
                               )}
-                            className="rounded"
                           />
-                          <span className="text-sm">Enabled</span>
-                        </label>
-                        <div>
-                          <label htmlFor="integrationFeatures" className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                            Features (one per line)
-                          </label>
-                          <textarea
+                          <Label htmlFor="fe-enabled" className="text-sm cursor-pointer">Enabled</Label>
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="integrationFeatures" className="text-sm text-muted-foreground">Features (one per line)</Label>
+                          <Textarea
                             id="integrationFeatures"
                             value={(fe.features ?? []).join('\n')}
                             onChange={(e) =>
-                              setConfig((c) =>
-                                c
+                              setConfig((cfg) =>
+                                cfg
                                   ? {
-                                      ...c,
+                                      ...cfg,
                                       integrationConfig: {
-                                        ...(c.integrationConfig ?? defaultIntegrationConfig),
+                                        ...(cfg.integrationConfig ?? defaultIntegrationConfig),
                                         featureEngineering: {
                                           ...fe,
                                           features: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
@@ -467,97 +467,93 @@ export default function SalesMethodologyConfigPage() {
                                     }
                                   : null
                               )}
-                            className="w-full max-w-md px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm min-h-[80px]"
+                            className="max-w-md text-sm min-h-[80px]"
                             rows={4}
                             placeholder="feature1&#10;feature2"
                           />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Risk detection</h3>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
+                        <h3 className="text-sm font-medium">Risk detection</h3>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="rd-enabled"
                             checked={rd.enabled}
-                            onChange={(e) =>
-                              setConfig((c) =>
-                                c
+                            onCheckedChange={(c) =>
+                              setConfig((cfg) =>
+                                cfg
                                   ? {
-                                      ...c,
+                                      ...cfg,
                                       integrationConfig: {
-                                        ...(c.integrationConfig ?? defaultIntegrationConfig),
-                                        riskDetection: { ...rd, enabled: e.target.checked },
+                                        ...(cfg.integrationConfig ?? defaultIntegrationConfig),
+                                        riskDetection: { ...rd, enabled: !!c },
                                       },
                                     }
                                   : null
                               )}
-                            className="rounded"
                           />
-                          <span className="text-sm">Enabled</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
+                          <Label htmlFor="rd-enabled" className="text-sm cursor-pointer">Enabled</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="rd-detect"
                             checked={rd.detectNonCompliance}
-                            onChange={(e) =>
-                              setConfig((c) =>
-                                c
+                            onCheckedChange={(c) =>
+                              setConfig((cfg) =>
+                                cfg
                                   ? {
-                                      ...c,
+                                      ...cfg,
                                       integrationConfig: {
-                                        ...(c.integrationConfig ?? defaultIntegrationConfig),
-                                        riskDetection: { ...rd, detectNonCompliance: e.target.checked },
+                                        ...(cfg.integrationConfig ?? defaultIntegrationConfig),
+                                        riskDetection: { ...rd, detectNonCompliance: !!c },
                                       },
                                     }
                                   : null
                               )}
-                            className="rounded"
                           />
-                          <span className="text-sm">Detect non-compliance</span>
-                        </label>
+                          <Label htmlFor="rd-detect" className="text-sm cursor-pointer">Detect non-compliance</Label>
+                        </div>
                       </div>
                       <div className="space-y-2">
-                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Recommendations</h3>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
+                        <h3 className="text-sm font-medium">Recommendations</h3>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="rec-enabled"
                             checked={rec.enabled}
-                            onChange={(e) =>
-                              setConfig((c) =>
-                                c
+                            onCheckedChange={(c) =>
+                              setConfig((cfg) =>
+                                cfg
                                   ? {
-                                      ...c,
+                                      ...cfg,
                                       integrationConfig: {
-                                        ...(c.integrationConfig ?? defaultIntegrationConfig),
-                                        recommendations: { ...rec, enabled: e.target.checked },
+                                        ...(cfg.integrationConfig ?? defaultIntegrationConfig),
+                                        recommendations: { ...rec, enabled: !!c },
                                       },
                                     }
                                   : null
                               )}
-                            className="rounded"
                           />
-                          <span className="text-sm">Enabled</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
+                          <Label htmlFor="rec-enabled" className="text-sm cursor-pointer">Enabled</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="rec-suggest"
                             checked={rec.suggestMissingSteps}
-                            onChange={(e) =>
-                              setConfig((c) =>
-                                c
+                            onCheckedChange={(c) =>
+                              setConfig((cfg) =>
+                                cfg
                                   ? {
-                                      ...c,
+                                      ...cfg,
                                       integrationConfig: {
-                                        ...(c.integrationConfig ?? defaultIntegrationConfig),
-                                        recommendations: { ...rec, suggestMissingSteps: e.target.checked },
+                                        ...(cfg.integrationConfig ?? defaultIntegrationConfig),
+                                        recommendations: { ...rec, suggestMissingSteps: !!c },
                                       },
                                     }
                                   : null
                               )}
-                            className="rounded"
                           />
-                          <span className="text-sm">Suggest missing steps</span>
-                        </label>
+                          <Label htmlFor="rec-suggest" className="text-sm cursor-pointer">Suggest missing steps</Label>
+                        </div>
                       </div>
                     </>
                   );
@@ -566,13 +562,9 @@ export default function SalesMethodologyConfigPage() {
             )}
 
             <div className="flex justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+              <Button type="submit" disabled={saving}>
                 {saving ? 'Saving…' : 'Save'}
-              </button>
+              </Button>
             </div>
           </div>
         </form>

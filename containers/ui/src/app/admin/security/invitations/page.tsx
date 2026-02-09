@@ -7,6 +7,9 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -101,23 +104,18 @@ export default function AdminSecurityInvitationsPage() {
         <h1 className="text-xl font-semibold mb-4">Pending invitations</h1>
 
         <div className="rounded-lg border bg-white dark:bg-gray-900 p-4 mb-4">
-          <label className="block text-sm font-medium mb-2">Organization ID</label>
+          <Label className="block mb-2">Organization ID</Label>
           <div className="flex gap-2">
-            <input
+            <Input
               type="text"
               value={orgId}
               onChange={(e) => setOrgId(e.target.value)}
               placeholder="e.g. org-123"
-              className="flex-1 max-w-xs px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+              className="flex-1 max-w-xs"
             />
-            <button
-              type="button"
-              onClick={() => fetchInvitations()}
-              disabled={!orgId.trim() || loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-            >
+            <Button type="button" onClick={() => fetchInvitations()} disabled={!orgId.trim() || loading}>
               {loading ? 'Loading…' : 'Load'}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -142,22 +140,12 @@ export default function AdminSecurityInvitationsPage() {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => resend(inv.id)}
-                    disabled={actionId !== null}
-                    className="text-sm px-2 py-1 border rounded hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
-                  >
+                  <Button type="button" variant="outline" size="sm" onClick={() => resend(inv.id)} disabled={actionId !== null}>
                     Resend
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => cancel(inv.id)}
-                    disabled={actionId !== null}
-                    className="text-sm px-2 py-1 border rounded text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
-                  >
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={() => cancel(inv.id)} disabled={actionId !== null}>
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </li>
             ))}

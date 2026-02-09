@@ -12,6 +12,7 @@ import {
   setupJWT,
   ServiceClient,
   EventPublisher,
+  PolicyResolver,
 } from '@coder/shared';
 import { loadConfig } from './config/index.js';
 import { log } from './utils/logger.js';
@@ -228,6 +229,7 @@ async function main(): Promise<void> {
       eventPublisher,
       integrationManager,
       aiService,
+      policyResolver: new PolicyResolver(),
     };
     activeConsumers = await startConsumers(consumerType, deps);
   }

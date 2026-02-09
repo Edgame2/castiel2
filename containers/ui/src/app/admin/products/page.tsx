@@ -7,6 +7,9 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -88,43 +91,39 @@ export default function AdminProductsPage() {
       </p>
       {apiBaseUrl && (
         <div className="mb-4">
-          <Link href="/admin/products/new" className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium">
-            New product
-          </Link>
+          <Button asChild>
+            <Link href="/admin/products/new">New product</Link>
+          </Button>
         </div>
       )}
       {error && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>}
       <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 max-w-2xl mb-6">
         <form onSubmit={handleCreate} className="space-y-2 mb-4">
-          <div>
-            <label htmlFor="product-name" className="block text-sm font-medium mb-1">Name</label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="product-name">Name</Label>
+            <Input
               id="product-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Product name"
-              className="rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 w-full max-w-md"
+              className="w-full max-w-md"
             />
           </div>
-          <div>
-            <label htmlFor="product-desc" className="block text-sm font-medium mb-1">Description (optional)</label>
-            <input
+          <div className="space-y-2">
+            <Label htmlFor="product-desc">Description (optional)</Label>
+            <Input
               id="product-desc"
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description"
-              className="rounded border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 w-full max-w-md"
+              className="w-full max-w-md"
             />
           </div>
-          <button
-            type="submit"
-            disabled={creating || !name.trim()}
-            className="rounded border border-gray-300 px-3 py-2 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800 disabled:opacity-50"
-          >
+          <Button type="submit" variant="outline" disabled={creating || !name.trim()}>
             {creating ? 'Creating…' : 'Create product'}
-          </button>
+          </Button>
         </form>
         {createError && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{createError}</p>}
         {loading ? (

@@ -72,6 +72,7 @@ containers/ui/
 │   ├── components/            # React components
 │   ├── hooks/                 # Custom React hooks
 │   ├── lib/                   # Utilities and helpers
+│   ├── proxy.ts               # Route protection (auth redirect; Next.js proxy convention)
 │   ├── contexts/              # React contexts
 │   ├── types/                 # TypeScript types
 │   └── locales/              # i18n translations

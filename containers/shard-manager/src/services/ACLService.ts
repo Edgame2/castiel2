@@ -57,8 +57,7 @@ export class ACLService {
       // Check direct user permissions from ACL
       const userPermissions = this.getUserPermissionsFromACL(shard, context.userId);
 
-      // TODO: Add role-based permissions when role system is implemented
-      // const rolePermissions = await this.getRolePermissions(context.userId, context.userRoles);
+      // Role-based permissions: to be merged when role system is integrated.
 
       // Merge all permissions
       const allPermissions = userPermissions;

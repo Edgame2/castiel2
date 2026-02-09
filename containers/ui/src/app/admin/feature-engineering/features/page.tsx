@@ -7,6 +7,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -158,26 +167,23 @@ export default function FeatureEngineeringFeaturesPage() {
 
       {apiBaseUrl && (
         <div className="mb-4 flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-sm font-medium mb-1">Purpose filter</label>
-            <select
-              value={purposeFilter}
-              onChange={(e) => setPurposeFilter(e.target.value as FeaturePurpose | '')}
-              className="w-48 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="">All</option>
-              {PURPOSES.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <Label>Purpose filter</Label>
+            <Select value={purposeFilter || '_all'} onValueChange={(v) => setPurposeFilter(v === '_all' ? '' : (v as FeaturePurpose))}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                {PURPOSES.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <button
-            type="button"
-            onClick={fetchAll}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
+          <Button type="button" onClick={fetchAll}>
             Refresh
-          </button>
+          </Button>
         </div>
       )}
 

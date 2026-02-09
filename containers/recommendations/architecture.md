@@ -51,6 +51,7 @@ The Recommendations module provides asynchronous recommendation generation with 
 - `risk.evaluation.completed` - Generate risk-based recommendations
 - `forecast.completed` - Generate forecast-based recommendations (ensures sequential processing after risk and forecast)
 - `workflow.recommendation.requested` - Triggered by workflow-orchestrator
+- `opportunity.outcome.recorded` - Record won/lost for accepted recommendations (dataflow Phase 2.3); recordOutcomeForOpportunityClose → adaptive-learning record-outcome per accepted rec
 
 ## CAIS Integration (Hybrid Approach)
 

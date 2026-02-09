@@ -26,8 +26,7 @@ export class QuietHoursService {
       return false;
     }
 
-    // TODO: Implement timezone-aware quiet hours check in Phase 5
-    // For now, return false
+    // Timezone-aware quiet hours: implement when Phase 5 user prefs/timezone are available
     return false;
   }
 

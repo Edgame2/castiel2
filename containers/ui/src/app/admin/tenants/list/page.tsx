@@ -7,6 +7,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -176,79 +186,67 @@ export default function TenantsListPage() {
       {apiBaseUrl && (
         <div className="mb-4 flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium mb-1">Status (§7.1.1)</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as TenantStatus | '')}
-              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            >
-              <option value="">All</option>
-              <option value="active">Active</option>
-              <option value="trial">Trial</option>
-              <option value="suspended">Suspended</option>
-              <option value="inactive">Inactive</option>
-            </select>
+            <Label className="block mb-1">Status (§7.1.1)</Label>
+            <Select value={statusFilter || '_all'} onValueChange={(v) => setStatusFilter(v === '_all' ? '' : (v as TenantStatus))}>
+              <SelectTrigger className="w-40" aria-label="Status filter">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">All</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="trial">Trial</SelectItem>
+                <SelectItem value="suspended">Suspended</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Search (§7.1.1)</label>
-            <input
+            <Label className="block mb-1">Search (§7.1.1)</Label>
+            <Input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Name or ID…"
-              className="w-48 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+              className="w-48 text-sm"
               aria-label="Search by name or ID"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Sort by (§7.1.1)</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="w-40 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-              aria-label="Sort by"
-            >
-              <option value="">Default</option>
-              <option value="id">ID</option>
-              <option value="name">Name</option>
-              <option value="status">Status</option>
-              <option value="createdAt">Created</option>
-            </select>
+            <Label className="block mb-1">Sort by (§7.1.1)</Label>
+            <Select value={sortBy || '_default'} onValueChange={(v) => setSortBy(v === '_default' ? '' : (v as typeof sortBy))}>
+              <SelectTrigger className="w-40 text-sm" aria-label="Sort by">
+                <SelectValue placeholder="Default" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_default">Default</SelectItem>
+                <SelectItem value="id">ID</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+                <SelectItem value="createdAt">Created</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Order</label>
-            <select
-              value={sortDir}
-              onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
-              className="w-32 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-              aria-label="Sort direction"
-            >
-              <option value="asc">Ascending</option>
-              <option value="desc">Descending</option>
-            </select>
+            <Label className="block mb-1">Order</Label>
+            <Select value={sortDir} onValueChange={(v) => setSortDir(v as 'asc' | 'desc')}>
+              <SelectTrigger className="w-32 text-sm" aria-label="Sort direction">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="asc">Ascending</SelectItem>
+                <SelectItem value="desc">Descending</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <button
-            type="button"
-            onClick={fetchTenants}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            aria-label="Refresh tenant list"
-          >
+          <Button type="button" onClick={fetchTenants} aria-label="Refresh tenant list">
             Refresh
-          </button>
-          <button
-            type="button"
-            onClick={handleExportTenantData}
-            disabled={sorted.length === 0}
-            className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm"
-          >
+          </Button>
+          <Button type="button" variant="outline" onClick={handleExportTenantData} disabled={sorted.length === 0}>
             Export tenant data (§7.1.3)
-          </button>
-          <Link
-            href="/admin/tenants/templates"
-            className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-          >
-            Tenant Templates
-          </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/tenants/templates">Tenant Templates</Link>
+          </Button>
         </div>
       )}
 
@@ -324,12 +322,12 @@ export default function TenantsListPage() {
                           <Link href={`/admin/tenants/${row.id}?tab=analytics`} className="text-blue-600 dark:text-blue-400 hover:underline">
                             Analytics
                           </Link>
-                          <button type="button" disabled className="text-gray-400 cursor-not-allowed" title="Coming soon">
+                          <Button type="button" variant="ghost" size="sm" disabled className="text-gray-400 cursor-not-allowed" title="Coming soon">
                             Suspend
-                          </button>
-                          <button type="button" disabled className="text-gray-400 cursor-not-allowed" title="Coming soon">
+                          </Button>
+                          <Button type="button" variant="ghost" size="sm" disabled className="text-gray-400 cursor-not-allowed" title="Coming soon">
                             Delete
-                          </button>
+                          </Button>
                         </span>
                       </td>
                     </tr>

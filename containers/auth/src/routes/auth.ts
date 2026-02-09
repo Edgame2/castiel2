@@ -31,6 +31,9 @@ import { generateSAMLRequest, processSAMLResponse } from '../services/SAMLHandle
 import { getSSOConfigurationService, type SSOProvider } from '../services/SSOConfigurationService';
 import { requirePermission } from '../middleware/rbac';
 import { logAuditAction } from '../middleware/auditLogging';
+import { randomUUID } from 'crypto';
+import { redis } from '../utils/redis';
+import { MfaService } from '../services/MfaService';
 
 /**
  * Extract token from request (helper function for refresh endpoint)
@@ -676,6 +679,281 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
     }
   });
 
+  // MFA (guarded by features.multi_factor_auth)
+  const mfaService = new MfaService();
+  fastify.get(
+    '/api/v1/auth/mfa/status',
+    { preHandler: authenticateRequest },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!routeConfig.features?.multi_factor_auth) {
+        reply.code(403).send({ error: 'Multi-factor authentication is not enabled' });
+        return;
+      }
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const enrolled = await mfaService.isEnrolled(requestUser.id);
+        return { enrolled };
+      } catch (err: unknown) {
+        log.error('MFA status error', err, { route: '/api/v1/auth/mfa/status', service: 'auth' });
+        reply.code(500).send({ error: 'Failed to get MFA status' });
+      }
+    }
+  );
+  fastify.post(
+    '/api/v1/auth/mfa/enroll',
+    { preHandler: authenticateRequest },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!routeConfig.features?.multi_factor_auth) {
+        reply.code(403).send({ error: 'Multi-factor authentication is not enabled' });
+        return;
+      }
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const body = (request.body as { issuer?: string; accountName?: string }) ?? {};
+        const { issuer, accountName } = body;
+        const result = await mfaService.enroll(requestUser.id, issuer, accountName);
+        return { secret: result.secret, provisioningUri: result.provisioningUri, label: result.label };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Enroll failed';
+        if (message === 'MFA_ALREADY_ENROLLED') {
+          reply.code(409).send({ error: 'MFA is already enrolled for this account' });
+          return;
+        }
+        log.error('MFA enroll error', err, { route: '/api/v1/auth/mfa/enroll', service: 'auth' });
+        reply.code(500).send({ error: 'Failed to enroll MFA' });
+      }
+    }
+  );
+  fastify.post(
+    '/api/v1/auth/mfa/verify',
+    { preHandler: authenticateRequest },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!routeConfig.features?.multi_factor_auth) {
+        reply.code(403).send({ error: 'Multi-factor authentication is not enabled' });
+        return;
+      }
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const code = (request.body as { code?: string })?.code?.trim();
+        if (!code) {
+          reply.code(400).send({ error: 'code is required' });
+          return;
+        }
+        const valid = await mfaService.verify(requestUser.id, code);
+        if (!valid) {
+          reply.code(401).send({ error: 'Invalid or expired code' });
+          return;
+        }
+        return { success: true };
+      } catch (err: unknown) {
+        log.error('MFA verify error', err, { route: '/api/v1/auth/mfa/verify', service: 'auth' });
+        reply.code(500).send({ error: 'Verification failed' });
+      }
+    }
+  );
+  fastify.post(
+    '/api/v1/auth/mfa/verify-backup',
+    { preHandler: authenticateRequest },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!routeConfig.features?.multi_factor_auth) {
+        reply.code(403).send({ error: 'Multi-factor authentication is not enabled' });
+        return;
+      }
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const code = (request.body as { code?: string })?.code?.trim();
+        if (!code) {
+          reply.code(400).send({ error: 'code is required' });
+          return;
+        }
+        const valid = await mfaService.verifyBackupCode(requestUser.id, code);
+        if (!valid) {
+          reply.code(401).send({ error: 'Invalid or already used backup code' });
+          return;
+        }
+        return { success: true };
+      } catch (err: unknown) {
+        log.error('MFA verify-backup error', err, { route: '/api/v1/auth/mfa/verify-backup', service: 'auth' });
+        reply.code(500).send({ error: 'Verification failed' });
+      }
+    }
+  );
+  fastify.post(
+    '/api/v1/auth/mfa/disable',
+    { preHandler: authenticateRequest },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!routeConfig.features?.multi_factor_auth) {
+        reply.code(403).send({ error: 'Multi-factor authentication is not enabled' });
+        return;
+      }
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const code = (request.body as { code?: string })?.code?.trim();
+        if (!code) {
+          reply.code(400).send({ error: 'code is required' });
+          return;
+        }
+        const valid = await mfaService.verify(requestUser.id, code);
+        if (!valid) {
+          reply.code(401).send({ error: 'Invalid or expired code' });
+          return;
+        }
+        await mfaService.disable(requestUser.id);
+        return { success: true };
+      } catch (err: unknown) {
+        log.error('MFA disable error', err, { route: '/api/v1/auth/mfa/disable', service: 'auth' });
+        reply.code(500).send({ error: 'Failed to disable MFA' });
+      }
+    }
+  );
+  fastify.post(
+    '/api/v1/auth/api-keys',
+    { preHandler: authenticateRequest },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!routeConfig.features?.api_keys) {
+        reply.code(403).send({ error: 'API keys are not enabled' });
+        return;
+      }
+      if ((request as any).apiKeyAuth) {
+        reply.code(403).send({ error: 'Cannot create API keys when authenticated with an API key' });
+        return;
+      }
+      try {
+        const requestUser = (request as any).user;
+        const organizationId = (request as any).organizationId;
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const body = request.body as { name?: string; expiresInDays?: number };
+        const name = body?.name?.trim();
+        if (!name) {
+          reply.code(400).send({ error: 'name is required' });
+          return;
+        }
+        const tenantId = organizationId || '';
+        const { ApiKeyService } = await import('../services/ApiKeyService');
+        const result = await new ApiKeyService().create(
+          requestUser.id,
+          tenantId,
+          name,
+          body?.expiresInDays
+        );
+        return result;
+      } catch (err: unknown) {
+        log.error('Create API key error', err, { route: '/api/v1/auth/api-keys', service: 'auth' });
+        reply.code(500).send({ error: 'Failed to create API key' });
+      }
+    }
+  );
+  fastify.get(
+    '/api/v1/auth/api-keys',
+    { preHandler: authenticateRequest },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!routeConfig.features?.api_keys) {
+        reply.code(403).send({ error: 'API keys are not enabled' });
+        return;
+      }
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const { ApiKeyService } = await import('../services/ApiKeyService');
+        const list = await new ApiKeyService().listByUser(requestUser.id);
+        return { keys: list };
+      } catch (err: unknown) {
+        log.error('List API keys error', err, { route: 'GET /api/v1/auth/api-keys', service: 'auth' });
+        reply.code(500).send({ error: 'Failed to list API keys' });
+      }
+    }
+  );
+  fastify.delete(
+    '/api/v1/auth/api-keys/:id',
+    { preHandler: authenticateRequest },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!routeConfig.features?.api_keys) {
+        reply.code(403).send({ error: 'API keys are not enabled' });
+        return;
+      }
+      try {
+        const requestUser = (request as any).user;
+        const id = (request.params as { id?: string })?.id?.trim();
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        if (!id) {
+          reply.code(400).send({ error: 'Key id is required' });
+          return;
+        }
+        const { ApiKeyService } = await import('../services/ApiKeyService');
+        const revoked = await new ApiKeyService().revoke(id, requestUser.id);
+        if (!revoked) {
+          reply.code(404).send({ error: 'API key not found or you do not have permission to revoke it' });
+          return;
+        }
+        return { success: true };
+      } catch (err: unknown) {
+        log.error('Revoke API key error', err, { route: 'DELETE /api/v1/auth/api-keys/:id', service: 'auth' });
+        reply.code(500).send({ error: 'Failed to revoke API key' });
+      }
+    }
+  );
+  fastify.post(
+    '/api/v1/auth/mfa/backup-codes/generate',
+    { preHandler: authenticateRequest },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!routeConfig.features?.multi_factor_auth) {
+        reply.code(403).send({ error: 'Multi-factor authentication is not enabled' });
+        return;
+      }
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const code = (request.body as { code?: string })?.code?.trim();
+        if (!code) {
+          reply.code(400).send({ error: 'code is required' });
+          return;
+        }
+        const valid = await mfaService.verify(requestUser.id, code);
+        if (!valid) {
+          reply.code(401).send({ error: 'Invalid or expired code' });
+          return;
+        }
+        const codes = await mfaService.generateBackupCodes(requestUser.id);
+        return { codes };
+      } catch (err: unknown) {
+        log.error('MFA backup codes generate error', err, { route: '/api/v1/auth/mfa/backup-codes/generate', service: 'auth' });
+        reply.code(500).send({ error: 'Failed to generate backup codes' });
+      }
+    }
+  );
+
   // Refresh token - uses session refresh
   fastify.post('/api/v1/auth/refresh', { preHandler: optionalAuth }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -1205,6 +1483,22 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           }
         }
 
+        // If MFA enabled and user has TOTP enrolled, require MFA step before creating session
+        if (routeConfig.features?.multi_factor_auth) {
+          const enrolled = await mfaService.isEnrolled(user.id);
+          if (enrolled) {
+            const mfaSessionId = randomUUID();
+            const mfaPendingPayload = JSON.stringify({
+              userId: user.id,
+              rememberMe,
+              organizationId: activeOrgId,
+            });
+            await redis.setex(`mfa_pending:${mfaSessionId}`, 300, mfaPendingPayload);
+            reply.code(202).send({ requiresMfa: true, mfaSessionId });
+            return;
+          }
+        }
+
         // Create session
         const { accessToken, refreshToken, sessionId } = await createSession(
           user.id,
@@ -1319,6 +1613,126 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           error: 'Login failed',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
+      }
+    }
+  );
+
+  // Complete login after MFA (TOTP or backup code)
+  fastify.post(
+    '/api/v1/auth/login/complete-mfa',
+    async (
+      request: FastifyRequest<{
+        Body: { mfaSessionId: string; code: string };
+      }>,
+      reply: FastifyReply
+    ) => {
+      if (!routeConfig.features?.multi_factor_auth) {
+        reply.code(403).send({ error: 'Multi-factor authentication is not enabled' });
+        return;
+      }
+      try {
+        const { mfaSessionId, code } = request.body || {};
+        if (!mfaSessionId?.trim() || !code?.trim()) {
+          reply.code(400).send({ error: 'mfaSessionId and code are required' });
+          return;
+        }
+        const key = `mfa_pending:${mfaSessionId.trim()}`;
+        const raw = await redis.get(key);
+        if (!raw) {
+          reply.code(401).send({ error: 'MFA session expired or invalid. Please sign in again.' });
+          return;
+        }
+        let payload: { userId: string; rememberMe: boolean; organizationId: string | null };
+        try {
+          payload = JSON.parse(raw);
+        } catch {
+          await redis.del(key);
+          reply.code(401).send({ error: 'Invalid MFA session. Please sign in again.' });
+          return;
+        }
+        const { userId, rememberMe, organizationId: activeOrgId } = payload;
+        const trimmedCode = code.trim();
+        const totpValid = await mfaService.verify(userId, trimmedCode);
+        const backupValid = !totpValid && (await mfaService.verifyBackupCode(userId, trimmedCode));
+        if (!totpValid && !backupValid) {
+          reply.code(401).send({ error: 'Invalid or expired code' });
+          return;
+        }
+        await redis.del(key);
+
+        const forwardedFor = request.headers['x-forwarded-for'];
+        const ipAddress = request.ip || (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor) || null;
+        const userAgentHeader = request.headers['user-agent'];
+        const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader || null;
+        const acceptLanguageHeader = request.headers['accept-language'];
+        const acceptLanguage = Array.isArray(acceptLanguageHeader) ? acceptLanguageHeader[0] : acceptLanguageHeader || null;
+
+        const { accessToken, refreshToken, sessionId } = await createSession(
+          userId,
+          activeOrgId,
+          rememberMe,
+          ipAddress,
+          userAgent,
+          acceptLanguage,
+          fastify
+        );
+
+        const accessTokenMaxAge = rememberMe ? 30 * 24 * 60 * 60 : 8 * 60 * 60;
+        reply.setCookie('accessToken', accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: accessTokenMaxAge,
+        });
+        reply.setCookie('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: rememberMe ? 30 * 24 * 60 * 60 : 8 * 60 * 60,
+        });
+
+        const db = getDatabaseClient() as any;
+        const user = await db.user.findUnique({
+          where: { id: userId },
+          select: { id: true, email: true, name: true, firstName: true, lastName: true, isEmailVerified: true },
+        });
+        if (user) {
+          await db.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
+          const metadata = extractEventMetadata(request);
+          await publishEventSafely({
+            ...createBaseEvent('auth.login.success', userId, activeOrgId || undefined, undefined, {
+              userId,
+              sessionId,
+              provider: 'password',
+              organizationId: activeOrgId || undefined,
+            }),
+          } as AuthEvent);
+          await publishEventSafely({
+            ...createBaseEvent('user.logged_in', userId, activeOrgId || undefined, undefined, {
+              userId,
+              sessionId,
+              provider: 'password',
+            }),
+          } as AuthEvent);
+        }
+
+        return {
+          user: user ? {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            isEmailVerified: user.isEmailVerified,
+          } : undefined,
+          accessToken,
+          refreshToken,
+          sessionId,
+          organizationId: activeOrgId,
+        };
+      } catch (err: unknown) {
+        log.error('Complete MFA login error', err, { route: '/api/v1/auth/login/complete-mfa', service: 'auth' });
+        reply.code(500).send({ error: 'Failed to complete sign-in' });
       }
     }
   );

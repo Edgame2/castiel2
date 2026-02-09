@@ -67,6 +67,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     containers: {
       results: config.cosmos_db.containers.results,
       cache: config.cosmos_db.containers.cache,
+      schedules: config.cosmos_db.containers.schedules,
     },
   });
   
@@ -130,6 +131,35 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   const { registerRoutes } = await import('./routes/index.js');
   await registerRoutes(fastify, config);
+
+  // Recurring search scheduler (Phase 4.1): run due schedules every 5 min
+  const SCHEDULER_INTERVAL_MS = 5 * 60 * 1000;
+  let schedulerTimer: ReturnType<typeof setInterval> | null = null;
+  fastify.addHook('onReady', async () => {
+    schedulerTimer = setInterval(async () => {
+      try {
+        const { ScheduleService } = await import('./services/ScheduleService.js');
+        const { WebSearchService } = await import('./services/WebSearchService.js');
+        const scheduleService = new ScheduleService();
+        const webSearchService = new WebSearchService(fastify);
+        const due = await scheduleService.getDue();
+        for (const s of due) {
+          try {
+            await webSearchService.search(s.tenantId, s.query, { userId: s.userId });
+            const nextRun = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+            await scheduleService.setNextRun(s.id, s.tenantId, nextRun);
+          } catch (err) {
+            log.warn('Scheduled search failed', { scheduleId: s.id, error: (err as Error).message, service: 'web-search' });
+          }
+        }
+      } catch (err) {
+        log.warn('Scheduler tick failed', { error: (err as Error).message, service: 'web-search' });
+      }
+    }, SCHEDULER_INTERVAL_MS);
+  });
+  fastify.addHook('onClose', async () => {
+    if (schedulerTimer) clearInterval(schedulerTimer);
+  });
 
   fastify.get('/health', async () => ({
     status: 'healthy',

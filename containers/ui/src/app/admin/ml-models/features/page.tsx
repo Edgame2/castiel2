@@ -6,6 +6,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function MLModelsFeaturesPage() {
   return (
@@ -32,7 +33,7 @@ export default function MLModelsFeaturesPage() {
             Feature versions and schema for ml-service Layer 2 (§4.3). Full feature store config when available.
           </p>
         </div>
-        <button type="button" onClick={() => window.location.reload()} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline shrink-0" aria-label="Refresh ML features page">Refresh</button>
+        <Button type="button" variant="link" onClick={() => window.location.reload()} className="shrink-0" aria-label="Refresh ML features page">Refresh</Button>
       </div>
       <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
         <Link
@@ -67,12 +68,9 @@ export default function MLModelsFeaturesPage() {
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
           Feature versions and schema (ml-service Layer 2) are managed in Feature Engineering. Full feature store (quality, drift, per-feature config) will appear when §4.3 APIs are available.
         </p>
-        <Link
-          href="/admin/feature-engineering/features"
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-        >
-          Open Feature Engineering (Features) →
-        </Link>
+        <Button asChild>
+          <Link href="/admin/feature-engineering/features">Open Feature Engineering (Features) →</Link>
+        </Button>
       </div>
     </div>
   );

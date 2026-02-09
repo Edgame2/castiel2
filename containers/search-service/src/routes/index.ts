@@ -16,7 +16,8 @@ import {
 export async function registerRoutes(app: FastifyInstance, config: any): Promise<void> {
   const searchService = new SearchService(
     config.services.embeddings.url,
-    config.services.shard_manager.url
+    config.services.shard_manager.url,
+    app
   );
   const searchAnalyticsService = new SearchAnalyticsService();
 

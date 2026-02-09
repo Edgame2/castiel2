@@ -6,6 +6,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { CompetitorSelectModal } from './CompetitorSelectModal';
 
 export type LinkCompetitorCardProps = {
@@ -27,13 +28,9 @@ export function LinkCompetitorCard({
   return (
     <div className="rounded-lg border p-4 bg-white dark:bg-gray-900">
       <h3 className="text-sm font-semibold mb-2">{title}</h3>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
-      >
+      <Button type="button" variant="outline" size="sm" onClick={() => setIsOpen(true)}>
         Link competitor
-      </button>
+      </Button>
       <CompetitorSelectModal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}

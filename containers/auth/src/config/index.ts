@@ -157,6 +157,12 @@ export function loadConfig(): AuthConfig {
     resolved.features.password_reset = toBool(resolved.features.password_reset) as boolean;
     resolved.features.email_verification = toBool(resolved.features.email_verification) as boolean;
     resolved.features.multi_factor_auth = toBool(resolved.features.multi_factor_auth) as boolean;
+    resolved.features.api_keys = toBool(resolved.features.api_keys) as boolean;
+  }
+  if (resolved.rate_limit) {
+    resolved.rate_limit.enabled = toBool(resolved.rate_limit.enabled) as boolean;
+    resolved.rate_limit.window_seconds = toInt(resolved.rate_limit.window_seconds) as number;
+    resolved.rate_limit.max_per_window = toInt(resolved.rate_limit.max_per_window) as number;
   }
 
   // Validate against schema

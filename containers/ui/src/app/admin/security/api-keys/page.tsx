@@ -7,6 +7,16 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -226,33 +236,23 @@ export default function SecurityApiKeysPage() {
       {apiBaseUrl && (
         <>
           <div className="mb-4 flex gap-4 items-center flex-wrap">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Organization ID</label>
-            <input
+            <Label className="text-sm">Organization ID</Label>
+            <Input
               type="text"
               value={orgId}
               onChange={(e) => setOrgId(e.target.value)}
               placeholder="e.g. org_123"
-              className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm w-48"
+              className="w-48 text-sm"
             />
-            <button
-              type="button"
-              onClick={fetchKeys}
-              disabled={loading || !orgId.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-            >
+            <Button type="button" onClick={fetchKeys} disabled={loading || !orgId.trim()}>
               {loading ? 'Loading…' : 'Load keys'}
-            </button>
-            <button
-              type="button"
-              onClick={fetchKeys}
-              disabled={loading || !orgId.trim()}
-              className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-              title="Refetch API keys for current organization"
-            >
+            </Button>
+            <Button type="button" variant="outline" onClick={fetchKeys} disabled={loading || !orgId.trim()} title="Refetch API keys for current organization">
               Refresh
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
               onClick={() => {
                 setShowCreate(true);
                 setCreateError(null);
@@ -262,10 +262,9 @@ export default function SecurityApiKeysPage() {
                 setCreateExpiresAt('');
               }}
               disabled={!orgId.trim()}
-              className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
             >
               Create API key
-            </button>
+            </Button>
             <Link href="/admin/security" className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
               ← Back to Security & Access Control
             </Link>
@@ -283,81 +282,58 @@ export default function SecurityApiKeysPage() {
                     <code className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono break-all">
                       {createdKey.key}
                     </code>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(createdKey.key);
-                      }}
-                      className="px-3 py-2 border rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-sm"
-                    >
+                    <Button type="button" variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(createdKey.key)}>
                       Copy
-                    </button>
+                    </Button>
                   </div>
                   <p className="text-sm text-gray-500">Name: {createdKey.name}. Created: {new Date(createdKey.createdAt).toLocaleString()}.</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCreate(false);
-                      setCreatedKey(null);
-                    }}
-                    className="px-3 py-1.5 text-sm border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                  >
+                  <Button type="button" variant="outline" size="sm" onClick={() => { setShowCreate(false); setCreatedKey(null); }}>
                     Done
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-3 max-w-md">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
-                    <input
+                    <Label className="block mb-1">Name *</Label>
+                    <Input
                       type="text"
                       value={createName}
                       onChange={(e) => setCreateName(e.target.value)}
                       placeholder="e.g. CI pipeline"
-                      className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                      className="w-full text-sm"
                       disabled={creating}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scope (optional)</label>
-                    <input
+                    <Label className="block mb-1">Scope (optional)</Label>
+                    <Input
                       type="text"
                       value={createScope}
                       onChange={(e) => setCreateScope(e.target.value)}
                       placeholder="e.g. read:api"
-                      className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                      className="w-full text-sm"
                       disabled={creating}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expires at (optional, ISO date)</label>
-                    <input
+                    <Label className="block mb-1">Expires at (optional, ISO date)</Label>
+                    <Input
                       type="text"
                       value={createExpiresAt}
                       onChange={(e) => setCreateExpiresAt(e.target.value)}
                       placeholder="e.g. 2026-12-31"
-                      className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
+                      className="w-full text-sm"
                       disabled={creating}
                     />
                   </div>
                   {createError && <p className="text-sm text-red-600 dark:text-red-400">{createError}</p>}
                   <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleCreate}
-                      disabled={creating}
-                      className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                    >
+                    <Button type="button" size="sm" onClick={handleCreate} disabled={creating}>
                       {creating ? 'Creating…' : 'Create'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowCreate(false)}
-                      className="px-3 py-1.5 text-sm border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                      disabled={creating}
-                    >
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setShowCreate(false)} disabled={creating}>
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -371,30 +347,22 @@ export default function SecurityApiKeysPage() {
                 <code className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono break-all">
                   {rotatedKey.key}
                 </code>
-                <button
-                  type="button"
-                  onClick={() => navigator.clipboard.writeText(rotatedKey.key)}
-                  className="px-3 py-2 border rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-sm"
-                >
+                <Button type="button" variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(rotatedKey.key)}>
                   Copy
-                </button>
+                </Button>
               </div>
-              <button
-                type="button"
-                onClick={() => setRotatedKey(null)}
-                className="mt-3 text-sm font-medium text-blue-600 hover:underline"
-              >
+              <Button type="button" variant="link" onClick={() => setRotatedKey(null)} className="mt-3">
                 Dismiss
-              </button>
+              </Button>
             </div>
           )}
 
           {rotateError && (
             <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 mb-4">
               <p className="text-sm text-red-600 dark:text-red-400">Rotate error: {rotateError}</p>
-              <button type="button" onClick={() => setRotateError(null)} className="mt-2 text-sm text-blue-600 hover:underline">
+              <Button type="button" variant="link" onClick={() => setRotateError(null)} className="mt-2">
                 Dismiss
-              </button>
+              </Button>
             </div>
           )}
 
@@ -416,29 +384,29 @@ export default function SecurityApiKeysPage() {
                   <div className="flex flex-wrap items-center gap-4 mb-3">
                     <h2 className="text-lg font-semibold">API keys ({items.length})</h2>
                     <div className="flex items-center gap-2">
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by (§10.3)</label>
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                        className="px-3 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                        aria-label="Sort by"
-                      >
-                        <option value="">Default</option>
-                        <option value="name">Name</option>
-                        <option value="scope">Scope</option>
-                        <option value="createdAt">Created</option>
-                        <option value="expiresAt">Expires</option>
-                        <option value="lastUsedAt">Last used</option>
-                      </select>
-                      <select
-                        value={sortDir}
-                        onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
-                        className="px-3 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 text-sm"
-                        aria-label="Sort direction"
-                      >
-                        <option value="asc">Ascending</option>
-                        <option value="desc">Descending</option>
-                      </select>
+                      <Label className="text-sm">Sort by (§10.3)</Label>
+                      <Select value={sortBy || '_default'} onValueChange={(v) => setSortBy(v === '_default' ? '' : (v as typeof sortBy))}>
+                        <SelectTrigger className="w-[120px] h-8 text-sm" aria-label="Sort by">
+                          <SelectValue placeholder="Default" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="_default">Default</SelectItem>
+                          <SelectItem value="name">Name</SelectItem>
+                          <SelectItem value="scope">Scope</SelectItem>
+                          <SelectItem value="createdAt">Created</SelectItem>
+                          <SelectItem value="expiresAt">Expires</SelectItem>
+                          <SelectItem value="lastUsedAt">Last used</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={sortDir} onValueChange={(v) => setSortDir(v as 'asc' | 'desc')}>
+                        <SelectTrigger className="w-[120px] h-8 text-sm" aria-label="Sort direction">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="asc">Ascending</SelectItem>
+                          <SelectItem value="desc">Descending</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <div className="overflow-x-auto">
@@ -462,22 +430,24 @@ export default function SecurityApiKeysPage() {
                           <td className="py-2 px-4">{row.createdAt ? new Date(row.createdAt).toLocaleString() : '—'}</td>
                           <td className="py-2 px-4">{row.lastUsedAt ? new Date(row.lastUsedAt).toLocaleString() : '—'}</td>
                           <td className="py-2 px-4 flex gap-2">
-                            <button
+                            <Button
                               type="button"
+                              variant="link"
+                              className="text-blue-600 dark:text-blue-400 p-0 h-auto"
                               onClick={() => handleRotate(row.id!)}
                               disabled={rotateKeyId !== null || !row.id}
-                              className="text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
                             >
                               {rotateKeyId === row.id ? 'Rotating…' : 'Rotate'}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
+                              variant="link"
+                              className="text-red-600 dark:text-red-400 p-0 h-auto"
                               onClick={() => handleRevoke(row.id!)}
                               disabled={revokingId !== null || !row.id}
-                              className="text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
                             >
                               {revokingId === row.id ? 'Revoking…' : 'Revoke'}
-                            </button>
+                            </Button>
                           </td>
                         </tr>
                         ))}

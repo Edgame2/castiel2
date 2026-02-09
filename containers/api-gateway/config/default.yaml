@@ -55,6 +55,10 @@ services:
     url: ${MULTI_MODAL_SERVICE_URL:-http://localhost:3044}
   prompt_service:
     url: ${PROMPT_SERVICE_URL:-http://localhost:3036}
+  web_search:
+    url: ${WEB_SEARCH_URL:-http://localhost:3056}
+  search_service:
+    url: ${SEARCH_SERVICE_URL:-http://localhost:3029}
 
 # Rate limiting
 rate_limit:
@@ -66,3 +70,10 @@ circuit_breaker:
   threshold: ${CIRCUIT_BREAKER_THRESHOLD:-5}
   timeout: ${CIRCUIT_BREAKER_TIMEOUT:-30000}
 
+# CORS (frontend origin; * allows all)
+cors:
+  origin: ${FRONTEND_URL:-*}
+
+# Optional Redis for rate limit store (when set, rate limits are shared across gateway instances)
+redis:
+  url: ${REDIS_URL:-}

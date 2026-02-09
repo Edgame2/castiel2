@@ -8,6 +8,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -227,19 +238,20 @@ export default function CAISAdminPage() {
       {apiBaseUrl && (
         <>
           <div className="mb-6">
-            <label className="block text-sm font-medium mb-1">Tenant</label>
-            <select
-              value={tenantId}
-              onChange={(e) => setTenantId(e.target.value)}
-              className="border rounded px-3 py-2 text-sm bg-white dark:bg-gray-800"
-            >
-              <option value="">Select tenant</option>
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name || t.id}
-                </option>
-              ))}
-            </select>
+            <Label className="block mb-1">Tenant</Label>
+            <Select value={tenantId || '_none'} onValueChange={(v) => setTenantId(v === '_none' ? '' : v)}>
+              <SelectTrigger className="w-full max-w-xs">
+                <SelectValue placeholder="Select tenant" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">Select tenant</SelectItem>
+                {tenants.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name || t.id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {error && <p className="text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>}
           {message && <p className="text-sm text-green-600 dark:text-green-400 mb-4">{message}</p>}
@@ -251,51 +263,50 @@ export default function CAISAdminPage() {
                   Per-tenant toggles for outcome sync and automatic learning.
                 </p>
                 <div className="space-y-3">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="outcomeSyncToCais"
                       checked={tenantConfig.outcomeSyncToCais}
-                      onChange={(e) => handleTenantConfigToggle('outcomeSyncToCais', e.target.checked)}
-                      className="rounded border-gray-300"
+                      onCheckedChange={(c) => handleTenantConfigToggle('outcomeSyncToCais', !!c)}
                     />
-                    <span className="text-sm">
+                    <Label htmlFor="outcomeSyncToCais" className="text-sm font-normal cursor-pointer">
                       Sync opportunity outcomes to CAIS (risk prediction vs won/lost)
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="automaticLearningEnabled"
                       checked={tenantConfig.automaticLearningEnabled}
-                      onChange={(e) => handleTenantConfigToggle('automaticLearningEnabled', e.target.checked)}
-                      className="rounded border-gray-300"
+                      onCheckedChange={(c) => handleTenantConfigToggle('automaticLearningEnabled', !!c)}
                     />
-                    <span className="text-sm">
+                    <Label htmlFor="automaticLearningEnabled" className="text-sm font-normal cursor-pointer">
                       Automatically learn weights and model selection from outcomes
-                    </span>
-                  </label>
+                    </Label>
+                  </div>
                 </div>
               </div>
               <div className="grid gap-8 md:grid-cols-2">
               <div className="rounded-lg border p-4 bg-white dark:bg-gray-900">
                 <h2 className="text-lg font-semibold mb-3">Weights</h2>
                 <div className="mb-3">
-                  <label className="block text-sm mb-1">Component</label>
-                  <select
-                    value={weightsComponent}
-                    onChange={(e) => setWeightsComponent(e.target.value)}
-                    className="border rounded px-3 py-2 text-sm bg-white dark:bg-gray-800 w-full"
-                  >
-                    {WEIGHT_COMPONENTS.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+                  <Label className="block mb-1">Component</Label>
+                  <Select value={weightsComponent} onValueChange={setWeightsComponent}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WEIGHT_COMPONENTS.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {weightKeys.map((key) => (
                   <div key={key} className="flex items-center gap-2 mb-2">
-                    <label className="text-sm w-24">{key}</label>
-                    <input
+                    <Label className="text-sm w-24 shrink-0">{key}</Label>
+                    <Input
                       type="number"
                       min={0}
                       max={1}
@@ -310,47 +321,43 @@ export default function CAISAdminPage() {
                           return next;
                         });
                       }}
-                      className="border rounded px-2 py-1 text-sm w-20 bg-white dark:bg-gray-800"
+                      className="w-20"
                     />
                   </div>
                 ))}
-                <button
-                  type="button"
-                  onClick={handleSaveWeights}
-                  disabled={saving}
-                  className="mt-2 px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                >
+                <Button type="button" onClick={handleSaveWeights} disabled={saving} className="mt-2">
                   {saving ? 'Saving…' : 'Save weights'}
-                </button>
+                </Button>
               </div>
               <div className="rounded-lg border p-4 bg-white dark:bg-gray-900">
                 <h2 className="text-lg font-semibold mb-3">Model selection</h2>
                 <div className="mb-3">
-                  <label className="block text-sm mb-1">Context</label>
-                  <select
-                    value={modelContext}
-                    onChange={(e) => setModelContext(e.target.value)}
-                    className="border rounded px-3 py-2 text-sm bg-white dark:bg-gray-800 w-full"
-                  >
-                    {MODEL_CONTEXTS.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+                  <Label className="block mb-1">Context</Label>
+                  <Select value={modelContext} onValueChange={setModelContext}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MODEL_CONTEXTS.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="mb-2">
-                  <label className="block text-sm mb-1">Model ID</label>
-                  <input
+                  <Label className="block mb-1">Model ID</Label>
+                  <Input
                     type="text"
                     value={modelSelection.modelId}
                     onChange={(e) => setModelSelection((prev) => ({ ...prev, modelId: e.target.value }))}
-                    className="border rounded px-3 py-2 text-sm w-full bg-white dark:bg-gray-800"
+                    className="w-full"
                   />
                 </div>
                 <div className="mb-2">
-                  <label className="block text-sm mb-1">Confidence</label>
-                  <input
+                  <Label className="block mb-1">Confidence</Label>
+                  <Input
                     type="number"
                     min={0}
                     max={1}
@@ -359,17 +366,12 @@ export default function CAISAdminPage() {
                     onChange={(e) =>
                       setModelSelection((prev) => ({ ...prev, confidence: Number(e.target.value) }))
                     }
-                    className="border rounded px-3 py-2 text-sm w-24 bg-white dark:bg-gray-800"
+                    className="w-24"
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleSaveModelSelection}
-                  disabled={saving}
-                  className="mt-2 px-3 py-1.5 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                >
+                <Button type="button" onClick={handleSaveModelSelection} disabled={saving} className="mt-2">
                   {saving ? 'Saving…' : 'Save model selection'}
-                </button>
+                </Button>
               </div>
             </div>
             </>

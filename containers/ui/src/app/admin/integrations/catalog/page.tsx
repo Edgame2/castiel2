@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -79,15 +80,9 @@ export default function IntegrationCatalogPage() {
         Manage integration catalog entries (Super Admin only)
       </p>
       <div className="mb-4">
-        <button
-          type="button"
-          onClick={fetchIntegrations}
-          disabled={loading}
-          className="px-4 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 text-sm font-medium"
-          title="Refetch integration catalog"
-        >
+        <Button type="button" variant="outline" onClick={fetchIntegrations} disabled={loading} title="Refetch integration catalog">
           Refresh
-        </button>
+        </Button>
       </div>
 
       {loading && (
@@ -107,9 +102,7 @@ export default function IntegrationCatalogPage() {
           <div className="p-4 border-b">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Integration Types</h2>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                Add Integration Type
-              </button>
+              <Button>Add Integration Type</Button>
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -152,8 +145,8 @@ export default function IntegrationCatalogPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <button className="text-blue-600 hover:underline mr-3">Edit</button>
-                        <button className="text-red-600 hover:underline">Delete</button>
+                        <Button variant="link" className="text-blue-600 mr-3">Edit</Button>
+                        <Button variant="link" className="text-red-600">Delete</Button>
                       </td>
                     </tr>
                   ))

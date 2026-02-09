@@ -3,6 +3,17 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -175,82 +186,91 @@ export default function DecisionRuleDetailPage() {
                 <p><span className="text-gray-500">Actions:</span> {rule.actions?.length ?? 0}</p>
                 {rule.createdAt && <p><span className="text-gray-500">Created:</span> {new Date(rule.createdAt).toLocaleString()}</p>}
                 <div className="flex gap-2 mt-4">
-                  <button type="button" onClick={() => setEditing(true)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Edit</button>
-                  <button type="button" onClick={() => setDeleteConfirm(true)} className="px-4 py-2 border border-red-600 text-red-600 rounded hover:bg-red-50 dark:hover:bg-red-900/20">Delete</button>
+                  <Button type="button" onClick={() => setEditing(true)}>Edit</Button>
+                  <Button type="button" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" onClick={() => setDeleteConfirm(true)}>Delete</Button>
                 </div>
               </div>
             ) : (
               <form onSubmit={handleSave} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium mb-1">Name *</label>
-                  <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" required />
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name *</Label>
+                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
                 </div>
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium mb-1">Description</label>
-                  <input id="description" type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
                 </div>
                 <div className="flex items-center gap-2">
-                  <input type="checkbox" id="enabled" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="rounded" />
-                  <label htmlFor="enabled" className="text-sm font-medium">Enabled</label>
+                  <Checkbox id="enabled" checked={enabled} onCheckedChange={(c) => setEnabled(!!c)} />
+                  <Label htmlFor="enabled" className="text-sm font-medium cursor-pointer">Enabled</Label>
                 </div>
-                <div>
-                  <label htmlFor="priority" className="block text-sm font-medium mb-1">Priority</label>
-                  <input id="priority" type="number" value={priority} onChange={(e) => setPriority(Number(e.target.value))} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <div className="space-y-2">
+                  <Label htmlFor="priority">Priority</Label>
+                  <Input id="priority" type="number" value={priority} onChange={(e) => setPriority(Number(e.target.value))} />
                 </div>
-                <div>
-                  <label htmlFor="conditionLogic" className="block text-sm font-medium mb-1">Condition logic</label>
-                  <select id="conditionLogic" value={conditionLogic} onChange={(e) => setConditionLogic(e.target.value as 'AND' | 'OR')} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700">
-                    <option value="AND">AND</option>
-                    <option value="OR">OR</option>
-                  </select>
+                <div className="space-y-2">
+                  <Label htmlFor="conditionLogic">Condition logic</Label>
+                  <Select value={conditionLogic} onValueChange={(v) => setConditionLogic(v as 'AND' | 'OR')}>
+                    <SelectTrigger id="conditionLogic"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AND">AND</SelectItem>
+                      <SelectItem value="OR">OR</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium">Conditions *</label>
-                    <button type="button" onClick={() => setConditions((prev) => [...prev, { field: 'riskScore', operator: '>=', value: 0.5 }])} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Add condition</button>
+                    <Label>Conditions *</Label>
+                    <Button type="button" variant="link" size="sm" className="text-xs h-auto p-0" onClick={() => setConditions((prev) => [...prev, { field: 'riskScore', operator: '>=', value: 0.5 }])}>Add condition</Button>
                   </div>
                   {conditions.map((c, i) => (
                     <div key={i} className="flex gap-2 items-center mb-2">
-                      <input type="text" value={c.field} onChange={(e) => setConditions((prev) => { const n = [...prev]; n[i] = { ...n[i], field: e.target.value }; return n; })} placeholder="field" className="flex-1 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
-                      <select value={c.operator} onChange={(e) => setConditions((prev) => { const n = [...prev]; n[i] = { ...n[i], operator: e.target.value }; return n; })} className="px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700">
-                        <option value=">=">≥</option>
-                        <option value=">">&gt;</option>
-                        <option value="<">&lt;</option>
-                        <option value="<=">≤</option>
-                        <option value="=">=</option>
-                      </select>
-                      <input type="text" value={String(c.value ?? '')} onChange={(e) => { const v = e.target.value; const num = Number(v); setConditions((prev) => { const n = [...prev]; n[i] = { ...n[i], value: v === '' || Number.isNaN(num) ? v : num }; return n; }); }} placeholder="value" className="flex-1 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
-                      {conditions.length > 1 && <button type="button" onClick={() => setConditions((prev) => prev.filter((_, j) => j !== i))} className="text-red-600 dark:text-red-400 hover:underline text-xs">Remove</button>}
+                      <Input className="flex-1" value={c.field} onChange={(e) => setConditions((prev) => { const n = [...prev]; n[i] = { ...n[i], field: e.target.value }; return n; })} placeholder="field" />
+                      <Select value={c.operator} onValueChange={(v) => setConditions((prev) => { const n = [...prev]; n[i] = { ...n[i], operator: v }; return n; })}>
+                        <SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value=">=">≥</SelectItem>
+                          <SelectItem value=">">&gt;</SelectItem>
+                          <SelectItem value="<">&lt;</SelectItem>
+                          <SelectItem value="<=">≤</SelectItem>
+                          <SelectItem value="=">=</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input className="flex-1" value={String(c.value ?? '')} onChange={(e) => { const v = e.target.value; const num = Number(v); setConditions((prev) => { const n = [...prev]; n[i] = { ...n[i], value: v === '' || Number.isNaN(num) ? v : num }; return n; }); }} placeholder="value" />
+                      {conditions.length > 1 && <Button type="button" variant="link" size="sm" className="text-destructive text-xs h-auto p-0" onClick={() => setConditions((prev) => prev.filter((_, j) => j !== i))}>Remove</Button>}
                     </div>
                   ))}
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium">Actions *</label>
-                    <button type="button" onClick={() => setActions((prev) => [...prev, { type: 'notification', details: {}, priority: 'medium', idempotencyKey: `rule_${Date.now()}` }])} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Add action</button>
+                    <Label>Actions *</Label>
+                    <Button type="button" variant="link" size="sm" className="text-xs h-auto p-0" onClick={() => setActions((prev) => [...prev, { type: 'notification', details: {}, priority: 'medium', idempotencyKey: `rule_${Date.now()}` }])}>Add action</Button>
                   </div>
                   {actions.map((a, i) => (
                     <div key={i} className="flex gap-2 items-center mb-2">
-                      <select value={a.type} onChange={(e) => setActions((prev) => { const n = [...prev]; n[i] = { ...n[i], type: e.target.value }; return n; })} className="flex-1 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700">
-                        <option value="notification">notification</option>
-                        <option value="crm_update">crm_update</option>
-                        <option value="task_creation">task_creation</option>
-                        <option value="email_draft">email_draft</option>
-                        <option value="calendar_event">calendar_event</option>
-                        <option value="playbook_assignment">playbook_assignment</option>
-                      </select>
-                      <input type="text" value={a.idempotencyKey ?? ''} onChange={(e) => setActions((prev) => { const n = [...prev]; n[i] = { ...n[i], idempotencyKey: e.target.value }; return n; })} placeholder="idempotencyKey" className="flex-1 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
-                      {actions.length > 1 && <button type="button" onClick={() => setActions((prev) => prev.filter((_, j) => j !== i))} className="text-red-600 dark:text-red-400 hover:underline text-xs">Remove</button>}
+                      <Select value={a.type} onValueChange={(v) => setActions((prev) => { const n = [...prev]; n[i] = { ...n[i], type: v }; return n; })}>
+                        <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="notification">notification</SelectItem>
+                          <SelectItem value="crm_update">crm_update</SelectItem>
+                          <SelectItem value="task_creation">task_creation</SelectItem>
+                          <SelectItem value="email_draft">email_draft</SelectItem>
+                          <SelectItem value="calendar_event">calendar_event</SelectItem>
+                          <SelectItem value="playbook_assignment">playbook_assignment</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input className="flex-1" value={a.idempotencyKey ?? ''} onChange={(e) => setActions((prev) => { const n = [...prev]; n[i] = { ...n[i], idempotencyKey: e.target.value }; return n; })} placeholder="idempotencyKey" />
+                      {actions.length > 1 && <Button type="button" variant="link" size="sm" className="text-destructive text-xs h-auto p-0" onClick={() => setActions((prev) => prev.filter((_, j) => j !== i))}>Remove</Button>}
                     </div>
                   ))}
                 </div>
-                <div>
-                  <label htmlFor="createdBy" className="block text-sm font-medium mb-1">Created by</label>
-                  <input id="createdBy" type="text" value={createdBy} onChange={(e) => setCreatedBy(e.target.value)} className="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700" />
+                <div className="space-y-2">
+                  <Label htmlFor="createdBy">Created by</Label>
+                  <Input id="createdBy" value={createdBy} onChange={(e) => setCreatedBy(e.target.value)} />
                 </div>
                 <div className="flex gap-2">
-                  <button type="submit" disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Save</button>
-                  <button type="button" onClick={() => setEditing(false)} className="px-4 py-2 border rounded dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</button>
+                  <Button type="submit" disabled={saving}>Save</Button>
+                  <Button type="button" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
                 </div>
               </form>
             )}
@@ -259,8 +279,8 @@ export default function DecisionRuleDetailPage() {
               <div className="mt-4 p-4 border rounded-lg border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
                 <p className="text-sm mb-2">Delete this rule?</p>
                 <div className="flex gap-2">
-                  <button type="button" onClick={handleDelete} disabled={deleting} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50">Delete</button>
-                  <button type="button" onClick={() => setDeleteConfirm(false)} className="px-4 py-2 border rounded dark:border-gray-700">Cancel</button>
+                  <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting}>Delete</Button>
+                  <Button type="button" variant="outline" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
                 </div>
               </div>
             )}

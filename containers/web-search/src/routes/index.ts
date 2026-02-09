@@ -7,16 +7,18 @@ import { loadConfig } from '../config/index.js';
 import { log } from '../utils/logger.js';
 import { authenticateRequest, tenantEnforcementMiddleware } from '@coder/shared';
 import { WebSearchService } from '../services/WebSearchService.js';
+import { ScheduleService } from '../services/ScheduleService.js';
+import type { ScheduleScope } from '../types/schedule.types.js';
 
 /**
  * Register all routes
  */
 export async function registerRoutes(fastify: FastifyInstance, _config: ReturnType<typeof loadConfig>): Promise<void> {
   try {
-    const webSearchService = new WebSearchService();
+    const webSearchService = new WebSearchService(fastify);
 
     // Perform web search
-    fastify.post<{ Body: { query: string; limit?: number; useCache?: boolean } }>(
+    fastify.post<{ Body: { query: string; limit?: number; useCache?: boolean; opportunityId?: string; accountId?: string } }>(
       '/api/v1/web-search',
       {
         preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
@@ -28,10 +30,18 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       },
       async (request, reply) => {
         try {
-          const { query, limit, useCache } = request.body;
-          const tenantId = (request as any).user!.tenantId;
+          const { query, limit, useCache, opportunityId, accountId } = request.body;
+          const user = (request as any).user!;
+          const tenantId = user.tenantId;
+          const userId = user.id ?? '';
 
-          const result = await webSearchService.search(tenantId, query, { limit, useCache });
+          const result = await webSearchService.search(tenantId, query, {
+            limit,
+            useCache,
+            userId,
+            opportunityId,
+            accountId,
+          });
 
           return reply.send(result);
         } catch (error: any) {
@@ -43,6 +53,145 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
             },
           });
         }
+      }
+    );
+
+    // Recurring search schedules CRUD (Phase 4.1)
+    const scheduleService = new ScheduleService();
+    fastify.get<{ Querystring: { scope?: ScheduleScope; userId?: string } }>(
+      '/api/v1/schedules',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+      },
+      async (request, reply) => {
+        const tenantId = (request as any).user!.tenantId;
+        const list = await scheduleService.list(tenantId, request.query);
+        return reply.send({ schedules: list });
+      }
+    );
+    fastify.get<{ Params: { id: string } }>(
+      '/api/v1/schedules/:id',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+      },
+      async (request, reply) => {
+        const tenantId = (request as any).user!.tenantId;
+        const schedule = await scheduleService.get(request.params.id, tenantId);
+        if (!schedule) return reply.status(404).send({ error: 'Schedule not found' });
+        return reply.send(schedule);
+      }
+    );
+    fastify.post<{ Body: { query: string; cronExpression: string; scope?: ScheduleScope; role?: ScheduleScope } }>(
+      '/api/v1/schedules',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+        schema: {
+          description: 'Create recurring web search schedule',
+          tags: ['Web Search'],
+          body: {
+            type: 'object',
+            required: ['query', 'cronExpression'],
+            properties: {
+              query: { type: 'string', minLength: 1 },
+              cronExpression: { type: 'string', minLength: 1 },
+              scope: { type: 'string', enum: ['super_admin', 'tenant_admin', 'user'] },
+              role: { type: 'string', enum: ['super_admin', 'tenant_admin', 'user'] },
+            },
+          },
+          response: {
+            201: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                tenantId: { type: 'string' },
+                userId: { type: 'string' },
+                query: { type: 'string' },
+                cronExpression: { type: 'string' },
+                scope: { type: 'string' },
+                role: { type: 'string' },
+                nextRunAt: { type: 'string' },
+                createdAt: { type: 'string' },
+                updatedAt: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        const user = (request as any).user!;
+        const schedule = await scheduleService.create({
+          tenantId: user.tenantId,
+          userId: user.id ?? '',
+          query: request.body.query,
+          cronExpression: request.body.cronExpression,
+          scope: request.body.scope ?? 'user',
+          role: request.body.role ?? 'user',
+        });
+        return reply.status(201).send(schedule);
+      }
+    );
+    fastify.put<{
+      Params: { id: string };
+      Body: { query?: string; cronExpression?: string; scope?: ScheduleScope; role?: ScheduleScope };
+    }>(
+      '/api/v1/schedules/:id',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+        schema: {
+          description: 'Update recurring web search schedule',
+          tags: ['Web Search'],
+          params: {
+            type: 'object',
+            required: ['id'],
+            properties: { id: { type: 'string' } },
+          },
+          body: {
+            type: 'object',
+            minProperties: 1,
+            properties: {
+              query: { type: 'string', minLength: 1 },
+              cronExpression: { type: 'string', minLength: 1 },
+              scope: { type: 'string', enum: ['super_admin', 'tenant_admin', 'user'] },
+              role: { type: 'string', enum: ['super_admin', 'tenant_admin', 'user'] },
+            },
+          },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                tenantId: { type: 'string' },
+                userId: { type: 'string' },
+                query: { type: 'string' },
+                cronExpression: { type: 'string' },
+                scope: { type: 'string' },
+                role: { type: 'string' },
+                lastRunAt: { type: 'string' },
+                nextRunAt: { type: 'string' },
+                createdAt: { type: 'string' },
+                updatedAt: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        const tenantId = (request as any).user!.tenantId;
+        const updated = await scheduleService.update(request.params.id, tenantId, request.body);
+        if (!updated) return reply.status(404).send({ error: 'Schedule not found' });
+        return reply.send(updated);
+      }
+    );
+    fastify.delete<{ Params: { id: string } }>(
+      '/api/v1/schedules/:id',
+      {
+        preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
+      },
+      async (request, reply) => {
+        const tenantId = (request as any).user!.tenantId;
+        const ok = await scheduleService.delete(request.params.id, tenantId);
+        if (!ok) return reply.status(404).send({ error: 'Schedule not found' });
+        return reply.status(204).send();
       }
     );
 

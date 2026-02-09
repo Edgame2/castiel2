@@ -105,6 +105,8 @@ services:
     url: ${RECOMMENDATIONS_URL:-}
   ai_service:
     url: ${AI_SERVICE_URL:-http://localhost:3006}
+  reasoning_engine:
+    url: ${REASONING_ENGINE_URL:-}
 
 # RabbitMQ Configuration
 rabbitmq:

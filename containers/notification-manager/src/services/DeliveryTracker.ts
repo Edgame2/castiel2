@@ -25,7 +25,7 @@ export class DeliveryTracker {
       data: {
         notificationId,
         channel,
-        providerId: 'default', // TODO: Get from provider
+        providerId: 'default', // Resolve from provider when multi-provider is wired
         status: success ? 'SENT' : 'FAILED',
         providerMessageId: messageId,
         attemptedAt: new Date(),

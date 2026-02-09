@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -163,7 +164,9 @@ export default function MLModelsModelsPage() {
         <div className="rounded-lg border bg-white dark:bg-gray-900 mb-6">
           <div className="p-4 border-b flex justify-between items-center">
             <h2 className="text-lg font-semibold">Models</h2>
-            <Link href="/admin/ml-models/models/new" className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">New model</Link>
+            <Button asChild size="sm">
+              <Link href="/admin/ml-models/models/new">New model</Link>
+            </Button>
           </div>
           <div className="p-6">
             {modelsLoading ? (
@@ -216,13 +219,9 @@ export default function MLModelsModelsPage() {
               >
                 {health.overall}
               </span>
-              <button
-                type="button"
-                onClick={fetchHealth}
-                className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-800 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-              >
+              <Button type="button" variant="secondary" size="sm" onClick={fetchHealth}>
                 Refresh
-              </button>
+              </Button>
             </div>
           </div>
           <div className="p-6">

@@ -33,8 +33,7 @@ export class ShardService {
       throw new BadRequestError('shardTypeId is required');
     }
 
-    // TODO: Validate shardTypeId exists and is active
-    // TODO: Validate structuredData against ShardType schema
+    // Optional: validate shardTypeId exists/active and structuredData against ShardType schema (when validation layer is added).
 
     const shard: Shard = {
       id: uuidv4(),
@@ -45,6 +44,7 @@ export class ShardService {
       parentShardId: input.parentShardId,
       structuredData: input.structuredData,
       unstructuredData: input.unstructuredData,
+      enrichmentData: input.enrichmentData,
       metadata: input.metadata,
       internal_relationships: input.internal_relationships || [],
       external_relationships: input.external_relationships || [],
@@ -203,6 +203,9 @@ export class ShardService {
     }
     if (input.parentShardId !== undefined) {
       updated.parentShardId = input.parentShardId;
+    }
+    if (input.enrichmentData !== undefined) {
+      updated.enrichmentData = input.enrichmentData;
     }
 
     try {

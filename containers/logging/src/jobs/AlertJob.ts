@@ -2,6 +2,7 @@
  * Alert Job
  * Checks for alert conditions and triggers notifications
  * Per ModuleImplementationGuide Section 9: Event-Driven Communication
+ * Supports Prisma (Postgres) or CosmosAlertRulesRepository (Cosmos DB).
  */
 
 import { PrismaClient, audit_alert_type } from '.prisma/logging-client';
@@ -9,6 +10,8 @@ import { CronJob } from 'cron';
 import { IStorageProvider } from '../services/providers/storage/IStorageProvider';
 import { publishAlertTriggered } from '../events/publisher';
 import { log } from '../utils/logger';
+import type { CosmosAlertRulesRepository } from '../data/cosmos/alert-rules';
+import type { AlertRuleRow } from '../data/cosmos/alert-rules';
 
 export interface AlertCheckResult {
   rulesChecked: number;
@@ -48,16 +51,18 @@ interface AnomalyConditions {
 }
 
 export class AlertJob {
-  private prisma: PrismaClient;
+  private prisma: PrismaClient | null;
   private storage: IStorageProvider;
+  private cosmosAlertRules: CosmosAlertRulesRepository | null;
   private cronJob: CronJob | null = null;
   private isRunning = false;
   private lastCheckTime: Date;
-  
-  constructor(prisma: PrismaClient, storage: IStorageProvider) {
+
+  constructor(prisma: PrismaClient | null, storage: IStorageProvider, cosmosAlertRules?: CosmosAlertRulesRepository) {
     this.prisma = prisma;
     this.storage = storage;
-    this.lastCheckTime = new Date(Date.now() - 60 * 1000); // Start from 1 minute ago
+    this.cosmosAlertRules = cosmosAlertRules ?? null;
+    this.lastCheckTime = new Date(Date.now() - 60 * 1000);
   }
   
   /**
@@ -122,43 +127,62 @@ export class AlertJob {
     
     try {
       log.debug('Starting alert check', { from: checkStartTime, to: checkEndTime });
-      
-      // Get all enabled alert rules
-      const rules = await this.prisma.audit_alert_rules.findMany({
-        where: {
-          enabled: true,
-        },
-      });
-      
+
+      let rules: AlertRuleRow[];
+      if (this.cosmosAlertRules) {
+        rules = await this.cosmosAlertRules.findMany({ where: { enabled: true }, orderBy: { createdAt: 'desc' } });
+      } else if (this.prisma) {
+        try {
+          rules = (await this.prisma.audit_alert_rules.findMany({
+            where: { enabled: true },
+          })) as unknown as AlertRuleRow[];
+        } catch (dbError: unknown) {
+          const msg = dbError instanceof Error ? dbError.message : String(dbError);
+          if (msg.includes("Can't reach database") || msg.includes('localhost') || (dbError as { name?: string })?.name === 'PrismaClientInitializationError') {
+            log.debug('Alert job skipped: database unreachable', { error: msg });
+            this.lastCheckTime = checkEndTime;
+            result.durationMs = Date.now() - startTime;
+            return result;
+          }
+          throw dbError;
+        }
+      } else {
+        rules = [];
+      }
+
       result.rulesChecked = rules.length;
-      
       if (rules.length === 0) {
         log.debug('No alert rules configured');
         this.lastCheckTime = checkEndTime;
         result.durationMs = Date.now() - startTime;
         return result;
       }
-      
-      // Check each rule
+
       for (const rule of rules) {
         try {
-          const alert = await this.checkRule(rule, checkStartTime, checkEndTime);
-          
+          const alert = await this.checkRule(
+            { ...rule, type: rule.type as audit_alert_type },
+            checkStartTime,
+            checkEndTime
+          );
           if (alert) {
             result.alertsTriggered++;
             result.alerts.push(alert);
-            
-            // Update last triggered timestamp
-            await this.prisma.audit_alert_rules.update({
-              where: { id: rule.id },
-              data: { updatedAt: new Date() },
-            });
-            
-            // Publish alert event
-            await this.publishAlert(alert, rule);
+            if (this.cosmosAlertRules) {
+              await this.cosmosAlertRules.update({
+                where: { id: rule.id },
+                data: { updatedBy: 'alert-job' },
+              });
+            } else if (this.prisma) {
+              await this.prisma.audit_alert_rules.update({
+                where: { id: rule.id },
+                data: { updatedAt: new Date() },
+              });
+            }
+            await this.publishAlert(alert, { ...rule, notificationChannels: rule.notificationChannels ?? [] });
           }
-        } catch (error: any) {
-          const errorMsg = `Failed to check rule ${rule.id}: ${error.message}`;
+        } catch (error: unknown) {
+          const errorMsg = `Failed to check rule ${rule.id}: ${error instanceof Error ? error.message : String(error)}`;
           log.error(errorMsg, error);
           result.errors.push(errorMsg);
         }
@@ -223,6 +247,25 @@ export class AlertJob {
     }
   }
   
+  /** Count logs via storage (works for both Postgres and Cosmos). */
+  private async countLogs(params: {
+    organizationId?: string | null;
+    startDate?: Date;
+    endDate?: Date;
+    action?: string;
+    category?: string;
+    severity?: string;
+  }): Promise<number> {
+    return this.storage.count({
+      organizationId: params.organizationId ?? undefined,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      action: params.action,
+      category: params.category as import('../types').LogCategory | undefined,
+      severity: params.severity as import('../types').LogSeverity | undefined,
+    });
+  }
+
   /**
    * Check pattern-based alert (e.g., specific action occurs)
    */
@@ -232,7 +275,7 @@ export class AlertJob {
     startTime: Date,
     endTime: Date
   ): Promise<TriggeredAlert | null> {
-    const where: any = {
+    const where: Record<string, unknown> = {
       timestamp: { gte: startTime, lte: endTime },
     };
     
@@ -248,8 +291,15 @@ export class AlertJob {
     if (conditions.severity) {
       where.severity = conditions.severity;
     }
-    
-    const count = await this.prisma.audit_logs.count({ where });
+
+    const count = await this.countLogs({
+      organizationId: rule.organizationId ?? undefined,
+      startDate: startTime,
+      endDate: endTime,
+      action: conditions.action,
+      category: conditions.category,
+      severity: conditions.severity,
+    });
     const minCount = conditions.minCount || 1;
     
     if (count >= minCount) {
@@ -293,9 +343,15 @@ export class AlertJob {
     if (conditions.category) {
       where.category = conditions.category;
     }
-    
-    const count = await this.prisma.audit_logs.count({ where });
-    
+
+    const count = await this.countLogs({
+      organizationId: rule.organizationId ?? undefined,
+      startDate: windowStart,
+      endDate: endTime,
+      action: conditions.action,
+      category: conditions.category,
+    });
+
     if (count > conditions.threshold) {
       return {
         ruleId: rule.id,
@@ -332,8 +388,12 @@ export class AlertJob {
     if (rule.organizationId) {
       baseWhere.organizationId = rule.organizationId;
     }
-    
-    const baselineCount = await this.prisma.audit_logs.count({ where: baseWhere });
+
+    const baselineCount = await this.countLogs({
+      organizationId: rule.organizationId ?? undefined,
+      startDate: baselineStart,
+      endDate: startTime,
+    });
     const baselineMinutesActual = (startTime.getTime() - baselineStart.getTime()) / (60 * 1000);
     const baselineRate = baselineCount / Math.max(baselineMinutesActual, 1);
     
@@ -344,8 +404,12 @@ export class AlertJob {
     if (rule.organizationId) {
       currentWhere.organizationId = rule.organizationId;
     }
-    
-    const currentCount = await this.prisma.audit_logs.count({ where: currentWhere });
+
+    const currentCount = await this.countLogs({
+      organizationId: rule.organizationId ?? undefined,
+      startDate: startTime,
+      endDate: endTime,
+    });
     const currentMinutes = (endTime.getTime() - startTime.getTime()) / (60 * 1000);
     const currentRate = currentCount / Math.max(currentMinutes, 1);
     

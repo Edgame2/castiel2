@@ -10,6 +10,40 @@ import { EscalationManager } from '../services/EscalationManager';
 import { getDatabaseClient } from '@coder/shared';
 import { getConfig } from '../config';
 
+/** Shape of a notification row when using Prisma-style API (findMany returns this[]) */
+interface NotificationRow {
+  id: string;
+  organizationId?: string | null;
+  eventType?: string | null;
+  eventCategory?: string | null;
+  sourceModule?: string | null;
+  sourceResourceId?: string | null;
+  sourceResourceType?: string | null;
+  recipientId?: string | null;
+  recipientEmail?: string | null;
+  recipientPhone?: string | null;
+  title?: string | null;
+  body?: string | null;
+  bodyHtml?: string | null;
+  actionUrl?: string | null;
+  actionLabel?: string | null;
+  imageUrl?: string | null;
+  metadata?: unknown;
+  criticality?: unknown;
+  channelsRequested?: unknown;
+  teamId?: string | null;
+  projectId?: string | null;
+  escalationChainId?: string | null;
+  deduplicationKey?: string | null;
+  [key: string]: unknown;
+}
+
+/** Prisma-style model: findMany + update (Cosmos client does not have this) */
+type NotificationsModel = {
+  findMany: (args: unknown) => Promise<NotificationRow[]>;
+  update: (args: { where: { id: string }; data: Record<string, unknown> }) => Promise<unknown>;
+};
+
 export class ScheduledNotificationJob {
   private get db() { return getDatabaseClient() as any; }
   private config = getConfig();
@@ -54,30 +88,36 @@ export class ScheduledNotificationJob {
 
   /**
    * Process scheduled notifications
+   * Note: getDatabaseClient() returns Cosmos DB; Prisma-style APIs (e.g. findMany) are not available.
+   * When using Cosmos, this job no-ops until notification data is queried via getContainer().
    */
   private async processScheduledNotifications(): Promise<void> {
+    const db = this.db as { notification_notifications?: { findMany: (args: unknown) => Promise<unknown[]> } };
+    const notificationsModel = db?.notification_notifications;
+    if (!notificationsModel || typeof notificationsModel.findMany !== 'function') {
+      return; // Cosmos client: no Prisma-style API; skip to avoid crash
+    }
+    const model = notificationsModel as unknown as NotificationsModel;
     const now = new Date();
-    
-    const scheduledNotifications = await this.db.notification_notifications.findMany({
+
+    const scheduledNotifications: NotificationRow[] = (await model.findMany({
       where: {
         status: 'SCHEDULED',
         scheduledFor: {
           lte: now,
         },
       },
-    });
+    })) as NotificationRow[];
 
     const notificationEngine = getNotificationEngine();
 
     for (const notification of scheduledNotifications) {
       try {
-        // Update status to processing
-        await this.db.notification_notifications.update({
+        await model.update({
           where: { id: notification.id },
           data: { status: 'PROCESSING' },
         });
 
-        // Process notification
         const input: any = {
           organizationId: notification.organizationId,
           eventType: notification.eventType,
@@ -94,9 +134,9 @@ export class ScheduledNotificationJob {
           actionUrl: notification.actionUrl,
           actionLabel: notification.actionLabel,
           imageUrl: notification.imageUrl,
-          metadata: notification.metadata as any,
-          criticality: notification.criticality as any,
-          channelsRequested: notification.channelsRequested as any,
+          metadata: notification.metadata,
+          criticality: notification.criticality,
+          channelsRequested: notification.channelsRequested,
           teamId: notification.teamId,
           projectId: notification.projectId,
           escalationChainId: notification.escalationChainId,
@@ -105,15 +145,18 @@ export class ScheduledNotificationJob {
 
         await notificationEngine.processNotification(input, {
           eventData: {},
-          skipDeduplication: true, // Already in database
+          skipDeduplication: true,
         });
       } catch (error) {
         console.error(`Failed to process scheduled notification ${notification.id}:`, error);
-        // Mark as failed
-        await this.db.notification_notifications.update({
-          where: { id: notification.id },
-          data: { status: 'FAILED' },
-        });
+        try {
+          await model.update({
+            where: { id: notification.id },
+            data: { status: 'FAILED' },
+          });
+        } catch {
+          // ignore
+        }
       }
     }
   }
@@ -122,8 +165,13 @@ export class ScheduledNotificationJob {
    * Process escalations
    */
   private async processEscalations(): Promise<void> {
-    // Get notifications with escalation chains that need escalation
-    const notifications = await this.db.notification_notifications.findMany({
+    const db = this.db as { notification_notifications?: { findMany: (args: unknown) => Promise<unknown[]> } };
+    const notificationsModel = db?.notification_notifications;
+    if (!notificationsModel || typeof notificationsModel.findMany !== 'function') {
+      return;
+    }
+    const model = notificationsModel as unknown as NotificationsModel;
+    const notifications: NotificationRow[] = (await model.findMany({
       where: {
         escalationChainId: {
           not: null,
@@ -135,7 +183,7 @@ export class ScheduledNotificationJob {
       include: {
         escalationChain: true,
       },
-    });
+    })) as NotificationRow[];
 
     for (const notification of notifications) {
       try {

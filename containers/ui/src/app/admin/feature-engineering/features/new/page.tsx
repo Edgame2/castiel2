@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 const TYPES = ['numeric', 'categorical', 'text', 'datetime', 'boolean'] as const;
@@ -53,7 +54,7 @@ export default function FeatureEngineeringFeatureNewPage() {
         if (saved?.id) router.push(`/admin/feature-engineering/features/${encodeURIComponent(saved.id)}`);
         else router.push('/admin/feature-engineering/features');
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed'))
+      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setSubmitting(false));
   };
 

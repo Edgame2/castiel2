@@ -7,6 +7,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type StakeholderGraphNode = {
   id: string;
@@ -65,7 +66,8 @@ export function StakeholderGraph({
       const json = (await res.json()) as StakeholderGraphData;
       setData(Array.isArray(json?.nodes) ? { nodes: json.nodes, edges: Array.isArray(json?.edges) ? json.edges : [] } : { nodes: [], edges: [] });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setData(null);
     } finally {
       setLoading(false);

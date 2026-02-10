@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -82,7 +83,7 @@ export default function AdminSecurityUserInvitePage() {
         if (!res.ok) return res.json().then((body) => { throw new Error((body as { error?: string })?.error || res.statusText); });
         setSuccess(true);
       })
-      .catch((e) => setSubmitError(e instanceof Error ? e.message : 'Invite failed'))
+      .catch((e) => { if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e); setSubmitError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setSubmitting(false));
   };
 

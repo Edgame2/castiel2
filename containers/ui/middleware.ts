@@ -1,7 +1,6 @@
 /**
- * Route protection: allow only public paths when unauthenticated;
- * redirect protected routes to /login. Auth is cookie-based (accessToken).
- * Next.js proxy convention (replaces deprecated middleware).
+ * Route protection: redirect unauthenticated requests to /login.
+ * Uses accessToken cookie. Runs on every request so 307 causes browser to navigate.
  */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -22,11 +21,10 @@ function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => normalized === p || normalized.startsWith(`${p}/`));
 }
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow _next and static assets
-  if (pathname.startsWith("/_next") || pathname.startsWith("/favicon")) {
+  if (pathname.startsWith("/_next") || pathname.startsWith("/api") || pathname.startsWith("/favicon")) {
     return NextResponse.next();
   }
 

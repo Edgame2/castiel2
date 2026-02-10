@@ -10,8 +10,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
+import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface UserProfile {
   id: string;
@@ -43,8 +42,9 @@ export default function ProfilePage() {
     setLoading(true);
     setError(null);
     try {
-      const base = apiBaseUrl.replace(/\/$/, '');
-      const res = await fetch(`${base}/api/users/me`, { credentials: 'include' });
+      const base = getApiBaseUrl().replace(/\/$/, '') || '';
+      const url = base ? `${base}/api/users/me` : '/api/users/me';
+      const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error as string) || `HTTP ${res.status}`);
@@ -58,7 +58,8 @@ export default function ProfilePage() {
         setLastName(data.lastName ?? '');
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load profile');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }
@@ -74,8 +75,9 @@ export default function ProfilePage() {
     setError(null);
     setSaving(true);
     try {
-      const base = apiBaseUrl.replace(/\/$/, '');
-      const res = await fetch(`${base}/api/users/me`, {
+      const base = getApiBaseUrl().replace(/\/$/, '') || '';
+      const url = base ? `${base}/api/users/me` : '/api/users/me';
+      const res = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -89,7 +91,8 @@ export default function ProfilePage() {
       if (!res.ok) throw new Error((j?.error as string) || `HTTP ${res.status}`);
       setProfile((prev) => (prev ? { ...prev, name: name.trim() || null, firstName: firstName.trim() || null, lastName: lastName.trim() || null } : null));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }

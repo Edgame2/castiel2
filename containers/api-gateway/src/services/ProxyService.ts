@@ -136,6 +136,12 @@ export class ProxyService {
         timeout: 30000,
         validateStatus: () => true,
       });
+      // Forward Set-Cookie from backend so login/auth cookies reach the client
+      const setCookie = res.headers['set-cookie'];
+      if (setCookie) {
+        const arr = Array.isArray(setCookie) ? setCookie : [setCookie];
+        reply.raw.setHeader('Set-Cookie', arr);
+      }
       reply.code(res.status).send(res.data);
     } catch (error: any) {
       if (error.response) {

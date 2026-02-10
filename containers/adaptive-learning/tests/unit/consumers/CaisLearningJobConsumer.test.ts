@@ -17,7 +17,9 @@ vi.mock('../../../src/config', () => ({
 }));
 
 vi.mock('../../../src/services/CaisLearningService', () => ({
-  CaisLearningService: vi.fn(),
+  CaisLearningService: vi.fn().mockImplementation(function (this: { runLearningJob: ReturnType<typeof vi.fn> }) {
+    this.runLearningJob = vi.fn().mockResolvedValue({ tenantsProcessed: 0, weightsUpdated: 0 });
+  }),
 }));
 
 vi.mock('../../../src/events/publishers/WorkflowJobPublisher', () => ({
@@ -77,7 +79,9 @@ describe('CaisLearningJobConsumer', () => {
     await import('../../../src/events/consumers/CaisLearningJobConsumer').then((m) => m.initializeCaisLearningJobConsumer());
     expect(triggerHandler).toBeDefined();
     const runLearningJob = vi.fn();
-    (CaisLearningService as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({ runLearningJob }));
+    (CaisLearningService as unknown as ReturnType<typeof vi.fn>).mockImplementation(function (this: { runLearningJob: ReturnType<typeof vi.fn> }) {
+      this.runLearningJob = runLearningJob;
+    });
     await triggerHandler!({ data: { job: 'other-job' } });
     expect(runLearningJob).not.toHaveBeenCalled();
   });
@@ -92,7 +96,9 @@ describe('CaisLearningJobConsumer', () => {
     } as never);
     await import('../../../src/events/consumers/CaisLearningJobConsumer').then((m) => m.initializeCaisLearningJobConsumer());
     const runLearningJob = vi.fn().mockResolvedValue({ tenantsProcessed: 1, weightsUpdated: 1 });
-    (CaisLearningService as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({ runLearningJob }));
+    (CaisLearningService as unknown as ReturnType<typeof vi.fn>).mockImplementation(function (this: { runLearningJob: ReturnType<typeof vi.fn> }) {
+      this.runLearningJob = runLearningJob;
+    });
     await triggerHandler!({ data: { job: 'cais-learning' } });
     expect(runLearningJob).toHaveBeenCalled();
     expect(WorkflowJobPublisher.publishJobCompleted).toHaveBeenCalledWith('cais-learning', expect.any(String));
@@ -107,9 +113,9 @@ describe('CaisLearningJobConsumer', () => {
       },
     } as never);
     await import('../../../src/events/consumers/CaisLearningJobConsumer').then((m) => m.initializeCaisLearningJobConsumer());
-    (CaisLearningService as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-      runLearningJob: vi.fn().mockRejectedValue(new Error('job failed')),
-    }));
+    (CaisLearningService as unknown as ReturnType<typeof vi.fn>).mockImplementation(function (this: { runLearningJob: ReturnType<typeof vi.fn> }) {
+      this.runLearningJob = vi.fn().mockRejectedValue(new Error('job failed'));
+    });
     await triggerHandler!({ data: { job: 'cais-learning' } });
     expect(WorkflowJobPublisher.publishJobFailed).toHaveBeenCalledWith('cais-learning', 'job failed', expect.any(String));
   });

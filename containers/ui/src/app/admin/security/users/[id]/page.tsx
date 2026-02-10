@@ -8,6 +8,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -48,7 +49,8 @@ export default function AdminSecurityUserDetailPage() {
       })
       .then((data: ProfileResponse) => setUser(data?.data ?? null))
       .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+        setError(GENERIC_ERROR_MESSAGE);
         setUser(null);
       })
       .finally(() => setLoading(false));

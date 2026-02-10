@@ -16,8 +16,9 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
     return null; // Skip events without user/org context
   }
 
-  // Map event type to notification input
+  // Map event type to notification input (auth module uses auth.user.* and auth.session.* etc.)
   switch (event.type) {
+    case 'auth.user.registered':
     case 'user.registered': {
       return {
         organizationId,
@@ -35,6 +36,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
       };
     }
 
+    case 'auth.user.password_reset_requested':
     case 'user.password_reset_requested': {
       return {
         organizationId,
@@ -58,6 +60,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
       };
     }
 
+    case 'auth.user.password_reset_success':
     case 'user.password_reset_success': {
       return {
         organizationId,
@@ -74,6 +77,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
       };
     }
 
+    case 'auth.user.email_verification_requested':
     case 'user.email_verification_requested': {
       return {
         organizationId,
@@ -97,6 +101,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
       };
     }
 
+    case 'auth.user.email_verified':
     case 'user.email_verified': {
       return {
         organizationId,
@@ -113,6 +118,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
       };
     }
 
+    case 'auth.user.password_changed':
     case 'user.password_changed': {
       return {
         organizationId,
@@ -211,6 +217,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
       return null;
     }
 
+    case 'auth.session.revoked':
     case 'session.revoked': {
       return {
         organizationId,
@@ -227,6 +234,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
       };
     }
 
+    case 'auth.sessions.bulk_revoked':
     case 'sessions.bulk_revoked': {
       return {
         organizationId,

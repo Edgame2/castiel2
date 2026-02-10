@@ -62,6 +62,9 @@ describe('RiskEvaluationService', () => {
     vi.clearAllMocks();
 
     const mockContainer = {
+      item: vi.fn(() => ({
+        read: vi.fn().mockResolvedValue({ resource: null }),
+      })),
       items: {
         create: vi.fn().mockResolvedValue({ resource: {} }),
       },

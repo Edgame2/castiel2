@@ -48,7 +48,7 @@ export async function initializeEventConsumer(): Promise<void> {
     
     const routingKeys = config.rabbitmq.routingKeys?.length
       ? config.rabbitmq.routingKeys
-      : ['integration.sync.check-due', 'integration.token.check-expiring', 'integration.*'];
+      : ['integration.sync.check_due', 'integration.token.check-expiring', 'integration.*'];
     consumer = new EventConsumer({
       url: config.rabbitmq.url,
       exchange: config.rabbitmq.exchange || 'coder_events',
@@ -56,8 +56,8 @@ export async function initializeEventConsumer(): Promise<void> {
       routingKeys,
     });
 
-    // Handle check-due event from sync scheduler
-    consumer.on('integration.sync.check-due', async (event) => {
+    // Handle check_due event from sync scheduler
+    consumer.on('integration.sync.check_due', async (event) => {
       const data = event?.data ?? {};
       log.info('Check-due event received, checking for integrations due for sync', {
         timestamp: data.timestamp,

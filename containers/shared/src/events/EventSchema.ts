@@ -12,10 +12,10 @@ import { DomainEvent, PublishEventOptions } from '../types/events.types';
  */
 const EventSchema = z.object({
   id: z.string().uuid(),
-  type: z.string().regex(/^[a-z]+\.[a-z]+\.[a-z]+$/), // Format: module.resource.action
+  type: z.string().regex(/^[a-z_]+\.[a-z_]+\.[a-z_]+$/), // Format: module.resource.action (underscores allowed)
   version: z.string(),
   timestamp: z.string().datetime(),
-  tenantId: z.string().uuid(),
+  tenantId: z.string().uuid().or(z.literal('')), // Allow empty when no tenant context (e.g. login failed)
   source: z.object({
     service: z.string(),
     instance: z.string(),

@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -51,7 +52,7 @@ export default function ActionCatalogEntryNewPage() {
         if (data?.id) router.push(`/admin/action-catalog/entries/${encodeURIComponent(data.id)}`);
         else router.push('/admin/action-catalog/entries');
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Create failed'))
+      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setSubmitting(false));
   };
 

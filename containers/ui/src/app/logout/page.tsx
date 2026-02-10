@@ -7,8 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-
-const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
+import { getApiBaseUrl } from '@/lib/api';
 
 export default function LogoutPage() {
   const router = useRouter();
@@ -16,11 +15,13 @@ export default function LogoutPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const base = apiBaseUrl.replace(/\/$/, '');
-    fetch(`${base}/api/auth/logout`, {
+    const base = getApiBaseUrl().replace(/\/$/, '') || '';
+    const url = base ? `${base}/api/auth/logout` : '/api/auth/logout';
+    fetch(url, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
+      body: '{}',
     })
       .then(() => {
         if (!cancelled) setDone(true);

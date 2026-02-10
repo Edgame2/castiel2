@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
 
@@ -53,7 +54,8 @@ export default function MfaEnrollPage() {
       setLabel(data.label ?? null);
       setStep('enrolled');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to start enrollment');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }
@@ -91,7 +93,8 @@ export default function MfaEnrollPage() {
       }
       setStep('verified');
     } catch (e) {
-      setVerifyError(e instanceof Error ? e.message : 'Verification failed');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setVerifyError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }

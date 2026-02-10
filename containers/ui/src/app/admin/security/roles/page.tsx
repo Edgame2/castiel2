@@ -1,6 +1,6 @@
 /**
  * Super Admin: Role management (W11 §10.1)
- * GET /api/users/api/v1/organizations/:orgId/roles via gateway (user_management).
+ * GET /api/v1/organizations/:orgId/roles via gateway (user_management).
  * Organization ID required (enter to load roles).
  */
 
@@ -19,8 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface RoleRow {
   id?: string;
@@ -79,19 +78,21 @@ export default function SecurityRolesPage() {
   })();
 
   const fetchRoles = useCallback(async () => {
-    if (!apiBaseUrl || !orgId.trim()) return;
+    const base = getApiBaseUrl().replace(/\/$/, '') || '';
+    if (!base || !orgId.trim()) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(
-        `${apiBaseUrl}/api/users/api/v1/organizations/${encodeURIComponent(orgId.trim())}/roles?includeSystemRoles=true`,
+        `${base}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/roles?includeSystemRoles=true`,
         { credentials: 'include' }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: RolesResponse = await res.json();
       setItems(Array.isArray(json?.data) ? json.data : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setItems([]);
     } finally {
       setLoading(false);
@@ -99,13 +100,14 @@ export default function SecurityRolesPage() {
   }, [orgId]);
 
   const openCreateForm = useCallback(async () => {
-    if (!apiBaseUrl || !orgId.trim()) return;
+    const base = getApiBaseUrl().replace(/\/$/, '') || '';
+    if (!base || !orgId.trim()) return;
     setCreateError(null);
     setCreatePermissionsLoading(true);
     const encodedOrg = encodeURIComponent(orgId.trim());
     try {
       const res = await fetch(
-        `${apiBaseUrl}/api/users/api/v1/organizations/${encodedOrg}/permissions`,
+        `${base}/api/v1/organizations/${encodedOrg}/permissions`,
         { credentials: 'include' }
       );
       if (!res.ok) throw new Error(`Permissions: HTTP ${res.status}`);
@@ -116,14 +118,16 @@ export default function SecurityRolesPage() {
       setCreatePermissionIds([]);
       setCreating(true);
     } catch (e) {
-      setCreateError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setCreateError(GENERIC_ERROR_MESSAGE);
     } finally {
       setCreatePermissionsLoading(false);
     }
   }, [orgId]);
 
   const createRole = useCallback(async () => {
-    if (!apiBaseUrl || !orgId.trim()) return;
+    const base = getApiBaseUrl().replace(/\/$/, '') || '';
+    if (!base || !orgId.trim()) return;
     const name = createName.trim();
     if (!name) {
       setCreateError('Name is required');
@@ -134,7 +138,7 @@ export default function SecurityRolesPage() {
     const encodedOrg = encodeURIComponent(orgId.trim());
     try {
       const res = await fetch(
-        `${apiBaseUrl}/api/users/api/v1/organizations/${encodedOrg}/roles`,
+        `${base}/api/v1/organizations/${encodedOrg}/roles`,
         {
           method: 'POST',
           credentials: 'include',
@@ -157,7 +161,8 @@ export default function SecurityRolesPage() {
       setCreatePermissionIds([]);
       fetchRoles();
     } catch (e) {
-      setCreateError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setCreateError(GENERIC_ERROR_MESSAGE);
     } finally {
       setCreateSubmitting(false);
     }
@@ -169,6 +174,8 @@ export default function SecurityRolesPage() {
       document.title = 'Admin | Castiel';
     };
   }, []);
+
+  const apiBaseUrl = getApiBaseUrl();
 
   return (
     <div className="p-6">

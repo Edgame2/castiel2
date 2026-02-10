@@ -12,6 +12,9 @@ vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn(),
   generateServiceToken: vi.fn(() => 'mock-token'),
   getContainer: vi.fn(),
+  PolicyResolver: vi.fn().mockImplementation(function (this: { getShardTypeAnalysisPolicy: ReturnType<typeof vi.fn> }) {
+    this.getShardTypeAnalysisPolicy = vi.fn().mockResolvedValue({});
+  }),
 }));
 
 vi.mock('../../../src/config', () => ({

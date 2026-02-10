@@ -39,40 +39,53 @@ export class EventPublisher {
   }
 
   /**
-   * Connect to RabbitMQ
+   * Connect to RabbitMQ with retry (waits for broker to be ready at startup)
    */
   async connect(): Promise<void> {
     if (this.connection && this.channel) {
       return;
     }
 
-    try {
-      const conn = await amqp.connect(this.config.url);
-      this.connection = conn;
-      this.channel = await conn.createChannel();
+    const maxRetries = 15;
+    const initialDelayMs = 2000;
+    let lastError: Error | null = null;
 
-      // Assert exchange exists
-      await this.channel.assertExchange(this.exchange, this.config.exchangeType!, {
-        durable: true,
-      });
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const conn = await amqp.connect(this.config.url);
+        this.connection = conn;
+        this.channel = await conn.createChannel();
 
-      // Handle connection errors
-      this.connection.on('error', (error) => {
-        console.error('[EventPublisher] Connection error:', error);
+        // Assert exchange exists
+        await this.channel.assertExchange(this.exchange, this.config.exchangeType!, {
+          durable: true,
+        });
+
+        // Handle connection errors
+        this.connection.on('error', (error) => {
+          console.error('[EventPublisher] Connection error:', error);
+          this.connection = null;
+          this.channel = null;
+        });
+
+        this.connection.on('close', () => {
+          console.log('[EventPublisher] Connection closed');
+          this.connection = null;
+          this.channel = null;
+        });
+        return;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
         this.connection = null;
         this.channel = null;
-      });
-
-      this.connection.on('close', () => {
-        console.log('[EventPublisher] Connection closed');
-        this.connection = null;
-        this.channel = null;
-      });
-    } catch (error) {
-      this.connection = null;
-      this.channel = null;
-      throw new Error(`Failed to connect to RabbitMQ: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        if (attempt < maxRetries) {
+          const delayMs = initialDelayMs * Math.min(attempt, 4);
+          await new Promise((r) => setTimeout(r, delayMs));
+        }
+      }
     }
+
+    throw new Error(`Failed to connect to RabbitMQ after ${maxRetries} attempts: ${lastError?.message ?? 'Unknown error'}`);
   }
 
   /**

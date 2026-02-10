@@ -96,7 +96,7 @@
         "routingKeys": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Routing keys for event consumer (default: integration.sync.check-due, integration.token.check-expiring, integration.*)"
+          "description": "Routing keys for event consumer (default: integration.sync.check_due, integration.token.check-expiring, integration.*)"
         }
       }
     }

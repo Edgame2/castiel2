@@ -51,54 +51,67 @@ export class EventConsumer {
   }
 
   /**
-   * Connect to RabbitMQ and setup queue
+   * Connect to RabbitMQ and setup queue with retry (waits for broker to be ready at startup)
    */
   async connect(): Promise<void> {
     if (this.connection && this.channel) {
       return;
     }
 
-    try {
-      const conn = await amqp.connect(this.config.url);
-      this.connection = conn;
-      this.channel = await conn.createChannel();
+    const maxRetries = 15;
+    const initialDelayMs = 2000;
+    let lastError: Error | null = null;
 
-      const ch = this.channel;
-      // Set prefetch (quality of service)
-      await ch.prefetch(this.config.prefetch!);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const conn = await amqp.connect(this.config.url);
+        this.connection = conn;
+        this.channel = await conn.createChannel();
 
-      // Assert exchange exists
-      await ch.assertExchange(this.exchange, this.config.exchangeType!, {
-        durable: true,
-      });
+        const ch = this.channel;
+        // Set prefetch (quality of service)
+        await ch.prefetch(this.config.prefetch!);
 
-      // Assert queue exists
-      await ch.assertQueue(this.queue, {
-        durable: true,
-      });
+        // Assert exchange exists
+        await ch.assertExchange(this.exchange, this.config.exchangeType!, {
+          durable: true,
+        });
 
-      // Bind queue to exchange with routing keys
-      for (const routingKey of this.config.routingKeys!) {
-        await ch.bindQueue(this.queue, this.exchange, routingKey);
+        // Assert queue exists
+        await ch.assertQueue(this.queue, {
+          durable: true,
+        });
+
+        // Bind queue to exchange with routing keys
+        for (const routingKey of this.config.routingKeys!) {
+          await ch.bindQueue(this.queue, this.exchange, routingKey);
+        }
+
+        // Handle connection errors
+        conn.on('error', (error) => {
+          console.error('[EventConsumer] Connection error:', error);
+          this.connection = null;
+          this.channel = null;
+        });
+
+        conn.on('close', () => {
+          console.log('[EventConsumer] Connection closed');
+          this.connection = null;
+          this.channel = null;
+        });
+        return;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        this.connection = null;
+        this.channel = null;
+        if (attempt < maxRetries) {
+          const delayMs = initialDelayMs * Math.min(attempt, 4);
+          await new Promise((r) => setTimeout(r, delayMs));
+        }
       }
-
-      // Handle connection errors
-      conn.on('error', (error) => {
-        console.error('[EventConsumer] Connection error:', error);
-        this.connection = null;
-        this.channel = null;
-      });
-
-      conn.on('close', () => {
-        console.log('[EventConsumer] Connection closed');
-        this.connection = null;
-        this.channel = null;
-      });
-    } catch (error) {
-      this.connection = null;
-      this.channel = null;
-      throw new Error(`Failed to connect to RabbitMQ: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+
+    throw new Error(`Failed to connect to RabbitMQ after ${maxRetries} attempts: ${lastError?.message ?? 'Unknown error'}`);
   }
 
   /**

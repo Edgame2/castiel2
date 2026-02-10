@@ -16,12 +16,12 @@ import { randomUUID } from 'crypto';
 import { getConfig } from '../config';
 
 export class ExportService {
-  private prisma: PrismaClient;
+  private prisma: PrismaClient | null;
   private storage: IStorageProvider;
   private exportDir: string;
   private batchSize = 5000;
 
-  constructor(prisma: PrismaClient, storage: IStorageProvider, exportDir?: string) {
+  constructor(prisma: PrismaClient | null, storage: IStorageProvider, exportDir?: string) {
     this.prisma = prisma;
     this.storage = storage;
     this.exportDir = exportDir || '/tmp/audit-exports';
@@ -35,6 +35,7 @@ export class ExportService {
     input: CreateExportInput,
     requestedBy: string
   ): Promise<ExportJob> {
+    if (!this.prisma) throw new Error('Export jobs not available when using Cosmos DB');
     const exportJob = await this.prisma.audit_exports.create({
       data: {
         id: randomUUID(),
@@ -59,11 +60,11 @@ export class ExportService {
    * Get export job status
    */
   async getExport(exportId: string, organizationId?: string): Promise<ExportJob | null> {
-    const where: any = { id: exportId };
+    if (!this.prisma) return null;
+    const where: { id: string; organizationId?: string } = { id: exportId };
     if (organizationId) {
       where.organizationId = organizationId;
     }
-
     const exportJob = await this.prisma.audit_exports.findUnique({
       where,
     });
@@ -79,11 +80,11 @@ export class ExportService {
    * List export jobs
    */
   async listExports(organizationId?: string, limit: number = 50): Promise<ExportJob[]> {
-    const where: any = {};
+    if (!this.prisma) return [];
+    const where: Record<string, unknown> = {};
     if (organizationId) {
       where.organizationId = organizationId;
     }
-
     const exports = await this.prisma.audit_exports.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -97,6 +98,7 @@ export class ExportService {
    * Process export job with progress tracking
    */
   private async processExport(exportId: string): Promise<void> {
+    if (!this.prisma) throw new Error('Export service: Prisma not configured');
     try {
       // Update status to PROCESSING
       await this.prisma.audit_exports.update({
@@ -198,6 +200,7 @@ export class ExportService {
    * Update export progress
    */
   private async updateProgress(exportId: string, progress: number): Promise<void> {
+    if (!this.prisma) return;
     try {
       await this.prisma.audit_exports.update({
         where: { id: exportId },
@@ -377,6 +380,7 @@ export class ExportService {
    * Cancel an export job
    */
   async cancelExport(exportId: string, organizationId?: string): Promise<boolean> {
+    if (!this.prisma) return false;
     const where: any = { id: exportId };
     if (organizationId) {
       where.organizationId = organizationId;
@@ -407,6 +411,7 @@ export class ExportService {
    * Clean up expired exports
    */
   async cleanupExpiredExports(): Promise<number> {
+    if (!this.prisma) return 0;
     const now = new Date();
 
     // Find expired exports

@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 const STATUSES = ['draft', 'training', 'evaluating', 'ready', 'deployed', 'archived', 'failed'] as const;
@@ -77,7 +78,8 @@ export default function MLModelsModelDetailPage() {
         }
       })
       .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+        setError(GENERIC_ERROR_MESSAGE);
         setModel(null);
       })
       .finally(() => setLoading(false));
@@ -110,7 +112,7 @@ export default function MLModelsModelDetailPage() {
         setEditing(false);
         fetchModel();
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Save failed'))
+      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setSaveError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setSaving(false));
   };
 
@@ -125,7 +127,7 @@ export default function MLModelsModelDetailPage() {
         }
         return r.json().then((j) => Promise.reject(new Error((j?.error?.message as string) || 'Delete failed')));
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Delete failed'))
+      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setSaveError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setDeleting(false));
   };
 

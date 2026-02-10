@@ -7,7 +7,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,10 +20,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
-import { apiFetch } from "@/lib/api";
+import { apiFetch, GENERIC_ERROR_MESSAGE } from "@/lib/api";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -56,10 +54,12 @@ export default function LoginPage() {
         setError(typeof msg === "string" ? msg : JSON.stringify(msg));
         return;
       }
-      router.push("/dashboard");
-      router.refresh();
+      // Full page redirect so the browser sends the newly set cookies on the next request (client nav can race with cookie commit)
+      window.location.href = "/dashboard";
+      return;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Login failed");
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+        setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }
@@ -91,12 +91,11 @@ export default function LoginPage() {
         );
         return;
       }
-      router.push("/dashboard");
-      router.refresh();
+      window.location.href = "/dashboard";
+      return;
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Could not complete sign-in"
-      );
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }

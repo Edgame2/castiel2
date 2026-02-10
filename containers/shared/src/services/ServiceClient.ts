@@ -203,7 +203,7 @@ export class ServiceClient {
    * Used by API Gateway to proxy while preserving backend status and applying circuit breaker.
    * Does not retry so the caller can forward the exact backend response.
    */
-  async requestWithFullResponse(config: AxiosRequestConfig): Promise<{ status: number; data: any; headers: Record<string, string> }> {
+  async requestWithFullResponse(config: AxiosRequestConfig): Promise<{ status: number; data: any; headers: Record<string, string | string[]> }> {
     if (this.circuitBreaker && !this.circuitBreaker.canAttempt()) {
       throw new Error('Circuit breaker is OPEN - service unavailable');
     }
@@ -212,10 +212,11 @@ export class ServiceClient {
       if (this.circuitBreaker) {
         this.circuitBreaker.recordSuccess();
       }
-      const headers: Record<string, string> = {};
+      const headers: Record<string, string | string[]> = {};
       if (response.headers && typeof response.headers === 'object') {
         for (const [k, v] of Object.entries(response.headers)) {
           if (typeof v === 'string') headers[k] = v;
+          else if (k.toLowerCase() === 'set-cookie' && Array.isArray(v)) headers[k] = v;
         }
       }
       return { status: response.status, data: response.data, headers };

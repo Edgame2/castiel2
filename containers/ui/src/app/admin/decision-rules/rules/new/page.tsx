@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -67,7 +68,7 @@ export default function DecisionRuleNewPage() {
         if (id) router.push(`/admin/decision-rules/rules/${encodeURIComponent(id)}`);
         else router.push('/admin/decision-rules/rules');
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed'))
+      .catch((e) => { if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e); setError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setSubmitting(false));
   };
 

@@ -9,7 +9,7 @@ import { MfaService } from '../../../src/services/MfaService';
 vi.mock('@coder/shared/database', () => ({ getContainer: vi.fn() }));
 vi.mock('otplib', () => ({
   generateSecret: vi.fn(() => 'MOCKED_SECRET_BASE32'),
-  verify: vi.fn((opts: { secret: string; token: string }) => opts.token === 'valid123' && !!opts.secret),
+  verify: vi.fn((opts: { secret: string; token: string }) => ({ valid: opts.token === 'valid123' && !!opts.secret })),
 }));
 vi.mock('../../../src/config/index.js', () => ({
   loadConfig: vi.fn(() => ({
@@ -32,7 +32,7 @@ describe('MfaService', () => {
     vi.clearAllMocks();
     const mockItem = {
       read: vi.fn(),
-      delete: vi.fn(),
+      delete: vi.fn().mockResolvedValue(undefined),
     };
     mockContainer = {
       item: vi.fn(() => mockItem),

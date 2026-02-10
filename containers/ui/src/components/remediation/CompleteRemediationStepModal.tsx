@@ -11,6 +11,7 @@ import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type CompleteRemediationStepModalProps = {
   isOpen: boolean;
@@ -81,7 +82,8 @@ export function CompleteRemediationStepModal({
         onSubmitted?.();
         onClose();
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(err);
+        setError(GENERIC_ERROR_MESSAGE);
       } finally {
         setLoading(false);
       }

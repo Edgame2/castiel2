@@ -98,7 +98,7 @@ export class AuthEventConsumer {
       return;
     }
 
-    if (routingKey === 'user.registered' && userId && email) {
+    if ((routingKey === 'auth.user.registered' || routingKey === 'user.registered') && userId && email) {
       try {
         await userService.ensureUserProfileFromRegistration(userId, email);
         log.debug('Ensured user profile from registration', { userId, service: 'user-management' });

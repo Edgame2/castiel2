@@ -2,6 +2,7 @@
  * Alert Service
  * Manages alert rules and detection
  * Per ModuleImplementationGuide Section 6: Abstraction Layer
+ * Supports Prisma (Postgres) or CosmosAlertRulesRepository (Cosmos DB).
  */
 
 import { randomUUID } from 'crypto';
@@ -9,6 +10,7 @@ import { PrismaClient } from '.prisma/logging-client';
 import { IStorageProvider } from './providers/storage/IStorageProvider';
 import { LogSearchParams } from '../types/log.types';
 import { log } from '../utils/logger';
+import type { CosmosAlertRulesRepository } from '../data/cosmos/alert-rules';
 
 export interface AlertRule {
   id: string;
@@ -44,12 +46,14 @@ export interface UpdateAlertRuleInput {
 }
 
 export class AlertService {
-  private prisma: PrismaClient;
+  private prisma: PrismaClient | null;
   private storage: IStorageProvider;
+  private cosmosAlertRules: CosmosAlertRulesRepository | null;
 
-  constructor(prisma: PrismaClient, storage: IStorageProvider) {
+  constructor(prisma: PrismaClient | null, storage: IStorageProvider, cosmosAlertRules?: CosmosAlertRulesRepository) {
     this.prisma = prisma;
     this.storage = storage;
+    this.cosmosAlertRules = cosmosAlertRules ?? null;
   }
 
   /**
@@ -59,7 +63,23 @@ export class AlertService {
     input: CreateAlertRuleInput,
     createdBy: string
   ): Promise<AlertRule> {
-    const rule = await this.prisma.audit_alert_rules.create({
+    if (this.cosmosAlertRules) {
+      const rule = await this.cosmosAlertRules.create({
+        data: {
+          organizationId: input.organizationId ?? null,
+          name: input.name,
+          description: input.description ?? null,
+          enabled: input.enabled ?? true,
+          type: input.type,
+          conditions: input.conditions,
+          notificationChannels: input.notificationChannels ?? [],
+          createdBy,
+          updatedBy: createdBy,
+        },
+      });
+      return this.mapToAlertRule(rule);
+    }
+    const rule = await this.prisma!.audit_alert_rules.create({
       data: {
         id: randomUUID(),
         organizationId: input.organizationId || null,
@@ -85,7 +105,21 @@ export class AlertService {
     input: UpdateAlertRuleInput,
     updatedBy: string
   ): Promise<AlertRule> {
-    const rule = await this.prisma.audit_alert_rules.update({
+    if (this.cosmosAlertRules) {
+      const rule = await this.cosmosAlertRules.update({
+        where: { id },
+        data: {
+          name: input.name,
+          description: input.description,
+          enabled: input.enabled,
+          conditions: input.conditions,
+          notificationChannels: input.notificationChannels,
+          updatedBy,
+        },
+      });
+      return this.mapToAlertRule(rule);
+    }
+    const rule = await this.prisma!.audit_alert_rules.update({
       where: { id },
       data: {
         name: input.name,
@@ -104,7 +138,11 @@ export class AlertService {
    * Delete an alert rule
    */
   async deleteRule(id: string): Promise<void> {
-    await this.prisma.audit_alert_rules.delete({
+    if (this.cosmosAlertRules) {
+      await this.cosmosAlertRules.delete({ where: { id } });
+      return;
+    }
+    await this.prisma!.audit_alert_rules.delete({
       where: { id },
     });
   }
@@ -113,14 +151,14 @@ export class AlertService {
    * Get an alert rule
    */
   async getRule(id: string): Promise<AlertRule | null> {
-    const rule = await this.prisma.audit_alert_rules.findUnique({
+    if (this.cosmosAlertRules) {
+      const rule = await this.cosmosAlertRules.findUnique({ where: { id } });
+      return rule ? this.mapToAlertRule(rule) : null;
+    }
+    const rule = await this.prisma!.audit_alert_rules.findUnique({
       where: { id },
     });
-
-    if (!rule) {
-      return null;
-    }
-
+    if (!rule) return null;
     return this.mapToAlertRule(rule);
   }
 
@@ -128,17 +166,22 @@ export class AlertService {
    * List alert rules
    */
   async listRules(organizationId?: string): Promise<AlertRule[]> {
-    const where: any = {};
+    if (this.cosmosAlertRules) {
+      const rules = await this.cosmosAlertRules.findMany({
+        where: organizationId !== undefined ? { organizationId: organizationId ?? null } : undefined,
+        orderBy: { createdAt: 'desc' },
+      });
+      return rules.map((r) => this.mapToAlertRule(r));
+    }
+    const where: Record<string, unknown> = {};
     if (organizationId !== undefined) {
       where.organizationId = organizationId || null;
     }
-
-    const rules = await this.prisma.audit_alert_rules.findMany({
+    const rules = await this.prisma!.audit_alert_rules.findMany({
       where,
       orderBy: { createdAt: 'desc' },
     });
-
-    return rules.map(r => this.mapToAlertRule(r));
+    return rules.map((r) => this.mapToAlertRule(r));
   }
 
   /**

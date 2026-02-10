@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
+
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 type TenantDetailTab = 'overview' | 'feedback' | 'catalog' | 'methodology' | 'limits' | 'custom' | 'analytics';
@@ -143,7 +145,7 @@ function TenantDetailContent() {
           lastFeedbackAt: data.lastFeedbackAt ?? null,
         });
       })
-      .catch((e) => setFeedbackStatsError(e instanceof Error ? e.message : String(e)))
+      .catch((e) => { if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e); setFeedbackStatsError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setFeedbackStatsLoading(false));
   }, [id, activeTab]);
 
@@ -195,7 +197,8 @@ function TenantDetailContent() {
         setGlobalLimits({ defaultLimit: 5, minLimit: 3, maxLimit: 10 });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setConfig(null);
     } finally {
       setLoading(false);
@@ -214,7 +217,8 @@ function TenantDetailContent() {
       const json: TenantOverview = await res.json();
       setOverviewTenant(json);
     } catch (e) {
-      setOverviewError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e);
+      setOverviewError(GENERIC_ERROR_MESSAGE);
       setOverviewTenant(null);
     } finally {
       setOverviewLoading(false);
@@ -278,7 +282,8 @@ function TenantDetailContent() {
       setEditActiveTypes(Array.isArray(json.activeTypes) ? json.activeTypes.map((a) => ({ ...a })) : []);
       setEditing(false);
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e);
+      setSaveError(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }
@@ -672,7 +677,8 @@ function TenantDetailContent() {
                         setEditActiveTypes(config.activeTypes ? config.activeTypes.map((a) => ({ ...a })) : []);
                         setEditing(true);
                       } catch (e) {
-                        setSaveError(e instanceof Error ? e.message : String(e));
+                        if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e);
+                        setSaveError(GENERIC_ERROR_MESSAGE);
                       } finally {
                         setFeedbackTypesLoading(false);
                       }

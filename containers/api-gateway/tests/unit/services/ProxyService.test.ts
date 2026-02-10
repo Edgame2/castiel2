@@ -7,9 +7,9 @@ import { ProxyService } from '../../../src/services/ProxyService';
 
 const mockRequestWithFullResponse = vi.fn();
 vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn().mockImplementation(() => ({
-    requestWithFullResponse: mockRequestWithFullResponse,
-  })),
+  ServiceClient: vi.fn().mockImplementation(function (this: unknown) {
+    return { requestWithFullResponse: mockRequestWithFullResponse };
+  }),
 }));
 
 describe('ProxyService', () => {
@@ -53,6 +53,15 @@ describe('ProxyService', () => {
       const mapping = proxyService.findRoute('/api/v1/ml/models');
       expect(mapping).toBeDefined();
       expect(mapping?.service).toBe('ml');
+    });
+
+    it('matches /api/v1/shards to shard_manager when both /api/v1 and /api/v1/shards are registered', () => {
+      proxyService.registerRoute({ path: '/api/v1', service: 'risk_analytics', serviceUrl: 'http://localhost:3048', stripPrefix: false });
+      proxyService.registerRoute({ path: '/api/v1/shards', service: 'shard_manager', serviceUrl: 'http://localhost:3023', stripPrefix: false });
+      const mapping = proxyService.findRoute('/api/v1/shards?shardTypeName=c_account');
+      expect(mapping).toBeDefined();
+      expect(mapping?.service).toBe('shard_manager');
+      expect(mapping?.path).toBe('/api/v1/shards');
     });
 
     it('returns undefined for unknown path', () => {

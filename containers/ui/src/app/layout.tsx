@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { AppNav } from "@/components/AppNav";
+import { I18nProvider } from "@/components/I18nProvider";
+import { ProtectedLayout } from "@/components/ProtectedLayout";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -18,8 +19,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AppNav />
-        {children}
+        <I18nProvider>
+          <ProtectedLayout>{children}</ProtectedLayout>
+        </I18nProvider>
       </body>
     </html>
   );

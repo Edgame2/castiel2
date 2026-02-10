@@ -41,6 +41,7 @@ export async function registerRoutes(
     routeMappings.push({ path: '/api/invitations', service: 'user_management', serviceUrl: config.services.user_management.url, pathRewrite: '/api/v1/invitations' });
   }
   if (config.services.recommendations?.url) {
+    routeMappings.push({ path: '/api/v1/remediation-workflows', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
     routeMappings.push({ path: '/api/v1/recommendations', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
     routeMappings.push({ path: '/api/v1/admin/tenant-templates', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
     routeMappings.push({ path: '/api/v1/feedback', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
@@ -54,9 +55,12 @@ export async function registerRoutes(
     routeMappings.push({ path: '/api/v1/integrations', service: 'integration_manager', serviceUrl: config.services.integration_manager.url, stripPrefix: false });
   }
   if (config.services.shard_manager?.url) {
+    routeMappings.push({ path: '/api/v1/shards', service: 'shard_manager', serviceUrl: config.services.shard_manager.url, stripPrefix: false });
     routeMappings.push({ path: '/api/v1/admin/shard-types', service: 'shard_manager', serviceUrl: config.services.shard_manager.url, stripPrefix: false });
   }
   if (config.services.integration_processors?.url) {
+    routeMappings.push({ path: '/api/v1/entity-linking', service: 'integration_processors', serviceUrl: config.services.integration_processors.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/processing', service: 'integration_processors', serviceUrl: config.services.integration_processors.url, stripPrefix: false });
     routeMappings.push({ path: '/api/v1/admin/monitoring', service: 'integration_processors', serviceUrl: config.services.integration_processors.url, stripPrefix: false });
   }
   if (config.services.adaptive_learning?.url) {

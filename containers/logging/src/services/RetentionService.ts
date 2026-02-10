@@ -10,9 +10,9 @@ import { getConfig } from '../config';
 import { log } from '../utils/logger';
 
 export class RetentionService {
-  private prisma: PrismaClient;
+  private prisma: PrismaClient | null;
 
-  constructor(prisma: PrismaClient) {
+  constructor(prisma: PrismaClient | null) {
     this.prisma = prisma;
   }
 
@@ -24,6 +24,25 @@ export class RetentionService {
     category?: string,
     severity?: string
   ): Promise<RetentionPolicy | null> {
+    if (!this.prisma) {
+      const config = getConfig();
+      return {
+        id: 'default',
+        organizationId: null,
+        category: null,
+        severity: null,
+        retentionDays: config.defaults.retention.default_days,
+        archiveAfterDays: null,
+        deleteAfterDays: config.defaults.retention.default_days,
+        minRetentionDays: config.defaults.retention.min_days,
+        maxRetentionDays: config.defaults.retention.max_days,
+        immutable: false,
+        createdBy: 'system',
+        createdAt: new Date(),
+        updatedBy: 'system',
+        updatedAt: new Date(),
+      } as RetentionPolicy;
+    }
     try {
       const policy = await this.prisma.audit_retention_policies.findFirst({
         where: {
@@ -83,7 +102,7 @@ export class RetentionService {
         `Retention days must be between ${minDays} and ${maxDays}`
       );
     }
-
+    if (!this.prisma) throw new Error('Retention policies not available when using Cosmos DB');
     const policy = await this.prisma.audit_retention_policies.create({
       data: {
         organizationId: input.organizationId || null,
@@ -111,6 +130,7 @@ export class RetentionService {
     input: UpdateRetentionPolicyInput,
     updatedBy: string
   ): Promise<RetentionPolicy> {
+    if (!this.prisma) throw new Error('Retention policies not available when using Cosmos DB');
     const existing = await this.prisma.audit_retention_policies.findUnique({
       where: { id },
     });
@@ -153,6 +173,7 @@ export class RetentionService {
    * Delete retention policy
    */
   async deletePolicy(id: string): Promise<void> {
+    if (!this.prisma) throw new Error('Retention policies not available when using Cosmos DB');
     const existing = await this.prisma.audit_retention_policies.findUnique({
       where: { id },
     });
@@ -174,11 +195,11 @@ export class RetentionService {
    * List retention policies
    */
   async listPolicies(organizationId?: string): Promise<RetentionPolicy[]> {
-    const where: any = {};
+    if (!this.prisma) return [];
+    const where: Record<string, unknown> = {};
     if (organizationId !== undefined) {
       where.organizationId = organizationId || null;
     }
-
     const policies = await this.prisma.audit_retention_policies.findMany({
       where,
       orderBy: [
@@ -195,6 +216,7 @@ export class RetentionService {
    * Get logs that should be deleted based on retention policies
    */
   async getLogsToDelete(organizationId?: string): Promise<{ logId: string; organizationId: string }[]> {
+    if (!this.prisma) return [];
     const policies = await this.listPolicies(organizationId);
     const logsToDelete: { logId: string; organizationId: string }[] = [];
 
@@ -233,6 +255,7 @@ export class RetentionService {
    * Get logs that should be archived
    */
   async getLogsToArchive(organizationId?: string): Promise<{ logId: string; organizationId: string }[]> {
+    if (!this.prisma) return [];
     const policies = await this.listPolicies(organizationId);
     const logsToArchive: { logId: string; organizationId: string }[] = [];
 
@@ -269,7 +292,7 @@ export class RetentionService {
         take: 1000, // Process in batches
       });
 
-      logsToArchive.push(...logs.map(l => ({
+      logsToArchive.push(...logs.map((l) => ({
         logId: l.id,
         organizationId: l.organizationId,
       })));

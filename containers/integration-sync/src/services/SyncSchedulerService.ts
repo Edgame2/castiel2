@@ -163,27 +163,24 @@ export class SyncSchedulerService {
 
   /**
    * Get integrations that are due for sync
-   * Uses event-based approach: publishes check-due event, integration-manager responds with scheduled events
+   * Uses event-based approach: publishes check_due event, integration-manager responds with scheduled events
    * Alternative: Can query integration-manager directly if endpoint exists
    */
   private async getDueIntegrations(now: Date): Promise<Integration[]> {
     // For MVP, we use an event-based approach:
-    // 1. Publish integration.sync.check-due event
+    // 1. Publish integration.sync.check_due event
     // 2. Integration-manager listens for this event and queries its integrations
     // 3. Integration-manager publishes integration.sync.scheduled events for due integrations
     // 4. SyncTaskEventConsumer handles those events
-    
-    // This approach avoids needing to query across all tenants from integration-sync
-    // Integration-manager has access to all tenant integrations and can filter efficiently
+    // Event type uses underscores (schema: module.resource.action, [a-z_] only). tenantId '' for system-level.
     
     try {
-      // Publish event to trigger integration-manager to check for due syncs
-      await publishIntegrationSyncEvent('integration.sync.check-due', 'system', {
+      await publishIntegrationSyncEvent('integration.sync.check_due', '', {
         timestamp: now.toISOString(),
         checkType: 'scheduled',
       });
       
-      log.debug('Published check-due event, integration-manager will handle due sync detection', {
+      log.debug('Published check_due event, integration-manager will handle due sync detection', {
         timestamp: now.toISOString(),
         service: 'integration-sync',
       });
@@ -192,7 +189,7 @@ export class SyncSchedulerService {
       // from integration-manager
       return [];
     } catch (error: unknown) {
-      log.error('Failed to publish check-due event', error instanceof Error ? error : new Error(String(error)), { service: 'integration-sync' });
+      log.error('Failed to publish check_due event', error instanceof Error ? error : new Error(String(error)), { service: 'integration-sync' });
       return [];
     }
   }

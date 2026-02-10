@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -321,7 +322,8 @@ export default function FeedbackGlobalSettingsPage() {
       setSaveMessage('Saved.');
       await fetchConfig();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }
@@ -349,7 +351,8 @@ export default function FeedbackGlobalSettingsPage() {
       if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
       setApplyToAllResult(data as ApplyToAllResult);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setApplyingToAll(false);
     }
@@ -999,7 +1002,8 @@ export default function FeedbackGlobalSettingsPage() {
                       if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
                       setPatternTestResult(data);
                     } catch (e) {
-                      setPatternTestError(e instanceof Error ? e.message : String(e));
+                      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+                      setPatternTestError(GENERIC_ERROR_MESSAGE);
                     } finally {
                       setPatternTestLoading(false);
                     }

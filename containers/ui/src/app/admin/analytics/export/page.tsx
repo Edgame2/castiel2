@@ -18,6 +18,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
+
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 interface ExportConfig {
@@ -73,7 +75,8 @@ export default function AnalyticsExportPage() {
       setExportConfig({ ...DEFAULT_EXPORT, ...ec });
       setDatasetsInput(Array.isArray(ec.datasets) ? ec.datasets.join(', ') : '');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setExportConfig(DEFAULT_EXPORT);
       setConfig({ dashboards: [], reports: [], exportConfig: DEFAULT_EXPORT });
     } finally {
@@ -118,7 +121,8 @@ export default function AnalyticsExportPage() {
       setConfig({ ...config, exportConfig: updated });
       setDirty(false);
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setSaveError(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }

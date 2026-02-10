@@ -9,6 +9,7 @@ import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
 
@@ -46,7 +47,8 @@ function AcceptInvitationContent() {
         requiresRegistration: data?.requiresRegistration === true,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Request failed');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }

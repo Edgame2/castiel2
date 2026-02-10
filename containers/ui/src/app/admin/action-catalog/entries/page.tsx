@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -316,7 +317,8 @@ export default function ActionCatalogEntriesPage() {
       const json = await res.json();
       setEntries(Array.isArray(json) ? json : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setEntries([]);
     } finally {
       setLoading(false);
@@ -671,7 +673,8 @@ export default function ActionCatalogEntriesPage() {
       closeModal();
       await fetchEntries();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }
@@ -746,7 +749,8 @@ export default function ActionCatalogEntriesPage() {
       closeModal();
       await fetchEntries();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }
@@ -792,7 +796,8 @@ export default function ActionCatalogEntriesPage() {
       closeModal();
       await fetchEntries();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }
@@ -812,7 +817,8 @@ export default function ActionCatalogEntriesPage() {
       }
       await fetchEntries();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     }
   };
 
@@ -847,7 +853,8 @@ export default function ActionCatalogEntriesPage() {
       if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
       await fetchEntries();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     }
   };
 
@@ -912,7 +919,8 @@ export default function ActionCatalogEntriesPage() {
           break;
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
         failed = true;
         break;
       }
@@ -946,7 +954,8 @@ export default function ActionCatalogEntriesPage() {
           break;
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
         failed = true;
         break;
       }
@@ -1279,7 +1288,8 @@ export default function ActionCatalogEntriesPage() {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) errors.push(`Entry ${i + 1}: ${(data?.error?.message as string) || `HTTP ${res.status}`}`);
       } catch (err) {
-        errors.push(`Entry ${i + 1}: ${err instanceof Error ? err.message : String(err)}`);
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(err);
+        errors.push(`Entry ${i + 1}: ${GENERIC_ERROR_MESSAGE}`);
       }
     }
     if (errors.length > 0) setError(errors.slice(0, 5).join('; ') + (errors.length > 5 ? ` (+${errors.length - 5} more)` : ''));
@@ -1363,7 +1373,8 @@ export default function ActionCatalogEntriesPage() {
         }
         await runImport(toCreate, inputEl);
       } catch (err) {
-        setError(err instanceof Error ? err.message : (isCsv ? 'Invalid CSV' : 'Invalid JSON'));
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(err);
+        setError(GENERIC_ERROR_MESSAGE);
         inputEl.value = '';
         setImporting(false);
       }

@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type ExplainabilityDriver = {
   feature: string;
@@ -93,7 +94,7 @@ export function ExplainabilityCard({
         if (Array.isArray(data.reasoningSteps)) setReasoningSteps(data.reasoningSteps);
         if (typeof data.conclusion === 'string') setConclusion(data.conclusion);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setLoading(false));
   }, [opportunityId, variant, topDriversProp, riskScoreProp, reasoningStepsProp, conclusionProp]);
 

@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface SessionItem {
   id: string;
@@ -66,7 +66,8 @@ export default function SecurityPage() {
       const json = await res.json();
       setSessions(json?.data?.sessions ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load sessions');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }
@@ -136,7 +137,8 @@ export default function SecurityPage() {
       }
       await fetchSessions();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to revoke session');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setRevoking(null);
     }
@@ -158,7 +160,8 @@ export default function SecurityPage() {
       }
       await fetchSessions();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to revoke sessions');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setRevokeAllOthers(false);
     }
@@ -197,7 +200,8 @@ export default function SecurityPage() {
       setShowBackupCodesForm(false);
       setBackupCodesCode('');
     } catch (e) {
-      setBackupCodesError(e instanceof Error ? e.message : 'Failed to generate backup codes');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setBackupCodesError(GENERIC_ERROR_MESSAGE);
     } finally {
       setBackupCodesLoading(false);
     }
@@ -236,7 +240,8 @@ export default function SecurityPage() {
       setDisableMfaCode('');
       await fetchMfaStatus();
     } catch (e) {
-      setDisableMfaError(e instanceof Error ? e.message : 'Failed to disable MFA');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setDisableMfaError(GENERIC_ERROR_MESSAGE);
     } finally {
       setDisableMfaLoading(false);
     }
@@ -284,7 +289,8 @@ export default function SecurityPage() {
         fetchApiKeys();
       }
     } catch (e) {
-      setCreateKeyError(e instanceof Error ? e.message : 'Failed to create API key');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setCreateKeyError(GENERIC_ERROR_MESSAGE);
     } finally {
       setCreateKeyLoading(false);
     }
@@ -307,7 +313,8 @@ export default function SecurityPage() {
       }
       await fetchApiKeys();
     } catch (e) {
-      setCreateKeyError(e instanceof Error ? e.message : 'Failed to revoke API key');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setCreateKeyError(GENERIC_ERROR_MESSAGE);
     } finally {
       setRevokingKeyId(null);
     }

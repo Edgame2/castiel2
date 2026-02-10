@@ -52,6 +52,12 @@ export async function publishIntegrationSyncEvent(
   try {
     await publisher.publish(eventType, tenantId, data, metadata);
   } catch (error) {
-    log.error('Failed to publish event', { error, eventType, service: 'integration-sync' });
+    const err = error instanceof Error ? error : new Error(String(error));
+    log.error('Failed to publish event', {
+      error: err.message,
+      stack: err.stack,
+      eventType,
+      service: 'integration-sync',
+    });
   }
 }

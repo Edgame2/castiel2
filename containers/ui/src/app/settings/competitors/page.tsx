@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -40,7 +41,8 @@ export default function CompetitorSettingsPage() {
       const json = (await res.json()) as { competitors?: Competitor[] };
       setCompetitors(Array.isArray(json?.competitors) ? json.competitors : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setCompetitors([]);
     } finally {
       setLoading(false);
@@ -70,7 +72,8 @@ export default function CompetitorSettingsPage() {
       setCreateName('');
       await fetchCompetitors();
     } catch (e) {
-      setCreateError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setCreateError(GENERIC_ERROR_MESSAGE);
     } finally {
       setCreating(false);
     }

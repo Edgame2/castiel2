@@ -116,35 +116,43 @@ export async function buildApp(): Promise<FastifyInstance> {
     transformStaticCSP: (header) => header,
   });
   
-  // Initialize Cosmos DB if configured (for future migration)
-  if (config.cosmos_db?.endpoint && config.cosmos_db?.key) {
+  const useCosmos = config.storage?.provider === 'cosmos' && config.cosmos_db?.endpoint && config.cosmos_db?.key && config.cosmos_db?.containers;
+
+  if (useCosmos) {
     initializeDatabase({
-      endpoint: config.cosmos_db.endpoint,
-      key: config.cosmos_db.key,
-      database: config.cosmos_db.database_id,
-      containers: config.cosmos_db.containers,
+      endpoint: config.cosmos_db!.endpoint,
+      key: config.cosmos_db!.key,
+      database: config.cosmos_db!.database_id,
+      containers: config.cosmos_db!.containers,
     });
     await connectDatabase();
-    log.info('Cosmos DB initialized (for future migration)');
-  }
-  
-  // Initialize Prisma (current storage)
-  prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: config.database.url,
+    log.info('Cosmos DB initialized (storage provider)');
+    prisma = null;
+  } else {
+    prisma = new PrismaClient({
+      datasources: {
+        db: {
+          url: config.database?.url || 'postgresql://localhost:5432/logging',
+        },
       },
-    },
-  });
-  
-  // Create storage provider
+    });
+  }
+
+  const auditLogsContainer = useCosmos ? config.cosmos_db!.containers!.audit_logs : undefined;
   const storageProvider = createStorageProvider(
     { provider: config.storage.provider, postgres: config.storage.postgres },
-    prisma
+    prisma,
+    auditLogsContainer
   );
-  
-  // Create configuration service
-  const configService = new ConfigurationService(prisma);
+
+  let configService: ConfigurationService;
+  if (useCosmos && config.cosmos_db!.containers!.audit_configurations) {
+    const { CosmosConfigurationRepository } = await import('./data/cosmos/configuration');
+    const cosmosConfigRepo = new CosmosConfigurationRepository(config.cosmos_db!.containers!.audit_configurations);
+    configService = new ConfigurationService(null, cosmosConfigRepo);
+  } else {
+    configService = new ConfigurationService(prisma!);
+  }
   const getOrganizationConfig = async (orgId: string) => {
     return configService.getOrganizationConfig(orgId);
   };
@@ -168,21 +176,26 @@ export async function buildApp(): Promise<FastifyInstance> {
     siemProvider: siemProvider || undefined,
   });
   
-  // Create retention service
-  const retentionService = new RetentionService(prisma);
-  
-  // Create all remaining services
   const { HashChainService } = await import('./services/HashChainService');
   const { QueryService } = await import('./services/QueryService');
   const { ExportService } = await import('./services/ExportService');
   const { AlertService } = await import('./services/AlertService');
-  
+
+  const retentionService = new RetentionService(prisma);
   const hashChainService = new HashChainService(prisma, storageProvider);
   const queryService = new QueryService(storageProvider);
   const exportService = new ExportService(prisma, storageProvider);
-  const alertService = new AlertService(prisma, storageProvider);
-  
-  // Attach services to app for route handlers
+
+  let alertService: InstanceType<typeof AlertService>;
+  let cosmosAlertRulesRepository: import('./data/cosmos/alert-rules').CosmosAlertRulesRepository | undefined;
+  if (useCosmos && config.cosmos_db!.containers!.audit_alert_rules) {
+    const { CosmosAlertRulesRepository } = await import('./data/cosmos/alert-rules');
+    cosmosAlertRulesRepository = new CosmosAlertRulesRepository(config.cosmos_db!.containers!.audit_alert_rules);
+    alertService = new AlertService(null, storageProvider, cosmosAlertRulesRepository);
+  } else {
+    alertService = new AlertService(prisma, storageProvider);
+  }
+
   (fastify as any).storageProvider = storageProvider;
   (fastify as any).ingestionService = ingestionService;
   (fastify as any).prisma = prisma;
@@ -192,6 +205,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   (fastify as any).retentionService = retentionService;
   (fastify as any).exportService = exportService;
   (fastify as any).alertService = alertService;
+  (fastify as any).cosmosAlertRulesRepository = cosmosAlertRulesRepository;
   
   // Register error handler
   fastify.setErrorHandler((error: Error & { validation?: unknown; statusCode?: number }, request, reply) => {
@@ -379,9 +393,10 @@ export async function start(): Promise<void> {
       log.info('Archive job started', { schedule: config.jobs.archive.schedule });
     }
 
-    // Alert job
-    if (config.jobs.alerts.enabled && prisma) {
-      alertJob = new AlertJob(prisma, storageProvider);
+    // Alert job (runs with Cosmos or Prisma)
+    if (config.jobs.alerts.enabled && (prisma || (app as any).cosmosAlertRulesRepository)) {
+      const cosmosRepo = (app as any).cosmosAlertRulesRepository;
+      alertJob = new AlertJob(prisma ?? null, storageProvider, cosmosRepo);
       alertJob.start(config.jobs.alerts.schedule);
       log.info('Alert job started', { schedule: config.jobs.alerts.schedule });
     }

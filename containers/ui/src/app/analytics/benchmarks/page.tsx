@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { BenchmarkComparison } from '@/components/analytics/BenchmarkComparison';
 import { ClusterVisualization } from '@/components/analytics/ClusterVisualization';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBase = typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '') : '';
 
@@ -82,7 +83,8 @@ export default function IndustryBenchmarksPage() {
       const data = (await res.json()) as IndustryBenchmark;
       setBenchmark(data);
     } catch (e) {
-      setErrorBenchmarks(e instanceof Error ? e.message : 'Failed to load benchmarks');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setErrorBenchmarks(GENERIC_ERROR_MESSAGE);
       setBenchmark(null);
     } finally {
       setLoadingBenchmarks(false);
@@ -115,7 +117,8 @@ export default function IndustryBenchmarksPage() {
       const data = (await res.json()) as BenchmarkComparisonResult;
       setComparison(data);
     } catch (e) {
-      setErrorComparison(e instanceof Error ? e.message : 'Failed to load comparison');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setErrorComparison(GENERIC_ERROR_MESSAGE);
       setComparison(null);
     } finally {
       setLoadingComparison(false);

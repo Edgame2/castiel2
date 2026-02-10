@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const AUDIT_PAGE_TITLE = 'Audit | Admin | Castiel';
 
@@ -108,7 +109,8 @@ export default function SecurityAuditPage() {
         setOffset(overrideOffset);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setItems([]);
       setTotal(0);
       setHasMore(false);
@@ -158,7 +160,8 @@ export default function SecurityAuditPage() {
       const job = await res.json();
       setExportJobId(job?.id ?? job?.exportId ?? 'unknown');
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e);
+      setExportError(GENERIC_ERROR_MESSAGE);
     }
   }, [startDate, endDate, userId, action, category, severity]);
 

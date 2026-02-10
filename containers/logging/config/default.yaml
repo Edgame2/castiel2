@@ -21,14 +21,22 @@ server:
   host: ${HOST:-0.0.0.0}
 
 # Cosmos DB Configuration (shared database, prefixed containers)
+# Partition key for all containers: /tenantId (use organizationId as tenantId where applicable)
 cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
   key: ${COSMOS_DB_KEY}
   database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
-  
-# Legacy database.url for backward compatibility during migration
+  containers:
+    audit_logs: logging_audit_logs
+    audit_alert_rules: logging_audit_alert_rules
+    audit_configurations: logging_audit_configurations
+    audit_retention_policies: logging_audit_retention_policies
+    audit_hash_checkpoints: logging_audit_hash_checkpoints
+    audit_exports: logging_audit_exports
+
+# Legacy database.url (only used when storage.provider is postgres)
 database:
-  url: ${DATABASE_URL:-}  # Not used with Cosmos DB, kept for migration period
+  url: ${DATABASE_URL:-}
   pool_size: 20
 
 # Data Lake (BI/risk §3.5, DATA_LAKE_LAYOUT §4): Parquet + ML audit Blob

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -70,7 +71,7 @@ export default function AdminSecurityRoleNewPage() {
         if (data?.data?.id) router.push(`/admin/security/roles/${data.data.id}?orgId=${encodeURIComponent(o)}`);
         else router.push(`/admin/security/roles?orgId=${o}`);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Create failed'))
+      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setSubmitting(false));
   };
 

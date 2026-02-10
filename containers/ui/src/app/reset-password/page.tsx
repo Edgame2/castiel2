@@ -19,8 +19,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
+import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -45,7 +44,8 @@ function ResetPasswordForm() {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/api/auth/reset-password`, {
+      const base = getApiBaseUrl();
+      const res = await fetch(`${base ? `${base.replace(/\/$/, '')}` : ''}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -59,7 +59,8 @@ function ResetPasswordForm() {
       }
       setSuccessMessage(data?.message ?? 'Password has been reset successfully. Please log in with your new password.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Request failed');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }

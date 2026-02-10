@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -92,7 +93,8 @@ export default function FieldMappingsPage() {
       const json = await res.json();
       setIntegration(json);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     }
   }, [integrationId]);
 
@@ -111,7 +113,8 @@ export default function FieldMappingsPage() {
       const json = await res.json();
       setFieldMappings(Array.isArray(json?.fieldMappings) ? json.fieldMappings : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setFieldMappings([]);
     }
   }, [integrationId, selectedEntityType]);
@@ -212,8 +215,9 @@ export default function FieldMappingsPage() {
       setEditingIndex(null);
       alert('Field mappings saved successfully');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      alert(`Failed to save: ${e instanceof Error ? e.message : String(e)}`);
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
+      alert(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }
@@ -247,7 +251,7 @@ export default function FieldMappingsPage() {
       link.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert(`Failed to export: ${e instanceof Error ? e.message : String(e)}`);
+      alert(GENERIC_ERROR_MESSAGE);
     }
   };
 
@@ -279,7 +283,7 @@ export default function FieldMappingsPage() {
         await fetchFieldMappings();
         alert('Field mappings imported successfully');
       } catch (e) {
-        alert(`Failed to import: ${e instanceof Error ? e.message : String(e)}`);
+        alert(GENERIC_ERROR_MESSAGE);
       }
     };
     input.click();
@@ -582,7 +586,8 @@ function FieldMappingTester({ mappings, entityType, integrationId, onClose }: Fi
       const json = await res.json();
       setResult(json);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setTesting(false);
     }

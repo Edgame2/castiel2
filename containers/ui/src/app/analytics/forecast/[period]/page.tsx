@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
 
@@ -40,7 +41,8 @@ export default function ForecastPeriodPage() {
       const data = await res.json();
       setScenarios(Array.isArray(data) ? data : data?.scenarios ?? data?.items ?? []);
     } catch (e) {
-      setFetchError(e instanceof Error ? e.message : 'Failed to load');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setFetchError(GENERIC_ERROR_MESSAGE);
       setScenarios(null);
     } finally {
       setLoading(false);

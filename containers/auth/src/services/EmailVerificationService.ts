@@ -108,7 +108,7 @@ export async function sendVerificationEmail(userId: string): Promise<string> {
   type AuthEvent = import('../types/events').UserEmailVerificationRequestedEvent;
   
   await publishEventSafely({
-    ...createBaseEvent('user.email_verification_requested', userId, undefined, undefined, {
+    ...createBaseEvent('auth.user.email_verification_requested', userId, undefined, undefined, {
       userId,
       email: user.email,
       verificationToken: token,

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -88,7 +89,8 @@ export default function EntityLinkingPage() {
       const json = await res.json();
       setSettings(json?.settings || null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     }
   }, []);
 
@@ -156,8 +158,9 @@ export default function EntityLinkingPage() {
       await fetchSettings();
       alert('Settings saved successfully');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      alert(`Failed to save: ${e instanceof Error ? e.message : String(e)}`);
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
+      alert(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }
@@ -175,7 +178,7 @@ export default function EntityLinkingPage() {
       }
       await fetchSuggestedLinks();
     } catch (e) {
-      alert(`Failed to approve: ${e instanceof Error ? e.message : String(e)}`);
+      alert(GENERIC_ERROR_MESSAGE);
     }
   };
 
@@ -193,7 +196,7 @@ export default function EntityLinkingPage() {
       }
       await fetchSuggestedLinks();
     } catch (e) {
-      alert(`Failed to reject: ${e instanceof Error ? e.message : String(e)}`);
+      alert(GENERIC_ERROR_MESSAGE);
     }
   };
 
@@ -214,7 +217,7 @@ export default function EntityLinkingPage() {
       alert(`Approved ${json.approved} links. ${json.failed} failed.`);
       await fetchSuggestedLinks();
     } catch (e) {
-      alert(`Failed to approve all: ${e instanceof Error ? e.message : String(e)}`);
+      alert(GENERIC_ERROR_MESSAGE);
     }
   };
 

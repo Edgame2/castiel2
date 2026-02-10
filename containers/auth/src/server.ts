@@ -5,9 +5,10 @@
 
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
-import { initializeDatabase, getDatabaseClient, connectDatabase } from '@coder/shared';
+import { initializeDatabase, getDatabaseClient, connectDatabase, setDatabaseClientOverride } from '@coder/shared';
 import { ensureContainer } from '@coder/shared/database';
 import { setupJWT } from '@coder/shared';
+import cookie from '@fastify/cookie';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import { writeFileSync, mkdirSync } from 'fs';
@@ -34,6 +35,8 @@ export async function buildApp(): Promise<FastifyInstance> {
     requestTimeout: 30000, // 30 seconds request timeout
     keepAliveTimeout: 5000, // 5 seconds keep-alive timeout
   });
+
+  await fastify.register(cookie, { secret: config.jwt?.secret });
 
   // Register Swagger/OpenAPI
   await fastify.register(swagger, {
@@ -126,6 +129,8 @@ export async function buildApp(): Promise<FastifyInstance> {
     if (apiKeysContainerName) {
       await ensureContainer(apiKeysContainerName, '/id');
     }
+    const { createCosmosAuthAdapter } = await import('./data/cosmosAuthAdapter');
+    setDatabaseClientOverride(createCosmosAuthAdapter());
     log.info('Database connected successfully', { service: 'auth' });
   } catch (error) {
     log.error('Failed to connect to database', error, { service: 'auth' });

@@ -1,6 +1,6 @@
 /**
  * Super Admin: User management (W11 §10.2)
- * GET /api/users/api/v1/organizations/:orgId/member-count, member-limit, members via gateway (user_management).
+ * GET /api/v1/organizations/:orgId/member-count, member-limit, members via gateway (user_management).
  */
 
 'use client';
@@ -17,8 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface MemberCountResponse {
   data?: { memberCount?: number };
@@ -78,7 +77,8 @@ export default function SecurityUsersPage() {
   }, []);
 
   const fetchSummary = useCallback(async () => {
-    if (!apiBaseUrl || !orgId.trim()) return;
+    const base = getApiBaseUrl().replace(/\/$/, '') || '';
+    if (!base || !orgId.trim()) return;
     setLoading(true);
     setError(null);
     setMemberCount(null);
@@ -86,11 +86,12 @@ export default function SecurityUsersPage() {
     setIsAtLimit(null);
     setMembers([]);
     const encoded = encodeURIComponent(orgId.trim());
+    const prefix = base ? `${base}/api/v1/organizations` : '/api/v1/organizations';
     try {
       const [countRes, limitRes, membersRes] = await Promise.all([
-        fetch(`${apiBaseUrl}/api/users/api/v1/organizations/${encoded}/member-count`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/users/api/v1/organizations/${encoded}/member-limit`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/users/api/v1/organizations/${encoded}/members`, { credentials: 'include' }),
+        fetch(`${prefix}/${encoded}/member-count`, { credentials: 'include' }),
+        fetch(`${prefix}/${encoded}/member-limit`, { credentials: 'include' }),
+        fetch(`${prefix}/${encoded}/members`, { credentials: 'include' }),
       ]);
       if (!countRes.ok) throw new Error(`member-count: HTTP ${countRes.status}`);
       if (!limitRes.ok) throw new Error(`member-limit: HTTP ${limitRes.status}`);
@@ -103,7 +104,8 @@ export default function SecurityUsersPage() {
       setIsAtLimit(limitJson?.data?.isAtLimit ?? null);
       setMembers(Array.isArray(membersJson?.data) ? membersJson.data : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setMemberCount(null);
       setMemberLimit(null);
       setIsAtLimit(null);
@@ -112,6 +114,7 @@ export default function SecurityUsersPage() {
       setLoading(false);
     }
   }, [orgId]);
+  const apiBaseUrl = getApiBaseUrl();
 
   return (
     <div className="p-6">

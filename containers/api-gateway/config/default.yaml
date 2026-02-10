@@ -72,8 +72,6 @@ circuit_breaker:
 
 # CORS (frontend origin; * allows all)
 cors:
-  origin: ${FRONTEND_URL:-*}
-
-# Optional Redis for rate limit store (when set, rate limits are shared across gateway instances)
+  origin: ${FRONTEND_URL:-*}# Optional Redis for rate limit store (when set, rate limits are shared across gateway instances)
 redis:
   url: ${REDIS_URL:-}

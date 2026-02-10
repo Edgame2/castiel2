@@ -41,6 +41,8 @@ const nextConfig: NextConfig = {
 
   // Experimental features for performance
   experimental: {
+    // Limit build workers to avoid manifest race (ENOENT pages-manifest/next-font-manifest during "Collecting page data").
+    cpus: 1,
     optimizePackageImports: [
       '@/components/ui',
       'lucide-react',
@@ -53,8 +55,8 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Output configuration for better caching
-  output: 'standalone',
+  // Standalone disabled: Dockerfile uses full .next + next start; standalone copy fails in this layout (ENOENT routes-manifest).
+  // output: 'standalone',
 
   // Headers for caching and security
   async headers() {
@@ -84,24 +86,22 @@ const nextConfig: NextConfig = {
     ]
   },
 
-  // Proxy API requests to API Gateway (only when NEXT_PUBLIC_API_BASE_URL is set)
+  // Proxy API requests to API Gateway. Uses API_GATEWAY_URL (server-only) or NEXT_PUBLIC_API_BASE_URL.
+  // beforeFiles so /api/* is proxied before any filesystem/route check (avoids 404).
   async rewrites() {
-    const apiGatewayUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-    if (!apiGatewayUrl) return [];
-    return [
-      {
-        source: '/api/v1/:path*',
-        destination: `${apiGatewayUrl}/api/v1/:path*`,
-      },
-      {
-        source: '/api/profile/:path*',
-        destination: `${apiGatewayUrl}/api/profile/:path*`,
-      },
-      {
-        source: '/api/auth/:path*',
-        destination: `${apiGatewayUrl}/api/auth/:path*`,
-      },
+    const apiGatewayUrl = process.env.API_GATEWAY_URL || process.env.NEXT_PUBLIC_API_BASE_URL || '';
+    if (!apiGatewayUrl) return { beforeFiles: [], afterFiles: [], fallback: [] };
+    const apiRewrites = [
+      { source: '/api/v1/:path*', destination: `${apiGatewayUrl}/api/v1/:path*` },
+      { source: '/api/profile/:path*', destination: `${apiGatewayUrl}/api/profile/:path*` },
+      { source: '/api/auth/:path*', destination: `${apiGatewayUrl}/api/auth/:path*` },
+      { source: '/api/users/:path*', destination: `${apiGatewayUrl}/api/users/:path*` },
     ];
+    return {
+      beforeFiles: apiRewrites,
+      afterFiles: [],
+      fallback: [],
+    };
   },
 };
 

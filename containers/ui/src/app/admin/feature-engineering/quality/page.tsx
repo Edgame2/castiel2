@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
+
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 type FeaturePurpose = 'risk-scoring' | 'win-probability' | 'lstm' | 'anomaly' | 'forecasting';
@@ -81,7 +83,8 @@ export default function FeatureEngineeringQualityPage() {
         setRulesData(null);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setAlerts([]);
       setStatistics([]);
     } finally {

@@ -247,6 +247,9 @@ vi.mock('@coder/shared', () => ({
     connect: vi.fn().mockResolvedValue(undefined),
     disconnect: vi.fn().mockResolvedValue(undefined),
   })),
+  ServiceClient: vi.fn().mockImplementation(function (this: unknown) {
+    return { get: vi.fn() };
+  }),
   setupJWT: vi.fn().mockResolvedValue(undefined),
   AuthenticatedUser: {},
 }));

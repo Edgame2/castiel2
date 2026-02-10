@@ -2,6 +2,10 @@
  * Shared API base URL and fetch helper. Use for all backend calls.
  * On 401, redirects to /logout (clears session) then /login.
  */
+
+/** Safe, user-facing message when an unexpected error occurs (no leaked internals). */
+export const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
+
 function getBase(): string {
   if (typeof process === "undefined") return "";
   return (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");

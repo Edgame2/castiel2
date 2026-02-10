@@ -8,18 +8,26 @@ const notificationService = new NotificationService();
 const notificationEngine = getNotificationEngine();
 
 const EVENT_TYPES = [
+  'auth.user.registered',
   'user.registered',
+  'auth.user.password_reset_requested',
   'user.password_reset_requested',
+  'auth.user.password_reset_success',
   'user.password_reset_success',
+  'auth.user.email_verification_requested',
   'user.email_verification_requested',
+  'auth.user.email_verified',
   'user.email_verified',
+  'auth.user.password_changed',
   'user.password_changed',
   'planning.plan.created',
   'planning.plan.executed',
   'ai.completion.completed',
   'ai.completion.failed',
   'usage.event.recorded',
+  'auth.session.revoked',
   'session.revoked',
+  'auth.sessions.bulk_revoked',
   'sessions.bulk_revoked',
 ];
 

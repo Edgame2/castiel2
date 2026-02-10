@@ -115,6 +115,14 @@ export async function buildApp(): Promise<FastifyInstance> {
     throw error;
   }
 
+  // Seed Revimize super admin when SEED_SUPER_ADMIN_EMAIL is set (one-time promote existing user)
+  try {
+    const { seedRevimizeSuperAdmin } = await import('./services/seedService.js');
+    await seedRevimizeSuperAdmin();
+  } catch (error) {
+    log.warn('Seed Revimize super admin failed (non-fatal)', { error, service: 'user-management' });
+  }
+
   // Initialize event publisher
   try {
     const { initializeEventPublisher } = await import('./events/publishers/UserManagementEventPublisher.js');

@@ -43,11 +43,11 @@ describe('SyncSchedulerService', () => {
   });
 
   describe('start', () => {
-    it('should publish integration.sync.check-due on start when enabled', async () => {
+    it('should publish integration.sync.check_due on start when enabled', async () => {
       await service.start();
       expect(publishIntegrationSyncEvent).toHaveBeenCalledWith(
-        'integration.sync.check-due',
-        'system',
+        'integration.sync.check_due',
+        '',
         expect.objectContaining({ timestamp: expect.any(String), checkType: 'scheduled' })
       );
     });

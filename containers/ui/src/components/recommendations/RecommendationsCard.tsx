@@ -9,7 +9,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { apiFetch, getApiBaseUrl } from '@/lib/api';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type RecommendationItem = {
   id: string;
@@ -60,7 +60,7 @@ export function RecommendationsCard({ opportunityId, title = 'Recommendations' }
         setReasoningSteps(Array.isArray(data.reasoningSteps) ? data.reasoningSteps : []);
         setConclusion(typeof data.conclusion === 'string' ? data.conclusion : undefined);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setLoading(false));
   }, [opportunityId]);
 

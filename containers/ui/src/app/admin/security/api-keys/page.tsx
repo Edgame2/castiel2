@@ -1,6 +1,6 @@
 /**
  * Super Admin: API keys (W11 §10.3)
- * GET list, POST create, DELETE revoke, POST rotate via /api/users/api/v1/organizations/:orgId/api-keys (user_management).
+ * GET list, POST create, DELETE revoke, POST rotate via /api/v1/organizations/:orgId/api-keys (user_management).
  */
 
 'use client';
@@ -17,8 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface ApiKeyRow {
   id?: string;
@@ -91,19 +90,21 @@ export default function SecurityApiKeysPage() {
   }, []);
 
   const fetchKeys = useCallback(async () => {
-    if (!apiBaseUrl || !orgId.trim()) return;
+    const base = getApiBaseUrl().replace(/\/$/, '') || '';
+    if (!base || !orgId.trim()) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(
-        `${apiBaseUrl}/api/users/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys`,
+        base ? `${base}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys` : `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys`,
         { credentials: 'include' }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: ApiKeysResponse = await res.json();
       setItems(Array.isArray(json?.items) ? json.items : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+        setError(GENERIC_ERROR_MESSAGE);
       setItems([]);
     } finally {
       setLoading(false);
@@ -111,7 +112,8 @@ export default function SecurityApiKeysPage() {
   }, [orgId]);
 
   const handleCreate = useCallback(async () => {
-    if (!apiBaseUrl || !orgId.trim() || !createName.trim()) {
+    const base = getApiBaseUrl().replace(/\/$/, '') || '';
+    if (!base || !orgId.trim() || !createName.trim()) {
       setCreateError('Name is required');
       return;
     }
@@ -120,7 +122,7 @@ export default function SecurityApiKeysPage() {
     setCreatedKey(null);
     try {
       const res = await fetch(
-        `${apiBaseUrl}/api/users/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys`,
+        base ? `${base}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys` : `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys`,
         {
           method: 'POST',
           credentials: 'include',
@@ -143,21 +145,23 @@ export default function SecurityApiKeysPage() {
       setCreateScope('');
       setCreateExpiresAt('');
     } catch (e) {
-      setCreateError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setCreateError(GENERIC_ERROR_MESSAGE);
     } finally {
       setCreating(false);
     }
-  }, [apiBaseUrl, orgId, createName, createScope, createExpiresAt, fetchKeys]);
+  }, [orgId, createName, createScope, createExpiresAt, fetchKeys]);
 
   const handleRevoke = useCallback(
     async (keyId: string) => {
-      if (!apiBaseUrl || !orgId.trim() || !keyId) return;
+      const base = getApiBaseUrl().replace(/\/$/, '') || '';
+      if (!base || !orgId.trim() || !keyId) return;
       if (!confirm('Revoke this API key? It will stop working immediately.')) return;
       setRevokingId(keyId);
       setError(null);
       try {
         const res = await fetch(
-          `${apiBaseUrl}/api/users/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys/${encodeURIComponent(keyId)}`,
+          base ? `${base}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys/${encodeURIComponent(keyId)}` : `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys/${encodeURIComponent(keyId)}`,
           { method: 'DELETE', credentials: 'include' }
         );
         if (!res.ok) {
@@ -166,24 +170,26 @@ export default function SecurityApiKeysPage() {
         }
         await fetchKeys();
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+        setError(GENERIC_ERROR_MESSAGE);
       } finally {
         setRevokingId(null);
       }
     },
-    [apiBaseUrl, orgId, fetchKeys]
+    [orgId, fetchKeys]
   );
 
   const handleRotate = useCallback(
     async (keyId: string) => {
-      if (!apiBaseUrl || !orgId.trim() || !keyId) return;
+      const base = getApiBaseUrl().replace(/\/$/, '') || '';
+      if (!base || !orgId.trim() || !keyId) return;
       if (!confirm('Rotate this API key? A new key will be generated; the old one will stop working.')) return;
       setRotateKeyId(keyId);
       setRotatedKey(null);
       setRotateError(null);
       try {
         const res = await fetch(
-          `${apiBaseUrl}/api/users/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys/${encodeURIComponent(keyId)}/rotate`,
+          base ? `${base}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys/${encodeURIComponent(keyId)}/rotate` : `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys/${encodeURIComponent(keyId)}/rotate`,
           { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } }
         );
         if (!res.ok) {
@@ -195,13 +201,16 @@ export default function SecurityApiKeysPage() {
         setRotatedKey(data);
         await fetchKeys();
       } catch (e) {
-        setRotateError(e instanceof Error ? e.message : String(e));
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+        setRotateError(GENERIC_ERROR_MESSAGE);
       } finally {
         setRotateKeyId(null);
       }
     },
-    [apiBaseUrl, orgId, fetchKeys]
+    [orgId, fetchKeys]
   );
+
+  const apiBaseUrl = getApiBaseUrl();
 
   return (
     <div className="p-6">

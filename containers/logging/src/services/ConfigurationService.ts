@@ -1,20 +1,24 @@
 /**
  * Configuration Service
- * Manages organization-specific audit configuration
+ * Manages organization-specific audit configuration.
+ * Supports Prisma (Postgres) or CosmosConfigurationRepository (Cosmos DB).
  */
 
 import { PrismaClient } from '.prisma/logging-client';
 import { OrganizationConfig, UpdateOrganizationConfigInput } from '../types';
 import { getConfig } from '../config';
 import { log } from '../utils/logger';
+import type { CosmosConfigurationRepository } from '../data/cosmos/configuration';
 
 export class ConfigurationService {
-  private prisma: PrismaClient;
+  private prisma: PrismaClient | null;
+  private cosmosConfig: CosmosConfigurationRepository | null;
   private cache: Map<string, { config: OrganizationConfig | null; cachedAt: number }> = new Map();
-  private cacheTtlMs = 60000; // 1 minute cache TTL
-  
-  constructor(prisma: PrismaClient) {
+  private cacheTtlMs = 60000;
+
+  constructor(prisma: PrismaClient | null, cosmosConfig?: CosmosConfigurationRepository) {
     this.prisma = prisma;
+    this.cosmosConfig = cosmosConfig ?? null;
   }
   
   /**
@@ -28,19 +32,23 @@ export class ConfigurationService {
     }
     
     try {
-      // Try to get org-specific config
-      let configRow = await this.prisma.audit_configurations.findFirst({
-        where: { organizationId },
-      });
-      
-      // Fall back to global config if no org-specific config
-      if (!configRow) {
-        configRow = await this.prisma.audit_configurations.findFirst({
-          where: { organizationId: null },
+      let config: OrganizationConfig | null = null;
+      if (this.cosmosConfig) {
+        config = await this.cosmosConfig.findFirst({ where: { organizationId } });
+        if (!config) {
+          config = await this.cosmosConfig.findFirst({ where: { organizationId: null } });
+        }
+      } else if (this.prisma) {
+        let configRow = await this.prisma.audit_configurations.findFirst({
+          where: { organizationId },
         });
+        if (!configRow) {
+          configRow = await this.prisma.audit_configurations.findFirst({
+            where: { organizationId: null },
+          });
+        }
+        config = configRow ? this.mapToConfig(configRow) : null;
       }
-      
-      const config = configRow ? this.mapToConfig(configRow) : null;
       
       // Cache the result
       this.cache.set(organizationId, { config, cachedAt: Date.now() });
@@ -57,11 +65,16 @@ export class ConfigurationService {
    */
   async getGlobalConfig(): Promise<OrganizationConfig | null> {
     try {
-      const configRow = await this.prisma.audit_configurations.findFirst({
-        where: { organizationId: null },
-      });
-      
-      return configRow ? this.mapToConfig(configRow) : null;
+      if (this.cosmosConfig) {
+        return await this.cosmosConfig.findFirst({ where: { organizationId: null } });
+      }
+      if (this.prisma) {
+        const configRow = await this.prisma.audit_configurations.findFirst({
+          where: { organizationId: null },
+        });
+        return configRow ? this.mapToConfig(configRow) : null;
+      }
+      return null;
     } catch (error) {
       log.error('Failed to get global config', error);
       return null;
@@ -88,11 +101,16 @@ export class ConfigurationService {
       alertsEnabled: input.alertsEnabled ?? appConfig.defaults.alerts.enabled,
     };
     
-    // Find existing config
+    if (this.cosmosConfig) {
+      const result = await this.cosmosConfig.upsert(organizationId, data);
+      if (organizationId) this.cache.delete(organizationId);
+      log.info('Organization config updated', { organizationId });
+      return result;
+    }
+    if (!this.prisma) throw new Error('No configuration data source');
     const existing = await this.prisma.audit_configurations.findFirst({
       where: { organizationId: organizationId ?? null },
     });
-    
     let result;
     if (existing) {
       result = await this.prisma.audit_configurations.update({
@@ -119,13 +137,14 @@ export class ConfigurationService {
    * Delete organization configuration (falls back to global)
    */
   async deleteOrganizationConfig(organizationId: string): Promise<void> {
-    await this.prisma.audit_configurations.delete({
-      where: { organizationId },
-    });
-    
-    // Invalidate cache
+    if (this.cosmosConfig) {
+      await this.cosmosConfig.delete({ where: { organizationId } });
+    } else if (this.prisma) {
+      await this.prisma.audit_configurations.delete({
+        where: { organizationId },
+      });
+    }
     this.cache.delete(organizationId);
-    
     log.info('Organization config deleted', { organizationId });
   }
   

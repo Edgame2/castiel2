@@ -13,6 +13,8 @@ let dbClient: CosmosDBClient | null = null;
 let connectionPoolInstance: ConnectionPool | null = null;
 let containerMappings: Record<string, string> = {}; // Store container mappings
 let dbConfig: InitializeDatabaseConfig | null = null; // Store database config
+/** Optional override (e.g. auth service Prisma-like adapter); when set, getDatabaseClient() returns this instead of Cosmos Database. */
+let dbClientOverride: unknown = null;
 
 /**
  * Initialize database configuration
@@ -126,6 +128,7 @@ export async function connectDatabase(config?: CosmosDBConfig): Promise<void> {
  * Disconnect from database
  */
 export async function disconnectDatabase(): Promise<void> {
+  dbClientOverride = null;
   if (dbClient) {
     await dbClient.disconnect();
     dbClient = null;
@@ -143,10 +146,22 @@ export function getConnectionPool(): ConnectionPool | null {
 }
 
 /**
+ * Set an optional database client override (e.g. Prisma-like adapter).
+ * When set, getDatabaseClient() returns this instead of the Cosmos Database.
+ */
+export function setDatabaseClientOverride(client: unknown): void {
+  dbClientOverride = client;
+}
+
+/**
  * Get database client instance
- * Must call connectDatabase() first
+ * Must call connectDatabase() first.
+ * Returns the override if set (e.g. by auth service), otherwise the Cosmos Database.
  */
 export function getDatabaseClient(): Database {
+  if (dbClientOverride != null) {
+    return dbClientOverride as Database;
+  }
   if (!dbClient) {
     throw new Error('Database not connected. Call connectDatabase() first.');
   }

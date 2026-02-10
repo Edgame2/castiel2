@@ -133,8 +133,8 @@ async function main(): Promise<void> {
   }
 
   // 4. Wait for external dependencies to be ready
-  const maxRetries = 30;
-  const retryDelay = 2000; // 2 seconds
+  const maxRetries = 60;
+  const retryDelay = 3000; // 3 seconds (shard-manager can take 90s+ for DB + bootstrap)
 
   log.info('Waiting for dependencies...', { service: 'integration-processors' });
 
@@ -148,13 +148,17 @@ async function main(): Promise<void> {
     );
   }
 
-  // Wait for Shard Manager
-  await waitForService(
-    'Shard Manager',
-    () => checkShardManager(shardManager),
-    maxRetries,
-    retryDelay
-  );
+  // Wait for Shard Manager (must be up before processors; compose can use condition: service_healthy)
+  if (config.services.shard_manager?.url) {
+    await waitForService(
+      'Shard Manager',
+      () => checkShardManager(shardManager),
+      maxRetries,
+      retryDelay
+    );
+  } else {
+    log.warn('Shard Manager URL not configured, skipping readiness wait', { service: 'integration-processors' });
+  }
 
   log.info('All dependencies ready', { service: 'integration-processors' });
 

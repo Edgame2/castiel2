@@ -52,6 +52,7 @@ rabbitmq:
   bindings:
     - "auth.login.success"
     - "auth.login.failed"
+    - "auth.user.registered"
     - "user.registered"
 
 # Feature Flags

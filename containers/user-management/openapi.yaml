@@ -149,9 +149,7 @@ paths:
         '401':
           description: Not authenticated
         '404':
-          description: Profile not found
-
-  /users/{id}:
+          description: Profile not found  /users/{id}:
     get:
       tags:
         - Users

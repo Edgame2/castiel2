@@ -18,8 +18,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
+import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -33,7 +32,8 @@ export default function ForgotPasswordPage() {
     setSuccessMessage(null);
     setLoading(true);
     try {
-      const res = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/api/auth/forgot-password`, {
+      const base = getApiBaseUrl();
+      const res = await fetch(`${base ? `${base.replace(/\/$/, '')}` : ''}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -47,7 +47,8 @@ export default function ForgotPasswordPage() {
       }
       setSuccessMessage(data?.message ?? 'If an account with that email exists, a password reset link has been sent.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Request failed');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }

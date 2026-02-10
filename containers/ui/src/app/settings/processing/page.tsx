@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -109,7 +110,8 @@ export default function ProcessingSettingsPage() {
       const json = await res.json();
       setSettings(json?.settings || null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }
@@ -142,8 +144,9 @@ export default function ProcessingSettingsPage() {
       await fetchSettings();
       alert('Processing settings saved successfully');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      alert(`Failed to save: ${e instanceof Error ? e.message : String(e)}`);
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
+      alert(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }

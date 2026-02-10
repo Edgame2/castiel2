@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -74,7 +75,8 @@ export default function AnalyticsReportDetailPage() {
         }
       })
       .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+        setError(GENERIC_ERROR_MESSAGE);
         setConfig(null);
       })
       .finally(() => setLoading(false));
@@ -108,7 +110,7 @@ export default function AnalyticsReportDetailPage() {
         setEditing(false);
         fetchConfig();
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Save failed'))
+      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setSaveError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setSaving(false));
   };
 
@@ -126,7 +128,7 @@ export default function AnalyticsReportDetailPage() {
         if (!r.ok) throw new Error(r.statusText || 'Delete failed');
         router.push('/admin/analytics/reports');
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Delete failed'))
+      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setSaveError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setDeleting(false));
   };
 

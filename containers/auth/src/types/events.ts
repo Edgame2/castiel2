@@ -24,7 +24,7 @@ export interface BaseEvent {
  * Authentication Events
  */
 export interface UserRegisteredEvent extends BaseEvent {
-  type: 'user.registered';
+  type: 'auth.user.registered';
   data: {
     userId: string;
     email: string;
@@ -60,7 +60,7 @@ export interface AuthLoginFailedEvent extends BaseEvent {
 }
 
 export interface UserLoggedInEvent extends BaseEvent {
-  type: 'user.logged_in';
+  type: 'auth.user.logged_in';
   data: {
     userId: string;
     sessionId: string;
@@ -73,7 +73,7 @@ export interface UserLoggedInEvent extends BaseEvent {
 }
 
 export interface UserLoggedOutEvent extends BaseEvent {
-  type: 'user.logged_out';
+  type: 'auth.user.logged_out';
   data: {
     userId: string;
     sessionId: string;
@@ -82,7 +82,7 @@ export interface UserLoggedOutEvent extends BaseEvent {
 }
 
 export interface UserEmailVerificationRequestedEvent extends BaseEvent {
-  type: 'user.email_verification_requested';
+  type: 'auth.user.email_verification_requested';
   data: {
     userId: string;
     email: string;
@@ -91,7 +91,7 @@ export interface UserEmailVerificationRequestedEvent extends BaseEvent {
 }
 
 export interface UserEmailVerifiedEvent extends BaseEvent {
-  type: 'user.email_verified';
+  type: 'auth.user.email_verified';
   data: {
     userId: string;
     email: string;
@@ -99,7 +99,7 @@ export interface UserEmailVerifiedEvent extends BaseEvent {
 }
 
 export interface UserPasswordChangedEvent extends BaseEvent {
-  type: 'user.password_changed';
+  type: 'auth.user.password_changed';
   data: {
     userId: string;
     initiatedBy: 'user' | 'admin' | 'system';
@@ -107,7 +107,7 @@ export interface UserPasswordChangedEvent extends BaseEvent {
 }
 
 export interface UserPasswordResetRequestedEvent extends BaseEvent {
-  type: 'user.password_reset_requested';
+  type: 'auth.user.password_reset_requested';
   data: {
     userId: string;
     email: string;
@@ -115,7 +115,7 @@ export interface UserPasswordResetRequestedEvent extends BaseEvent {
 }
 
 export interface UserPasswordResetSuccessEvent extends BaseEvent {
-  type: 'user.password_reset_success';
+  type: 'auth.user.password_reset_success';
   data: {
     userId: string;
     email: string;
@@ -123,7 +123,7 @@ export interface UserPasswordResetSuccessEvent extends BaseEvent {
 }
 
 export interface UserProviderLinkedEvent extends BaseEvent {
-  type: 'user.provider_linked';
+  type: 'auth.user.provider_linked';
   data: {
     userId: string;
     provider: 'google' | 'github' | 'azure_ad' | 'okta';
@@ -132,7 +132,7 @@ export interface UserProviderLinkedEvent extends BaseEvent {
 }
 
 export interface UserProviderUnlinkedEvent extends BaseEvent {
-  type: 'user.provider_unlinked';
+  type: 'auth.user.provider_unlinked';
   data: {
     userId: string;
     provider: 'google' | 'github' | 'azure_ad' | 'okta';
@@ -140,7 +140,7 @@ export interface UserProviderUnlinkedEvent extends BaseEvent {
 }
 
 export interface SessionRevokedEvent extends BaseEvent {
-  type: 'session.revoked';
+  type: 'auth.session.revoked';
   data: {
     userId: string;
     sessionId: string;
@@ -150,7 +150,7 @@ export interface SessionRevokedEvent extends BaseEvent {
 }
 
 export interface SessionsBulkRevokedEvent extends BaseEvent {
-  type: 'sessions.bulk_revoked';
+  type: 'auth.sessions.bulk_revoked';
   data: {
     userId: string;
     sessionIds: string[];
@@ -163,7 +163,7 @@ export interface SessionsBulkRevokedEvent extends BaseEvent {
  * Organization SSO Events
  */
 export interface OrganizationSSOConfiguredEvent extends BaseEvent {
-  type: 'organization.sso_configured';
+  type: 'auth.organization.sso_configured';
   data: {
     organizationId: string;
     provider: 'azure_ad' | 'okta';
@@ -174,7 +174,7 @@ export interface OrganizationSSOConfiguredEvent extends BaseEvent {
 }
 
 export interface OrganizationSSODisabledEvent extends BaseEvent {
-  type: 'organization.sso_disabled';
+  type: 'auth.organization.sso_disabled';
   data: {
     organizationId: string;
     provider: 'azure_ad' | 'okta';

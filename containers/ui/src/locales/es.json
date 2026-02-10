@@ -1,0 +1,54 @@
+{
+  "common": {
+    "appName": "Castiel",
+    "loading": "Cargando...",
+    "error": "Error",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "view": "Ver",
+    "back": "Atrás",
+    "search": "Buscar",
+    "actions": "Acciones",
+    "noData": "Sin datos",
+    "accounts": {
+      "title": "Cuentas",
+      "pageTitle": "Cuentas | Castiel",
+      "noAccounts": "No se encontraron cuentas.",
+      "searchPlaceholder": "Buscar por nombre o ID...",
+      "searchAriaLabel": "Buscar cuentas",
+      "sortName": "Nombre",
+      "sortCreated": "Creado",
+      "tableName": "Nombre",
+      "tableId": "ID",
+      "tableStatus": "Estado"
+    },
+    "sidebar": {
+      "user": "Usuario",
+      "editProfile": "Editar perfil"
+    },
+    "nav": {
+      "home": "Inicio",
+      "dashboard": "Panel",
+      "manager": "Gestor",
+      "opportunities": "Oportunidades",
+      "recommendations": "Recomendaciones",
+      "conversations": "Conversaciones",
+      "search": "Buscar",
+      "forecast": "Pronóstico",
+      "competitive": "Competitivo",
+      "benchmarks": "Referencias",
+      "portfolios": "Carteras",
+      "settings": "Ajustes",
+      "competitors": "Competidores",
+      "industries": "Industrias",
+      "integrations": "Integraciones",
+      "login": "Entrar",
+      "register": "Registrarse",
+      "logout": "Salir",
+      "admin": "Admin",
+      "language": "Idioma"
+    }
+  }
+}

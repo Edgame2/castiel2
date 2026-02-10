@@ -143,7 +143,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
             // Publish user.provider_linked event
             const metadata = extractEventMetadata(request);
             await publishEventSafely({
-              ...createBaseEvent('user.provider_linked', user.id, undefined, undefined, {
+              ...createBaseEvent('auth.user.provider_linked', user.id, undefined, undefined, {
                 userId: user.id,
                 provider: 'google',
                 providerUserId: googleUser.id,
@@ -210,7 +210,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
             // Publish user.registered event (triggers welcome email)
             const metadata = extractEventMetadata(request);
             await publishEventSafely({
-              ...createBaseEvent('user.registered', user.id, undefined, request.id, {
+              ...createBaseEvent('auth.user.registered', user.id, undefined, request.id, {
                 userId: user.id,
                 email: user.email,
                 firstName: user.firstName,
@@ -285,7 +285,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         } as AuthEvent);
         // Also publish user.logged_in for backward compatibility
         await publishEventSafely({
-          ...createBaseEvent('user.logged_in', user.id, session?.organizationId || undefined, undefined, {
+          ...createBaseEvent('auth.user.logged_in', user.id, session?.organizationId || undefined, undefined, {
             userId: user.id,
             sessionId,
             provider: 'google',
@@ -301,6 +301,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          path: '/',
           maxAge: 7 * 24 * 60 * 60, // 7 days
         });
 
@@ -308,6 +309,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          path: '/',
           maxAge: 30 * 24 * 60 * 60, // 30 days
         });
 
@@ -421,7 +423,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
             // Publish user.provider_linked event
             const metadata = extractEventMetadata(request);
             await publishEventSafely({
-              ...createBaseEvent('user.provider_linked', user.id, undefined, undefined, {
+              ...createBaseEvent('auth.user.provider_linked', user.id, undefined, undefined, {
                 userId: user.id,
                 provider: 'github',
                 providerUserId: githubIdString,
@@ -506,7 +508,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
             // Publish user.registered event (triggers welcome email)
             const metadata = extractEventMetadata(request);
             await publishEventSafely({
-              ...createBaseEvent('user.registered', user.id, undefined, request.id, {
+              ...createBaseEvent('auth.user.registered', user.id, undefined, request.id, {
                 userId: user.id,
                 email: user.email,
                 firstName: user.firstName,
@@ -589,7 +591,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         } as AuthEvent);
         // Also publish user.logged_in for backward compatibility
         await publishEventSafely({
-          ...createBaseEvent('user.logged_in', user.id, session?.organizationId || undefined, undefined, {
+          ...createBaseEvent('auth.user.logged_in', user.id, session?.organizationId || undefined, undefined, {
             userId: user.id,
             sessionId,
             provider: 'github',
@@ -605,6 +607,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          path: '/',
           maxAge: 7 * 24 * 60 * 60, // 7 days
         });
 
@@ -978,6 +981,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
+        path: '/',
         maxAge: 7 * 24 * 60 * 60, // 7 days
       });
 
@@ -1025,7 +1029,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
       if (userId) {
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('user.logged_out', userId, organizationId, request.id, {
+          ...createBaseEvent('auth.user.logged_out', userId, organizationId, request.id, {
             userId,
             sessionId: sessionId || undefined,
             reason: 'user_initiated',
@@ -1033,8 +1037,8 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         } as AuthEvent);
       }
       
-      reply.clearCookie('accessToken');
-      reply.clearCookie('refreshToken');
+      reply.clearCookie('accessToken', { path: '/' });
+      reply.clearCookie('refreshToken', { path: '/' });
       return { message: 'Logged out successfully' };
     } catch (error: any) {
       log.error('Logout error', error, { route: '/api/v1/auth/logout', service: 'auth' });
@@ -1225,6 +1229,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          path: '/',
           maxAge: 8 * 60 * 60, // 8 hours
         });
 
@@ -1232,6 +1237,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          path: '/',
           maxAge: 30 * 24 * 60 * 60, // 30 days
         });
 
@@ -1260,7 +1266,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         // Publish user.registered event
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('user.registered', user.id, defaultOrgId || undefined, undefined, {
+          ...createBaseEvent('auth.user.registered', user.id, defaultOrgId || undefined, undefined, {
             userId: user.id,
             email: user.email,
             firstName: user.firstName,
@@ -1516,6 +1522,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          path: '/',
           maxAge: accessTokenMaxAge,
         });
 
@@ -1523,6 +1530,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          path: '/',
           maxAge: rememberMe ? 30 * 24 * 60 * 60 : 8 * 60 * 60,
         });
 
@@ -1582,7 +1590,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         } as AuthEvent);
         // Also publish user.logged_in event for backward compatibility
         await publishEventSafely({
-          ...createBaseEvent('user.logged_in', user.id, activeOrgId || undefined, undefined, {
+          ...createBaseEvent('auth.user.logged_in', user.id, activeOrgId || undefined, undefined, {
             userId: user.id,
             sessionId,
             provider: 'password',
@@ -1593,14 +1601,21 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           }),
         } as AuthEvent);
 
+        // Re-fetch user so response has latest isEmailVerified (e.g. after seed or verify-email)
+        const freshUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { id: true, email: true, name: true, firstName: true, lastName: true, isEmailVerified: true },
+        });
+        const responseUser = freshUser ?? user;
+
         return {
           user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            isEmailVerified: user.isEmailVerified,
+            id: responseUser.id,
+            email: responseUser.email,
+            name: responseUser.name,
+            firstName: responseUser.firstName,
+            lastName: responseUser.lastName,
+            isEmailVerified: responseUser.isEmailVerified,
           },
           accessToken,
           refreshToken,
@@ -1682,12 +1697,14 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          path: '/',
           maxAge: accessTokenMaxAge,
         });
         reply.setCookie('refreshToken', refreshToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          path: '/',
           maxAge: rememberMe ? 30 * 24 * 60 * 60 : 8 * 60 * 60,
         });
 
@@ -1708,7 +1725,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
             }),
           } as AuthEvent);
           await publishEventSafely({
-            ...createBaseEvent('user.logged_in', userId, activeOrgId || undefined, undefined, {
+            ...createBaseEvent('auth.user.logged_in', userId, activeOrgId || undefined, undefined, {
               userId,
               sessionId,
               provider: 'password',
@@ -1817,7 +1834,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         // Publish user.password_changed event
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('user.password_changed', requestUser.id, organizationId, undefined, {
+          ...createBaseEvent('auth.user.password_changed', requestUser.id, organizationId, undefined, {
             userId: requestUser.id,
             initiatedBy: 'user',
           }),
@@ -1890,7 +1907,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           if (user?.id) {
             const metadata = extractEventMetadata(request);
             await publishEventSafely({
-              ...createBaseEvent('user.password_reset_requested', user.id, undefined, request.id, {
+              ...createBaseEvent('auth.user.password_reset_requested', user.id, undefined, request.id, {
                 userId: user.id,
                 email,
                 resetToken, // Include token in event data for email service
@@ -1968,7 +1985,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         if (tokenData) {
           const metadata = extractEventMetadata(request);
           await publishEventSafely({
-            ...createBaseEvent('user.password_reset_success', tokenData.userId, undefined, request.id, {
+            ...createBaseEvent('auth.user.password_reset_success', tokenData.userId, undefined, request.id, {
               userId: tokenData.userId,
               email: tokenData.email,
             }),
@@ -2095,7 +2112,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const organizationId = (request as any).organizationId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('user.provider_linked', requestUser.id, organizationId, request.id, {
+          ...createBaseEvent('auth.user.provider_linked', requestUser.id, organizationId, request.id, {
             userId: requestUser.id,
             provider: 'google',
             providerUserId: '', // Will be set by linkGoogleProvider
@@ -2186,7 +2203,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const organizationId = (request as any).organizationId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('user.provider_unlinked', requestUser.id, organizationId, request.id, {
+          ...createBaseEvent('auth.user.provider_unlinked', requestUser.id, organizationId, request.id, {
             userId: requestUser.id,
             provider,
           }),
@@ -2367,7 +2384,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const organizationId = (request as any).organizationId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('user.email_verified', requestUser.id, organizationId, request.id, {
+          ...createBaseEvent('auth.user.email_verified', requestUser.id, organizationId, request.id, {
             userId: requestUser.id,
             email: (request as any).user?.email,
           }),
@@ -2525,6 +2542,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          path: '/',
           maxAge: 8 * 60 * 60, // 8 hours
         });
 
@@ -2532,6 +2550,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
+          path: '/',
           maxAge: 30 * 24 * 60 * 60, // 30 days
         });
 
@@ -2752,7 +2771,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         // Publish organization.sso_configured event
         if (enabled) {
           await publishEventSafely({
-            ...createBaseEvent('organization.sso_configured', requestUser.id, orgId, request.id, {
+            ...createBaseEvent('auth.organization.sso_configured', requestUser.id, orgId, request.id, {
               organizationId: orgId,
               provider,
               enabled: true,
@@ -2896,7 +2915,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         // Publish organization.sso_configured event
         if (enabled) {
           await publishEventSafely({
-            ...createBaseEvent('organization.sso_configured', requestUser.id, orgId, request.id, {
+            ...createBaseEvent('auth.organization.sso_configured', requestUser.id, orgId, request.id, {
               organizationId: orgId,
               provider,
               enabled: true,
@@ -3043,7 +3062,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         // Publish organization.sso_disabled event
         if (ssoConfig) {
           await publishEventSafely({
-            ...createBaseEvent('organization.sso_disabled', requestUser.id, orgId, request.id, {
+            ...createBaseEvent('auth.organization.sso_disabled', requestUser.id, orgId, request.id, {
               organizationId: orgId,
               provider: ssoConfig.provider,
               disabledBy: requestUser.id,

@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -131,7 +132,8 @@ export default function TenantTemplatesPage() {
       const json = await res.json();
       setItems(Array.isArray(json?.items) ? json.items : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setItems([]);
     } finally {
       setLoading(false);
@@ -280,7 +282,8 @@ export default function TenantTemplatesPage() {
       await fetchTemplates();
       setShowCreate(false);
     } catch (e) {
-      setCreateError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setCreateError(GENERIC_ERROR_MESSAGE);
     } finally {
       setCreating(false);
     }
@@ -336,7 +339,8 @@ export default function TenantTemplatesPage() {
         setApplyResult(result);
         setApplyTenantIdsInput('');
       } catch (e) {
-        setApplyError(e instanceof Error ? e.message : String(e));
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+        setApplyError(GENERIC_ERROR_MESSAGE);
       } finally {
         setApplyLoading(false);
       }
@@ -374,7 +378,8 @@ export default function TenantTemplatesPage() {
         })).filter((t: { id: string }) => t.id)
       );
     } catch (e) {
-      setTenantPickerError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setTenantPickerError(GENERIC_ERROR_MESSAGE);
     } finally {
       setTenantPickerLoading(false);
     }
@@ -465,7 +470,8 @@ export default function TenantTemplatesPage() {
       await fetchTemplates();
       setEditId(null);
     } catch (e) {
-      setEditError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setEditError(GENERIC_ERROR_MESSAGE);
     } finally {
       setEditSaving(false);
     }
@@ -513,7 +519,8 @@ export default function TenantTemplatesPage() {
           setApplyError(null);
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       }
     },
     [apiBaseUrl, fetchTemplates, applyTemplateId]

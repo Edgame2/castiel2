@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -70,7 +71,8 @@ export default function CAISAdminPage() {
       setWeights(typeof data === 'object' && data !== null ? data : {});
     } catch (e) {
       setWeights({});
-      setError(e instanceof Error ? e.message : 'Failed to load weights');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     }
   }, [tenantId, weightsComponent]);
 
@@ -90,7 +92,8 @@ export default function CAISAdminPage() {
       });
     } catch (e) {
       setModelSelection({ modelId: '', confidence: 0.8 });
-      setError(e instanceof Error ? e.message : 'Failed to load model selection');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     }
   }, [tenantId, modelContext]);
 
@@ -110,7 +113,8 @@ export default function CAISAdminPage() {
       });
     } catch (e) {
       setTenantConfig({ outcomeSyncToCais: false, automaticLearningEnabled: false });
-      setError(e instanceof Error ? e.message : 'Failed to load tenant config');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     }
   }, [tenantId]);
 
@@ -159,7 +163,8 @@ export default function CAISAdminPage() {
       setMessage('Weights saved');
       setTimeout(() => setMessage(null), 3000);
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Save failed');
+      if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e);
+      setMessage(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }
@@ -183,7 +188,8 @@ export default function CAISAdminPage() {
       setMessage('Model selection saved');
       setTimeout(() => setMessage(null), 3000);
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Save failed');
+      if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e);
+      setMessage(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }
@@ -209,7 +215,8 @@ export default function CAISAdminPage() {
       if (!res.ok) throw new Error(`Save failed: ${res.status}`);
     } catch (e) {
       setTenantConfig(tenantConfig);
-      setMessage(e instanceof Error ? e.message : 'Failed to save');
+      if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e);
+      setMessage(GENERIC_ERROR_MESSAGE);
       setTimeout(() => setMessage(null), 3000);
     }
   };

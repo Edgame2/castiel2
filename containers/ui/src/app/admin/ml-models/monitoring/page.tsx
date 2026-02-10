@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -109,7 +110,8 @@ export default function MLModelsMonitoringPage() {
       const alJson = alRes.ok ? await alRes.json() : { items: [] };
       setAlertsData(Array.isArray(alJson?.items) ? alJson.items : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setData(null);
       setAlertsData([]);
     } finally {
@@ -181,7 +183,8 @@ export default function MLModelsMonitoringPage() {
       closeCreateModal();
       fetchEndpoints();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }
@@ -243,7 +246,8 @@ export default function MLModelsMonitoringPage() {
       closeEditModal();
       fetchEndpoints();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }
@@ -270,7 +274,8 @@ export default function MLModelsMonitoringPage() {
       closeDeleteModal();
       fetchEndpoints();
     } catch (e) {
-      setDeleteError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setDeleteError(GENERIC_ERROR_MESSAGE);
     } finally {
       setDeleteSaving(false);
     }

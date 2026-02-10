@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -57,7 +58,8 @@ export default function AdminProductDetailPage() {
         setDescription(data.description ?? '');
       })
       .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+        setError(GENERIC_ERROR_MESSAGE);
         setProduct(null);
       })
       .finally(() => setLoading(false));
@@ -85,7 +87,7 @@ export default function AdminProductDetailPage() {
         setEditing(false);
         fetchProduct();
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Save failed'))
+      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setSaveError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setSaving(false));
   };
 
@@ -98,7 +100,8 @@ export default function AdminProductDetailPage() {
         router.push('/admin/products');
       })
       .catch((e) => {
-        setSaveError(e instanceof Error ? e.message : 'Delete failed');
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+        setSaveError(GENERIC_ERROR_MESSAGE);
         setDeleting(false);
       });
   };

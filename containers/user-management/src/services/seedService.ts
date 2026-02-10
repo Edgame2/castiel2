@@ -5,8 +5,17 @@
  * Per ModuleImplementationGuide Section 6
  */
 
-import { getDatabaseClient } from '@coder/shared';
+import { getDatabaseClient, getContainer } from '@coder/shared';
+import { randomUUID } from 'crypto';
 import { log } from '../utils/logger';
+
+const USER_ORGANIZATIONS = 'user_organizations';
+const USER_USERS = 'user_users';
+const USER_ROLES = 'user_roles';
+const USER_MEMBERSHIPS = 'user_memberships';
+const REVIMIZE_SLUG = 'revimize';
+const REVIMIZE_NAME = 'Revimize';
+const SUPER_ADMIN_ROLE_NAME = 'Super Admin';
 
 /**
  * System permission definitions
@@ -247,5 +256,131 @@ function getRoleDescription(roleName: string): string {
   };
   
   return descriptions[roleName] || `${roleName} role`;
+}
+
+/**
+ * Seed Revimize tenant and promote existing user to Super Admin (isEmailVerified: true).
+ * Runs when SEED_SUPER_ADMIN_EMAIL is set. Uses Cosmos getContainer for reliability.
+ * - Ensures organization "Revimize" (slug: revimize) exists
+ * - Ensures Super Admin role exists for that org (direct Cosmos create if missing)
+ * - Finds user by email, sets isEmailVerified: true and tenantId to Revimize org id
+ * - Creates organizationMembership for that user with Super Admin role
+ */
+export async function seedRevimizeSuperAdmin(): Promise<void> {
+  const email = process.env.SEED_SUPER_ADMIN_EMAIL?.trim();
+  if (!email) {
+    return;
+  }
+
+  try {
+    const orgs = getContainer(USER_ORGANIZATIONS);
+    const users = getContainer(USER_USERS);
+    const roles = getContainer(USER_ROLES);
+    const memberships = getContainer(USER_MEMBERSHIPS);
+
+    // 1. Find or create Revimize organization (partitionKey = organizationId per architecture)
+    const { resources: existingOrgs } = await orgs.items
+      .query({ query: 'SELECT * FROM c WHERE c.slug = @slug', parameters: [{ name: '@slug', value: REVIMIZE_SLUG }] })
+      .fetchAll();
+    let orgId: string;
+    if (existingOrgs.length > 0) {
+      orgId = (existingOrgs[0] as { id: string }).id;
+      log.info('Revimize organization already exists', { orgId, service: 'user-management' });
+    } else {
+      orgId = randomUUID();
+      await orgs.items.create({
+        id: orgId,
+        partitionKey: orgId,
+        name: REVIMIZE_NAME,
+        slug: REVIMIZE_SLUG,
+      } as Record<string, unknown>);
+      log.info('Created Revimize organization', { orgId, service: 'user-management' });
+    }
+
+    // 2. Ensure Super Admin role exists for Revimize org (direct Cosmos; roles partitionKey = tenantId = orgId)
+    const { resources: roleListExisting } = await roles.items
+      .query({
+        query: 'SELECT * FROM c WHERE c.organizationId = @orgId AND c.name = @name',
+        parameters: [
+          { name: '@orgId', value: orgId },
+          { name: '@name', value: SUPER_ADMIN_ROLE_NAME },
+        ],
+      })
+      .fetchAll();
+    let superAdminRoleId: string;
+    if (roleListExisting.length > 0) {
+      superAdminRoleId = (roleListExisting[0] as { id: string }).id;
+    } else {
+      superAdminRoleId = randomUUID();
+      await roles.items.create({
+        id: superAdminRoleId,
+        partitionKey: orgId,
+        organizationId: orgId,
+        name: SUPER_ADMIN_ROLE_NAME,
+        description: getRoleDescription(SUPER_ADMIN_ROLE_NAME),
+        isSystemRole: true,
+        isSuperAdmin: true,
+      } as Record<string, unknown>);
+      log.info('Created Super Admin role for Revimize', { orgId, roleId: superAdminRoleId, service: 'user-management' });
+    }
+
+    // 3. Find user by email (cross-partition)
+    const { resources: userList } = await users.items
+      .query({ query: 'SELECT * FROM c WHERE c.email = @email', parameters: [{ name: '@email', value: email }] })
+      .fetchAll();
+    const user = userList[0] as (Record<string, unknown> & { id: string; tenantId?: string; partitionKey?: string }) | undefined;
+    if (!user) {
+      log.warn('Seed super admin: user not found by email', { email, service: 'user-management' });
+      return;
+    }
+    const userId = user.id;
+    const currentPartition = (user.tenantId ?? user.partitionKey ?? 'default') as string;
+
+    // 4. Update user: isEmailVerified true, tenantId = orgId (Cosmos: partition key must match target partition)
+    if (currentPartition === orgId) {
+      const updatedSamePartition = { ...user, isEmailVerified: true, tenantId: orgId, updatedAt: new Date() };
+      await users.item(userId, currentPartition).replace(updatedSamePartition as Record<string, unknown>);
+      log.info('Updated user: isEmailVerified and tenantId (same partition)', { userId, email, orgId, service: 'user-management' });
+    } else {
+      // Update in place so replace succeeds (partition key must match)
+      const updatedInPlace = { ...user, isEmailVerified: true, tenantId: currentPartition, updatedAt: new Date() };
+      await users.item(userId, currentPartition).replace(updatedInPlace as Record<string, unknown>);
+      // Create in Revimize partition and remove from old partition so there is a single canonical copy
+      const userInNewPartition = { ...user, id: userId, tenantId: orgId, isEmailVerified: true, updatedAt: new Date() };
+      await users.items.create(userInNewPartition as Record<string, unknown>);
+      await users.item(userId, currentPartition).delete();
+      log.info('Updated user: isEmailVerified, migrated to Revimize partition', { userId, email, orgId, service: 'user-management' });
+    }
+
+    // 5. Create membership if not exists (partitionKey = organizationId)
+    const { resources: existingMemberships } = await memberships.items
+      .query({
+        query: 'SELECT * FROM c WHERE c.userId = @userId AND c.organizationId = @orgId',
+        parameters: [
+          { name: '@userId', value: userId },
+          { name: '@orgId', value: orgId },
+        ],
+      })
+      .fetchAll();
+    if (existingMemberships.length > 0) {
+      log.info('User already has membership in Revimize', { userId, orgId, service: 'user-management' });
+      return;
+    }
+    await memberships.items.create(
+      {
+        id: randomUUID(),
+        partitionKey: orgId,
+        userId,
+        organizationId: orgId,
+        roleId: superAdminRoleId,
+        status: 'active',
+        joinedAt: new Date(),
+      } as Record<string, unknown>
+    );
+    log.info('Seeded Revimize super admin: membership created', { userId, email, orgId, service: 'user-management' });
+  } catch (err) {
+    log.error('Seed Revimize super admin failed', { error: err, email, service: 'user-management' });
+    throw err;
+  }
 }
 

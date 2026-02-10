@@ -11,7 +11,7 @@ Events published and consumed by the Integration Manager module for sync schedul
 **Description**: Emitted when an integration is due for sync and has been scheduled.
 
 **Triggered When**:
-- IntegrationManagerEventConsumer receives `integration.sync.check-due`
+- IntegrationManagerEventConsumer receives `integration.sync.check_due`
 - Query finds integrations with `syncConfig.syncEnabled=true`, `nextSyncAt <= now`, `status=connected`
 
 **Event Type**: `integration.sync.scheduled`
@@ -36,7 +36,7 @@ Events published and consumed by the Integration Manager module for sync schedul
 
 ## Consumed Events
 
-### integration.sync.check-due
+### integration.sync.check_due
 
 **Description**: Triggers a check for integrations due for sync.
 

@@ -36,8 +36,8 @@ describe('bootstrapShardTypes', () => {
 
     await bootstrapShardTypes(service, config);
 
-    expect(getByName).toHaveBeenCalledTimes(16);
-    expect(create).toHaveBeenCalledTimes(16);
+    expect(getByName).toHaveBeenCalledTimes(18);
+    expect(create).toHaveBeenCalledTimes(18);
     expect(create).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -48,7 +48,7 @@ describe('bootstrapShardTypes', () => {
       })
     );
     expect(create).toHaveBeenNthCalledWith(
-      6,
+      8,
       expect.objectContaining({
         name: 'Opportunity',
         tenantId: 't1',
@@ -68,7 +68,7 @@ describe('bootstrapShardTypes', () => {
 
     await bootstrapShardTypes(service, config);
 
-    expect(create).toHaveBeenCalledTimes(15);
+    expect(create).toHaveBeenCalledTimes(17);
     const createCalls = vi.mocked(create).mock.calls;
     const names = createCalls.map((c) => c[0].name);
     expect(names).not.toContain('c_competitor');

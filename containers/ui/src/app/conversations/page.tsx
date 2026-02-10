@@ -8,6 +8,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBase =
   typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '') : '';
@@ -43,7 +44,7 @@ export default function ConversationsListPage() {
       .then((data: ListResponse) => {
         setItems(Array.isArray(data.conversations) ? data.conversations : []);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -70,7 +71,8 @@ export default function ConversationsListPage() {
         else fetchConversations();
       })
       .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Create failed');
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+        setError(GENERIC_ERROR_MESSAGE);
         setCreating(false);
       })
       .finally(() => setCreating(false));

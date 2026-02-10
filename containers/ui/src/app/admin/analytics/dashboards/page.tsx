@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -59,7 +60,8 @@ function AnalyticsDashboardsContent() {
         exportConfig: data.exportConfig ?? {},
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setConfig(DEFAULT_ANALYTICS);
     } finally {
       setLoading(false);
@@ -89,7 +91,8 @@ function AnalyticsDashboardsContent() {
       const data = await res.json();
       setConfig({ ...config, dashboards: data.dashboards ?? [] });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }

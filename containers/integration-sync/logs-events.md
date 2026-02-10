@@ -6,14 +6,14 @@ Events published and consumed by the Integration Sync module for scheduled syncs
 
 ## Published Events
 
-### integration.sync.check-due
+### integration.sync.check_due
 
 **Description**: Emitted by SyncSchedulerService to request a check for integrations due for sync.
 
 **Triggered When**:
 - Sync scheduler timer fires (default every 60s)
 
-**Event Type**: `integration.sync.check-due`
+**Event Type**: `integration.sync.check_due`
 
 **data**: `timestamp` (ISO)
 

@@ -19,8 +19,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
+import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -36,7 +35,8 @@ export default function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/api/auth/register`, {
+      const base = getApiBaseUrl();
+      const res = await fetch(`${base ? `${base.replace(/\/$/, '')}` : ''}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -57,7 +57,8 @@ export default function RegisterPage() {
       router.push('/dashboard');
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Registration failed');
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }

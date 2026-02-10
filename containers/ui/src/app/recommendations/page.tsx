@@ -9,7 +9,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import type { RecommendationItem } from '@/components/recommendations/RecommendationsCard';
-import { apiFetch, getApiBaseUrl } from '@/lib/api';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const SOURCE_LABELS: Record<string, string> = {
   vector_search: 'Similar opportunities',
@@ -46,7 +46,7 @@ function RecommendationsListContent() {
       .then((data: { recommendations?: RecommendationItem[] }) => {
         setItems(Array.isArray(data.recommendations) ? data.recommendations : []);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setLoading(false));
   }, [opportunityId]);
 

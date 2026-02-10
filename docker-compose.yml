@@ -58,17 +58,21 @@ services:
     restart: unless-stopped
 
   # UI Container
-  # For browser access from outside, set NEXT_PUBLIC_API_BASE_URL=http://YOUR_PUBLIC_HOST:3001 then rebuild: docker-compose build --no-cache ui
+  # Client uses same-origin /api; server rewrites /api/* to gateway via API_GATEWAY_URL (must be reachable from container).
   ui:
     build:
       context: ./containers/ui
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3000
-      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://api-gateway:3001}
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-}
+      # Must be last: internal URL so UI container can reach gateway (overrides .env).
+      - API_GATEWAY_URL=http://api-gateway:3001
     depends_on:
       - api-gateway
     networks:
@@ -117,10 +121,11 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
+      - SEED_SUPER_ADMIN_EMAIL=${SEED_SUPER_ADMIN_EMAIL:-}
     depends_on:
-      - redis
-      - rabbitmq
-      - auth
+      redis: { condition: service_started }
+      rabbitmq: { condition: service_healthy }
+      auth: { condition: service_started }
     networks:
       - castiel-network
     restart: unless-stopped
@@ -187,8 +192,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
     depends_on:
-      - redis
-      - rabbitmq
+      redis: { condition: service_started }
+      rabbitmq: { condition: service_healthy }
     networks:
       - castiel-network
     restart: unless-stopped
@@ -223,8 +228,9 @@ services:
           cpus: '0.5'
           memory: 1G
     depends_on:
-      - redis
-      - rabbitmq
+      redis: { condition: service_started }
+      rabbitmq: { condition: service_healthy }
+      shard-manager: { condition: service_healthy }
     networks:
       - castiel-network
     restart: unless-stopped
@@ -270,8 +276,9 @@ services:
           cpus: '2'
           memory: 4G
     depends_on:
-      - redis
-      - rabbitmq
+      redis: { condition: service_started }
+      rabbitmq: { condition: service_healthy }
+      shard-manager: { condition: service_healthy }
     networks:
       - castiel-network
     restart: unless-stopped
@@ -330,7 +337,15 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
-    depends_on: [redis, rabbitmq]
+    depends_on:
+      redis: { condition: service_started }
+      rabbitmq: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3023/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 90s
     networks: [castiel-network]
     restart: unless-stopped
 

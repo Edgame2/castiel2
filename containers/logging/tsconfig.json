@@ -16,7 +16,8 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@coder/shared/database": ["node_modules/@coder/shared/dist/database/index"]
     }
   },
   "include": ["src/**/*"],

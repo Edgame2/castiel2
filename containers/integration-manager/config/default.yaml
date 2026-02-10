@@ -49,7 +49,7 @@ rabbitmq:
   queue: integration_manager_service
   # Event consumer routing keys (optional override)
   routingKeys:
-    - integration.sync.check-due
+    - integration.sync.check_due
     - integration.token.check-expiring
     - integration.*
 

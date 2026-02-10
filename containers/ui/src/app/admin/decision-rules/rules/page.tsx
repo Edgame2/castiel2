@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -89,7 +90,8 @@ export default function DecisionRulesRulesPage() {
       const json = await res.json();
       setRules(Array.isArray(json?.rules) ? json.rules : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setRules([]);
     } finally {
       setLoading(false);
@@ -137,7 +139,8 @@ export default function DecisionRulesRulesPage() {
       const json = await res.json();
       setTestResult({ matched: json.matched ?? false, actions: json.actions ?? [] });
     } catch (e) {
-      setTestError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setTestError(GENERIC_ERROR_MESSAGE);
       setTestResult(null);
     } finally {
       setTestLoading(false);
@@ -169,7 +172,8 @@ export default function DecisionRulesRulesPage() {
       }
       await fetchRules();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setTogglingRuleId(null);
     }
@@ -195,7 +199,8 @@ export default function DecisionRulesRulesPage() {
       }
       await fetchRules();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setDeletingRuleId(null);
     }
@@ -341,7 +346,8 @@ export default function DecisionRulesRulesPage() {
       setFormError(null);
       await fetchRules();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : String(err));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(err);
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }

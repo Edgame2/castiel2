@@ -8,8 +8,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-
-const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
+import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -27,8 +26,8 @@ function VerifyEmailContent() {
     let cancelled = false;
     setStatus('loading');
     setMessage(null);
-    const base = apiBaseUrl.replace(/\/$/, '');
-    const url = `${base}/api/auth/verify-email?token=${encodeURIComponent(tokenFromUrl)}`;
+    const base = getApiBaseUrl().replace(/\/$/, '') || '';
+    const url = base ? `${base}/api/auth/verify-email?token=${encodeURIComponent(tokenFromUrl)}` : `/api/auth/verify-email?token=${encodeURIComponent(tokenFromUrl)}`;
     fetch(url, { method: 'GET', credentials: 'include' })
       .then(async (res) => {
         if (cancelled) return;
@@ -44,7 +43,8 @@ function VerifyEmailContent() {
       .catch((e) => {
         if (!cancelled) {
           setStatus('error');
-          setMessage(e instanceof Error ? e.message : 'Verification failed');
+          if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+          setMessage(GENERIC_ERROR_MESSAGE);
         }
       });
     return () => { cancelled = true; };

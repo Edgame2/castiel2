@@ -71,8 +71,7 @@ describe('IntegrationSyncEventPublisher', () => {
       await expect(publisherModule.initializeEventPublisher()).rejects.toThrow('Connection failed');
       expect(log.error).toHaveBeenCalledWith(
         'Failed to initialize event publisher',
-        expect.any(Error),
-        expect.objectContaining({ service: 'integration-sync' })
+        expect.objectContaining({ service: 'integration-sync', error: expect.any(Error) })
       );
     });
   });
@@ -144,8 +143,7 @@ describe('IntegrationSyncEventPublisher', () => {
 
       expect(log.error).toHaveBeenCalledWith(
         'Failed to publish event',
-        expect.any(Error),
-        expect.objectContaining({ eventType: 'integration.sync.completed', service: 'integration-sync' })
+        expect.objectContaining({ eventType: 'integration.sync.completed', service: 'integration-sync', error: 'Publish failed' })
       );
     });
   });

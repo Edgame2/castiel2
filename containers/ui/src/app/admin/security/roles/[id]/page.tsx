@@ -12,8 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface PermissionRow {
   id: string;
@@ -72,7 +71,8 @@ function RoleDetailContent() {
   }, []);
 
   const fetchRole = useCallback(async () => {
-    if (!apiBaseUrl || !orgId.trim() || !id.trim()) return;
+    const base = getApiBaseUrl().replace(/\/$/, '') || '';
+    if (!base || !orgId.trim() || !id.trim()) return;
     setLoading(true);
     setError(null);
     setRole(null);
@@ -80,7 +80,7 @@ function RoleDetailContent() {
     const encodedRoleId = encodeURIComponent(id.trim());
     try {
       const res = await fetch(
-        `${apiBaseUrl}/api/users/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`,
+        `${base}/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`,
         { credentials: 'include' }
       );
       if (!res.ok) {
@@ -90,7 +90,8 @@ function RoleDetailContent() {
       const json: RoleResponse = await res.json();
       setRole(json?.data ?? null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setError(GENERIC_ERROR_MESSAGE);
       setRole(null);
     } finally {
       setLoading(false);
@@ -98,14 +99,15 @@ function RoleDetailContent() {
   }, [orgId, id]);
 
   const deleteRole = useCallback(async () => {
-    if (!apiBaseUrl || !orgId.trim() || !id.trim()) return;
+    const base = getApiBaseUrl().replace(/\/$/, '') || '';
+    if (!base || !orgId.trim() || !id.trim()) return;
     setDeleting(true);
     setDeleteError(null);
     const encodedOrg = encodeURIComponent(orgId.trim());
     const encodedRoleId = encodeURIComponent(id.trim());
     try {
       const res = await fetch(
-        `${apiBaseUrl}/api/users/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`,
+        `${base}/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`,
         { method: 'DELETE', credentials: 'include' }
       );
       if (!res.ok) {
@@ -116,14 +118,16 @@ function RoleDetailContent() {
       const backUrl = `/admin/security/roles?orgId=${encodeURIComponent(orgId)}`;
       router.push(backUrl);
     } catch (e) {
-      setDeleteError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setDeleteError(GENERIC_ERROR_MESSAGE);
     } finally {
       setDeleting(false);
     }
   }, [orgId, id, router]);
 
   const updateRole = useCallback(async () => {
-    if (!apiBaseUrl || !orgId.trim() || !id.trim()) return;
+    const base = getApiBaseUrl().replace(/\/$/, '') || '';
+    if (!base || !orgId.trim() || !id.trim()) return;
     const name = editName.trim();
     if (!name) {
       setSaveError('Name is required');
@@ -135,7 +139,7 @@ function RoleDetailContent() {
     const encodedRoleId = encodeURIComponent(id.trim());
     try {
       const res = await fetch(
-        `${apiBaseUrl}/api/users/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`,
+        `${base}/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`,
         {
           method: 'PUT',
           credentials: 'include',
@@ -156,7 +160,8 @@ function RoleDetailContent() {
       if (json?.data) setRole(json.data);
       setEditing(false);
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : String(e));
+      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setSaveError(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }
@@ -167,6 +172,7 @@ function RoleDetailContent() {
   }, [orgId, id, fetchRole]);
 
   const backToRolesUrl = orgId ? `/admin/security/roles?orgId=${encodeURIComponent(orgId)}` : '/admin/security/roles';
+  const apiBaseUrl = getApiBaseUrl();
 
   return (
     <div className="p-6">
@@ -334,9 +340,10 @@ function RoleDetailContent() {
                               setSaveError(null);
                               setPermissionsLoading(true);
                               const encodedOrg = encodeURIComponent(orgId.trim());
+                              const baseUrl = getApiBaseUrl().replace(/\/$/, '') || '';
                               try {
                                 const res = await fetch(
-                                  `${apiBaseUrl}/api/users/api/v1/organizations/${encodedOrg}/permissions`,
+                                  baseUrl ? `${baseUrl}/api/v1/organizations/${encodedOrg}/permissions` : `/api/v1/organizations/${encodedOrg}/permissions`,
                                   { credentials: 'include' }
                                 );
                                 if (!res.ok) throw new Error(`Permissions: HTTP ${res.status}`);
@@ -348,7 +355,8 @@ function RoleDetailContent() {
                                 setEditPermissionIds(role.permissions.map((p) => p.id));
                                 setEditing(true);
                               } catch (e) {
-                                setSaveError(e instanceof Error ? e.message : String(e));
+                                if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      setSaveError(GENERIC_ERROR_MESSAGE);
                               } finally {
                                 setPermissionsLoading(false);
                               }

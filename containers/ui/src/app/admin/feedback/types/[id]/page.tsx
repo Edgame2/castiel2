@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -78,7 +79,8 @@ export default function FeedbackTypeDetailPage() {
         setIsActive(data.isActive ?? true);
       })
       .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+        setError(GENERIC_ERROR_MESSAGE);
         setType(null);
       })
       .finally(() => setLoading(false));
@@ -112,7 +114,7 @@ export default function FeedbackTypeDetailPage() {
         setEditing(false);
         fetchType();
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Save failed'))
+      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setSaveError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setSaving(false));
   };
 
@@ -125,7 +127,8 @@ export default function FeedbackTypeDetailPage() {
         router.push('/admin/feedback/types');
       })
       .catch((e) => {
-        setSaveError(e instanceof Error ? e.message : 'Delete failed');
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+        setSaveError(GENERIC_ERROR_MESSAGE);
         setDeleting(false);
       });
   };

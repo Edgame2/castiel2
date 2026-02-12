@@ -14,8 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const CATEGORIES = ['Commercial', 'Technical', 'Legal', 'Financial', 'Competitive', 'Operational'] as const;
 
@@ -58,13 +57,13 @@ export default function RiskCatalogDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchRisk = useCallback(async () => {
-    if (!apiBase || !id) {
+    if (!getApiBaseUrl() || !id) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/risk-catalog/risks/${encodeURIComponent(id)}`, { credentials: 'include' })
+    apiFetch(`/api/v1/risk-catalog/risks/${encodeURIComponent(id)}`)
       .then((r) => {
         if (r.status === 404) {
           setRisk(null);
@@ -84,8 +83,8 @@ export default function RiskCatalogDetailPage() {
           setExplainabilityTemplate(data.explainabilityTemplate ?? '');
         }
       })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+      .catch(() => {
+        setError(GENERIC_ERROR_MESSAGE);
         setRisk(null);
       })
       .finally(() => setLoading(false));
@@ -97,7 +96,7 @@ export default function RiskCatalogDetailPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !risk || saving) return;
+    if (!getApiBaseUrl() || !risk || saving) return;
     setSaveError(null);
     setSaving(true);
     const sourceShardTypes = sourceShardTypesStr.split(',').map((s) => s.trim()).filter(Boolean);
@@ -109,9 +108,8 @@ export default function RiskCatalogDetailPage() {
       sourceShardTypes: sourceShardTypes.length ? sourceShardTypes : undefined,
       explainabilityTemplate: explainabilityTemplate.trim() || undefined,
     };
-    fetch(`${apiBase}/api/v1/risk-catalog/risks/${encodeURIComponent(risk.riskId)}`, {
+    apiFetch(`/api/v1/risk-catalog/risks/${encodeURIComponent(risk.riskId)}`, {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
@@ -120,14 +118,14 @@ export default function RiskCatalogDetailPage() {
         setEditing(false);
         fetchRisk();
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Save failed'))
+      .catch(() => setSaveError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSaving(false));
   };
 
   const handleDelete = () => {
-    if (!apiBase || !risk || deleting) return;
+    if (!getApiBaseUrl() || !risk || deleting) return;
     setDeleting(true);
-    fetch(`${apiBase}/api/v1/risk-catalog/risks/${encodeURIComponent(risk.riskId)}`, { method: 'DELETE', credentials: 'include' })
+    apiFetch(`/api/v1/risk-catalog/risks/${encodeURIComponent(risk.riskId)}`, { method: 'DELETE' })
       .then((r) => {
         if (r.status === 204 || r.status === 404) {
           router.push('/admin/risk-catalog');
@@ -135,7 +133,7 @@ export default function RiskCatalogDetailPage() {
         }
         return r.json().then((j) => Promise.reject(new Error((j?.error?.message as string) || 'Delete failed')));
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Delete failed'))
+      .catch(() => setSaveError(GENERIC_ERROR_MESSAGE))
       .finally(() => setDeleting(false));
   };
 

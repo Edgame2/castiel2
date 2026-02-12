@@ -2014,6 +2014,14 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           description: 'Trigger risk evaluation for an opportunity',
           tags: ['Risk Evaluation'],
           security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['opportunityId'],
+            properties: {
+              opportunityId: { type: 'string' },
+              options: { type: 'object' },
+            },
+          },
         },
       },
       async (request, reply) => {
@@ -3439,7 +3447,19 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
             required: ['opportunityId'],
             properties: { opportunityId: { type: 'string' } },
           },
-          response: { 200: { type: 'object' }, 204: { description: 'No methodology decisions (no features or no findings)' } },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                decisionType: { type: 'string' },
+                source: { type: 'string' },
+                actions: { type: 'array' },
+              },
+              additionalProperties: true,
+            },
+            204: { description: 'No methodology decisions (no features or no findings)' },
+          },
         },
       },
       async (request, reply) => {

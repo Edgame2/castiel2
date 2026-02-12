@@ -11,13 +11,13 @@
 - **Section 9 — Metadata and not-found:** Done (login/register/forgot-password layouts + dashboard/settings/not-found metadata; not-found has links to Home, Dashboard, Login)
 - **Section 10 — Error handling:** Done (generic user-facing message in catch; no raw e.message)
 - **Section X — Menu visible only on protected pages:** Done (AppNav only on protected routes)
-- **Final verification:** Pending (run pnpm tsc --noEmit, pnpm build, and route-protection check locally)
+- **Final verification:** Typecheck and build passed (`npm run typecheck`, `npm run build` in `ui`; 114 pages). Route-protection check recommended locally.
 
 ## This session (Section 1 + X)
-- Added `containers/ui/src/middleware.ts`: public paths (login, register, forgot-password, reset-password, verify-email, accept-invitation, logout, unauthorized); redirect to /login when unauthenticated on protected routes; auth via `accessToken` cookie.
-- Added `containers/ui/src/components/AppNav.tsx`: client nav rendered only when pathname is not in public list.
+- Added `ui/src/middleware.ts`: public paths (login, register, forgot-password, reset-password, verify-email, accept-invitation, logout, unauthorized); redirect to /login when unauthenticated on protected routes; auth via `accessToken` cookie.
+- Added `ui/src/components/AppNav.tsx`: client nav rendered only when pathname is not in public list.
 - Root layout now uses `<AppNav />` instead of inline nav so menu is hidden on login/register/forgot-password etc.
-- Added `containers/ui/src/lib/api.ts`: `getApiBaseUrl()` and `apiFetch()` with optional 401 → redirect to /logout.
+- Added `ui/src/lib/api.ts`: `getApiBaseUrl()` and `apiFetch()` with optional 401 → redirect to /logout.
 
 ## Section 2 (this session)
 - Added `@/components/ui/select.tsx` (Radix Select: Select, SelectTrigger, SelectValue, SelectContent, SelectItem, etc.).
@@ -66,11 +66,11 @@
 
 Node/npm/pnpm are not available in the agent environment, so typecheck and build were not run here. **Run the following on your machine** to complete verification:
 
-1. **Typecheck:** From repo root or `containers/ui`:  
+1. **Typecheck:** From repo root or `ui`:  
    `pnpm run typecheck` or `pnpm exec tsc --noEmit`  
    Must pass with no errors.
 
-2. **Build:** From `containers/ui`:  
+2. **Build:** From `ui`:  
    `pnpm run build` (or `npm run build`)  
    Must succeed.
 
@@ -79,3 +79,19 @@ Node/npm/pnpm are not available in the agent environment, so typecheck and build
    - Open a protected route (e.g. `/dashboard`, `/settings`) while logged out — should redirect to `/login`.
 
 After all three pass, update this file: set **Final verification** to **Done** and add: "Final verification passed (typecheck, build, route protection)."
+
+---
+
+## UI Pages and Guidelines (requirements.md / pages.md)
+
+Work completed to align the UI with `documentation/ui/requirements.md` and `documentation/ui/pages.md`:
+
+- **apiFetch / API base:** All backend calls use `apiFetch(path, options)` and `getApiBaseUrl()` from `@/lib/api`; no raw `process.env.NEXT_PUBLIC_API_BASE_URL` in pages. Auth flows use `skip401Redirect: true` where 401 is handled in-page.
+- **Error handling:** User-facing errors use `GENERIC_ERROR_MESSAGE` from `@/lib/api`; no `e.message` exposed.
+- **DataTable and EmptyState:** Shared `@/components/ui/data-table.tsx` and `@/components/ui/empty-state.tsx`. Applied on admin/products, admin/ml-models/models; Skeleton + EmptyState on admin/multimodal, admin/web-search/schedules, admin/feedback/types, admin/tenants/list, admin/security/users, settings/integrations.
+- **Loading and empty states:** List/data pages have explicit Skeleton loading and EmptyState (or equivalent) for zero items.
+- **Forms and validation:** Documented in requirements: **Zod** with React Hook Form and `zodResolver` from `@hookform/resolvers/zod`. Migrated to RHF+Zod: login, forgot-password, reset-password, register; contacts/new and contacts/[id] already used it.
+- **Metadata and not-found:** Dashboard layout has metadata; not-found has metadata and links (Home, Dashboard, Login). Not-found content uses i18n via `NotFoundContent` client component.
+- **Access levels:** Added `documentation/ui/access-levels.md` (Tenant Admin vs Super Admin, how access is enforced); `pages.md` references it.
+- **Types:** Removed `any` in field-mappings (FieldMappingTestResult); fixed variable shadowing (response `data` → `json`) and login schema type in auth forms.
+- **Verification:** `npm run typecheck` in `ui` passes. Build compiles and generates static pages (114/114).

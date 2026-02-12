@@ -9,6 +9,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type CompetitorSelectModalProps = {
   isOpen: boolean;
@@ -36,31 +37,25 @@ export function CompetitorSelectModal({
   const [linking, setLinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const base = apiBaseUrl.replace(/\/$/, '');
-  const listUrl = `${base}/api/v1/competitors`;
-
   const fetchCompetitors = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const headers: HeadersInit = getHeaders ? await Promise.resolve(getHeaders()) : {};
-      const res = await fetch(listUrl, {
-        headers: { ...headers },
-        credentials: getHeaders ? undefined : ('same-origin' as RequestCredentials),
-      });
+      const headers = getHeaders ? await Promise.resolve(getHeaders()) : undefined;
+      const res = await apiFetch('/api/v1/competitors', { headers });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
       }
       const json = (await res.json()) as { competitors?: Competitor[] };
       setCompetitors(Array.isArray(json?.competitors) ? json.competitors : []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch {
+      setError(GENERIC_ERROR_MESSAGE);
       setCompetitors([]);
     } finally {
       setLoading(false);
     }
-  }, [listUrl, getHeaders]);
+  }, [getHeaders]);
 
   useEffect(() => {
     if (isOpen) {
@@ -90,12 +85,11 @@ export function CompetitorSelectModal({
       setError(null);
       setLinking(true);
       try {
-        const headers: HeadersInit = getHeaders ? await Promise.resolve(getHeaders()) : {};
-        const res = await fetch(`${base}/api/v1/competitors/${selectedId}/track`, {
+        const headers = getHeaders ? await Promise.resolve(getHeaders()) : undefined;
+        const res = await apiFetch(`/api/v1/competitors/${selectedId}/track`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...headers },
           body: JSON.stringify({ opportunityId }),
-          credentials: getHeaders ? undefined : ('same-origin' as RequestCredentials),
         });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
@@ -103,13 +97,13 @@ export function CompetitorSelectModal({
         }
         onLinked?.();
         onClose();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+      } catch {
+        setError(GENERIC_ERROR_MESSAGE);
       } finally {
         setLinking(false);
       }
     },
-    [selectedId, opportunityId, base, getHeaders, onLinked, onClose]
+    [selectedId, opportunityId, getHeaders, onLinked, onClose]
   );
 
   const filtered = competitors.filter((c) => {

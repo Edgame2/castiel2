@@ -6,9 +6,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 function generateId(): string {
   if (typeof crypto !== 'undefined' && (crypto as { randomUUID?: () => string }).randomUUID) {
@@ -42,10 +40,10 @@ export default function AnalyticsDashboardNewPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !name.trim() || submitting) return;
+    if (!getApiBaseUrl() || !name.trim() || submitting) return;
     setError(null);
     setSubmitting(true);
-    fetch(`${apiBase}/api/v1/system/analytics`, { credentials: 'include' })
+    apiFetch('/api/v1/system/analytics')
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((config: AnalyticsConfig) => {
         const newId = generateId();
@@ -57,9 +55,8 @@ export default function AnalyticsDashboardNewPage() {
           widgets: [],
           createdAt: new Date().toISOString(),
         };
-        return fetch(`${apiBase}/api/v1/system/analytics`, {
+        return apiFetch('/api/v1/system/analytics', {
           method: 'PUT',
-          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...config, dashboards: [...(config.dashboards ?? []), newDash] }),
         }).then((r) => {

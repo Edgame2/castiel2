@@ -9,8 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export default function FeatureEngineeringOverviewPage() {
   const [versionsCount, setVersionsCount] = useState<number | null>(null);
@@ -18,7 +17,7 @@ export default function FeatureEngineeringOverviewPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setVersionsCount(null);
       setLoading(false);
       return;
@@ -26,12 +25,12 @@ export default function FeatureEngineeringOverviewPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/ml/features/versions`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/ml/features/versions');
       if (!res.ok) throw new Error('Failed to load feature versions');
       const json = await res.json();
       setVersionsCount(Array.isArray(json?.items) ? json.items.length : 0);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load stats');
+      setError(GENERIC_ERROR_MESSAGE);
       setVersionsCount(null);
     } finally {
       setLoading(false);
@@ -65,13 +64,13 @@ export default function FeatureEngineeringOverviewPage() {
             Feature management, versioning, and quality monitoring for ml-service Layer 2. Super Admin §5.
           </p>
         </div>
-        {apiBaseUrl && (
+        {getApiBaseUrl() && (
           <Button type="button" variant="outline" onClick={fetchStats} disabled={loading}>
             Refresh
           </Button>
         )}
       </div>
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-4 bg-amber-50 dark:bg-amber-900/20 mb-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>

@@ -210,10 +210,11 @@ export async function createSession(
   // Get location from IP (async, but don't block on it)
   const locationInfo: LocationInfo = await getLocationFromIP(ipAddress).catch((): LocationInfo => ({}));
   
-  // Create session data for JWT claims
-  const sessionData: SessionData = {
+  // Create session data for JWT claims (tenantId alias for gateway/services expecting it)
+  const sessionData: SessionData & { tenantId?: string } = {
     userId,
     organizationId: organizationId || undefined,
+    tenantId: organizationId || undefined,
     roleId,
     isSuperAdmin,
     sessionId,

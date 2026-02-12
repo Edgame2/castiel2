@@ -9,9 +9,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type DataCollectionConfig = {
   default?: string;
@@ -28,22 +26,21 @@ export default function SystemLoggingConfigPage() {
   const [search, setSearch] = useState('');
 
   const fetchConfig = useCallback(() => {
-    if (!apiBase) {
+    if (!getApiBaseUrl()) {
       setLoading(false);
-      setError('API base URL not configured');
+      setError(GENERIC_ERROR_MESSAGE);
       return;
     }
     setLoading(true);
     setError(null);
-    const url = `${apiBase}/api/logging/api/v1/config/data-collection${search ? `?search=${encodeURIComponent(search)}` : ''}`;
-    fetch(url, { credentials: 'include' })
-      .then((r) => {
+    const path = `/api/logging/api/v1/config/data-collection${search ? `?search=${encodeURIComponent(search)}` : ''}`;
+    apiFetch(path)
+      .then((r: Response) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load config');
         return r.json();
       })
       .then((data: DataCollectionConfig) => setConfig(data))
-      .catch((e) => {
-        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      .catch(() => {
         setError(GENERIC_ERROR_MESSAGE);
         setConfig(null);
       })

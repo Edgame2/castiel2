@@ -5,6 +5,16 @@
 
 import { FastifyRequest, FastifyReply } from 'fastify';
 
+/**
+ * Parse accessToken from Cookie header (e.g. "accessToken=xyz; other=abc").
+ * Supports session-based auth when Authorization: Bearer is not present.
+ */
+function parseAccessTokenFromCookie(cookieHeader: string | undefined): string | undefined {
+  if (!cookieHeader) return undefined;
+  const match = cookieHeader.match(/\baccessToken=([^;]*)/);
+  return match ? decodeURIComponent(match[1].trim()) : undefined;
+}
+
 /** Path prefixes that do not require a Bearer token (public auth/invitation endpoints) */
 const PUBLIC_AUTH_PATH_PREFIXES = [
   '/api/auth/login',
@@ -54,18 +64,27 @@ export async function tenantValidationMiddleware(
     const user = (request as any).user;
     
     if (!user) {
-      // Try to verify token manually if not already verified
+      // Prefer Authorization: Bearer; fallback to accessToken cookie (session flow)
+      let token: string | undefined;
       const authHeader = request.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      } else {
+        const cookieToken = parseAccessTokenFromCookie(request.headers.cookie);
+        if (cookieToken) token = cookieToken;
+      }
+      if (!token) {
         reply.code(401).send({ error: 'Missing or invalid authorization header' });
         return;
       }
-
-      const token = authHeader.substring(7);
       try {
         const server = request.server as unknown as { jwt: { verify: (t: string) => Promise<Record<string, unknown>> } };
         const decoded = await server.jwt.verify(token);
         (request as any).user = decoded;
+        // Ensure Authorization is set so ProxyService forwards it to backends (user-management, etc.)
+        if (!request.headers.authorization) {
+          request.headers.authorization = `Bearer ${token}`;
+        }
 
         const raw = decoded.tenantId ?? decoded.organizationId;
         const tenantId = typeof raw === 'string' ? raw : undefined;

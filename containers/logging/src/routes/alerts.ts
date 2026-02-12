@@ -65,9 +65,10 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const body = createAlertSchema.parse(request.body);
 
-      const rule = await alertService.createRule(body, user.id);
+      const rule = await alertService.createRule({ ...body, organizationId: body.organizationId ?? tenantId }, user.id);
 
       reply.code(201).send(rule);
     } catch (error: any) {
@@ -103,9 +104,11 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const { id } = request.params as { id: string };
 
-      const rule = await alertService.getRule(id);
+      const rule = await alertService.getRule(id, tenantId);
 
       if (!rule) {
         return reply.code(404).send({ error: 'Alert rule not found' });
@@ -140,9 +143,11 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const query = request.query as { organizationId?: string };
 
-      const rules = await alertService.listRules(query.organizationId);
+      const rules = await alertService.listRules(query.organizationId ?? tenantId);
 
       reply.send({ items: rules, total: rules.length });
     } catch (error: any) {
@@ -189,10 +194,11 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const { id } = request.params as { id: string };
       const body = updateAlertSchema.parse(request.body);
 
-      const rule = await alertService.updateRule(id, body, user.id);
+      const rule = await alertService.updateRule(id, body, user.id, tenantId);
 
       reply.send(rule);
     } catch (error: any) {
@@ -227,9 +233,11 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const { id } = request.params as { id: string };
 
-      await alertService.deleteRule(id);
+      await alertService.deleteRule(id, tenantId);
 
       reply.code(204).send();
     } catch (error: any) {
@@ -261,9 +269,11 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const { id } = request.params as { id: string };
 
-      const triggered = await alertService.evaluateRule(id);
+      const triggered = await alertService.evaluateRule(id, tenantId);
 
       reply.send({ triggered });
     } catch (error: any) {

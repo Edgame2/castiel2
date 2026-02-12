@@ -10,11 +10,26 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { DataTable } from '@/components/ui/data-table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
+import { toast } from 'sonner';
 
 type Product = { id: string; name: string; description?: string; category?: string; status?: string };
+
+const PRODUCT_COLUMNS = [
+  { id: 'name', header: 'Name', cell: (row: Product) => row.name },
+  { id: 'description', header: 'Description', cell: (row: Product) => row.description ?? '—' },
+] as const;
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -24,25 +39,26 @@ export default function AdminProductsPage() {
   const [description, setDescription] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchProducts = useCallback(async () => {
-    if (!apiBaseUrl) {
-      setError('NEXT_PUBLIC_API_BASE_URL is not set');
+    if (!getApiBaseUrl()) {
+      setError(GENERIC_ERROR_MESSAGE);
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/products`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/products');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
       }
       const json = (await res.json()) as Product[];
       setProducts(Array.isArray(json) ? json : []);
-    } catch (e) {
-      if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e);
+    } catch {
       setError(GENERIC_ERROR_MESSAGE);
       setProducts([]);
     } finally {
@@ -56,11 +72,11 @@ export default function AdminProductsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !apiBaseUrl) return;
+    if (!name.trim() || !getApiBaseUrl()) return;
     setCreating(true);
     setCreateError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/products`, {
+      const res = await apiFetch('/api/v1/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -73,13 +89,31 @@ export default function AdminProductsPage() {
       setName('');
       setDescription('');
       await fetchProducts();
-    } catch (e) {
-      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+    } catch {
       setCreateError(GENERIC_ERROR_MESSAGE);
     } finally {
       setCreating(false);
     }
   };
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteConfirmId || !getApiBaseUrl()) return;
+    setDeleting(true);
+    try {
+      const res = await apiFetch(`/api/v1/products/${encodeURIComponent(deleteConfirmId)}`, { method: 'DELETE' });
+      if (!res.ok && res.status !== 204) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
+      }
+      toast.success('Product deleted');
+      setDeleteConfirmId(null);
+      await fetchProducts();
+    } catch {
+      toast.error(GENERIC_ERROR_MESSAGE);
+    } finally {
+      setDeleting(false);
+    }
+  }, [deleteConfirmId, fetchProducts]);
 
   return (
     <div>
@@ -92,7 +126,7 @@ export default function AdminProductsPage() {
       <p className="text-muted-foreground mb-6">
         List and create products. Product-fit rules (goodFitIf / badFitIf) can be edited when editing a product (API: PUT /api/v1/products/:id).
       </p>
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <div className="mb-4">
           <Button asChild>
             <Link href="/admin/products/new">New product</Link>
@@ -129,23 +163,54 @@ export default function AdminProductsPage() {
           </Button>
         </form>
         {createError && <p className="text-sm text-red-600 dark:text-red-400 mb-2">{createError}</p>}
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : products.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No products yet.</p>
-        ) : (
-          <ul className="text-sm space-y-1">
-            {products.map((p) => (
-              <li key={p.id}>
-                <Link href={`/admin/products/${encodeURIComponent(p.id)}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                  {p.name}
-                </Link>
-                {p.description && <span className="text-muted-foreground"> — {p.description}</span>}
-              </li>
-            ))}
-          </ul>
-        )}
+        <DataTable
+          columns={[...PRODUCT_COLUMNS]}
+          data={products}
+          getRowId={(row) => row.id}
+          isLoading={loading}
+          firstColumnHref={(row) => `/admin/products/${encodeURIComponent(row.id)}`}
+          actionsColumn={(row) => (
+            <span className="flex gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/admin/products/${encodeURIComponent(row.id)}`}>Edit</Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={() => setDeleteConfirmId(row.id)}
+                disabled={deleting}
+              >
+                Delete
+              </Button>
+            </span>
+          )}
+          emptyTitle="No products yet"
+          emptyDescription="Create a product above or use the New product link."
+          emptyAction={{ label: 'New product', href: '/admin/products/new' }}
+        />
       </div>
+
+      <AlertDialog open={deleteConfirmId !== null} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete product?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDeleteConfirm(); }}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

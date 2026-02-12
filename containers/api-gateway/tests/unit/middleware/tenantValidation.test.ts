@@ -123,6 +123,26 @@ describe('tenantValidationMiddleware', () => {
     expect(body.error).toMatch(/authorization/i);
   });
 
+  it('injects X-Tenant-ID when accessToken in cookie (no Bearer)', async () => {
+    const app = Fastify();
+    (app as any).jwt = { verify: vi.fn(() => ({ tenantId: validTenantId })) };
+    app.addHook('preHandler', tenantValidationMiddleware);
+    app.get('/api/users/me', async (request: any, reply) => {
+      const tenantId = request.headers['x-tenant-id'];
+      return reply.send({ tenantId });
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/users/me',
+      headers: { cookie: 'accessToken=fake-token; other=value' },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.tenantId).toBe(validTenantId);
+    expect((app as any).jwt.verify).toHaveBeenCalledWith('fake-token');
+  });
+
   it('injects X-Tenant-ID when valid Bearer token with tenantId', async () => {
     const app = Fastify();
     (app as any).jwt = { verify: vi.fn(() => ({ tenantId: validTenantId })) };

@@ -16,9 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 interface FeedbackType {
   id?: string;
@@ -64,9 +62,9 @@ export default function FeedbackSystemPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchTypes = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/admin/feedback-types');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setTypes(Array.isArray(json) ? json : []);
@@ -76,9 +74,9 @@ export default function FeedbackSystemPage() {
   }, []);
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-config`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/admin/feedback-config');
       if (res.status === 404) {
         setConfig(null);
         return;
@@ -92,9 +90,9 @@ export default function FeedbackSystemPage() {
   }, []);
 
   const fetchAggregation = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/feedback/aggregation?period=${aggregationPeriod}`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/feedback/aggregation?period=${aggregationPeriod}');
       if (res.status === 404) {
         setAggregation(null);
         return;
@@ -105,7 +103,7 @@ export default function FeedbackSystemPage() {
     } catch (e) {
       setAggregation(null);
     }
-  }, [apiBaseUrl, aggregationPeriod]);
+  }, [aggregationPeriod]);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -121,12 +119,12 @@ export default function FeedbackSystemPage() {
   }, [fetchTypes, fetchConfig, fetchAggregation]);
 
   useEffect(() => {
-    if (apiBaseUrl) fetchAll();
+    if (getApiBaseUrl()) fetchAll();
     else {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
     }
-  }, [apiBaseUrl, fetchAll]);
+  }, [fetchAll]);
 
   useEffect(() => {
     document.title = 'Feedback System | Admin | Castiel';
@@ -170,7 +168,7 @@ export default function FeedbackSystemPage() {
         </Link>
       </nav>
 
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <div className="mb-4">
           <Button type="button" variant="outline" onClick={() => fetchAll()} disabled={loading} title="Refetch types, config, and aggregation" aria-label="Refresh feedback types, config, and aggregation">
             Refresh
@@ -178,7 +176,7 @@ export default function FeedbackSystemPage() {
         </div>
       )}
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
@@ -196,7 +194,7 @@ export default function FeedbackSystemPage() {
         </div>
       )}
 
-      {!loading && apiBaseUrl && (
+      {!loading && getApiBaseUrl() && (
         <div className="space-y-6">
           <div className="rounded-lg border bg-gray-50 dark:bg-gray-800/50 p-4 flex flex-wrap items-center gap-4" role="region" aria-label="Feedback system summary">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">

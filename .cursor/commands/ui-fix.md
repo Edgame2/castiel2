@@ -1,5 +1,5 @@
 Purpose: Audit all web UI container(s) in this repo, fix every issue found, and support resuming across sessions.
-Scope: All containers that serve a web UI (primary: containers/ui). Apply every section below; within a session you may do one or more sections and then stop — the next session continues from the next section or from the checklist.
+Scope: All containers that serve a web UI (primary: ui). Apply every section below; within a session you may do one or more sections and then stop — the next session continues from the next section or from the checklist.
 How to run:
 Session 1: Start at Section 1; complete as many sections as possible; at the end, write a short progress note (e.g. in a file like docs/ui-audit-progress.md or in chat) listing which sections are Done and which are Pending.
 Next sessions: Read the progress note, then continue from the first Pending section. After each section, update the progress note.

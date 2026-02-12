@@ -18,9 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 interface ExportConfig {
   datasets?: string[];
@@ -53,7 +51,7 @@ export default function AnalyticsExportPage() {
   const [datasetsInput, setDatasetsInput] = useState('');
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setExportConfig(DEFAULT_EXPORT);
       setDatasetsInput('');
       setConfig({ dashboards: [], reports: [], exportConfig: DEFAULT_EXPORT });
@@ -63,7 +61,7 @@ export default function AnalyticsExportPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/system/analytics`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/system/analytics');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const ec = data.exportConfig ?? DEFAULT_EXPORT;
@@ -99,7 +97,7 @@ export default function AnalyticsExportPage() {
   };
 
   const handleSave = async () => {
-    if (!apiBaseUrl || !config) return;
+    if (!getApiBaseUrl() || !config) return;
     setSaving(true);
     setSaveError(null);
     const ec = {
@@ -107,7 +105,7 @@ export default function AnalyticsExportPage() {
       datasets: datasetsInput.split(',').map((s) => s.trim()).filter(Boolean),
     };
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/system/analytics`, {
+      const res = await apiFetch('/api/v1/system/analytics', {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

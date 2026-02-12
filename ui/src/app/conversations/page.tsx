@@ -8,10 +8,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase =
-  typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '') : '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type ConversationItem = {
   id: string;
@@ -30,13 +27,13 @@ export default function ConversationsListPage() {
   const [creating, setCreating] = useState(false);
 
   const fetchConversations = useCallback(() => {
-    if (!apiBase) {
+    if (!getApiBaseUrl()) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/conversations?limit=50`, { credentials: 'include' })
+    apiFetch('/api/conversations?limit=50')
       .then((r) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load conversations');
         return r.json();
@@ -53,12 +50,11 @@ export default function ConversationsListPage() {
   }, [fetchConversations]);
 
   const createConversation = () => {
-    if (!apiBase || creating) return;
+    if (!getApiBaseUrl() || creating) return;
     setCreating(true);
     setError(null);
-    fetch(`${apiBase}/api/conversations`, {
+    apiFetch('/api/conversations', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     })
@@ -83,7 +79,7 @@ export default function ConversationsListPage() {
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-semibold">Conversations</h1>
-          <Button type="button" onClick={createConversation} disabled={creating || !apiBase} size="sm">
+          <Button type="button" onClick={createConversation} disabled={creating || !getApiBaseUrl()} size="sm">
             {creating ? 'Creating…' : 'New conversation'}
           </Button>
         </div>

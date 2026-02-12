@@ -10,7 +10,7 @@ process.env.NODE_ENV = 'test';
 process.env.COSMOS_DB_ENDPOINT = process.env.TEST_COSMOS_DB_ENDPOINT || 'https://test.documents.azure.com:443/';
 process.env.COSMOS_DB_KEY = process.env.TEST_COSMOS_DB_KEY || 'test-key';
 process.env.COSMOS_DB_DATABASE_ID = process.env.TEST_COSMOS_DB_DATABASE_ID || 'test';
-process.env.RABBITMQ_URL = process.env.TEST_RABBITMQ_URL || '';
+process.env.RABBITMQ_URL = process.env.TEST_RABBITMQ_URL || 'amqp://localhost';
 process.env.JWT_SECRET = process.env.TEST_JWT_SECRET || 'test-jwt-secret-key-for-testing-only';
 process.env.OPENAI_API_KEY = process.env.TEST_OPENAI_API_KEY || 'test-key';
 process.env.ANTHROPIC_API_KEY = process.env.TEST_ANTHROPIC_API_KEY || 'test-key';
@@ -124,7 +124,7 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn(() => ({
     get: vi.fn().mockResolvedValue({ data: {} }),
@@ -132,10 +132,28 @@ vi.mock('@coder/shared', () => ({
     put: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   })),
-  authenticateRequest: vi.fn(() => vi.fn()),
-  tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
+  EventPublisher: vi.fn(() => ({
+    publish: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn(),
+  })),
+  authenticateRequest: vi.fn(() => async (req: any) => {
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123', organizationId: 'org-1' };
+  }),
+  tenantEnforcementMiddleware: vi.fn(() => async (req: any) => {
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123', organizationId: 'org-1' };
+  }),
   setupJWT: vi.fn(),
   setupHealthCheck: vi.fn(),
+  initializeDatabase: vi.fn(),
+  connectDatabase: vi.fn().mockResolvedValue(undefined),
+  disconnectDatabase: vi.fn(),
+  closeConnection: vi.fn(),
+  getDatabaseClient: vi.fn(() => ({
+    ai_completions: {
+      create: vi.fn().mockResolvedValue({ id: 'compl-1', modelId: 'gpt-4', status: 'completed' }),
+    },
+  })),
+  HttpClient: vi.fn(() => ({ post: vi.fn().mockResolvedValue({ data: {} }) })),
 }));
 
 // Global test setup

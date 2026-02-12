@@ -1,6 +1,8 @@
 # Exhaustive UI Page Inventory
 
-All UI pages required for the Castiel application, grouped by access level. Routes use Next.js App Router under `containers/ui/src/app/`.
+All UI pages required for the Castiel application, grouped by access level. Routes use Next.js App Router under `ui/src/app/`.
+
+**See [access-levels.md](./access-levels.md) for Tenant Admin vs Super Admin and how access is enforced.**
 
 **Access levels:**
 - **Public** — No auth (login, register, etc.)
@@ -169,7 +171,7 @@ Tenant admins manage users, roles, and invitations **within their tenant**. Thes
 
 ## 4. Authenticated — Super Admin
 
-All under `containers/ui/src/app/admin/`. Only Super Admin role can access (or hide nav items by role).
+All under `ui/src/app/admin/`. Only Super Admin role can access (or hide nav items by role).
 
 ### 4.1 Admin overview
 
@@ -357,11 +359,9 @@ All under `containers/ui/src/app/admin/`. Only Super Admin role can access (or h
 
 ---
 
-## 5. API route (Next.js proxy)
+## 5. API communication
 
-| Route | Purpose | Notes |
-|-------|---------|--------|
-| `/api/[...path]` | Catch-all proxy to API Gateway | route.ts; no UI page |
+All API calls go directly from the browser to the gateway at `NEXT_PUBLIC_API_BASE_URL`. No proxy; gateway must allow CORS from the UI origin.
 
 ---
 

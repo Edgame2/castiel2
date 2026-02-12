@@ -11,8 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface LatencyTargetGroup {
   p50: number;
@@ -87,7 +86,7 @@ export default function SystemPerformancePage() {
   const [dirty, setDirty] = useState(false);
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
       return;
@@ -95,9 +94,7 @@ export default function SystemPerformancePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/system/performance`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch('/api/v1/system/performance');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -105,7 +102,7 @@ export default function SystemPerformancePage() {
       const data = await res.json();
       setConfig(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setConfig(DEFAULT_CONFIG);
     } finally {
       setLoading(false);
@@ -124,11 +121,11 @@ export default function SystemPerformancePage() {
   }, []);
 
   const handleSave = async () => {
-    if (!apiBaseUrl || !config) return;
+    if (!getApiBaseUrl() || !config) return;
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/system/performance`, {
+      const res = await apiFetch('/api/v1/system/performance', {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -141,8 +138,8 @@ export default function SystemPerformancePage() {
       const data = await res.json();
       setConfig(data);
       setDirty(false);
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : String(e));
+    } catch {
+      setSaveError(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }

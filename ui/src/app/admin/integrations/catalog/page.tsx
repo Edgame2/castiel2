@@ -8,9 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface IntegrationType {
   id: string;
@@ -42,9 +40,7 @@ export default function IntegrationCatalogPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/integrations/catalog`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch('/api/v1/admin/integrations/catalog');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);

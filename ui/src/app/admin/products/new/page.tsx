@@ -7,9 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export default function AdminProductNewPage() {
   const router = useRouter();
@@ -20,22 +18,21 @@ export default function AdminProductNewPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !name.trim() || submitting) return;
+    if (!getApiBaseUrl() || !name.trim() || submitting) return;
     setError(null);
     setSubmitting(true);
-    fetch(`${apiBase}/api/v1/products`, {
+    apiFetch('/api/v1/products', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name.trim(), ...(description.trim() && { description: description.trim() }) }),
     })
-      .then((r) => r.json().catch(() => ({})))
+      .then((r: Response) => r.json().catch(() => ({})))
       .then((data: { id?: string; error?: { message?: string } }) => {
         if (data?.error?.message) throw new Error(data.error.message);
         if (data?.id) router.push(`/admin/products/${encodeURIComponent(data.id)}`);
         else router.push('/admin/products');
       })
-      .catch((e) => { if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e); setError(GENERIC_ERROR_MESSAGE); })
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSubmitting(false));
   };
 

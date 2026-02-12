@@ -9,9 +9,9 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type Schedule = {
   id: string;
@@ -43,19 +43,19 @@ export default function AdminWebSearchSchedulesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchSchedules = useCallback((opts?: { refetchOnly?: boolean }) => {
-    if (!apiBase) {
+    if (!getApiBaseUrl()) {
       setLoading(false);
       return;
     }
     if (!opts?.refetchOnly) setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/schedules`, { credentials: 'include' })
-      .then((r) => {
+    apiFetch('/api/v1/schedules')
+      .then((r: Response) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load schedules');
         return r.json();
       })
       .then((data: ListResponse) => setSchedules(Array.isArray(data.schedules) ? data.schedules : []))
-      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setLoading(false));
   }, []);
 
@@ -64,12 +64,11 @@ export default function AdminWebSearchSchedulesPage() {
   }, [fetchSchedules]);
 
   const handleCreate = () => {
-    if (!apiBase || !createQuery.trim()) return;
+    if (!getApiBaseUrl() || !createQuery.trim()) return;
     setCreating(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/schedules`, {
+    apiFetch('/api/v1/schedules', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query: createQuery.trim(),
@@ -78,7 +77,7 @@ export default function AdminWebSearchSchedulesPage() {
         role: 'user',
       }),
     })
-      .then((r) => {
+      .then((r: Response) => {
         if (!r.ok) throw new Error(r.statusText || 'Create failed');
         return r.json();
       })
@@ -86,7 +85,7 @@ export default function AdminWebSearchSchedulesPage() {
         setCreateQuery('');
         fetchSchedules({ refetchOnly: true });
       })
-      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setCreating(false));
   };
 
@@ -103,16 +102,15 @@ export default function AdminWebSearchSchedulesPage() {
   };
 
   const handleSave = (id: string) => {
-    if (!apiBase || !editQuery.trim() || !editCron.trim()) return;
+    if (!getApiBaseUrl() || !editQuery.trim() || !editCron.trim()) return;
     setSaving(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/schedules/${encodeURIComponent(id)}`, {
+    apiFetch(`/api/v1/schedules/${encodeURIComponent(id)}`, {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: editQuery.trim(), cronExpression: editCron.trim() }),
     })
-      .then((r) => {
+      .then((r: Response) => {
         if (!r.ok) throw new Error(r.statusText || 'Update failed');
         return r.json();
       })
@@ -122,24 +120,21 @@ export default function AdminWebSearchSchedulesPage() {
         setEditCron('');
         fetchSchedules({ refetchOnly: true });
       })
-      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSaving(false));
   };
 
   const handleDelete = (s: Schedule) => {
-    if (!apiBase) return;
+    if (!getApiBaseUrl()) return;
     if (!window.confirm(`Delete schedule "${s.query}"?`)) return;
     setDeletingId(s.id);
     setError(null);
-    fetch(`${apiBase}/api/v1/schedules/${encodeURIComponent(s.id)}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    })
-      .then((r) => {
+    apiFetch(`/api/v1/schedules/${encodeURIComponent(s.id)}`, { method: 'DELETE' })
+      .then((r: Response) => {
         if (r.status !== 204 && !r.ok) throw new Error(r.statusText || 'Delete failed');
         fetchSchedules({ refetchOnly: true });
       })
-      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setDeletingId(null));
   };
 
@@ -176,14 +171,26 @@ export default function AdminWebSearchSchedulesPage() {
           </div>
         </div>
 
-        {loading && <p className="text-sm text-gray-500">Loading…</p>}
+        {loading && (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="border rounded-lg p-3 dark:border-gray-700">
+                <Skeleton className="h-5 w-48 mb-2" />
+                <Skeleton className="h-4 w-full max-w-xs" />
+              </div>
+            ))}
+          </div>
+        )}
         {error && (
           <p className="text-sm text-red-600 dark:text-red-400 mb-4" role="alert">
             {error}
           </p>
         )}
         {!loading && !error && schedules.length === 0 && (
-          <p className="text-sm text-gray-600 dark:text-gray-400">No schedules. Create one above.</p>
+          <EmptyState
+            title="No schedules"
+            description="Create one using the form above."
+          />
         )}
         {!loading && !error && schedules.length > 0 && (
           <ul className="space-y-2">

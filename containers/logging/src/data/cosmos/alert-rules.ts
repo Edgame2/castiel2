@@ -97,6 +97,21 @@ export class CosmosAlertRulesRepository {
     return resources?.length ? toRow(resources[0] as AlertRuleDoc) : null;
   }
 
+  /** Get rule by id within tenant partition (tenant-scoped). */
+  async findUniqueByIdAndTenant(id: string, organizationId: string): Promise<AlertRuleRow | null> {
+    const pk = tenantId(organizationId);
+    const { resources } = await this.getContainer().items
+      .query(
+        {
+          query: 'SELECT * FROM c WHERE c.id = @id',
+          parameters: [{ name: '@id', value: id }] as { name: string; value: string | number | boolean | null }[],
+        },
+        { partitionKey: pk }
+      )
+      .fetchNext();
+    return resources?.length ? toRow(resources[0] as AlertRuleDoc) : null;
+  }
+
   async create(args: {
     data: {
       id?: string;

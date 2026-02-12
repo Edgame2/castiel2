@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { FastifyInstance } from 'fastify';
 import { initializeDatabase, connectDatabase, disconnectDatabase, setupHealthCheck, setupJWT, closeConnection } from '@coder/shared';
 import { loadConfig } from './config';
 import { completionRoutes } from './routes/completions';
@@ -7,62 +7,58 @@ import { agentRoutes } from './routes/agents';
 import { registerAllRoutes } from './routes';
 import { initializeLLMReasoningEventPublisher, closeLLMReasoningEventPublisher } from './events/publishers/LLMReasoningEventPublisher';
 
-const server = Fastify({
-  logger: true,
-});
+let app: FastifyInstance | null = null;
 
-// Register existing routes
-server.register(completionRoutes, { prefix: '/api/ai/completions' });
-server.register(modelRoutes, { prefix: '/api/ai/models' });
-server.register(agentRoutes, { prefix: '/api/ai/agents' });
+/**
+ * Build the Fastify app without listening. Used by tests and by start().
+ */
+export async function buildApp(): Promise<FastifyInstance> {
+  const config = loadConfig();
+  const server = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : true });
 
-// Setup health check endpoints
-setupHealthCheck(server);
+  server.register(completionRoutes, { prefix: '/completions' });
+  server.register(modelRoutes, { prefix: '/models' });
+  server.register(agentRoutes, { prefix: '/agents' });
+  setupHealthCheck(server);
+
+  initializeDatabase({
+    endpoint: config.cosmos_db.endpoint,
+    key: config.cosmos_db.key,
+    database: config.cosmos_db.database_id,
+    containers: config.cosmos_db.containers,
+  });
+
+  const jwtSecret = process.env.JWT_SECRET || (config as any).jwt?.secret;
+  if (process.env.NODE_ENV === 'production' && !jwtSecret) {
+    throw new Error('JWT_SECRET (or config.jwt.secret) is required in production');
+  }
+  const secret = jwtSecret || 'dev-jwt-secret-not-for-production';
+  await setupJWT(server, { secret });
+
+  await connectDatabase();
+  await initializeLLMReasoningEventPublisher();
+  await registerAllRoutes(server);
+
+  return server;
+}
 
 const start = async () => {
   try {
-    // Load configuration
+    app = await buildApp();
     const config = loadConfig();
-    
-    // Initialize database with config
-    initializeDatabase({
-      endpoint: config.cosmos_db.endpoint,
-      key: config.cosmos_db.key,
-      database: config.cosmos_db.database_id,
-      containers: config.cosmos_db.containers,
-    });
-    
-    // Setup JWT for authentication (require secret in production; dev-only default never used in prod)
-    const jwtSecret = process.env.JWT_SECRET || (config as any).jwt?.secret;
-    if (process.env.NODE_ENV === 'production' && !jwtSecret) {
-      throw new Error('JWT_SECRET (or config.jwt.secret) is required in production');
-    }
-    if (!jwtSecret) {
-      server.log.warn('Using dev-only JWT secret; set JWT_SECRET in production');
-    }
-    const secret = jwtSecret || 'dev-jwt-secret-not-for-production';
-    await setupJWT(server, { secret });
-    
-    await connectDatabase();
-    await initializeLLMReasoningEventPublisher();
-
-    // Register merged routes (insights, reasoning, prompts, LLM)
-    await registerAllRoutes(server);
-
-    await server.listen({ port: config.server.port, host: config.server.host });
+    await app.listen({ port: config.server.port, host: config.server.host });
     console.log(`AI Service listening on port ${config.server.port}`);
   } catch (err) {
-    server.log.error(err);
+    console.error(err);
     process.exit(1);
   }
 };
 
-// Graceful shutdown
 const shutdown = async () => {
   console.log('Shutting down AI Service...');
   await closeLLMReasoningEventPublisher();
-  await server.close();
-  await closeConnection(); // Close RabbitMQ connection
+  if (app) await app.close();
+  await closeConnection();
   await disconnectDatabase();
   process.exit(0);
 };
@@ -70,4 +66,6 @@ const shutdown = async () => {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-start();
+if (require.main === module) {
+  start();
+}

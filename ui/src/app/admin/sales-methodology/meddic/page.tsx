@@ -7,12 +7,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 const MEDDIC_KEYS = [
   { key: 'metrics', label: 'Metrics' },
@@ -48,11 +47,11 @@ export default function SalesMethodologyMeddicPage() {
   const [meddic, setMeddic] = useState<MeddicMapping>({});
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/sales-methodology`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/sales-methodology');
       if (res.status === 404) {
         setConfig(null);
         setMeddic({});
@@ -67,7 +66,7 @@ export default function SalesMethodologyMeddicPage() {
       setConfig(json);
       setMeddic(json.meddic ?? {});
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setConfig(null);
       setMeddic({});
     } finally {
@@ -102,7 +101,7 @@ export default function SalesMethodologyMeddicPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setSaving(true);
     setSaveMessage(null);
     setError(null);
@@ -114,7 +113,7 @@ export default function SalesMethodologyMeddicPage() {
         risks: config?.risks ?? [],
         meddic: meddic,
       };
-      const res = await fetch(`${apiBaseUrl}/api/v1/sales-methodology`, {
+      const res = await apiFetch('/api/v1/sales-methodology', {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -125,7 +124,7 @@ export default function SalesMethodologyMeddicPage() {
       setSaveMessage('Saved.');
       await fetchConfig();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }
@@ -170,7 +169,7 @@ export default function SalesMethodologyMeddicPage() {
         </span>
       </nav>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
@@ -188,7 +187,7 @@ export default function SalesMethodologyMeddicPage() {
         </div>
       )}
 
-      {!loading && apiBaseUrl && (
+      {!loading && getApiBaseUrl() && (
         <form onSubmit={handleSave} className="space-y-6">
           {saveMessage && (
             <div className="rounded-lg border p-3 bg-green-50 dark:bg-green-900/20 text-sm text-green-800 dark:text-green-200">

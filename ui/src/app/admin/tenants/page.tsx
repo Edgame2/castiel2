@@ -9,9 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export default function TenantManagementOverviewPage() {
   const [tenantsCount, setTenantsCount] = useState<number | null>(null);
@@ -20,7 +18,7 @@ export default function TenantManagementOverviewPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setTenantsCount(null);
       setTemplatesCount(null);
       setLoading(false);
@@ -30,8 +28,8 @@ export default function TenantManagementOverviewPage() {
     setError(null);
     try {
       const [tenantsRes, templatesRes] = await Promise.all([
-        fetch(`${apiBaseUrl}/api/v1/admin/tenants`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/v1/admin/tenant-templates`, { credentials: 'include' }),
+        apiFetch('/api/v1/admin/tenants'),
+        apiFetch('/api/v1/admin/tenant-templates'),
       ]);
       if (!tenantsRes.ok) throw new Error('Failed to load tenants');
       const tenantsJson = await tenantsRes.json();
@@ -83,13 +81,13 @@ export default function TenantManagementOverviewPage() {
             View tenants, per-tenant feedback config, methodology, limits; templates (§7).
           </p>
         </div>
-        {apiBaseUrl && (
+        {getApiBaseUrl() && (
           <Button type="button" variant="outline" onClick={fetchStats} disabled={loading} aria-label="Refresh tenant management stats">
             Refresh
           </Button>
         )}
       </div>
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-4 bg-amber-50 dark:bg-amber-900/20 mb-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>

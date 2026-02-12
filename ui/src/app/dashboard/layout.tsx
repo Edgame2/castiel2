@@ -3,6 +3,13 @@
  * Wraps /dashboard and /dashboard/manager. Nav in root layout.
  */
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Dashboard | Castiel",
+  description: "Dashboard overview and views for manager, executive, and board.",
+};
+
 export default function DashboardLayout({
   children,
 }: { children: React.ReactNode }) {

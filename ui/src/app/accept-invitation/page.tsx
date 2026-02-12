@@ -9,9 +9,7 @@ import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 function AcceptInvitationContent() {
   const searchParams = useSearchParams();
@@ -30,12 +28,11 @@ function AcceptInvitationContent() {
     setResult(null);
     setLoading(true);
     try {
-      const base = apiBaseUrl.replace(/\/$/, '');
-      const res = await fetch(`${base}/api/invitations/${encodeURIComponent(tokenFromUrl)}/accept`, {
+      const res = await apiFetch(`/api/invitations/${encodeURIComponent(tokenFromUrl)}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({}),
+        skip401Redirect: true,
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {

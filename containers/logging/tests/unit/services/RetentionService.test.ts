@@ -184,10 +184,35 @@ describe('RetentionService', () => {
       vi.mocked(mockPrisma.audit_retention_policies.findUnique).mockResolvedValue(existingPolicy);
       vi.mocked(mockPrisma.audit_retention_policies.update).mockResolvedValue(updatedPolicy);
 
-      const result = await retentionService.updatePolicy('policy-1', { retentionDays: 120 }, 'user-1');
+      const result = await retentionService.updatePolicy('policy-1', { retentionDays: 120 }, 'user-1', 'org-1');
 
       expect(result).toBeDefined();
       expect(result.retentionDays).toBe(120);
+    });
+
+    it('should throw when policy belongs to another tenant', async () => {
+      const existingPolicy = {
+        id: 'policy-1',
+        organizationId: 'other-org',
+        category: null,
+        severity: null,
+        retentionDays: 90,
+        archiveAfterDays: null,
+        deleteAfterDays: 90,
+        minRetentionDays: 30,
+        maxRetentionDays: 365,
+        immutable: false,
+        createdBy: 'user-1',
+        createdAt: new Date(),
+        updatedBy: 'user-1',
+        updatedAt: new Date(),
+      };
+      vi.mocked(mockPrisma.audit_retention_policies.findUnique).mockResolvedValue(existingPolicy);
+
+      await expect(
+        retentionService.updatePolicy('policy-1', { retentionDays: 120 }, 'user-1', 'org-1')
+      ).rejects.toThrow('Retention policy not found');
+      expect(mockPrisma.audit_retention_policies.update).not.toHaveBeenCalled();
     });
   });
 
@@ -214,11 +239,36 @@ describe('RetentionService', () => {
       vi.mocked(mockPrisma.audit_retention_policies.findUnique).mockResolvedValue(existingPolicy);
       vi.mocked(mockPrisma.audit_retention_policies.delete).mockResolvedValue({ id: 'policy-1' });
 
-      await retentionService.deletePolicy('policy-1');
+      await retentionService.deletePolicy('policy-1', 'org-1');
 
       expect(mockPrisma.audit_retention_policies.delete).toHaveBeenCalledWith({
         where: { id: 'policy-1' },
       });
+    });
+
+    it('should throw when policy belongs to another tenant', async () => {
+      const existingPolicy = {
+        id: 'policy-1',
+        organizationId: 'other-org',
+        category: null,
+        severity: null,
+        retentionDays: 90,
+        archiveAfterDays: null,
+        deleteAfterDays: 90,
+        minRetentionDays: 30,
+        maxRetentionDays: 365,
+        immutable: false,
+        createdBy: 'user-1',
+        createdAt: new Date(),
+        updatedBy: 'user-1',
+        updatedAt: new Date(),
+      };
+      vi.mocked(mockPrisma.audit_retention_policies.findUnique).mockResolvedValue(existingPolicy);
+
+      await expect(retentionService.deletePolicy('policy-1', 'org-1')).rejects.toThrow(
+        'Retention policy not found'
+      );
+      expect(mockPrisma.audit_retention_policies.delete).not.toHaveBeenCalled();
     });
   });
 });

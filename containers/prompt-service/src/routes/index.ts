@@ -92,6 +92,7 @@ export async function registerRoutes(app: FastifyInstance, _config: unknown): Pr
       schema: {
         description: 'Get prompt analytics (counts by status and category)',
         tags: ['Prompts'],
+        security: [{ bearerAuth: [] }],
         response: {
           200: {
             type: 'object',

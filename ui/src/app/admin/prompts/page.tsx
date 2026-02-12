@@ -6,8 +6,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type PromptItem = { id: string; name?: string; slug?: string; status?: string; category?: string };
 
@@ -18,21 +17,24 @@ export default function AdminPromptsListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPrompts = useCallback(() => {
-    if (!apiBase) {
+  const fetchPrompts = useCallback(async () => {
+    if (!getApiBaseUrl()) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/prompts?limit=100`, { credentials: 'include' })
-      .then((r) => {
-        if (!r.ok) throw new Error(r.statusText || 'Failed to load prompts');
-        return r.json();
-      })
-      .then((data: ListResponse) => setItems(Array.isArray(data.items) ? data.items : []))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
-      .finally(() => setLoading(false));
+    try {
+      const res = await apiFetch('/api/v1/prompts?limit=100');
+      if (!res.ok) throw new Error(res.statusText || 'Failed to load prompts');
+      const data: ListResponse = await res.json();
+      setItems(Array.isArray(data.items) ? data.items : []);
+    } catch (e) {
+      setError(GENERIC_ERROR_MESSAGE);
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {

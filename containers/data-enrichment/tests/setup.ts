@@ -104,19 +104,22 @@ vi.mock('yaml', () => ({
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn((name: string) => {
     const defaultItems = {
-      create: vi.fn().mockResolvedValue(undefined),
+      create: vi.fn().mockImplementation((doc: any) =>
+        Promise.resolve({ resource: { ...doc, id: doc.id || 'created-id' } })
+      ),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
       })),
     };
-    const defaultItem = vi.fn((id: string, _partitionKey?: string) => ({
+    const defaultItem = vi.fn((id: string, partitionKey?: string) => ({
       read: vi.fn().mockResolvedValue({
-        resource: name === 'enrichment_jobs' && id === 'job-123'
-          ? { id: 'job-123', jobId: 'job-123', tenantId: 'tenant-123', status: 'completed' }
+        resource: name === 'enrichment_jobs' && id !== '00000000-0000-0000-0000-000000000000'
+          ? { id, jobId: id, tenantId: partitionKey || 'tenant-123', status: 'pending', shardId: 'shard-1' }
           : null,
       }),
-      replace: vi.fn(),
-      delete: vi.fn(),
+      replace: vi.fn().mockResolvedValue({ resource: {} }),
+      delete: vi.fn().mockResolvedValue(undefined),
     }));
     const enrichmentConfigItems = {
       create: vi.fn().mockResolvedValue(undefined),
@@ -128,7 +131,11 @@ vi.mock('@coder/shared/database', () => ({
             name: 'Default',
             enabled: true,
             autoEnrich: false,
-            processors: [],
+            processors: [
+              { type: 'entity-extraction', enabled: true },
+              { type: 'classification', enabled: true },
+              { type: 'summarization', enabled: true },
+            ],
             createdAt: new Date(),
             updatedAt: new Date(),
           }],
@@ -160,22 +167,25 @@ vi.mock('@coder/shared/events', () => ({
 // Mock @coder/shared (server imports initializeDatabase, connectDatabase, setupJWT from here)
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn().mockImplementation(function (this: { get: ReturnType<typeof vi.fn>; post: ReturnType<typeof vi.fn>; put: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> }) {
-    this.get = vi.fn().mockResolvedValue({ data: {} });
+    this.get = vi.fn().mockResolvedValue({ data: { id: 'shard-1', content: 'test content for enrichment' } });
     this.post = vi.fn().mockResolvedValue({ data: {} });
     this.put = vi.fn().mockResolvedValue({ data: {} });
     this.delete = vi.fn().mockResolvedValue({ data: {} });
   }),
-  authenticateRequest: vi.fn(() => (request: any, _reply: any, next: () => void) => {
-    request.user = { id: 'test-user-id', tenantId: 'tenant-123' };
-    next();
+  authenticateRequest: vi.fn(() => async (request: any) => {
+    request.user = request.user || { id: 'test-user-id', tenantId: request.headers?.['x-tenant-id'] || 'tenant-123' };
   }),
-  tenantEnforcementMiddleware: vi.fn(() => (_request: any, _reply: any, next: () => void) => {
-    next();
+  tenantEnforcementMiddleware: vi.fn(() => async (request: any) => {
+    request.user = request.user || { id: 'test-user-id', tenantId: request.headers?.['x-tenant-id'] || 'tenant-123' };
   }),
   setupJWT: vi.fn(),
   initializeDatabase: vi.fn(),
   connectDatabase: vi.fn(),
   generateServiceToken: vi.fn(() => 'mock-service-token'),
+  PolicyResolver: vi.fn().mockImplementation(function PolicyResolver() {
+    this.getActivationFlags = vi.fn().mockResolvedValue({});
+    this.getShardTypeAnalysisPolicy = vi.fn().mockResolvedValue({});
+  }),
 }));
 
 // Global test setup

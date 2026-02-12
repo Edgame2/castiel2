@@ -9,9 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 const FALLBACK_TEMPLATES: { name: string; description: string }[] = [
   { name: 'Mark high-value, low-risk as hot', description: 'Flag opportunities with high value and low risk score for priority follow-up.' },
@@ -32,7 +30,7 @@ export default function DecisionRulesTemplatesPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchTemplates = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setItems(FALLBACK_TEMPLATES);
       setLoading(false);
@@ -41,7 +39,7 @@ export default function DecisionRulesTemplatesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/decisions/templates`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/decisions/templates');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -113,7 +111,7 @@ export default function DecisionRulesTemplatesPage() {
         </Link>
       </nav>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-4 bg-amber-50 dark:bg-amber-900/20 mb-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL. Showing default templates.</p>
         </div>

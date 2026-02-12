@@ -14,8 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface RuleCondition {
   field: string;
@@ -69,15 +68,15 @@ export default function DecisionRuleDetailPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchRule = useCallback(async () => {
-    if (!apiBase || !id) {
+  const fetchRule = useCallback(() => {
+    if (!getApiBaseUrl() || !id) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/decisions/rules?all=true`, { credentials: 'include' })
-      .then((r) => {
+    apiFetch('/api/v1/decisions/rules?all=true')
+      .then((r: Response) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load');
         return r.json();
       })
@@ -99,8 +98,8 @@ export default function DecisionRuleDetailPage() {
           setCreatedBy(found.createdBy ?? 'admin');
         }
       })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+      .catch(() => {
+        setError(GENERIC_ERROR_MESSAGE);
         setRule(null);
       })
       .finally(() => setLoading(false));
@@ -112,7 +111,7 @@ export default function DecisionRuleDetailPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !rule || conditions.length === 0 || actions.length === 0 || saving) return;
+    if (!getApiBaseUrl() || !rule || conditions.length === 0 || actions.length === 0 || saving) return;
     setSaveError(null);
     setSaving(true);
     const body = {
@@ -126,33 +125,32 @@ export default function DecisionRuleDetailPage() {
       actions: actions.map((a) => ({ type: a.type, details: a.details ?? {}, priority: (a.priority as string) ?? 'medium', idempotencyKey: a.idempotencyKey ?? `rule_${Date.now()}` })),
       createdBy: createdBy.trim() || 'admin',
     };
-    fetch(`${apiBase}/api/v1/decisions/rules/${encodeURIComponent(rule.id)}`, {
+    apiFetch(`/api/v1/decisions/rules/${encodeURIComponent(rule.id)}`, {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-      .then((r) => {
+      .then((r: Response) => {
         if (!r.ok) return r.json().then((j) => Promise.reject(new Error((j?.error?.message as string) || r.statusText)));
         setEditing(false);
         fetchRule();
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Save failed'))
+      .catch(() => setSaveError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSaving(false));
   };
 
   const handleDelete = () => {
-    if (!apiBase || !rule || deleting) return;
+    if (!getApiBaseUrl() || !rule || deleting) return;
     setDeleting(true);
-    fetch(`${apiBase}/api/v1/decisions/rules/${encodeURIComponent(rule.id)}`, { method: 'DELETE', credentials: 'include' })
-      .then((r) => {
+    apiFetch(`/api/v1/decisions/rules/${encodeURIComponent(rule.id)}`, { method: 'DELETE' })
+      .then((r: Response) => {
         if (r.status === 404 || r.status === 204 || r.ok) {
           router.push('/admin/decision-rules/rules');
           return;
         }
         return r.json().then((j) => Promise.reject(new Error((j?.error?.message as string) || 'Delete failed')));
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Delete failed'))
+      .catch(() => setSaveError(GENERIC_ERROR_MESSAGE))
       .finally(() => setDeleting(false));
   };
 

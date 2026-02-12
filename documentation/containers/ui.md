@@ -1,17 +1,17 @@
 # ui
 
-Full specification for the UI container (Next.js web application).
+Full specification for the UI (Next.js web application). Runs standalone at `ui/`; not part of docker-compose.
 
 ## 1. Reference
 
 ### Purpose
 
-Next.js 16 web app (App Router, React 19): dashboards, admin, analytics, risk views, auth flows. Single client; all API traffic goes through the API Gateway. No direct backend URLs.
+Next.js 16 web app (App Router, React 19): dashboards, admin, analytics, risk views, auth flows. Single client; all API traffic goes directly to the API Gateway via `NEXT_PUBLIC_API_BASE_URL`. No proxy; browser calls gateway directly.
 
 ### Configuration
 
-- **Port:** 3000 (container); docker-compose maps host 3000 → 3000.
-- **Base URL:** `NEXT_PUBLIC_API_BASE_URL` — must point to API Gateway (e.g. `http://api-gateway:3002` in Docker, or public URL in production).
+- **Port:** 3000 (default; configurable via PORT).
+- **Base URL:** `NEXT_PUBLIC_API_BASE_URL` — must point to API Gateway (e.g. `http://localhost:3001` in dev). The gateway must allow CORS from the UI origin.
 
 ### Environment variables
 
@@ -20,7 +20,7 @@ Next.js 16 web app (App Router, React 19): dashboards, admin, analytics, risk vi
 
 ### API
 
-UI does not expose a REST API; it consumes APIs via the gateway (Axios/fetch to `NEXT_PUBLIC_API_BASE_URL`). Routes and pages are under `containers/ui/src/app/`.
+UI does not expose a REST API; it consumes APIs via the gateway (Axios/fetch to `NEXT_PUBLIC_API_BASE_URL`). Routes and pages are under `ui/src/app/`.
 
 ### Events
 
@@ -40,16 +40,16 @@ None (UI is frontend only).
 
 - **Internal structure:** Next.js App Router; pages under `src/app/`; components, hooks, lib, types under `src/`. API client configured with base URL from env.
 - **Data flow:** User → Next.js → HTTP to API Gateway → backend services; response → React state/UI.
-- **Links:** [containers/ui/README.md](../../containers/ui/README.md) if present. **Detailed UI architecture:** [documentation/UI_CONTAINER_ARCHITECTURE.md](../UI_CONTAINER_ARCHITECTURE.md).
+- **Links:** [ui/README.md](../../ui/README.md) if present. **Detailed UI architecture:** [documentation/UI_CONTAINER_ARCHITECTURE.md](../UI_CONTAINER_ARCHITECTURE.md).
 
 ---
 
 ## 3. Deployment
 
-- **Port:** 3000 (host and container).
+- **Port:** 3000 (configurable via PORT).
 - **Health:** Next.js default or custom health route if configured.
 - **Scaling:** Stateless; scale horizontally behind load balancer.
-- **Docker Compose service name:** `ui`.
+- **Docker Compose:** UI is not in docker-compose; run standalone (`pnpm dev` from `ui/`) or use optional Dockerfile for containerized deployment.
 
 ---
 
@@ -62,5 +62,5 @@ None (UI is frontend only).
 
 ## 5. Links
 
-- [containers/ui/README.md](../../containers/ui/README.md) (if present)
+- [ui/README.md](../../ui/README.md) (if present)
 - [documentation/UI_CONTAINER_ARCHITECTURE.md](../UI_CONTAINER_ARCHITECTURE.md) — UI architecture details

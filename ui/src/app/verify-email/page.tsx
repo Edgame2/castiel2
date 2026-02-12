@@ -8,7 +8,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -26,9 +26,7 @@ function VerifyEmailContent() {
     let cancelled = false;
     setStatus('loading');
     setMessage(null);
-    const base = getApiBaseUrl().replace(/\/$/, '') || '';
-    const url = base ? `${base}/api/auth/verify-email?token=${encodeURIComponent(tokenFromUrl)}` : `/api/auth/verify-email?token=${encodeURIComponent(tokenFromUrl)}`;
-    fetch(url, { method: 'GET', credentials: 'include' })
+    apiFetch(`/api/auth/verify-email?token=${encodeURIComponent(tokenFromUrl)}`, { skip401Redirect: true })
       .then(async (res) => {
         if (cancelled) return;
         const data = await res.json().catch(() => ({}));

@@ -10,9 +10,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export default function MfaEnrollPage() {
   const [loading, setLoading] = useState(false);
@@ -29,11 +27,9 @@ export default function MfaEnrollPage() {
     setVerifyError(null);
     setLoading(true);
     try {
-      const base = apiBaseUrl.replace(/\/$/, '');
-      const res = await fetch(`${base}/api/auth/mfa/enroll`, {
+      const res = await apiFetch('/api/auth/mfa/enroll', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({}),
       });
       const data = await res.json().catch(() => ({}));
@@ -53,8 +49,7 @@ export default function MfaEnrollPage() {
       setProvisioningUri(data.provisioningUri ?? null);
       setLabel(data.label ?? null);
       setStep('enrolled');
-    } catch (e) {
-      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+    } catch {
       setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
@@ -71,11 +66,9 @@ export default function MfaEnrollPage() {
     setVerifyError(null);
     setLoading(true);
     try {
-      const base = apiBaseUrl.replace(/\/$/, '');
-      const res = await fetch(`${base}/api/auth/mfa/verify`, {
+      const res = await apiFetch('/api/auth/mfa/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ code: trimmed }),
       });
       const data = await res.json().catch(() => ({}));
@@ -92,8 +85,7 @@ export default function MfaEnrollPage() {
         return;
       }
       setStep('verified');
-    } catch (e) {
-      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+    } catch {
       setVerifyError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
@@ -171,11 +163,11 @@ export default function MfaEnrollPage() {
           Use an authenticator app (e.g. Google Authenticator, Microsoft Authenticator) to get a 6-digit code when signing in.
         </p>
         {error && <p className="text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>}
-        {!apiBaseUrl && (
-          <p className="text-sm text-amber-600 dark:text-amber-400 mb-4">NEXT_PUBLIC_API_BASE_URL is not set. Cannot call the API.</p>
+        {!getApiBaseUrl() && (
+          <p className="text-sm text-amber-600 dark:text-amber-400 mb-4">API base URL is not set. Cannot call the API.</p>
         )}
         <div className="flex gap-3">
-          <Button type="button" onClick={startEnroll} disabled={loading || !apiBaseUrl}>
+          <Button type="button" onClick={startEnroll} disabled={loading || !getApiBaseUrl()}>
             {loading ? 'Starting…' : 'Start setup'}
           </Button>
           <Button type="button" variant="ghost" asChild>

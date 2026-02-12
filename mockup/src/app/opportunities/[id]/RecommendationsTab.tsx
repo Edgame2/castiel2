@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useState } from "react";
 import type { Recommendation } from "@/data/mock";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,15 +17,15 @@ import { Check, X, Minus } from "lucide-react";
 type FeedbackAction = "accept" | "ignore" | "irrelevant";
 
 export function RecommendationsTab({
-  opportunityId,
+  opportunityId: _opportunityId,
   recommendations,
 }: {
   opportunityId: string;
   recommendations: Recommendation[];
-}) {
+}): React.ReactElement {
   const [feedback, setFeedback] = useState<Record<string, FeedbackAction>>({});
 
-  const handleMockFeedback = (recId: string, action: FeedbackAction) => {
+  const handleMockFeedback = (recId: string, action: FeedbackAction): void => {
     setFeedback((prev) => ({ ...prev, [recId]: action }));
   };
 

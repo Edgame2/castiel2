@@ -59,6 +59,34 @@ services:
     url: ${WEB_SEARCH_URL:-http://localhost:3056}
   search_service:
     url: ${SEARCH_SERVICE_URL:-http://localhost:3029}
+  reasoning_engine:
+    url: ${REASONING_ENGINE_URL:-http://localhost:3040}
+  validation_engine:
+    url: ${VALIDATION_ENGINE_URL:-http://localhost:3038}
+  workflow_orchestrator:
+    url: ${WORKFLOW_ORCHESTRATOR_URL:-http://localhost:3050}
+  forecasting:
+    url: ${FORECASTING_URL:-http://localhost:3051}
+  security_scanning:
+    url: ${SECURITY_SCANNING_URL:-http://localhost:3052}
+  quality_monitoring:
+    url: ${QUALITY_MONITORING_URL:-http://localhost:3053}
+  pattern_recognition:
+    url: ${PATTERN_RECOGNITION_URL:-http://localhost:3054}
+  data_enrichment:
+    url: ${DATA_ENRICHMENT_URL:-http://localhost:3055}
+  llm_service:
+    url: ${LLM_SERVICE_URL:-http://localhost:3057}
+  learning_service:
+    url: ${LEARNING_SERVICE_URL:-http://localhost:3058}
+  context_service:
+    url: ${CONTEXT_SERVICE_URL:-http://localhost:3059}
+  utility_services:
+    url: ${UTILITY_SERVICES_URL:-http://localhost:3060}
+  ai_analytics:
+    url: ${AI_ANALYTICS_URL:-http://localhost:3061}
+  signal_intelligence:
+    url: ${SIGNAL_INTELLIGENCE_URL:-http://localhost:3062}
 
 # Rate limiting
 rate_limit:

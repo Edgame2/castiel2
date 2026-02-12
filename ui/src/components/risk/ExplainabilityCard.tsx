@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type ExplainabilityDriver = {
   feature: string;
@@ -44,7 +44,6 @@ export type ExplainabilityCardProps = {
   conclusion?: string;
 };
 
-const apiBase = typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '') : '';
 
 export function ExplainabilityCard({
   topDrivers: topDriversProp,
@@ -73,7 +72,7 @@ export function ExplainabilityCard({
       setError(null);
       return;
     }
-    if (!opportunityId || !apiBase) {
+    if (!opportunityId) {
       setLoading(false);
       return;
     }
@@ -83,7 +82,7 @@ export function ExplainabilityCard({
         : `/api/v1/opportunities/${encodeURIComponent(opportunityId)}/risk-explainability`;
     setLoading(true);
     setError(null);
-    fetch(`${apiBase.replace(/\/$/, '')}${path}`, { credentials: 'include' })
+    apiFetch(path)
       .then((r) => {
         if (!r.ok) throw new Error(r.statusText || 'Fetch failed');
         return r.json();

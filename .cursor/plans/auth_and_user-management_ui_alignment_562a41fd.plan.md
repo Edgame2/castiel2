@@ -7,9 +7,13 @@ isProject: false
 
 # Auth and User-Management UI / Gateway / Service Alignment
 
+**Status:** §1 Done (middleware allows `/api` in ui/middleware.ts). §5 Done (admin security pages use `/api/v1/organizations/...`; users, roles, roles/[id], api-keys verified). §3 In use (getApiBaseUrl/apiFetch in admin security). §2 Rewrites: next.config has empty rewrites; API calls use gateway URL via NEXT_PUBLIC_API_BASE_URL.
+
+---
+
 ## Root cause of the 405
 
-The error `POST http://51.83.73.52:3000/login?from=%2Fapi%2Fauth%2Fregister 405` means the browser was **redirected** to the UI’s `/login` and then re-sent the **POST** there. The only place that redirects with `from=/api/auth/register` is [containers/ui/src/proxy.ts](containers/ui/src/proxy.ts): it treats any path that is not in `PUBLIC_PATHS` and not under a valid token as protected, and redirects to `/login?from=<pathname>`. So when a **same-origin** request hits the UI (e.g. `/api/auth/register` because `NEXT_PUBLIC_API_BASE_URL` is empty or same as UI), the route protection runs, sees no cookie, and redirects. The browser follows the redirect with the same method (POST), and the `/login` page only serves HTML (GET) → **405 Method Not Allowed**.
+The error `POST http://51.83.73.52:3000/login?from=%2Fapi%2Fauth%2Fregister 405` means the browser was **redirected** to the UI’s `/login` and then re-sent the **POST** there. The only place that redirects with `from=/api/auth/register` is [ui/src/proxy.ts](ui/src/proxy.ts): it treats any path that is not in `PUBLIC_PATHS` and not under a valid token as protected, and redirects to `/login?from=<pathname>`. So when a **same-origin** request hits the UI (e.g. `/api/auth/register` because `NEXT_PUBLIC_API_BASE_URL` is empty or same as UI), the route protection runs, sees no cookie, and redirects. The browser follows the redirect with the same method (POST), and the `/login` page only serves HTML (GET) → **405 Method Not Allowed**.
 
 Note: You have `NEXT_PUBLIC_API_BASE_URL=http://localhost:3001`. When the site is opened at `http://51.83.73.52:3000`, a fetch to `http://localhost:3001` goes to the user’s machine, not the server. For production, the env must be the **public** API Gateway URL (e.g. `http://51.83.73.52:3001` or your real gateway host).
 
@@ -26,12 +30,12 @@ Note: You have `NEXT_PUBLIC_API_BASE_URL=http://localhost:3001`. When the site i
 
 **Rule:** API paths must never be treated as “protected pages”. Only **page** navigations should redirect to login when unauthenticated.
 
-**Current:** [containers/ui/src/proxy.ts](containers/ui/src/proxy.ts) has no special case for `/api`, so `/api/auth/register` is protected and triggers redirect.
+**Current:** [ui/src/proxy.ts](ui/src/proxy.ts) has no special case for `/api`, so `/api/auth/register` is protected and triggers redirect.
 
 **Change:**
 
 - In `proxy.ts`, at the start of the protection logic (before checking `isPublicPath` or token), **allow all `/api/*` requests** to pass through: e.g. `if (pathname.startsWith('/api')) return NextResponse.next();`.
-- Ensure this file is actually used as **Next.js middleware**. Next only runs middleware from a file named `middleware.ts` (or `middleware.js`) at project root or under `src/`. Right now the repo has [containers/ui/src/proxy.ts](containers/ui/src/proxy.ts) with a `config` export but **no `middleware.ts`**. So either:
+- Ensure this file is actually used as **Next.js middleware**. Next only runs middleware from a file named `middleware.ts` (or `middleware.js`) at project root or under `src/`. Right now the repo has [ui/src/proxy.ts](ui/src/proxy.ts) with a `config` export but **no `middleware.ts`**. So either:
   - Add `src/middleware.ts` that imports and re-exports the proxy (and its `config`), or  
   - Rename `proxy.ts` to `middleware.ts` and keep the same logic.  
   Then the “allow `/api`” change will apply and same-origin API calls will no longer be redirected to `/login`.
@@ -42,7 +46,7 @@ Note: You have `NEXT_PUBLIC_API_BASE_URL=http://localhost:3001`. When the site i
 
 ## 2. Next.js rewrites: add `/api/users`
 
-**Current:** [containers/ui/next.config.ts](containers/ui/next.config.ts) rewrites only `/api/v1/*`, `/api/profile/*`, and `/api/auth/*` to the gateway when `NEXT_PUBLIC_API_BASE_URL` is set. There is **no** rewrite for `/api/users/*`.
+**Current:** [ui/next.config.ts](ui/next.config.ts) rewrites only `/api/v1/*`, `/api/profile/*`, and `/api/auth/*` to the gateway when `NEXT_PUBLIC_API_BASE_URL` is set. There is **no** rewrite for `/api/users/*`.
 
 **Change:** Add a rewrite so that same-origin calls to the gateway still work for user-management:
 
@@ -54,7 +58,7 @@ This keeps the UI contract “call `/api/users/...`” and lets the gateway rout
 
 ## 3. Single source for API base URL and 401 handling
 
-**Rule:** Every API call in the UI must use the shared helper from [containers/ui/src/lib/api.ts](containers/ui/src/lib/api.ts): either `getApiBaseUrl()` (for building the URL) or `apiFetch()` (which uses it and adds credentials + 401 redirect). The base URL must never be constructed elsewhere (no local `apiBaseUrl`, no other env vars, no hardcoded host/port). This guarantees all calls go through the gateway and a future base URL change requires only changing `NEXT_PUBLIC_API_BASE_URL`.
+**Rule:** Every API call in the UI must use the shared helper from [ui/src/lib/api.ts](ui/src/lib/api.ts): either `getApiBaseUrl()` (for building the URL) or `apiFetch()` (which uses it and adds credentials + 401 redirect). The base URL must never be constructed elsewhere (no local `apiBaseUrl`, no other env vars, no hardcoded host/port). This guarantees all calls go through the gateway and a future base URL change requires only changing `NEXT_PUBLIC_API_BASE_URL`.
 
 **Current:** Register (and some other auth flows) use a local `apiBaseUrl` and raw `fetch` instead of the shared helper.
 
@@ -91,16 +95,16 @@ So organization-scoped endpoints (members, roles, api-keys, invitations) must be
 
 | File | Current pattern | Correct pattern |
 |------|------------------|-----------------|
-| [containers/ui/src/app/admin/security/users/page.tsx](containers/ui/src/app/admin/security/users/page.tsx) | `/api/users/api/v1/organizations/${encoded}/member-count`, `member-limit`, `members` | `/api/v1/organizations/${encoded}/member-count`, etc. |
-| [containers/ui/src/app/admin/security/roles/page.tsx](containers/ui/src/app/admin/security/roles/page.tsx) | `/api/users/api/v1/organizations/.../roles`, `.../permissions` | `/api/v1/organizations/.../roles`, `.../permissions` |
-| [containers/ui/src/app/admin/security/roles/[id]/page.tsx](containers/ui/src/app/admin/security/roles/[id]/page.tsx) | `/api/users/api/v1/organizations/.../roles/...`, `.../permissions` | `/api/v1/organizations/.../roles/...`, `.../permissions` |
-| [containers/ui/src/app/admin/security/api-keys/page.tsx](containers/ui/src/app/admin/security/api-keys/page.tsx) | `/api/users/api/v1/organizations/.../api-keys` | `/api/v1/organizations/.../api-keys` |
+| [ui/src/app/admin/security/users/page.tsx](ui/src/app/admin/security/users/page.tsx) | `/api/users/api/v1/organizations/${encoded}/member-count`, `member-limit`, `members` | `/api/v1/organizations/${encoded}/member-count`, etc. |
+| [ui/src/app/admin/security/roles/page.tsx](ui/src/app/admin/security/roles/page.tsx) | `/api/users/api/v1/organizations/.../roles`, `.../permissions` | `/api/v1/organizations/.../roles`, `.../permissions` |
+| [ui/src/app/admin/security/roles/[id]/page.tsx](ui/src/app/admin/security/roles/[id]/page.tsx) | `/api/users/api/v1/organizations/.../roles/...`, `.../permissions` | `/api/v1/organizations/.../roles/...`, `.../permissions` |
+| [ui/src/app/admin/security/api-keys/page.tsx](ui/src/app/admin/security/api-keys/page.tsx) | `/api/users/api/v1/organizations/.../api-keys` | `/api/v1/organizations/.../api-keys` |
 
 **Already correct (no change):**  
-[containers/ui/src/app/admin/security/users/invite/page.tsx](containers/ui/src/app/admin/security/users/invite/page.tsx), [containers/ui/src/app/admin/security/invitations/page.tsx](containers/ui/src/app/admin/security/invitations/page.tsx), [containers/ui/src/app/admin/security/roles/new/page.tsx](containers/ui/src/app/admin/security/roles/new/page.tsx), [containers/ui/src/app/admin/security/api-keys/new/page.tsx](containers/ui/src/app/admin/security/api-keys/new/page.tsx), and [containers/ui/src/app/admin/tenants/new/page.tsx](containers/ui/src/app/admin/tenants/new/page.tsx) already use `/api/v1/organizations/...`.
+[ui/src/app/admin/security/users/invite/page.tsx](ui/src/app/admin/security/users/invite/page.tsx), [ui/src/app/admin/security/invitations/page.tsx](ui/src/app/admin/security/invitations/page.tsx), [ui/src/app/admin/security/roles/new/page.tsx](ui/src/app/admin/security/roles/new/page.tsx), [ui/src/app/admin/security/api-keys/new/page.tsx](ui/src/app/admin/security/api-keys/new/page.tsx), and [ui/src/app/admin/tenants/new/page.tsx](ui/src/app/admin/tenants/new/page.tsx) already use `/api/v1/organizations/...`.
 
 **Profile and sessions:**  
-[containers/ui/src/app/settings/profile/page.tsx](containers/ui/src/app/settings/profile/page.tsx) and [containers/ui/src/app/settings/security/page.tsx](containers/ui/src/app/settings/security/page.tsx) correctly use `/api/users/me` and `/api/users/me/sessions` (gateway maps to `/api/v1/users/me`, etc.). No change.
+[ui/src/app/settings/profile/page.tsx](ui/src/app/settings/profile/page.tsx) and [ui/src/app/settings/security/page.tsx](ui/src/app/settings/security/page.tsx) correctly use `/api/users/me` and `/api/users/me/sessions` (gateway maps to `/api/v1/users/me`, etc.). No change.
 
 ---
 
@@ -130,8 +134,8 @@ So organization-scoped endpoints (members, roles, api-keys, invitations) must be
 
 ## Summary of code changes
 
-1. **Route protection:** In [containers/ui/src/proxy.ts](containers/ui/src/proxy.ts) (or the file that becomes middleware), add an early return for `pathname.startsWith('/api')` so API requests are never redirected to `/login`. Ensure this logic runs by adding or renaming to `src/middleware.ts`.
-2. **Rewrites:** In [containers/ui/next.config.ts](containers/ui/next.config.ts), add rewrite for `'/api/users/:path*'` to the gateway.
+1. **Route protection:** In [ui/src/proxy.ts](ui/src/proxy.ts) (or the file that becomes middleware), add an early return for `pathname.startsWith('/api')` so API requests are never redirected to `/login`. Ensure this logic runs by adding or renaming to `src/middleware.ts`.
+2. **Rewrites:** In [ui/next.config.ts](ui/next.config.ts), add rewrite for `'/api/users/:path*'` to the gateway.
 3. **Single API base:** Use `getApiBaseUrl()` or `apiFetch()` from `@/lib/api` for all API calls (register, forgot-password, reset-password, verify-email, and any other pages that still use a local base URL). No base URL construction outside the shared helper.
 4. **User-management admin:** In the four admin pages listed in §5, replace every `/api/users/api/v1/organizations/` with `/api/v1/organizations/` so UI, gateway, and user-management paths align.
 

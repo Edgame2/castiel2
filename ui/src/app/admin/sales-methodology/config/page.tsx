@@ -20,8 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type MethodologyType = 'MEDDIC' | 'MEDDPICC' | 'Challenger' | 'Sandler' | 'SPIN' | 'Custom';
 
@@ -87,7 +86,7 @@ export default function SalesMethodologyConfigPage() {
   const [risksJson, setRisksJson] = useState('[]');
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
       return;
@@ -95,7 +94,7 @@ export default function SalesMethodologyConfigPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/sales-methodology`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/sales-methodology');
       if (res.status === 404) {
         setConfig(defaultMethodology);
         setStagesJson('[]');
@@ -114,7 +113,7 @@ export default function SalesMethodologyConfigPage() {
       setRequiredFieldsJson(JSON.stringify(json.requiredFields ?? [], null, 2));
       setRisksJson(JSON.stringify(json.risks ?? [], null, 2));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setConfig(defaultMethodology);
       setStagesJson('[]');
       setRequiredFieldsJson('[]');
@@ -137,7 +136,7 @@ export default function SalesMethodologyConfigPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     let stages: unknown[];
     let requiredFields: unknown[];
     let risks: unknown[];
@@ -170,7 +169,7 @@ export default function SalesMethodologyConfigPage() {
         isDefault: bodyConfig.isDefault ?? undefined,
         integrationConfig: bodyConfig.integrationConfig ?? undefined,
       };
-      const res = await fetch(`${apiBaseUrl}/api/v1/sales-methodology`, {
+      const res = await apiFetch('/api/v1/sales-methodology', {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -183,7 +182,7 @@ export default function SalesMethodologyConfigPage() {
       setSaveMessage('Saved.');
       await fetchConfig();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }
@@ -234,7 +233,7 @@ export default function SalesMethodologyConfigPage() {
       </p>
       {subNav}
 
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <div className="mb-4">
           <Button
             type="button"
@@ -248,7 +247,7 @@ export default function SalesMethodologyConfigPage() {
         </div>
       )}
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
@@ -272,7 +271,7 @@ export default function SalesMethodologyConfigPage() {
         </div>
       )}
 
-      {!loading && apiBaseUrl && (
+      {!loading && getApiBaseUrl() && (
         <form onSubmit={handleSave} className="rounded-lg border bg-white dark:bg-gray-900">
           <div className="p-6">
             <nav className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-6" role="tablist">

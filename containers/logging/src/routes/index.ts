@@ -4,6 +4,7 @@
  */
 
 import { FastifyInstance } from 'fastify';
+import { tenantEnforcementMiddleware } from '@coder/shared';
 import { authenticateRequest } from '../middleware/auth';
 import { registerLogRoutes } from './logs';
 import { registerSearchRoutes } from './search';
@@ -20,13 +21,22 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   // Health endpoints (no auth, no rate limit)
   await registerHealthRoutes(app);
   
-  // API v1 routes with authentication and rate limiting
+  // API v1 routes with authentication, tenant enforcement, and rate limiting
   await app.register(async (v1) => {
     // Apply rate limiting to all v1 routes
     v1.addHook('onRequest', rateLimitMiddleware);
     
     // Apply authentication to all v1 routes
     v1.addHook('preHandler', authenticateRequest);
+    // Apply tenant enforcement (X-Tenant-ID required)
+    v1.addHook('preHandler', tenantEnforcementMiddleware());
+    // Ensure user.tenantId for routes (tenantEnforcementMiddleware sets tenantContext)
+    v1.addHook('preHandler', async (request) => {
+      const ctx = (request as { tenantContext?: { tenantId: string } }).tenantContext;
+      if (ctx && (request as { user?: { tenantId?: string; organizationId?: string } }).user) {
+        (request as { user: { tenantId?: string } }).user.tenantId = ctx.tenantId;
+      }
+    });
     
     await registerLogRoutes(v1);
     await registerSearchRoutes(v1);

@@ -23,9 +23,54 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       {
         preHandler: [authenticateRequest() as any, tenantEnforcementMiddleware() as any],
         schema: {
-          description: 'Perform web search',
+          description: 'Perform web search (when web_search.url configured)',
           tags: ['Web Search'],
           security: [{ bearerAuth: [] }],
+          body: {
+            type: 'object',
+            required: ['query'],
+            properties: {
+              query: { type: 'string', minLength: 1 },
+              limit: { type: 'number', minimum: 1, maximum: 50 },
+              useCache: { type: 'boolean' },
+              opportunityId: { type: 'string' },
+              accountId: { type: 'string' },
+            },
+          },
+          response: {
+            200: {
+              type: 'object',
+              properties: {
+                results: { type: 'array' },
+                query: { type: 'string' },
+                cached: { type: 'boolean' },
+              },
+            },
+            400: {
+              type: 'object',
+              properties: {
+                error: {
+                  type: 'object',
+                  properties: {
+                    code: { type: 'string' },
+                    message: { type: 'string' },
+                  },
+                },
+              },
+            },
+            500: {
+              type: 'object',
+              properties: {
+                error: {
+                  type: 'object',
+                  properties: {
+                    code: { type: 'string' },
+                    message: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
         },
       },
       async (request, reply) => {

@@ -8,8 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface EndpointItem {
   id: string;
@@ -32,7 +31,7 @@ export default function MLModelsEndpointsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchEndpoints = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
       return;
@@ -40,7 +39,7 @@ export default function MLModelsEndpointsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/ml/endpoints`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/ml/endpoints');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -48,7 +47,7 @@ export default function MLModelsEndpointsPage() {
       const json = await res.json();
       setData(json);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setData(null);
     } finally {
       setLoading(false);
@@ -127,7 +126,7 @@ export default function MLModelsEndpointsPage() {
         </Link>
       </nav>
 
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <div className="mb-4 flex flex-wrap gap-2">
           <Button asChild size="sm">
             <Link href="/admin/ml-models/endpoints/new">New endpoint</Link>
@@ -138,7 +137,7 @@ export default function MLModelsEndpointsPage() {
         </div>
       )}
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>

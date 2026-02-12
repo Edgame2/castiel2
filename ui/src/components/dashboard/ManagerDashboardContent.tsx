@@ -10,6 +10,7 @@ import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { EarlyWarningCard } from '@/components/dashboard/EarlyWarningCard';
 import { TopAtRiskReasonsCard } from '@/components/dashboard/TopAtRiskReasonsCard';
 import { ScenarioForecastChart } from '@/components/forecast/ScenarioForecastChart';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type ManagerWidget = {
   id: string;
@@ -153,7 +154,7 @@ export function ManagerDashboardContent({ apiBaseUrl = '', getHeaders }: Manager
       const json = (await res.json()) as { widgets?: ManagerWidget[] };
       setWidgets(Array.isArray(json?.widgets) ? json.widgets : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setWidgets([]);
     } finally {
       setLoading(false);

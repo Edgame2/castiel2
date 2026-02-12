@@ -18,8 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface LoggingConfig {
   logLevel?: 'debug' | 'info' | 'warn' | 'error';
@@ -46,7 +45,7 @@ export default function SystemLoggingPage() {
   const [dirty, setDirty] = useState(false);
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setConfig(DEFAULT_CONFIG);
       setLoading(false);
@@ -55,12 +54,12 @@ export default function SystemLoggingPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/system/logging`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/system/logging');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setConfig({ ...DEFAULT_CONFIG, ...data });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setConfig(DEFAULT_CONFIG);
     } finally {
       setLoading(false);
@@ -77,11 +76,11 @@ export default function SystemLoggingPage() {
   }, []);
 
   const handleSave = async () => {
-    if (!apiBaseUrl || !config) return;
+    if (!getApiBaseUrl() || !config) return;
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/system/logging`, {
+      const res = await apiFetch('/api/v1/system/logging', {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -94,8 +93,8 @@ export default function SystemLoggingPage() {
       const data = await res.json();
       setConfig({ ...DEFAULT_CONFIG, ...data });
       setDirty(false);
-    } catch (e) {
-      setSaveError(e instanceof Error ? e.message : String(e));
+    } catch {
+      setSaveError(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }

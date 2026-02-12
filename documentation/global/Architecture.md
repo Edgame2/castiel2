@@ -12,7 +12,7 @@ The platform is architected as a **Compound AI System (CAIS)** that orchestrates
 
 **Next.js Web Application (UI Container)**
 
-- **Location**: `containers/ui/`
+- **Location**: `ui/`
 - **Technology**: Next.js 16 (App Router) + React 19
 - **Components**:
   - React UI with Shadcn components

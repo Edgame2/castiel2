@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import {
   BarChart,
   Bar,
@@ -17,8 +18,12 @@ type Horizons = {
 };
 
 function colorForRisk(v: number): string {
-  if (v < 0.33) return "#22c55e";
-  if (v < 0.66) return "#eab308";
+  if (v < 0.33) {
+    return "#22c55e";
+  }
+  if (v < 0.66) {
+    return "#eab308";
+  }
   return "#ef4444";
 }
 
@@ -30,7 +35,7 @@ export function RiskTrajectoryChart({
   horizons: Horizons;
   title?: string;
   height?: number;
-}) {
+}): React.ReactElement {
   const keys = [30, 60, 90] as const;
   const chartData = keys.map((d) => {
     const h = horizons[d];

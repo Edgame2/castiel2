@@ -97,7 +97,7 @@ vi.mock('yaml', () => ({
 
 // Mock @coder/shared database
 vi.mock('@coder/shared/database', () => ({
-  getContainer: vi.fn((name: string) => ({
+  getContainer: vi.fn(() => ({
     items: {
       create: vi.fn().mockImplementation((doc: any) =>
         Promise.resolve({ resource: { ...doc, id: doc.id || 'created-id' } })
@@ -107,18 +107,8 @@ vi.mock('@coder/shared/database', () => ({
         fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
       })),
     },
-    item: vi.fn((id: string, partitionKey: string) => ({
-      read: vi.fn().mockResolvedValue({
-        resource: {
-          id,
-          tenantId: partitionKey,
-          status: 'pending',
-          results: { total: 0, passed: 0, failed: 0, skipped: 0, errors: 0, warnings: 0, info: 0 },
-          createdAt: new Date(),
-          createdBy: 'user',
-          target: { type: 'file', path: '/test' },
-        },
-      }),
+    item: vi.fn(() => ({
+      read: vi.fn().mockResolvedValue({ resource: null }),
       replace: vi.fn().mockImplementation((doc: any) => Promise.resolve({ resource: doc })),
       delete: vi.fn().mockResolvedValue(undefined),
     })),
@@ -141,7 +131,7 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn(() => ({
     get: vi.fn().mockResolvedValue({ data: {} }),
@@ -149,10 +139,21 @@ vi.mock('@coder/shared', () => ({
     put: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   })),
-  authenticateRequest: vi.fn(() => vi.fn()),
-  tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
+  authenticateRequest: vi.fn(
+    () => async (req: { user?: { id: string; tenantId: string }; headers?: { 'x-tenant-id'?: string } }) => {
+      req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+    }
+  ),
+  tenantEnforcementMiddleware: vi.fn(
+    () => async (req: { user?: { id: string; tenantId: string }; headers?: { 'x-tenant-id'?: string } }) => {
+      req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+    }
+  ),
   setupJWT: vi.fn(),
   setupHealthCheck: vi.fn(),
+  initializeDatabase: vi.fn(),
+  connectDatabase: vi.fn().mockResolvedValue(undefined),
+  disconnectDatabase: vi.fn(),
 }));
 
 // Global test setup

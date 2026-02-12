@@ -9,8 +9,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface ActionCatalogRelationship {
   riskId: string;
@@ -51,7 +50,7 @@ export default function ActionCatalogRelationshipDetailPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   const fetchData = useCallback(async () => {
-    if (!apiBase || !parsed) {
+    if (!getApiBaseUrl() || !parsed) {
       setLoading(false);
       return;
     }
@@ -59,8 +58,8 @@ export default function ActionCatalogRelationshipDetailPage() {
     setError(null);
     try {
       const [relRes, entriesRes] = await Promise.all([
-        fetch(`${apiBase}/api/v1/action-catalog/relationships`, { credentials: 'include' }),
-        fetch(`${apiBase}/api/v1/action-catalog/entries`, { credentials: 'include' }),
+        apiFetch('/api/v1/action-catalog/relationships'),
+        apiFetch('/api/v1/action-catalog/entries'),
       ]);
       if (!relRes.ok || !entriesRes.ok) throw new Error('Failed to load');
       const relJson = await relRes.json();
@@ -72,7 +71,7 @@ export default function ActionCatalogRelationshipDetailPage() {
       setRelationship(found ?? null);
       setEntries(Array.isArray(entriesJson) ? entriesJson : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
+      setError(GENERIC_ERROR_MESSAGE);
       setRelationship(null);
     } finally {
       setLoading(false);
@@ -86,18 +85,16 @@ export default function ActionCatalogRelationshipDetailPage() {
   const entryName = (id: string) => entries.find((e) => e.id === id)?.displayName ?? id;
 
   const handleDelete = () => {
-    if (!apiBase || !parsed || deleting) return;
+    if (!getApiBaseUrl() || !parsed || deleting) return;
     setDeleting(true);
-    const url = new URL(`${apiBase}/api/v1/action-catalog/relationships`);
-    url.searchParams.set('riskId', parsed.riskId);
-    url.searchParams.set('recommendationId', parsed.recommendationId);
-    fetch(url.toString(), { method: 'DELETE', credentials: 'include' })
+    const path = `/api/v1/action-catalog/relationships?riskId=${encodeURIComponent(parsed.riskId)}&recommendationId=${encodeURIComponent(parsed.recommendationId)}`;
+    apiFetch(path, { method: 'DELETE' })
       .then((r) => {
         if (!r.ok && r.status !== 204) return r.json().then((d: { error?: { message?: string } }) => { throw new Error(d?.error?.message ?? r.statusText); });
         router.push('/admin/action-catalog/relationships');
       })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Delete failed');
+      .catch(() => {
+        setError(GENERIC_ERROR_MESSAGE);
         setDeleting(false);
       });
   };

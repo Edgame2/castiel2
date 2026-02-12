@@ -7,6 +7,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,44 +25,61 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 import { apiFetch, GENERIC_ERROR_MESSAGE } from "@/lib/api";
 
+const loginSchema = z.object({
+  email: z.string().min(1, "Email is required").email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+  rememberMe: z.boolean(),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mfaSessionId, setMfaSessionId] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "", rememberMe: false },
+  });
+
+  const onLoginSubmit = async (data: LoginFormData) => {
     setError(null);
     setLoading(true);
     try {
       const res = await apiFetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, rememberMe }),
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          rememberMe: data.rememberMe,
+        }),
         skip401Redirect: true,
       });
-      const data = await res.json().catch(() => ({}));
-      if (res.status === 202 && data?.requiresMfa && data?.mfaSessionId) {
-        setMfaSessionId(data.mfaSessionId);
+      const responseData = await res.json().catch(() => ({}));
+      if (res.status === 202 && responseData?.requiresMfa && responseData?.mfaSessionId) {
+        setMfaSessionId(responseData.mfaSessionId);
         setMfaCode("");
         setLoading(false);
         return;
       }
       if (!res.ok) {
-        const msg = data?.error || data?.message || `HTTP ${res.status}`;
+        const msg = responseData?.error || responseData?.message || `HTTP ${res.status}`;
         setError(typeof msg === "string" ? msg : JSON.stringify(msg));
         return;
       }
-      // Full page redirect so the browser sends the newly set cookies on the next request (client nav can race with cookie commit)
       window.location.href = "/dashboard";
       return;
     } catch (e) {
       if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
-        setError(GENERIC_ERROR_MESSAGE);
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }
@@ -158,7 +178,7 @@ export default function LoginPage() {
               </div>
             </form>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit(onLoginSubmit)} className="space-y-4">
               {error && (
                 <div className="rounded-md bg-destructive/10 text-destructive text-sm p-3 border border-destructive/20">
                   {error}
@@ -170,11 +190,12 @@ export default function LoginPage() {
                   id="login-email"
                   type="email"
                   autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
                   placeholder="you@example.com"
+                  {...register("email")}
                 />
+                {errors.email && (
+                  <p className="text-sm text-destructive" role="alert">{errors.email.message}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="login-password">Password <span className="text-destructive" aria-hidden="true">*</span></Label>
@@ -182,18 +203,24 @@ export default function LoginPage() {
                   id="login-password"
                   type="password"
                   autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
+                  {...register("password")}
                 />
+                {errors.password && (
+                  <p className="text-sm text-destructive" role="alert">{errors.password.message}</p>
+                )}
               </div>
               <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="login-remember"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) =>
-                    setRememberMe(checked === true)
-                  }
+                <Controller
+                  name="rememberMe"
+                  control={control}
+                  render={({ field }) => (
+                    <Checkbox
+                      id="login-remember"
+                      checked={field.value}
+                      onCheckedChange={(checked) => field.onChange(checked === true)}
+                      onBlur={field.onBlur}
+                    />
+                  )}
                 />
                 <Label
                   htmlFor="login-remember"

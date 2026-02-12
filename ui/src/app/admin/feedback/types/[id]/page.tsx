@@ -14,9 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type Category = 'action' | 'relevance' | 'quality' | 'timing' | 'other';
 type Sentiment = 'positive' | 'neutral' | 'negative';
@@ -57,14 +55,14 @@ export default function FeedbackTypeDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchType = useCallback(() => {
-    if (!apiBase || !id) {
+    if (!getApiBaseUrl() || !id) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/admin/feedback-types/${encodeURIComponent(id)}`, { credentials: 'include' })
-      .then((r) => {
+    apiFetch(`/api/v1/admin/feedback-types/${encodeURIComponent(id)}`)
+      .then((r: Response) => {
         if (r.status === 404) throw new Error('Feedback type not found');
         if (!r.ok) throw new Error(r.statusText || 'Failed to load');
         return r.json();
@@ -78,8 +76,7 @@ export default function FeedbackTypeDetailPage() {
         setOrder(data.order ?? 0);
         setIsActive(data.isActive ?? true);
       })
-      .catch((e) => {
-        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      .catch(() => {
         setError(GENERIC_ERROR_MESSAGE);
         setType(null);
       })
@@ -92,12 +89,11 @@ export default function FeedbackTypeDetailPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !id || !type || saving) return;
+    if (!getApiBaseUrl() || !id || !type || saving) return;
     setSaveError(null);
     setSaving(true);
-    fetch(`${apiBase}/api/v1/admin/feedback-types/${encodeURIComponent(id)}`, {
+    apiFetch(`/api/v1/admin/feedback-types/${encodeURIComponent(id)}`, {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         displayName: displayName.trim(),
@@ -108,26 +104,25 @@ export default function FeedbackTypeDetailPage() {
         isActive,
       }),
     })
-      .then((r) => r.json().catch(() => ({})))
+      .then((r: Response) => r.json().catch(() => ({})))
       .then((data: { error?: { message?: string } }) => {
         if (data?.error?.message) throw new Error(data.error.message);
         setEditing(false);
         fetchType();
       })
-      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setSaveError(GENERIC_ERROR_MESSAGE); })
+      .catch(() => setSaveError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSaving(false));
   };
 
   const handleDelete = () => {
-    if (!apiBase || !id || deleting) return;
+    if (!getApiBaseUrl() || !id || deleting) return;
     setDeleting(true);
-    fetch(`${apiBase}/api/v1/admin/feedback-types/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' })
-      .then((r) => {
+    apiFetch(`/api/v1/admin/feedback-types/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      .then((r: Response) => {
         if (!r.ok && r.status !== 204) return r.json().then((d: { error?: { message?: string } }) => { throw new Error(d?.error?.message ?? r.statusText); });
         router.push('/admin/feedback/types');
       })
-      .catch((e) => {
-        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      .catch(() => {
         setSaveError(GENERIC_ERROR_MESSAGE);
         setDeleting(false);
       });

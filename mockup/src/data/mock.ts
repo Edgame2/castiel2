@@ -90,7 +90,7 @@ const NAMES = [
   "Proseware - Content Management",
 ];
 
-function genId(prefix: string, i: number) {
+function genId(prefix: string, i: number): string {
   return `${prefix}-${String(i).padStart(2, "0")}`;
 }
 

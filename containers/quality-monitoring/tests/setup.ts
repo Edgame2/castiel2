@@ -47,6 +47,10 @@ cosmos_db:
   endpoint: ${process.env.COSMOS_DB_ENDPOINT}
   key: ${process.env.COSMOS_DB_KEY}
   database_id: ${process.env.COSMOS_DB_DATABASE_ID}
+  containers:
+    anomalies: quality_anomalies
+    explanations: quality_explanations
+    metrics: quality_metrics
 jwt:
   secret: ${process.env.JWT_SECRET}
 rabbitmq:
@@ -71,6 +75,11 @@ vi.mock('yaml', () => ({
         endpoint: process.env.COSMOS_DB_ENDPOINT,
         key: process.env.COSMOS_DB_KEY,
         database_id: process.env.COSMOS_DB_DATABASE_ID,
+        containers: {
+          anomalies: 'quality_anomalies',
+          explanations: 'quality_explanations',
+          metrics: 'quality_metrics',
+        },
       },
       jwt: { secret: process.env.JWT_SECRET },
       rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
@@ -84,15 +93,16 @@ vi.mock('yaml', () => ({
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(() => ({
     items: {
-      create: vi.fn(),
+      create: vi.fn().mockResolvedValue({ resource: {} }),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
       })),
     },
     item: vi.fn(() => ({
       read: vi.fn().mockResolvedValue({ resource: null }),
-      replace: vi.fn(),
-      delete: vi.fn(),
+      replace: vi.fn().mockImplementation((doc: any) => Promise.resolve({ resource: doc })),
+      delete: vi.fn().mockResolvedValue(undefined),
     })),
   })),
   initializeDatabase: vi.fn(),
@@ -113,22 +123,38 @@ vi.mock('@coder/shared/events', () => ({
 }));
 
 // Mock @coder/shared (ServiceClient + EventPublisher for publisher tests)
-vi.mock('@coder/shared', () => ({
-  ServiceClient: vi.fn(() => ({
+vi.mock('@coder/shared', () => {
+  const clientInstance = {
     get: vi.fn().mockResolvedValue({ data: {} }),
     post: vi.fn().mockResolvedValue({ data: {} }),
     put: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
-  })),
-  EventPublisher: vi.fn().mockImplementation(function (this: { publish: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> }) {
-    this.publish = vi.fn().mockResolvedValue(undefined);
-    this.close = vi.fn();
-    return this;
-  }),
-  authenticateRequest: vi.fn(() => vi.fn()),
-  tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
-  setupJWT: vi.fn(),
-}));
+  };
+  return {
+    ServiceClient: vi.fn().mockImplementation(function ServiceClient() {
+      return clientInstance;
+    }),
+    EventPublisher: vi.fn().mockImplementation(function (this: { publish: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> }) {
+      this.publish = vi.fn().mockResolvedValue(undefined);
+      this.close = vi.fn();
+      return this;
+    }),
+    authenticateRequest: vi.fn(
+      () => async (req: { user?: { id: string; tenantId: string }; headers?: { 'x-tenant-id'?: string } }) => {
+        req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+      }
+    ),
+    tenantEnforcementMiddleware: vi.fn(
+      () => async (req: { user?: { id: string; tenantId: string }; headers?: { 'x-tenant-id'?: string } }) => {
+        req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+      }
+    ),
+    setupJWT: vi.fn(),
+    initializeDatabase: vi.fn(),
+    connectDatabase: vi.fn().mockResolvedValue(undefined),
+    disconnectDatabase: vi.fn(),
+  };
+});
 
 // Global test setup
 beforeAll(async () => {

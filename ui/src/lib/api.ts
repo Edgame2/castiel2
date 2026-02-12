@@ -1,6 +1,9 @@
 /**
  * Shared API base URL and fetch helper. Use for all backend calls.
  * On 401, redirects to /logout (clears session) then /login.
+ *
+ * All API calls go directly to the gateway via NEXT_PUBLIC_API_BASE_URL.
+ * The gateway must allow CORS from the UI origin and accept credentials if using cookies.
  */
 
 /** Safe, user-facing message when an unexpected error occurs (no leaked internals). */

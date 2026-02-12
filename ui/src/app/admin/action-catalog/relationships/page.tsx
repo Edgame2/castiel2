@@ -11,8 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface ActionCatalogRelationship {
   riskId: string;
@@ -40,13 +39,13 @@ export default function ActionCatalogRelationshipsPage() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setLoading(true);
     setError(null);
     try {
       const [relRes, entriesRes] = await Promise.all([
-        fetch(`${apiBaseUrl}/api/v1/action-catalog/relationships`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/v1/action-catalog/entries`, { credentials: 'include' }),
+        apiFetch('/api/v1/action-catalog/relationships'),
+        apiFetch('/api/v1/action-catalog/entries'),
       ]);
       if (!relRes.ok) throw new Error(`Relationships: HTTP ${relRes.status}`);
       if (!entriesRes.ok) throw new Error(`Entries: HTTP ${entriesRes.status}`);
@@ -55,7 +54,7 @@ export default function ActionCatalogRelationshipsPage() {
       setRelationships(Array.isArray(relJson) ? relJson : []);
       setEntries(Array.isArray(entriesJson) ? entriesJson : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setRelationships([]);
       setEntries([]);
     } finally {
@@ -95,11 +94,11 @@ export default function ActionCatalogRelationshipsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl || !createForm.riskId || !createForm.recommendationId) return;
+    if (!getApiBaseUrl() || !createForm.riskId || !createForm.recommendationId) return;
     setFormSaving(true);
     setFormError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/relationships`, {
+      const res = await apiFetch('/api/v1/action-catalog/relationships', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -113,27 +112,25 @@ export default function ActionCatalogRelationshipsPage() {
       closeModal();
       await fetchData();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!apiBaseUrl || !deleteRel) return;
+    if (!getApiBaseUrl() || !deleteRel) return;
     setFormSaving(true);
     setFormError(null);
     try {
-      const url = new URL(`${apiBaseUrl}/api/v1/action-catalog/relationships`);
-      url.searchParams.set('riskId', deleteRel.riskId);
-      url.searchParams.set('recommendationId', deleteRel.recommendationId);
-      const res = await fetch(url.toString(), { method: 'DELETE', credentials: 'include' });
+      const path = `/api/v1/action-catalog/relationships?riskId=${encodeURIComponent(deleteRel.riskId)}&recommendationId=${encodeURIComponent(deleteRel.recommendationId)}`;
+      const res = await apiFetch(path, { method: 'DELETE' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
       closeModal();
       await fetchData();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }
@@ -217,13 +214,13 @@ export default function ActionCatalogRelationshipsPage() {
         </span>
       </nav>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
       )}
 
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <div className="mb-4 flex flex-wrap gap-4 items-center">
           <Button asChild size="sm">
             <Link href="/admin/action-catalog/relationships/new" aria-label="New link (page)">New link</Link>
@@ -271,7 +268,7 @@ export default function ActionCatalogRelationshipsPage() {
         </div>
       )}
 
-      {!loading && apiBaseUrl && !error && (
+      {!loading && getApiBaseUrl() && !error && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <h2 className="text-lg font-semibold">Relationships</h2>

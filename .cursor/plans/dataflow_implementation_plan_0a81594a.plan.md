@@ -64,6 +64,8 @@ flowchart LR
   SS --> Rec
 ```
 
+
+
 ---
 
 ## Phase 1: Policy, enrichment path, risk related-shards
@@ -209,17 +211,19 @@ Execute in this order to respect dependencies:
 
 ## Key files reference
 
-| Area | File(s) |
-|------|--------|
-| Shard shape | [containers/shard-manager/src/types/shard.types.ts](containers/shard-manager/src/types/shard.types.ts), [containers/shard-manager/src/services/ShardService.ts](containers/shard-manager/src/services/ShardService.ts) |
-| Enrichment write | [containers/data-enrichment/src/services/EnrichmentService.ts](containers/data-enrichment/src/services/EnrichmentService.ts) (updateShardEnrichment) |
-| Policy resolver | New: containers/shared/src/policy/ or services/PolicyResolver.ts |
-| Tenant ML config | [containers/risk-analytics/src/types/tenant-ml-config.types.ts](containers/risk-analytics/src/types/tenant-ml-config.types.ts), [containers/risk-analytics/src/services/TenantMLConfigService.ts](containers/risk-analytics/src/services/TenantMLConfigService.ts) |
-| Risk vector search | [containers/risk-analytics/src/services/RiskEvaluationService.ts](containers/risk-analytics/src/services/RiskEvaluationService.ts) (evaluateRisk, detectRisks*) |
-| Recommendations | [containers/recommendations/src/services/RecommendationsService.ts](containers/recommendations/src/services/RecommendationsService.ts) |
-| Search service vector API | [containers/search-service/src/routes/index.ts](containers/search-service/src/routes/index.ts) (POST /api/v1/search/vector), SearchService.vectorSearch |
-| web-search c_search | [containers/web-search/src/services/WebSearchService.ts](containers/web-search/src/services/WebSearchService.ts) |
-| Shard types bootstrap | [containers/shard-manager/src/startup/bootstrapShardTypes.ts](containers/shard-manager/src/startup/bootstrapShardTypes.ts) |
+
+| Area                      | File(s)                                                                                                                                                                                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shard shape               | [containers/shard-manager/src/types/shard.types.ts](containers/shard-manager/src/types/shard.types.ts), [containers/shard-manager/src/services/ShardService.ts](containers/shard-manager/src/services/ShardService.ts)                                             |
+| Enrichment write          | [containers/data-enrichment/src/services/EnrichmentService.ts](containers/data-enrichment/src/services/EnrichmentService.ts) (updateShardEnrichment)                                                                                                               |
+| Policy resolver           | New: containers/shared/src/policy/ or services/PolicyResolver.ts                                                                                                                                                                                                   |
+| Tenant ML config          | [containers/risk-analytics/src/types/tenant-ml-config.types.ts](containers/risk-analytics/src/types/tenant-ml-config.types.ts), [containers/risk-analytics/src/services/TenantMLConfigService.ts](containers/risk-analytics/src/services/TenantMLConfigService.ts) |
+| Risk vector search        | [containers/risk-analytics/src/services/RiskEvaluationService.ts](containers/risk-analytics/src/services/RiskEvaluationService.ts) (evaluateRisk, detectRisks*)                                                                                                    |
+| Recommendations           | [containers/recommendations/src/services/RecommendationsService.ts](containers/recommendations/src/services/RecommendationsService.ts)                                                                                                                             |
+| Search service vector API | [containers/search-service/src/routes/index.ts](containers/search-service/src/routes/index.ts) (POST /api/v1/search/vector), SearchService.vectorSearch                                                                                                            |
+| web-search c_search       | [containers/web-search/src/services/WebSearchService.ts](containers/web-search/src/services/WebSearchService.ts)                                                                                                                                                   |
+| Shard types bootstrap     | [containers/shard-manager/src/startup/bootstrapShardTypes.ts](containers/shard-manager/src/startup/bootstrapShardTypes.ts)                                                                                                                                         |
+
 
 ---
 
@@ -229,3 +233,4 @@ Execute in this order to respect dependencies:
 - Risk: Evaluation response includes at least one risk driver derived from a related shard’s enrichmentData when such a shard exists and shardTypeAnalysisPolicy allows.
 - c_search: Each search execution results in exactly one c_search shard created for the tenant; risk/recommendations can retrieve c_search via vector search when policy allows.
 - Vector search: All requests include tenantId filter; optional opportunityId/scope for relevance.
+

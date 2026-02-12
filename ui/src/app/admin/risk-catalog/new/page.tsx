@@ -14,9 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const CATEGORIES = ['Commercial', 'Technical', 'Legal', 'Financial', 'Competitive', 'Operational'] as const;
 
@@ -36,7 +34,7 @@ export default function RiskCatalogNewPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !riskId.trim() || !name.trim() || submitting) return;
+    if (!getApiBaseUrl() || !riskId.trim() || !name.trim() || submitting) return;
     setError(null);
     setSubmitting(true);
     const sourceShardTypes = sourceShardTypesStr.split(',').map((s) => s.trim()).filter(Boolean);
@@ -51,9 +49,8 @@ export default function RiskCatalogNewPage() {
       explainabilityTemplate: explainabilityTemplate.trim() || 'Risk identified.',
       catalogType: 'tenant',
     };
-    fetch(`${apiBase}/api/v1/risk-catalog/risks`, {
+    apiFetch('/api/v1/risk-catalog/risks', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })

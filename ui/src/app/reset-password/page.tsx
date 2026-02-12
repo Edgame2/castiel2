@@ -8,6 +8,9 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -19,45 +22,54 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
+
+const resetPasswordSchema = z
+  .object({
+    newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(1, 'Confirm password is required'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const tokenFromUrl = searchParams.get('token') ?? '';
 
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const { register, handleSubmit, formState: { errors } } = useForm<ResetPasswordFormData>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { newPassword: '', confirmPassword: '' },
+  });
+
+  const onSubmit = async (data: ResetPasswordFormData) => {
     setError(null);
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
     if (!tokenFromUrl) {
       setError('Missing reset token. Use the link from your email.');
       return;
     }
     setLoading(true);
     try {
-      const base = getApiBaseUrl();
-      const res = await fetch(`${base ? `${base.replace(/\/$/, '')}` : ''}/api/auth/reset-password`, {
+      const res = await apiFetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ token: tokenFromUrl, newPassword }),
+        body: JSON.stringify({ token: tokenFromUrl, newPassword: data.newPassword }),
+        skip401Redirect: true,
       });
-      const data = await res.json().catch(() => ({}));
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const msg = data?.error || data?.message || data?.details || `HTTP ${res.status}`;
+        const msg = json?.error || json?.message || json?.details || `HTTP ${res.status}`;
         setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
         return;
       }
-      setSuccessMessage(data?.message ?? 'Password has been reset successfully. Please log in with your new password.');
+      setSuccessMessage(json?.message ?? 'Password has been reset successfully. Please log in with your new password.');
     } catch (e) {
       if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
       setError(GENERIC_ERROR_MESSAGE);
@@ -107,7 +119,7 @@ function ResetPasswordForm() {
         <CardDescription>Enter and confirm your new password.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {error && (
             <div className="rounded-md bg-destructive/10 text-destructive text-sm p-3 border border-destructive/20">
               {error}
@@ -121,12 +133,12 @@ function ResetPasswordForm() {
               id="reset-newPassword"
               type="password"
               autoComplete="new-password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={8}
               className="w-full"
+              {...register('newPassword')}
             />
+            {errors.newPassword && (
+              <p className="text-sm text-destructive" role="alert">{errors.newPassword.message}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="reset-confirmPassword">
@@ -136,12 +148,12 @@ function ResetPasswordForm() {
               id="reset-confirmPassword"
               type="password"
               autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={8}
               className="w-full"
+              {...register('confirmPassword')}
             />
+            {errors.confirmPassword && (
+              <p className="text-sm text-destructive" role="alert">{errors.confirmPassword.message}</p>
+            )}
           </div>
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? 'Resetting…' : 'Reset password'}

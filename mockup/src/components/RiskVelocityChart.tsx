@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 const VELOCITY_SCALE = 0.02;
 
 export function RiskVelocityChart({
@@ -12,7 +14,7 @@ export function RiskVelocityChart({
   acceleration?: number;
   dataPoints: number;
   title?: string;
-}) {
+}): React.ReactElement {
   const isPositive = velocity > 0.001;
   const isNegative = velocity < -0.001;
   const pct = (velocity * 100).toFixed(2);

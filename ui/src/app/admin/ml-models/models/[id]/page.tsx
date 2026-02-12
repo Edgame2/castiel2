@@ -14,9 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 const STATUSES = ['draft', 'training', 'evaluating', 'ready', 'deployed', 'archived', 'failed'] as const;
 
 interface ModelItem {
@@ -52,13 +51,13 @@ export default function MLModelsModelDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchModel = useCallback(async () => {
-    if (!apiBase || !id) {
+    if (!getApiBaseUrl() || !id) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/ml/models/${encodeURIComponent(id)}`, { credentials: 'include' })
+    apiFetch(`/api/v1/ml/models/${encodeURIComponent(id)}`)
       .then((r) => {
         if (r.status === 404) {
           setModel(null);
@@ -91,13 +90,12 @@ export default function MLModelsModelDetailPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !model || saving) return;
+    if (!getApiBaseUrl() || !model || saving) return;
     setSaveError(null);
     setSaving(true);
     const limitations = limitationsStr.split('\n').map((s) => s.trim()).filter(Boolean);
-    fetch(`${apiBase}/api/v1/ml/models/${encodeURIComponent(model.id)}`, {
+    apiFetch(`/api/v1/ml/models/${encodeURIComponent(model.id)}`, {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: name.trim(),
@@ -117,9 +115,9 @@ export default function MLModelsModelDetailPage() {
   };
 
   const handleDelete = () => {
-    if (!apiBase || !model || deleting) return;
+    if (!getApiBaseUrl() || !model || deleting) return;
     setDeleting(true);
-    fetch(`${apiBase}/api/v1/ml/models/${encodeURIComponent(model.id)}`, { method: 'DELETE', credentials: 'include' })
+    apiFetch(`/api/v1/ml/models/${encodeURIComponent(model.id)}`, { method: 'DELETE' })
       .then((r) => {
         if (r.status === 204 || r.status === 404) {
           router.push('/admin/ml-models/models');

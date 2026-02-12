@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
 
   // Enable Turbopack for Next.js 16 (default bundler). Explicit root silences "inferred workspace root" warning when multiple lockfiles exist.
   turbopack: {
-    root: path.resolve(process.cwd(), "..", ".."),
+    root: path.resolve(process.cwd(), ".."),
   },
 
   // Image optimization
@@ -86,22 +86,9 @@ const nextConfig: NextConfig = {
     ]
   },
 
-  // Proxy API requests to API Gateway. Uses API_GATEWAY_URL (server-only) or NEXT_PUBLIC_API_BASE_URL.
-  // beforeFiles so /api/* is proxied before any filesystem/route check (avoids 404).
+  // API calls go directly to the gateway via NEXT_PUBLIC_API_BASE_URL (no proxy).
   async rewrites() {
-    const apiGatewayUrl = process.env.API_GATEWAY_URL || process.env.NEXT_PUBLIC_API_BASE_URL || '';
-    if (!apiGatewayUrl) return { beforeFiles: [], afterFiles: [], fallback: [] };
-    const apiRewrites = [
-      { source: '/api/v1/:path*', destination: `${apiGatewayUrl}/api/v1/:path*` },
-      { source: '/api/profile/:path*', destination: `${apiGatewayUrl}/api/profile/:path*` },
-      { source: '/api/auth/:path*', destination: `${apiGatewayUrl}/api/auth/:path*` },
-      { source: '/api/users/:path*', destination: `${apiGatewayUrl}/api/users/:path*` },
-    ];
-    return {
-      beforeFiles: apiRewrites,
-      afterFiles: [],
-      fallback: [],
-    };
+    return { beforeFiles: [], afterFiles: [], fallback: [] };
   },
 };
 

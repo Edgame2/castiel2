@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type ProductFitCardProps = {
   opportunityId: string;
@@ -20,7 +21,7 @@ type ProductFitItem = { productId: string; productName?: string; score: number; 
 export function ProductFitCard({
   opportunityId,
   title = 'Product fit',
-  apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '',
+  apiBaseUrl: _apiBaseUrl,
   getHeaders,
 }: ProductFitCardProps) {
   const [items, setItems] = useState<ProductFitItem[]>([]);
@@ -28,32 +29,25 @@ export function ProductFitCard({
   const [evaluating, setEvaluating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const base = apiBaseUrl.replace(/\/$/, '');
-  const getUrl = `${base}/api/v1/opportunities/${encodeURIComponent(opportunityId)}/product-fit`;
-  const evaluateUrl = `${base}/api/v1/opportunities/${encodeURIComponent(opportunityId)}/product-fit/evaluate`;
-
   const fetchProductFit = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const headers: HeadersInit = getHeaders ? await Promise.resolve(getHeaders()) : {};
-      const res = await fetch(getUrl, {
-        headers: { ...headers },
-        credentials: getHeaders ? undefined : ('include' as RequestCredentials),
-      });
+      const headers = getHeaders ? await Promise.resolve(getHeaders()) : undefined;
+      const res = await apiFetch(`/api/v1/opportunities/${encodeURIComponent(opportunityId)}/product-fit`, { headers });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
       }
       const json = (await res.json()) as ProductFitItem[];
       setItems(Array.isArray(json) ? json : []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch {
+      setError(GENERIC_ERROR_MESSAGE);
       setItems([]);
     } finally {
       setLoading(false);
     }
-  }, [getUrl, getHeaders]);
+  }, [opportunityId, getHeaders]);
 
   useEffect(() => {
     fetchProductFit();
@@ -63,19 +57,18 @@ export function ProductFitCard({
     setEvaluating(true);
     setError(null);
     try {
-      const headers: HeadersInit = getHeaders ? await Promise.resolve(getHeaders()) : {};
-      const res = await fetch(evaluateUrl, {
+      const headers = getHeaders ? await Promise.resolve(getHeaders()) : undefined;
+      const res = await apiFetch(`/api/v1/opportunities/${encodeURIComponent(opportunityId)}/product-fit/evaluate`, {
         method: 'POST',
-        headers: { ...headers },
-        credentials: getHeaders ? undefined : ('include' as RequestCredentials),
+        headers,
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
       }
       await fetchProductFit();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch {
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setEvaluating(false);
     }

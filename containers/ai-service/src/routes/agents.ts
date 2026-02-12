@@ -15,7 +15,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = (request as any).tenantId;
+      const tenantId = user?.tenantId ?? (request as any).tenantId;
       if (!tenantId) {
         reply.code(400).send({ error: 'X-Tenant-ID required' });
         return;
@@ -42,7 +42,8 @@ export async function agentRoutes(fastify: FastifyInstance) {
   fastify.get('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const tenantId = (request as any).tenantId;
+      const user = (request as any).user;
+      const tenantId = user?.tenantId ?? (request as any).tenantId;
       if (!tenantId) {
         reply.code(400).send({ error: 'X-Tenant-ID required' });
         return;

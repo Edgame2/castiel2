@@ -96,7 +96,8 @@ export async function authenticateRequest(
     const sessionId = decoded.sessionId;
     let organizationId = decoded.organizationId;
     
-    // If session ID is available, verify session is still valid
+    // If session ID is in token, optionally validate against our DB when we have session data (e.g. shared DB).
+    // If session is not in our DB (auth owns sessions in another DB), trust the JWT and use token claims.
     if (sessionId) {
       const session = await db.session.findUnique({
         where: { id: sessionId },
@@ -109,27 +110,28 @@ export async function authenticateRequest(
         },
       });
 
-      if (!session || session.userId !== user.id) {
-        log.warn('Invalid session', { route: request.url, sessionId, userId: user.id, service: 'user-management' });
-        reply.code(401).send({ error: 'Invalid session' });
-        return;
-      }
-
-      if (session.revokedAt) {
-        log.warn('Session has been revoked', { route: request.url, sessionId, userId: user.id, service: 'user-management' });
-        reply.code(401).send({ error: 'Session has been revoked' });
-        return;
-      }
-
-      if (session.expiresAt && session.expiresAt < new Date()) {
-        log.warn('Session has expired', { route: request.url, sessionId, userId: user.id, service: 'user-management' });
-        reply.code(401).send({ error: 'Session has expired' });
-        return;
-      }
-
-      // Use organization ID from session if not in token
-      if (!organizationId) {
-        organizationId = session.organizationId || undefined;
+      if (session) {
+        if (session.userId !== user.id) {
+          log.warn('Invalid session', { route: request.url, sessionId, userId: user.id, service: 'user-management' });
+          reply.code(401).send({ error: 'Invalid session' });
+          return;
+        }
+        if (session.revokedAt) {
+          log.warn('Session has been revoked', { route: request.url, sessionId, userId: user.id, service: 'user-management' });
+          reply.code(401).send({ error: 'Session has been revoked' });
+          return;
+        }
+        if (session.expiresAt && session.expiresAt < new Date()) {
+          log.warn('Session has expired', { route: request.url, sessionId, userId: user.id, service: 'user-management' });
+          reply.code(401).send({ error: 'Session has expired' });
+          return;
+        }
+        if (!organizationId) {
+          organizationId = session.organizationId || undefined;
+        }
+      } else {
+        // Session not in our DB (e.g. auth service owns sessions); trust JWT and use token claims
+        log.debug('Session not in user-management DB, using token claims', { sessionId, userId: user.id, service: 'user-management' });
       }
     }
 

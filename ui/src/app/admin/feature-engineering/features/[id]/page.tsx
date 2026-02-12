@@ -14,8 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const FEATURE_TYPES = ['numeric', 'categorical', 'text', 'datetime', 'boolean'] as const;
 
@@ -50,15 +49,15 @@ export default function FeatureEngineeringFeatureDetailPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchFeature = useCallback(async () => {
-    if (!apiBase || !id) {
+  const fetchFeature = useCallback(() => {
+    if (!getApiBaseUrl() || !id) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/ml/features/${encodeURIComponent(id)}`, { credentials: 'include' })
-      .then((r) => {
+    apiFetch(`/api/v1/ml/features/${encodeURIComponent(id)}`)
+      .then((r: Response) => {
         if (r.status === 404) {
           setFeature(null);
           return null;
@@ -76,8 +75,8 @@ export default function FeatureEngineeringFeatureDetailPage() {
           setTransformation(data.transformation ?? '');
         }
       })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+      .catch(() => {
+        setError(GENERIC_ERROR_MESSAGE);
         setFeature(null);
       })
       .finally(() => setLoading(false));
@@ -89,7 +88,7 @@ export default function FeatureEngineeringFeatureDetailPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !feature || saving) return;
+    if (!getApiBaseUrl() || !feature || saving) return;
     setSaveError(null);
     setSaving(true);
     const body = {
@@ -99,33 +98,32 @@ export default function FeatureEngineeringFeatureDetailPage() {
       source: source.trim() || undefined,
       transformation: transformation.trim() || undefined,
     };
-    fetch(`${apiBase}/api/v1/ml/features/${encodeURIComponent(feature.id)}`, {
+    apiFetch(`/api/v1/ml/features/${encodeURIComponent(feature.id)}`, {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-      .then((r) => {
+      .then((r: Response) => {
         if (!r.ok) return r.json().then((j) => Promise.reject(new Error((j?.error?.message as string) || r.statusText)));
         setEditing(false);
         fetchFeature();
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Save failed'))
+      .catch(() => setSaveError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSaving(false));
   };
 
   const handleDelete = () => {
-    if (!apiBase || !feature || deleting) return;
+    if (!getApiBaseUrl() || !feature || deleting) return;
     setDeleting(true);
-    fetch(`${apiBase}/api/v1/ml/features/${encodeURIComponent(feature.id)}`, { method: 'DELETE', credentials: 'include' })
-      .then((r) => {
+    apiFetch(`/api/v1/ml/features/${encodeURIComponent(feature.id)}`, { method: 'DELETE' })
+      .then((r: Response) => {
         if (r.status === 204 || r.status === 404) {
           router.push('/admin/feature-engineering/features');
           return;
         }
         return r.json().then((j) => Promise.reject(new Error((j?.error?.message as string) || 'Delete failed')));
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Delete failed'))
+      .catch(() => setSaveError(GENERIC_ERROR_MESSAGE))
       .finally(() => setDeleting(false));
   };
 

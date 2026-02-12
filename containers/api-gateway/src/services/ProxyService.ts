@@ -125,6 +125,11 @@ export class ProxyService {
         headers['X-Request-ID'] = request.headers['x-request-id'] as string;
       }
 
+      // Forward Cookie (auth/user-management need it for session-based flows)
+      if (request.headers.cookie) {
+        headers['Cookie'] = request.headers.cookie as string;
+      }
+
       // Use ServiceClient so circuit breaker is applied; requestWithFullResponse preserves backend status
       const method = request.method.toLowerCase();
       const body = (request.body as any) || undefined;

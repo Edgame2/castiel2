@@ -18,9 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type RoleOption = { id: string; name?: string };
 
@@ -38,15 +36,12 @@ export default function AdminSecurityUserInvitePage() {
   const [success, setSuccess] = useState(false);
 
   const fetchRoles = useCallback(() => {
-    if (!apiBase || !orgId.trim()) {
+    if (!getApiBaseUrl() || !orgId.trim()) {
       setRoles([]);
       return;
     }
     setRolesLoading(true);
-    fetch(
-      `${apiBase}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/roles`,
-      { credentials: 'include' }
-    )
+    apiFetch(`/api/v1/organizations/${encodeURIComponent(orgId.trim())}/roles`)
       .then((r) => {
         if (!r.ok) return { data: [] };
         return r.json();
@@ -65,12 +60,11 @@ export default function AdminSecurityUserInvitePage() {
     const o = orgId.trim();
     const em = email.trim();
     const r = roleId.trim();
-    if (!apiBase || !o || !em || !r || submitting) return;
+    if (!getApiBaseUrl() || !o || !em || !r || submitting) return;
     setSubmitError(null);
     setSubmitting(true);
-    fetch(`${apiBase}/api/v1/organizations/${encodeURIComponent(o)}/invitations`, {
+    apiFetch(`/api/v1/organizations/${encodeURIComponent(o)}/invitations`, {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: em,

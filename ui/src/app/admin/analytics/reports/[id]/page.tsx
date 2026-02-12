@@ -13,9 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface ReportDef {
   id: string;
@@ -53,13 +51,13 @@ export default function AnalyticsReportDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBase) {
+    if (!getApiBaseUrl()) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/system/analytics`, { credentials: 'include' })
+    apiFetch('/api/v1/system/analytics')
       .then((r) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load');
         return r.json();
@@ -90,7 +88,7 @@ export default function AnalyticsReportDetailPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !config || !report || saving) return;
+    if (!getApiBaseUrl() || !config || !report || saving) return;
     setSaveError(null);
     setSaving(true);
     const dataSources = dataSourcesStr.split(',').map((s) => s.trim()).filter(Boolean);
@@ -99,9 +97,8 @@ export default function AnalyticsReportDetailPage() {
         ? { ...r, name: name.trim(), dataSources: dataSources.length ? dataSources : undefined, outputFormat, schedule }
         : r
     );
-    fetch(`${apiBase}/api/v1/system/analytics`, {
+    apiFetch('/api/v1/system/analytics', {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...config, reports: updated }),
     })
@@ -115,12 +112,11 @@ export default function AnalyticsReportDetailPage() {
   };
 
   const handleDelete = () => {
-    if (!apiBase || !config || !report || deleting) return;
+    if (!getApiBaseUrl() || !config || !report || deleting) return;
     setDeleting(true);
     const next = (config.reports ?? []).filter((r) => r.id !== id);
-    fetch(`${apiBase}/api/v1/system/analytics`, {
+    apiFetch('/api/v1/system/analytics', {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...config, reports: next }),
     })

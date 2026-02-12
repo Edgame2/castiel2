@@ -47,13 +47,19 @@ cosmos_db:
   endpoint: ${process.env.COSMOS_DB_ENDPOINT}
   key: ${process.env.COSMOS_DB_KEY}
   database_id: ${process.env.COSMOS_DB_DATABASE_ID}
+  containers:
+    embeddings: embedding_embeddings
+    documents: embedding_documents
 jwt:
   secret: ${process.env.JWT_SECRET}
 rabbitmq:
-  url: ${process.env.RABBITMQ_URL || ''}
+  url: ${process.env.RABBITMQ_URL || 'amqp://localhost'}
   exchange: test_events
   queue: test_queue
-  bindings: []
+redis:
+  host: localhost
+  port: 6379
+  db: 0
         `;
       }
       return '';
@@ -71,9 +77,11 @@ vi.mock('yaml', () => ({
         endpoint: process.env.COSMOS_DB_ENDPOINT,
         key: process.env.COSMOS_DB_KEY,
         database_id: process.env.COSMOS_DB_DATABASE_ID,
+        containers: { embeddings: 'embedding_embeddings', documents: 'embedding_documents' },
       },
       jwt: { secret: process.env.JWT_SECRET },
-      rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
+      rabbitmq: { url: process.env.RABBITMQ_URL || 'amqp://localhost', exchange: 'test_events', queue: 'test_queue' },
+      redis: { host: 'localhost', port: 6379, db: 0 },
       services: {},
     };
     return config;
@@ -113,15 +121,27 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared (ServiceClient + getDatabaseClient for EmbeddingService)
+const stubEmbedding = {
+  id: 'emb-1',
+  projectId: 'proj-1',
+  filePath: '/test.ts',
+  content: 'test',
+  vector: [0.1],
+  metadata: {},
+  embeddingModel: 'test',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+// Mock @coder/shared
 vi.mock('@coder/shared', () => ({
   getDatabaseClient: vi.fn(function getDatabaseClient() {
     return {
       emb_documents: {
-        upsert: vi.fn(),
-        findUnique: vi.fn().mockResolvedValue(null),
+        upsert: vi.fn().mockResolvedValue(stubEmbedding),
+        findUnique: vi.fn().mockResolvedValue(stubEmbedding),
         findMany: vi.fn().mockResolvedValue([]),
-        delete: vi.fn(),
+        delete: vi.fn().mockResolvedValue(undefined),
         deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
     };
@@ -132,10 +152,23 @@ vi.mock('@coder/shared', () => ({
     put: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   })),
-  authenticateRequest: vi.fn(() => vi.fn()),
-  tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
+  authenticateRequest: vi.fn(() => async (req: any) => {
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+  }),
+  tenantEnforcementMiddleware: vi.fn(() => async (req: any) => {
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+  }),
   setupJWT: vi.fn(),
   setupHealthCheck: vi.fn(),
+  initializeDatabase: vi.fn(),
+  connectDatabase: vi.fn().mockResolvedValue(undefined),
+  disconnectDatabase: vi.fn(),
+  sanitizeString: vi.fn((s: string) => s),
+  EventPublisher: vi.fn(() => ({
+    publish: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn(),
+    connect: vi.fn().mockResolvedValue(undefined),
+  })),
 }));
 
 // Global test setup

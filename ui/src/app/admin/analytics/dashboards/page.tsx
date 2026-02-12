@@ -9,9 +9,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 interface DashboardDef {
   id: string;
@@ -43,7 +41,7 @@ function AnalyticsDashboardsContent() {
   const [saving, setSaving] = useState(false);
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setConfig(DEFAULT_ANALYTICS);
       setLoading(false);
       return;
@@ -51,7 +49,7 @@ function AnalyticsDashboardsContent() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/system/analytics`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/system/analytics');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setConfig({
@@ -78,10 +76,10 @@ function AnalyticsDashboardsContent() {
   }, []);
 
   const handleSave = async (nextDashboards: DashboardDef[]) => {
-    if (!apiBaseUrl || !config) return;
+    if (!getApiBaseUrl() || !config) return;
     setSaving(true);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/system/analytics`, {
+      const res = await apiFetch('/api/v1/system/analytics', {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

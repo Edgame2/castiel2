@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { LayoutList, LayoutGrid, AlertTriangle } from "lucide-react";
 
-function formatCurrency(n: number) {
+function formatCurrency(n: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -27,12 +28,16 @@ function formatCurrency(n: number) {
 }
 
 function riskVariant(risk: number): "success" | "warning" | "destructive" {
-  if (risk < 0.33) return "success";
-  if (risk < 0.66) return "warning";
+  if (risk < 0.33) {
+    return "success";
+  }
+  if (risk < 0.66) {
+    return "warning";
+  }
   return "destructive";
 }
 
-export default function OpportunitiesListPage() {
+export default function OpportunitiesListPage(): React.ReactElement {
   const router = useRouter();
   const [view, setView] = useState<"table" | "cards">("table");
 

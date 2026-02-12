@@ -11,7 +11,7 @@ import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type CompleteRemediationStepModalProps = {
   isOpen: boolean;
@@ -33,15 +33,12 @@ export function CompleteRemediationStepModal({
   stepNumber,
   stepDescription,
   onSubmitted,
-  apiBaseUrl = '',
+  apiBaseUrl,
   getHeaders,
 }: CompleteRemediationStepModalProps) {
   const [completedBy, setCompletedBy] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const base = apiBaseUrl.replace(/\/$/, '');
-  const url = `${base}/api/v1/remediation-workflows/${workflowId}/steps/${stepNumber}/complete`;
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
@@ -60,20 +57,19 @@ export function CompleteRemediationStepModal({
       setError(null);
       setLoading(true);
       try {
-        const headers: HeadersInit = {};
+        const headers: HeadersInit = { 'Content-Type': 'application/json' };
         if (getHeaders) {
           const h = await Promise.resolve(getHeaders());
           Object.assign(headers, h);
         }
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...headers,
-          },
-          body: JSON.stringify(completedBy.trim() ? { completedBy: completedBy.trim() } : {}),
-          credentials: getHeaders ? undefined : ('same-origin' as RequestCredentials),
-        });
+        const res = await apiFetch(
+          `/api/v1/remediation-workflows/${workflowId}/steps/${stepNumber}/complete`,
+          {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(completedBy.trim() ? { completedBy: completedBy.trim() } : {}),
+          }
+        );
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
           throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -88,7 +84,7 @@ export function CompleteRemediationStepModal({
         setLoading(false);
       }
     },
-    [url, completedBy, getHeaders, onSubmitted, onClose]
+    [workflowId, stepNumber, completedBy, getHeaders, onSubmitted, onClose]
   );
 
   return (

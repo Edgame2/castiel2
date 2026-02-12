@@ -10,8 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type InvitationRow = {
   id: string;
@@ -31,7 +30,7 @@ export default function AdminSecurityInvitationsPage() {
   const [actionId, setActionId] = useState<string | null>(null);
 
   const fetchInvitations = useCallback(() => {
-    if (!apiBase || !orgId.trim()) {
+    if (!getApiBaseUrl() || !orgId.trim()) {
       setItems([]);
       return;
     }
@@ -39,17 +38,16 @@ export default function AdminSecurityInvitationsPage() {
     setError(null);
     const params = new URLSearchParams();
     params.set('status', 'pending');
-    fetch(
-      `${apiBase}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/invitations?${params}`,
-      { credentials: 'include' }
+    apiFetch(
+      `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/invitations?${params}`
     )
       .then((r) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load invitations');
         return r.json();
       })
       .then((data: ListResponse) => setItems(Array.isArray(data?.data) ? data.data : []))
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+      .catch(() => {
+        setError(GENERIC_ERROR_MESSAGE);
         setItems([]);
       })
       .finally(() => setLoading(false));
@@ -61,33 +59,33 @@ export default function AdminSecurityInvitationsPage() {
   }, [orgId, fetchInvitations]);
 
   const resend = (invitationId: string) => {
-    if (!apiBase || !orgId.trim() || actionId) return;
+    if (!getApiBaseUrl() || !orgId.trim() || actionId) return;
     setActionId(invitationId);
-    fetch(
-      `${apiBase}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/invitations/${encodeURIComponent(invitationId)}/resend`,
-      { method: 'POST', credentials: 'include' }
+    apiFetch(
+      `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/invitations/${encodeURIComponent(invitationId)}/resend`,
+      { method: 'POST' }
     )
       .then((r) => {
         if (!r.ok) throw new Error(r.statusText || 'Resend failed');
         fetchInvitations();
       })
-      .catch(() => setError('Resend failed'))
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setActionId(null));
   };
 
   const cancel = (invitationId: string) => {
-    if (!apiBase || !orgId.trim() || actionId) return;
+    if (!getApiBaseUrl() || !orgId.trim() || actionId) return;
     if (!confirm('Cancel this invitation?')) return;
     setActionId(invitationId);
-    fetch(
-      `${apiBase}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/invitations/${encodeURIComponent(invitationId)}`,
-      { method: 'DELETE', credentials: 'include' }
+    apiFetch(
+      `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/invitations/${encodeURIComponent(invitationId)}`,
+      { method: 'DELETE' }
     )
       .then((r) => {
         if (!r.ok) throw new Error(r.statusText || 'Cancel failed');
         fetchInvitations();
       })
-      .catch(() => setError('Cancel failed'))
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setActionId(null));
   };
 

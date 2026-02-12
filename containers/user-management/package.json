@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@coder/shared": "file:../shared",
+    "bcryptjs": "^2.4.3",
     "@fastify/swagger": "^9.1.0",
     "@fastify/swagger-ui": "^5.0.0",
     "@prisma/client": "^6.9.0",
@@ -32,6 +33,7 @@
     "zod-to-json-schema": "^3.23.5"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/amqplib": "^0.10.6",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.7",

@@ -74,19 +74,35 @@ describe('AlertService', () => {
   });
 
   describe('getRule', () => {
-    it('should retrieve a rule by ID', async () => {
+    it('should retrieve a rule by ID when tenant matches', async () => {
       const mockRule = {
         id: 'rule-1',
+        organizationId: 'org-1',
         name: 'Test Rule',
         enabled: true,
       };
 
       vi.mocked(mockPrisma.audit_alert_rules.findUnique).mockResolvedValue(mockRule);
 
-      const result = await alertService.getRule('rule-1');
+      const result = await alertService.getRule('rule-1', 'org-1');
 
       expect(result).toBeDefined();
       expect(result?.id).toBe('rule-1');
+    });
+
+    it('should return null when rule belongs to another tenant', async () => {
+      const mockRule = {
+        id: 'rule-1',
+        organizationId: 'other-org',
+        name: 'Test Rule',
+        enabled: true,
+      };
+
+      vi.mocked(mockPrisma.audit_alert_rules.findUnique).mockResolvedValue(mockRule);
+
+      const result = await alertService.getRule('rule-1', 'org-1');
+
+      expect(result).toBeNull();
     });
   });
 
@@ -115,7 +131,7 @@ describe('AlertService', () => {
         hasMore: false,
       });
 
-      const result = await alertService.evaluateRule('rule-1');
+      const result = await alertService.evaluateRule('rule-1', 'org-1');
 
       expect(result).toBe(true);
     });
@@ -146,7 +162,7 @@ describe('AlertService', () => {
         hasMore: false,
       });
 
-      const result = await alertService.evaluateRule('rule-2');
+      const result = await alertService.evaluateRule('rule-2', 'org-1');
 
       expect(result).toBe(true);
     });
@@ -168,7 +184,7 @@ describe('AlertService', () => {
 
       vi.mocked(mockPrisma.audit_alert_rules.findUnique).mockResolvedValue(rule);
 
-      const result = await alertService.evaluateRule('rule-3');
+      const result = await alertService.evaluateRule('rule-3', 'org-1');
 
       expect(result).toBe(false);
     });

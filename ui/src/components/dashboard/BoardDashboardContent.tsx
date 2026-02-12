@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type BoardWidget = {
   id: string;
@@ -96,7 +97,7 @@ export function BoardDashboardContent({ apiBaseUrl = '', getHeaders }: BoardDash
       const json = (await res.json()) as { widgets?: BoardWidget[] };
       setWidgets(Array.isArray(json?.widgets) ? json.widgets : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setWidgets([]);
     } finally {
       setLoading(false);

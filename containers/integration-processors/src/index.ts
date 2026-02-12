@@ -4,7 +4,7 @@
  * @module integration-processors
  */
 
-import Fastify from 'fastify';
+import Fastify, { FastifyInstance } from 'fastify';
 import {
   initializeDatabase,
   connectDatabase,
@@ -21,6 +21,33 @@ import { ensureQueues } from './startup/ensureQueues.js';
 import { startConsumers, ConsumerDependencies, BaseConsumer } from './consumers/index.js';
 import { MLFieldRecalculationJob } from './jobs/mlFieldRecalculation.js';
 import { MonitoringService } from './services/MonitoringService.js';
+
+/**
+ * Build Fastify app with routes (for testing). Does not start server or consumers.
+ */
+export async function buildApp(): Promise<FastifyInstance> {
+  const config = loadConfig();
+  const app = Fastify({
+    logger: false,
+    requestIdHeader: 'x-request-id',
+    bodyLimit: 1048576,
+    requestTimeout: 30000,
+  });
+  await setupJWT(app, { secret: config.jwt.secret });
+  const shardManager = new ServiceClient({
+    baseURL: config.services?.shard_manager?.url ?? '',
+    timeout: 30000,
+    retries: 0,
+  });
+  const integrationManager = new ServiceClient({
+    baseURL: config.services?.integration_manager?.url ?? '',
+    timeout: 30000,
+    retries: 0,
+  });
+  const monitoringService = new MonitoringService(shardManager, integrationManager, 'light');
+  await registerRoutes(app, monitoringService);
+  return app;
+}
 
 /**
  * Wait for a service to be ready
@@ -328,9 +355,11 @@ async function main(): Promise<void> {
   });
 }
 
-main().catch((error) => {
-  log.error('Failed to start integration-processors', error, {
-    service: 'integration-processors',
+if (process.env.NODE_ENV !== 'test') {
+  main().catch((error) => {
+    log.error('Failed to start integration-processors', error, {
+      service: 'integration-processors',
+    });
+    process.exit(1);
   });
-  process.exit(1);
-});
+}

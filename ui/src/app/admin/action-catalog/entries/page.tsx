@@ -14,9 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 /** §2.1.2/§2.1.3 Step 3 Applicability: opportunity types */
 const OPPORTUNITY_TYPES = ['new_business', 'renewal', 'expansion'] as const;
@@ -300,7 +298,7 @@ export default function ActionCatalogEntriesPage() {
   });
 
   const fetchEntries = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
       return;
@@ -309,7 +307,7 @@ export default function ActionCatalogEntriesPage() {
     setError(null);
     try {
       const params = typeFilter ? `?type=${typeFilter}` : '';
-      const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries${params}`, { credentials: 'include' });
+      const res = await apiFetch(`/api/v1/action-catalog/entries${params}`);
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -326,8 +324,8 @@ export default function ActionCatalogEntriesPage() {
   }, [typeFilter]);
 
   const fetchOne = useCallback(async (entryId: string): Promise<ActionCatalogEntry | null> => {
-    if (!apiBaseUrl) return null;
-    const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries/${encodeURIComponent(entryId)}`, { credentials: 'include' });
+    if (!getApiBaseUrl()) return null;
+    const res = await apiFetch(`/api/v1/action-catalog/entries/${encodeURIComponent(entryId)}`);
     if (!res.ok) return null;
     return res.json();
   }, []);
@@ -640,7 +638,7 @@ export default function ActionCatalogEntriesPage() {
   };
 
   const handleCreateSubmit = async (status: 'draft' | 'active') => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setFormSaving(true);
     setFormError(null);
     try {
@@ -662,7 +660,7 @@ export default function ActionCatalogEntriesPage() {
         decisionRules: createForm.decisionRules,
         status,
       };
-      const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries`, {
+      const res = await apiFetch('/api/v1/action-catalog/entries', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -682,7 +680,7 @@ export default function ActionCatalogEntriesPage() {
 
   /** §2.1.4 Create Unified Entry: create risk, then recommendation, then link both ways */
   const handleCreateUnifiedSubmit = async (status: 'draft' | 'active') => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setFormSaving(true);
     setFormError(null);
     try {
@@ -706,7 +704,7 @@ export default function ActionCatalogEntriesPage() {
         decisionRules: unifiedForm.decisionRules,
         status,
       };
-      const riskRes = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries`, {
+      const riskRes = await apiFetch('/api/v1/action-catalog/entries', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -727,7 +725,7 @@ export default function ActionCatalogEntriesPage() {
         decisionRules: unifiedForm.decisionRules,
         status,
       };
-      const recRes = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries`, {
+      const recRes = await apiFetch('/api/v1/action-catalog/entries', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -736,7 +734,7 @@ export default function ActionCatalogEntriesPage() {
       const recData = await recRes.json().catch(() => ({}));
       if (!recRes.ok) throw new Error((recData?.error?.message as string) || `HTTP ${recRes.status}`);
       const rec = recData as ActionCatalogEntry;
-      const updateRes = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries/${encodeURIComponent(risk.id)}`, {
+      const updateRes = await apiFetch(`/api/v1/action-catalog/entries/${encodeURIComponent(risk.id)}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -766,7 +764,7 @@ export default function ActionCatalogEntriesPage() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl || !editId) return;
+    if (!getApiBaseUrl() || !editId) return;
     setFormSaving(true);
     setFormError(null);
     try {
@@ -785,7 +783,7 @@ export default function ActionCatalogEntriesPage() {
         decisionRules: editForm.decisionRules,
         status: editForm.status,
       };
-      const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries/${encodeURIComponent(editId)}`, {
+      const res = await apiFetch(`/api/v1/action-catalog/entries/${encodeURIComponent(editId)}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -804,10 +802,10 @@ export default function ActionCatalogEntriesPage() {
   };
 
   const handleDelete = async (entryId: string) => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     if (!window.confirm('Delete this action catalog entry?')) return;
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries/${encodeURIComponent(entryId)}`, {
+      const res = await apiFetch(`/api/v1/action-catalog/entries/${encodeURIComponent(entryId)}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -823,7 +821,7 @@ export default function ActionCatalogEntriesPage() {
   };
 
   const handleDuplicate = async (entry: ActionCatalogEntry) => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     const baseName = entry.name ?? entry.id ?? 'entry';
     const uniqueName = `${baseName}_copy_${Date.now()}`;
     const displayName = `${entry.displayName ?? entry.name ?? 'Entry'} (copy)`;
@@ -843,7 +841,7 @@ export default function ActionCatalogEntriesPage() {
       status: 'draft' as const,
     };
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries`, {
+      const res = await apiFetch('/api/v1/action-catalog/entries', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -876,7 +874,7 @@ export default function ActionCatalogEntriesPage() {
   };
 
   const handleBulkDuplicate = async () => {
-    if (!apiBaseUrl || selectedEntryIds.size === 0) return;
+    if (!getApiBaseUrl() || selectedEntryIds.size === 0) return;
     const toDuplicate = sorted.filter((e) => selectedEntryIds.has(e.id));
     if (!window.confirm(`Duplicate ${toDuplicate.length} entr${toDuplicate.length === 1 ? 'y' : 'ies'}? New copies will be created as drafts.`)) return;
     setBulkDuplicating(true);
@@ -906,7 +904,7 @@ export default function ActionCatalogEntriesPage() {
         status: 'draft' as const,
       };
       try {
-        const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries`, {
+        const res = await apiFetch('/api/v1/action-catalog/entries', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -914,7 +912,7 @@ export default function ActionCatalogEntriesPage() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setError((data?.error?.message as string) || `HTTP ${res.status}`);
+          setError(GENERIC_ERROR_MESSAGE);
           failed = true;
           break;
         }
@@ -933,7 +931,7 @@ export default function ActionCatalogEntriesPage() {
   };
 
   const handleBulkDeprecate = async () => {
-    if (!apiBaseUrl || selectedEntryIds.size === 0) return;
+    if (!getApiBaseUrl() || selectedEntryIds.size === 0) return;
     const toDeprecate = sorted.filter((e) => selectedEntryIds.has(e.id));
     if (!window.confirm(`Deprecate ${toDeprecate.length} entr${toDeprecate.length === 1 ? 'y' : 'ies'}? They will no longer be used for new recommendations.`)) return;
     setBulkDeprecating(true);
@@ -941,7 +939,7 @@ export default function ActionCatalogEntriesPage() {
     let failed = false;
     for (const entry of toDeprecate) {
       try {
-        const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries/${encodeURIComponent(entry.id)}`, {
+        const res = await apiFetch(`/api/v1/action-catalog/entries/${encodeURIComponent(entry.id)}`, {
           method: 'PUT',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -949,7 +947,7 @@ export default function ActionCatalogEntriesPage() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setError((data?.error?.message as string) || `HTTP ${res.status}`);
+          setError(GENERIC_ERROR_MESSAGE);
           failed = true;
           break;
         }
@@ -1270,7 +1268,7 @@ export default function ActionCatalogEntriesPage() {
   };
 
   const runImport = async (toCreate: Record<string, unknown>[], inputEl: HTMLInputElement) => {
-    if (!apiBaseUrl || toCreate.length === 0) return;
+    if (!getApiBaseUrl() || toCreate.length === 0) return;
     if (!window.confirm(`Import ${toCreate.length} entr${toCreate.length === 1 ? 'y' : 'ies'}? Duplicates (same type+name) may fail or overwrite.`)) {
       inputEl.value = '';
       setImporting(false);
@@ -1279,7 +1277,7 @@ export default function ActionCatalogEntriesPage() {
     const errors: string[] = [];
     for (let i = 0; i < toCreate.length; i++) {
       try {
-        const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/entries`, {
+        const res = await apiFetch('/api/v1/action-catalog/entries', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -1301,7 +1299,7 @@ export default function ActionCatalogEntriesPage() {
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const inputEl = e.target;
-    if (!file || !apiBaseUrl) {
+    if (!file || !getApiBaseUrl()) {
       inputEl.value = '';
       return;
     }
@@ -1441,13 +1439,13 @@ export default function ActionCatalogEntriesPage() {
       </p>
       {subNav}
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
       )}
 
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <div className="mb-4 space-y-3">
           <div className="flex flex-wrap gap-4 items-end">
           <Link

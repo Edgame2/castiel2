@@ -7,6 +7,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type SimilarWonDealsData = {
   count: number;
@@ -60,8 +61,8 @@ export function SimilarWonDealsCard({
         medianCycleTimeDays: typeof json?.medianCycleTimeDays === 'number' ? json.medianCycleTimeDays : null,
         p25CloseAmount: typeof json?.p25CloseAmount === 'number' ? json.p25CloseAmount : null,
       });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch {
+      setError(GENERIC_ERROR_MESSAGE);
       setData(null);
     } finally {
       setLoading(false);

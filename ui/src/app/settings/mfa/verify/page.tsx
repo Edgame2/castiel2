@@ -11,9 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export default function MfaVerifyPage() {
   const [code, setCode] = useState('');
@@ -39,12 +37,10 @@ export default function MfaVerifyPage() {
     setError(null);
     setLoading(true);
     try {
-      const base = apiBaseUrl.replace(/\/$/, '');
-      const url = useBackupCode ? `${base}/api/auth/mfa/verify-backup` : `${base}/api/auth/mfa/verify`;
-      const res = await fetch(url, {
+      const path = useBackupCode ? '/api/auth/mfa/verify-backup' : '/api/auth/mfa/verify';
+      const res = await apiFetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ code: trimmed }),
       });
       const data = await res.json().catch(() => ({}));
@@ -61,8 +57,7 @@ export default function MfaVerifyPage() {
         return;
       }
       setSuccess(true);
-    } catch (e) {
-      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+    } catch {
       setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
@@ -93,8 +88,8 @@ export default function MfaVerifyPage() {
           {useBackupCode ? 'Enter your 8-character backup code.' : 'Enter the 6-digit code from your authenticator app.'}
         </p>
         {error && <p className="text-sm text-red-600 dark:text-red-400 mb-4">{error}</p>}
-        {!apiBaseUrl && (
-          <p className="text-sm text-amber-600 dark:text-amber-400 mb-4">NEXT_PUBLIC_API_BASE_URL is not set.</p>
+        {!getApiBaseUrl() && (
+          <p className="text-sm text-amber-600 dark:text-amber-400 mb-4">API base URL is not set.</p>
         )}
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="flex items-center gap-2">
@@ -124,7 +119,7 @@ export default function MfaVerifyPage() {
           <div className="flex gap-3">
             <Button
               type="submit"
-              disabled={loading || !apiBaseUrl || (useBackupCode ? code.replace(/\s/g, '').length < 8 : code.replace(/\s/g, '').length < 6)}
+              disabled={loading || !getApiBaseUrl() || (useBackupCode ? code.replace(/\s/g, '').length < 8 : code.replace(/\s/g, '').length < 6)}
             >
               {loading ? 'Verifying…' : 'Verify'}
             </Button>

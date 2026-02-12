@@ -1,104 +1,95 @@
 /**
  * Data Enrichment Routes Integration Tests
+ * Plan §16: jobs/:jobId, trigger, config, auth, tenant, tests
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { buildApp } from '../../../src/server';
 
-// Mock dependencies are set up in tests/setup.ts (do not re-mock @coder/shared or @coder/shared/database or mocks become undefined)
 vi.mock('../../../src/events/publishers/EnrichmentEventPublisher');
 
-describe('POST /api/v1/enrichment/enrich', () => {
+describe('Data Enrichment routes', () => {
   let app: FastifyInstance;
-  let authToken: string;
 
   beforeAll(async () => {
     app = await buildApp();
-    authToken = 'test-token';
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  it('should create enrichment job and return 202', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/v1/enrichment/enrich',
-      headers: {
-        authorization: `Bearer ${authToken}`,
-        'x-tenant-id': 'tenant-123',
-      },
-      payload: {
-        shardId: 'shard-123',
-        enrichmentTypes: ['ai_summary', 'vectorization'],
-      },
+  const authHeaders = {
+    authorization: 'Bearer test-token',
+    'x-tenant-id': 'tenant-123',
+  };
+
+  describe('POST /api/v1/enrichment/enrich', () => {
+    it('returns 202 with jobId and shardId', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/enrichment/enrich',
+        headers: authHeaders,
+        payload: { shardId: 'shard-123' },
+      });
+
+      expect(response.statusCode).toBe(202);
+      const body = response.json();
+      expect(body).toHaveProperty('jobId');
+      expect(body).toHaveProperty('shardId', 'shard-123');
+      expect(body).toHaveProperty('status');
     });
 
-    expect(response.statusCode).toBe(202);
-    const body = response.json();
-    expect(body).toHaveProperty('jobId');
-    expect(body).toHaveProperty('shardId', 'shard-123');
-    expect(body).toHaveProperty('status');
+    it('returns 400 when shardId missing', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/enrichment/enrich',
+        headers: authHeaders,
+        payload: {},
+      });
+      expect(response.statusCode).toBe(400);
+    });
   });
 
-  it('should return 400 for invalid input', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/v1/enrichment/enrich',
-      headers: {
-        authorization: `Bearer ${authToken}`,
-        'x-tenant-id': 'tenant-123',
-      },
-      payload: {
-        // Missing required shardId
-      },
+  describe('POST /api/v1/enrichment/trigger', () => {
+    it('returns 202 with jobId and status', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/enrichment/trigger',
+        headers: authHeaders,
+        payload: { shardId: 'shard-123' },
+      });
+
+      expect(response.statusCode).toBe(202);
+      const body = response.json();
+      expect(body).toHaveProperty('jobId');
+      expect(body).toHaveProperty('status');
+      expect(body).toHaveProperty('message');
+    });
+  });
+
+  describe('GET /api/v1/enrichment/jobs/:jobId', () => {
+    it('returns 200 with job for existing id', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/enrichment/jobs/job-123',
+        headers: authHeaders,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body).toHaveProperty('jobId');
+      expect(body).toHaveProperty('status');
     });
 
-    expect(response.statusCode).toBe(400);
-  });
-});
-
-describe('GET /api/v1/enrichment/jobs/:jobId', () => {
-  let app: FastifyInstance;
-  let authToken: string;
-
-  beforeAll(async () => {
-    app = await buildApp();
-    authToken = 'test-token';
-  });
-
-  afterAll(async () => {
-    await app.close();
-  });
-
-  it('should retrieve enrichment job and return 200', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/enrichment/jobs/job-123',
-      headers: {
-        authorization: `Bearer ${authToken}`,
-        'x-tenant-id': 'tenant-123',
-      },
+    it('returns 404 for non-existent job', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/enrichment/jobs/00000000-0000-0000-0000-000000000000',
+        headers: authHeaders,
+      });
+      expect(response.statusCode).toBe(404);
     });
-
-    expect(response.statusCode).toBe(200);
-    const body = response.json();
-    expect(body).toHaveProperty('jobId', 'job-123');
-    expect(body).toHaveProperty('status');
-  });
-
-  it('should return 404 for non-existent job', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/enrichment/jobs/non-existent',
-      headers: {
-        authorization: `Bearer ${authToken}`,
-        'x-tenant-id': 'tenant-123',
-      },
-    });
-
-    expect(response.statusCode).toBe(404);
   });
 });

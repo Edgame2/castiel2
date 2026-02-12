@@ -28,7 +28,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       },
       async (request, reply) => {
         try {
-          const tenantId = request.user!.tenantId;
+          const tenantId = (request as any).user!.tenantId;
           const { modelId } = request.query;
 
           const models = await aiAnalyticsService.getModelAnalytics(tenantId, modelId);

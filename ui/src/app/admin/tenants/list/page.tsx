@@ -17,8 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type TenantStatus = 'active' | 'trial' | 'suspended' | 'inactive';
 
@@ -49,16 +50,16 @@ export default function TenantsListPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const fetchTenants = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/tenants`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/admin/tenants');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setItems(Array.isArray(json?.items) ? json.items : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setItems([]);
     } finally {
       setLoading(false);
@@ -66,12 +67,12 @@ export default function TenantsListPage() {
   }, []);
 
   useEffect(() => {
-    if (apiBaseUrl) fetchTenants();
+    if (getApiBaseUrl()) fetchTenants();
     else {
-      setError('NEXT_PUBLIC_API_BASE_URL is not set');
+      setError(GENERIC_ERROR_MESSAGE);
       setLoading(false);
     }
-  }, [apiBaseUrl, fetchTenants]);
+  }, [fetchTenants]);
 
   useEffect(() => {
     document.title = 'Tenants | Admin | Castiel';
@@ -177,13 +178,13 @@ export default function TenantsListPage() {
       </p>
       {subNav}
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
       )}
 
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <div className="mb-4 flex flex-wrap gap-4 items-end">
           <div>
             <Label className="block mb-1">Status (§7.1.1)</Label>
@@ -251,8 +252,18 @@ export default function TenantsListPage() {
       )}
 
       {loading && (
-        <div className="rounded-lg border p-6 bg-white dark:bg-gray-900">
-          <p className="text-sm text-gray-500">Loading…</p>
+        <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-hidden">
+          <div className="p-4 space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 flex-1 max-w-[120px]" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-14" />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -262,13 +273,20 @@ export default function TenantsListPage() {
         </div>
       )}
 
-      {!loading && !error && apiBaseUrl && (
+      {!loading && !error && getApiBaseUrl() && (
         <div className="rounded-lg border bg-white dark:bg-gray-900 p-6">
           <h2 className="text-lg font-semibold mb-3">Tenants</h2>
           {items.length === 0 ? (
-            <p className="text-sm text-gray-500">No tenants returned. Tenant list is provided by the backend (stub returns empty).</p>
+            <EmptyState
+              title="No tenants"
+              description="Tenant list is provided by the backend. No tenants returned."
+              action={{ label: 'Tenant Templates', href: '/admin/tenants/templates' }}
+            />
           ) : sorted.length === 0 ? (
-            <p className="text-sm text-gray-500">No tenants match the current filters.</p>
+            <EmptyState
+              title="No matching tenants"
+              description="No tenants match the current filters. Try changing status or search."
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">

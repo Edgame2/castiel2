@@ -1,7 +1,7 @@
-# UI Pages Inventory — containers/ui
+# UI Pages Inventory — ui
 
 **Date:** 2026-02-07  
-**Scope:** All pages that exist or should exist in `containers/ui` (Next.js App Router).  
+**Scope:** All pages that exist or should exist in `ui` (Next.js App Router).  
 **Includes:** Full CRUD per resource; Super Admin, Tenant Admin, and User audiences.
 
 ---

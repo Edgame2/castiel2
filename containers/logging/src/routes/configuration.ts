@@ -73,8 +73,9 @@ export async function registerConfigurationRoutes(app: FastifyInstance): Promise
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
 
-      const config = await configService.getOrganizationConfig(user.organizationId);
+      const config = await configService.getOrganizationConfig(tenantId);
 
       reply.send(config);
     } catch (error: any) {
@@ -112,10 +113,11 @@ export async function registerConfigurationRoutes(app: FastifyInstance): Promise
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const body = updateConfigSchema.parse(request.body);
 
       const config = await configService.upsertOrganizationConfig(
-        user.organizationId,
+        tenantId,
         body
       );
 
@@ -142,8 +144,9 @@ export async function registerConfigurationRoutes(app: FastifyInstance): Promise
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
 
-      await configService.deleteOrganizationConfig(user.organizationId);
+      await configService.deleteOrganizationConfig(tenantId);
 
       reply.code(204).send();
     } catch (error: any) {

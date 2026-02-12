@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface PermissionRow {
   id: string;
@@ -71,17 +71,15 @@ function RoleDetailContent() {
   }, []);
 
   const fetchRole = useCallback(async () => {
-    const base = getApiBaseUrl().replace(/\/$/, '') || '';
-    if (!base || !orgId.trim() || !id.trim()) return;
+    if (!getApiBaseUrl() || !orgId.trim() || !id.trim()) return;
     setLoading(true);
     setError(null);
     setRole(null);
     const encodedOrg = encodeURIComponent(orgId.trim());
     const encodedRoleId = encodeURIComponent(id.trim());
     try {
-      const res = await fetch(
-        `${base}/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`,
-        { credentials: 'include' }
+      const res = await apiFetch(
+        `/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`
       );
       if (!res.ok) {
         if (res.status === 404) throw new Error('Role not found');
@@ -99,16 +97,15 @@ function RoleDetailContent() {
   }, [orgId, id]);
 
   const deleteRole = useCallback(async () => {
-    const base = getApiBaseUrl().replace(/\/$/, '') || '';
-    if (!base || !orgId.trim() || !id.trim()) return;
+    if (!getApiBaseUrl() || !orgId.trim() || !id.trim()) return;
     setDeleting(true);
     setDeleteError(null);
     const encodedOrg = encodeURIComponent(orgId.trim());
     const encodedRoleId = encodeURIComponent(id.trim());
     try {
-      const res = await fetch(
-        `${base}/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`,
-        { method: 'DELETE', credentials: 'include' }
+      const res = await apiFetch(
+        `/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`,
+        { method: 'DELETE' }
       );
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -126,8 +123,7 @@ function RoleDetailContent() {
   }, [orgId, id, router]);
 
   const updateRole = useCallback(async () => {
-    const base = getApiBaseUrl().replace(/\/$/, '') || '';
-    if (!base || !orgId.trim() || !id.trim()) return;
+    if (!getApiBaseUrl() || !orgId.trim() || !id.trim()) return;
     const name = editName.trim();
     if (!name) {
       setSaveError('Name is required');
@@ -138,11 +134,10 @@ function RoleDetailContent() {
     const encodedOrg = encodeURIComponent(orgId.trim());
     const encodedRoleId = encodeURIComponent(id.trim());
     try {
-      const res = await fetch(
-        `${base}/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`,
+      const res = await apiFetch(
+        `/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`,
         {
           method: 'PUT',
-          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name,
@@ -340,11 +335,9 @@ function RoleDetailContent() {
                               setSaveError(null);
                               setPermissionsLoading(true);
                               const encodedOrg = encodeURIComponent(orgId.trim());
-                              const baseUrl = getApiBaseUrl().replace(/\/$/, '') || '';
                               try {
-                                const res = await fetch(
-                                  baseUrl ? `${baseUrl}/api/v1/organizations/${encodedOrg}/permissions` : `/api/v1/organizations/${encodedOrg}/permissions`,
-                                  { credentials: 'include' }
+                                const res = await apiFetch(
+                                  `/api/v1/organizations/${encodedOrg}/permissions`
                                 );
                                 if (!res.ok) throw new Error(`Permissions: HTTP ${res.status}`);
                                 const json: { data?: PermissionRow[] } = await res.json();

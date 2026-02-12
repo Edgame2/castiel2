@@ -13,8 +13,7 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import { DrillDownBreadcrumb } from '@/components/dashboard/DrillDownBreadcrumb';
 import { ActivityList, type ActivityItem } from '@/components/dashboard/ActivityList';
 import type { DrillDownSegment } from '@/components/dashboard/DrillDownBreadcrumb';
-
-const apiBase = typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '') : '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type PortfolioSummary = { opportunityCount: number; accountsCount: number; totalPipeline: number };
 type PortfolioAccount = { id: string; name?: string };
@@ -46,45 +45,47 @@ function PortfolioDrillDownContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const base = apiBase.replace(/\/$/, '');
-
   const fetchSummary = useCallback(async () => {
-    const res = await fetch(`${base}/api/v1/portfolios/${encodeURIComponent(portfolioId)}/summary`, { credentials: 'include' });
+    const res = await apiFetch(`/api/v1/portfolios/${encodeURIComponent(portfolioId)}/summary`);
     if (!res.ok) throw new Error(`Summary: ${res.status}`);
     return (await res.json()) as PortfolioSummary;
-  }, [base, portfolioId]);
+  }, [portfolioId]);
 
   const fetchAccounts = useCallback(async () => {
-    const res = await fetch(`${base}/api/v1/portfolios/${encodeURIComponent(portfolioId)}/accounts`, { credentials: 'include' });
+    const res = await apiFetch(`/api/v1/portfolios/${encodeURIComponent(portfolioId)}/accounts`);
     if (!res.ok) throw new Error(`Accounts: ${res.status}`);
     const data = await res.json();
     return (Array.isArray(data) ? data : data?.items || []) as PortfolioAccount[];
-  }, [base, portfolioId]);
+  }, [portfolioId]);
 
   const fetchOpportunities = useCallback(async () => {
     if (!accountId) return [];
-    const res = await fetch(`${base}/api/v1/accounts/${encodeURIComponent(accountId)}/opportunities`, { credentials: 'include' });
+    const res = await apiFetch(`/api/v1/accounts/${encodeURIComponent(accountId)}/opportunities`);
     if (!res.ok) throw new Error(`Opportunities: ${res.status}`);
     const data = await res.json();
     return (Array.isArray(data) ? data : data?.items || []) as AccountOpportunity[];
-  }, [base, accountId]);
+  }, [accountId]);
 
   const fetchActivities = useCallback(async () => {
     if (!opportunityId) return [];
-    const res = await fetch(`${base}/api/v1/opportunities/${encodeURIComponent(opportunityId)}/activities`, { credentials: 'include' });
+    const res = await apiFetch(`/api/v1/opportunities/${encodeURIComponent(opportunityId)}/activities`);
     if (!res.ok) throw new Error(`Activities: ${res.status}`);
     const data = await res.json();
     return (Array.isArray(data) ? data : data?.items || []) as ActivityItem[];
-  }, [base, opportunityId]);
+  }, [opportunityId]);
 
   useEffect(() => {
+    if (!getApiBaseUrl()) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setError(null);
     setLoading(true);
     (async () => {
       try {
         const [s, a, o, act] = await Promise.all([
-          fetchSummary().catch((e) => (cancelled ? null : (setError(e.message), null))),
+          fetchSummary().catch(() => (cancelled ? null : (setError(GENERIC_ERROR_MESSAGE), null))),
           fetchAccounts().catch(() => []),
           accountId ? fetchOpportunities() : Promise.resolve([]),
           opportunityId ? fetchActivities() : Promise.resolve([]),

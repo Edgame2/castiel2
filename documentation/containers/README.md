@@ -64,7 +64,7 @@ Single source of truth for all runtime containers: purpose, integration, and lin
 | validation-engine | 3136 | `containers/validation-engine/` | [validation-engine.md](./validation-engine.md) |
 | web-search | 3056 | `containers/web-search/` | [web-search.md](./web-search.md) |
 | workflow-orchestrator | 3051 | `containers/workflow-orchestrator/` | [workflow-orchestrator.md](./workflow-orchestrator.md) |
-| ui | 3000 | `containers/ui/` | [ui.md](./ui.md) |
+| ui | 3000 | `ui/` (standalone, not in docker-compose) | [ui.md](./ui.md) |
 
 ---
 

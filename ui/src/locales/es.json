@@ -24,9 +24,23 @@
       "tableId": "ID",
       "tableStatus": "Estado"
     },
+    "contacts": {
+      "title": "Contactos",
+      "pageTitle": "Contactos | Castiel",
+      "noContacts": "No se encontraron contactos.",
+      "searchPlaceholder": "Buscar por nombre o ID...",
+      "searchAriaLabel": "Buscar contactos"
+    },
     "sidebar": {
       "user": "Usuario",
       "editProfile": "Editar perfil"
+    },
+    "notFound": {
+      "title": "Página no encontrada",
+      "description": "La página que busca no existe o ha sido movida.",
+      "home": "Inicio",
+      "dashboard": "Panel",
+      "login": "Entrar"
     },
     "nav": {
       "home": "Inicio",

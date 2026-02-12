@@ -220,7 +220,10 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   log.error('Unhandled promise rejection', reason as Error, { service: 'utility_services', promise: promise.toString() });
 });
 
-start().catch((error) => {
-  console.error('Fatal error starting server:', error);
-  process.exit(1);
-});
+// Only start when run directly (not when imported by tests)
+if (process.env.NODE_ENV !== 'test') {
+  start().catch((error) => {
+    console.error('Fatal error starting server:', error);
+    process.exit(1);
+  });
+}

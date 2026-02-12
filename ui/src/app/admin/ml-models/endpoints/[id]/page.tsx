@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface EndpointItem {
   id: string;
@@ -25,13 +24,13 @@ export default function MLModelsEndpointDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchEndpoints = useCallback(async () => {
-    if (!apiBase) {
+    if (!getApiBaseUrl()) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/ml/endpoints`, { credentials: 'include' })
+    apiFetch('/api/v1/ml/endpoints')
       .then((r) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load');
         return r.json();
@@ -40,8 +39,8 @@ export default function MLModelsEndpointDetailPage() {
         const found = (data.items ?? []).find((e) => e.id === id) ?? null;
         setEndpoint(found);
       })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+      .catch(() => {
+        setError(GENERIC_ERROR_MESSAGE);
         setEndpoint(null);
       })
       .finally(() => setLoading(false));

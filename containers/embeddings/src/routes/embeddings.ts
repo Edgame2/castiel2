@@ -1,12 +1,14 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { authenticateRequest, sanitizeString } from '@coder/shared';
+import { authenticateRequest, tenantEnforcementMiddleware, sanitizeString } from '@coder/shared';
 import { EmbeddingService } from '../services/EmbeddingService';
 
 export async function embeddingRoutes(fastify: FastifyInstance) {
   const embeddingService = new EmbeddingService();
 
-  // Register authentication middleware
-  fastify.addHook('preHandler', authenticateRequest);
+  fastify.addHook('preHandler', async (request, reply) => {
+    await authenticateRequest()(request, reply);
+    await tenantEnforcementMiddleware()(request, reply);
+  });
 
   // Store embedding
   fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {

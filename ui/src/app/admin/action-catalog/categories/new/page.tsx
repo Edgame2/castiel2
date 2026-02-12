@@ -12,8 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type CategoryType = 'risk' | 'recommendation' | 'both';
 
@@ -37,12 +36,11 @@ export default function ActionCatalogCategoryNewPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !displayName.trim() || submitting) return;
+    if (!getApiBaseUrl() || !displayName.trim() || submitting) return;
     setError(null);
     setSubmitting(true);
-    fetch(`${apiBase}/api/v1/action-catalog/categories`, {
+    apiFetch('/api/v1/action-catalog/categories', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         displayName: displayName.trim(),
@@ -59,7 +57,7 @@ export default function ActionCatalogCategoryNewPage() {
         if (data?.id) router.push(`/admin/action-catalog/categories/${data.id}`);
         else router.push('/admin/action-catalog/categories');
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Create failed'))
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSubmitting(false));
   };
 

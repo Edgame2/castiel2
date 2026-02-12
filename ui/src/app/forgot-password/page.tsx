@@ -7,6 +7,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -18,34 +21,42 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
+
+const forgotPasswordSchema = z.object({
+  email: z.string().min(1, 'Email is required').email('Invalid email address'),
+});
+
+type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const { register, handleSubmit, formState: { errors } } = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: { email: '' },
+  });
+
+  const onSubmit = async (data: ForgotPasswordFormData) => {
     setError(null);
     setSuccessMessage(null);
     setLoading(true);
     try {
-      const base = getApiBaseUrl();
-      const res = await fetch(`${base ? `${base.replace(/\/$/, '')}` : ''}/api/auth/forgot-password`, {
+      const res = await apiFetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: data.email }),
+        skip401Redirect: true,
       });
-      const data = await res.json().catch(() => ({}));
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const msg = data?.error || data?.message || `HTTP ${res.status}`;
+        const msg = json?.error || json?.message || `HTTP ${res.status}`;
         setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
         return;
       }
-      setSuccessMessage(data?.message ?? 'If an account with that email exists, a password reset link has been sent.');
+      setSuccessMessage(json?.message ?? 'If an account with that email exists, a password reset link has been sent.');
     } catch (e) {
       if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
       setError(GENERIC_ERROR_MESSAGE);
@@ -74,7 +85,7 @@ export default function ForgotPasswordPage() {
               </Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {error && (
                 <div className="rounded-md bg-destructive/10 text-destructive text-sm p-3 border border-destructive/20">
                   {error}
@@ -88,11 +99,13 @@ export default function ForgotPasswordPage() {
                   id="forgot-email"
                   type="email"
                   autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
+                  placeholder="you@example.com"
                   className="w-full"
+                  {...register('email')}
                 />
+                {errors.email && (
+                  <p className="text-sm text-destructive" role="alert">{errors.email.message}</p>
+                )}
               </div>
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? 'Sending…' : 'Send reset link'}

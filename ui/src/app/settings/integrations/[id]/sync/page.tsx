@@ -19,9 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface SyncConfig {
   syncEnabled?: boolean;
@@ -63,9 +61,7 @@ export default function SyncConfigurationPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/${integrationId}`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch(`/api/v1/integrations/${integrationId}`);
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -83,9 +79,7 @@ export default function SyncConfigurationPage() {
 
   const fetchSyncConfig = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/${integrationId}/sync-config`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch(`/api/v1/integrations/${integrationId}/sync-config`);
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -106,10 +100,9 @@ export default function SyncConfigurationPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/${integrationId}/sync-config`, {
+      const res = await apiFetch(`/api/v1/integrations/${integrationId}/sync-config`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(syncConfig),
       });
       if (!res.ok) {
@@ -132,7 +125,7 @@ export default function SyncConfigurationPage() {
       return;
     }
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/${integrationId}/sync`, {
+      const res = await apiFetch(`/api/v1/integrations/${integrationId}/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

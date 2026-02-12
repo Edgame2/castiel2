@@ -18,8 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type FeedbackTypeCategory = 'action' | 'relevance' | 'quality' | 'timing' | 'other';
 type FeedbackSentiment = 'positive' | 'neutral' | 'negative';
@@ -147,16 +148,16 @@ export default function FeedbackTypesPage() {
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const fetchTypes = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types?includeUsage=true`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/admin/feedback-types?includeUsage=true');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setTypes(Array.isArray(json) ? json : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setTypes([]);
     } finally {
       setLoading(false);
@@ -164,19 +165,19 @@ export default function FeedbackTypesPage() {
   }, []);
 
   const fetchOne = useCallback(async (id: string): Promise<FeedbackTypeRow | null> => {
-    if (!apiBaseUrl) return null;
-    const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types/${encodeURIComponent(id)}`, { credentials: 'include' });
+    if (!getApiBaseUrl()) return null;
+    const res = await apiFetch(`/api/v1/admin/feedback-types/${encodeURIComponent(id)}`);
     if (!res.ok) return null;
     return res.json();
   }, []);
 
   useEffect(() => {
-    if (apiBaseUrl) fetchTypes();
+    if (getApiBaseUrl()) fetchTypes();
     else {
-      setError('NEXT_PUBLIC_API_BASE_URL is not set');
+      setError(GENERIC_ERROR_MESSAGE);
       setLoading(false);
     }
-  }, [apiBaseUrl, fetchTypes]);
+  }, [fetchTypes]);
 
   useEffect(() => {
     document.title = 'Feedback Types | Admin | Castiel';
@@ -187,18 +188,18 @@ export default function FeedbackTypesPage() {
 
   /** §1.1.3 Fetch tenants using this feedback type when tenants modal opens */
   useEffect(() => {
-    if (!tenantsModalType || !apiBaseUrl) return;
+    if (!tenantsModalType || !getApiBaseUrl()) return;
     setTenantsLoading(true);
     setTenantsError(null);
-    fetch(`${apiBaseUrl}/api/v1/admin/feedback-types/${encodeURIComponent(tenantsModalType.id)}/tenants`, { credentials: 'include' })
-      .then((res) => {
+    apiFetch(`/api/v1/admin/feedback-types/${encodeURIComponent(tenantsModalType.id)}/tenants`)
+      .then((res: Response) => {
         if (!res.ok) throw new Error(res.status === 404 ? 'Feedback type not found' : `HTTP ${res.status}`);
         return res.json();
       })
       .then((data: { tenantIds?: string[] }) => {
         setTenantsList(Array.isArray(data?.tenantIds) ? data.tenantIds : []);
       })
-      .catch((e) => setTenantsError(e instanceof Error ? e.message : String(e)))
+      .catch(() => setTenantsError(GENERIC_ERROR_MESSAGE))
       .finally(() => setTenantsLoading(false));
   }, [tenantsModalType?.id]);
 
@@ -298,7 +299,7 @@ export default function FeedbackTypesPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     const errs = formValidationErrors();
     if (errs.length > 0) {
       setFormError(errs.join(' '));
@@ -324,7 +325,7 @@ export default function FeedbackTypesPage() {
         isActive: form.isActive,
         isDefault: form.isDefault,
       };
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types`, {
+      const res = await apiFetch('/api/v1/admin/feedback-types', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -335,7 +336,7 @@ export default function FeedbackTypesPage() {
       closeModal();
       await fetchTypes();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }
@@ -343,7 +344,7 @@ export default function FeedbackTypesPage() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl || !editId) return;
+    if (!getApiBaseUrl() || !editId) return;
     const errs = formValidationErrors();
     if (errs.length > 0) {
       setFormError(errs.join(' '));
@@ -368,7 +369,7 @@ export default function FeedbackTypesPage() {
         isActive: form.isActive,
         isDefault: form.isDefault,
       };
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types/${encodeURIComponent(editId)}`, {
+      const res = await apiFetch(`/api/v1/admin/feedback-types/${encodeURIComponent(editId)}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -379,7 +380,7 @@ export default function FeedbackTypesPage() {
       closeModal();
       await fetchTypes();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }
@@ -387,7 +388,7 @@ export default function FeedbackTypesPage() {
 
   /** §1.1.3 Bulk update behavior for all tenants: apply current form behavior to the type and return affected tenant count */
   const handleBulkUpdateBehavior = async () => {
-    if (!apiBaseUrl || !editId) return;
+    if (!getApiBaseUrl() || !editId) return;
     const errs = formValidationErrors();
     if (errs.length > 0) {
       setBulkUpdateError(errs.join(' '));
@@ -401,7 +402,7 @@ export default function FeedbackTypesPage() {
         ...form.behavior,
         hideDurationDays: form.behavior.hidesRecommendation ? (form.behavior.hideDurationDays ?? 0) : undefined,
       };
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types/${encodeURIComponent(editId)}/bulk-update-behavior`, {
+      const res = await apiFetch(`/api/v1/admin/feedback-types/${encodeURIComponent(editId)}/bulk-update-behavior`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -411,8 +412,8 @@ export default function FeedbackTypesPage() {
       if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
       setBulkUpdateResult({ affectedTenantIds: Array.isArray(data?.affectedTenantIds) ? data.affectedTenantIds : [] });
       await fetchTypes();
-    } catch (e) {
-      setBulkUpdateError(e instanceof Error ? e.message : String(e));
+    } catch {
+      setBulkUpdateError(GENERIC_ERROR_MESSAGE);
     } finally {
       setBulkUpdateSaving(false);
     }
@@ -437,7 +438,7 @@ export default function FeedbackTypesPage() {
   };
 
   const handleConfirmDelete = async () => {
-    if (!apiBaseUrl || !deleteConfirmRow) return;
+    if (!getApiBaseUrl() || !deleteConfirmRow) return;
     const displayName = (deleteConfirmRow.displayName || deleteConfirmRow.name || '').trim();
     if (deleteConfirmName.trim() !== displayName) return;
     const blockReasons = deleteBlockReasons(deleteConfirmRow);
@@ -445,7 +446,7 @@ export default function FeedbackTypesPage() {
     setDeleteSaving(true);
     setDeleteError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types/${encodeURIComponent(deleteConfirmRow.id)}`, {
+      const res = await apiFetch(`/api/v1/admin/feedback-types/${encodeURIComponent(deleteConfirmRow.id)}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -454,8 +455,8 @@ export default function FeedbackTypesPage() {
       setDeleteConfirmRow(null);
       setDeleteConfirmName('');
       await fetchTypes();
-    } catch (e) {
-      setDeleteError(e instanceof Error ? e.message : String(e));
+    } catch {
+      setDeleteError(GENERIC_ERROR_MESSAGE);
     } finally {
       setDeleteSaving(false);
     }
@@ -469,10 +470,10 @@ export default function FeedbackTypesPage() {
 
   /** §1.1.1 Disable/Enable: toggle isActive via PUT */
   const handleToggleActive = async (id: string, nextActive: boolean) => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setTogglingActiveId(id);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types/${encodeURIComponent(id)}`, {
+      const res = await apiFetch(`/api/v1/admin/feedback-types/${encodeURIComponent(id)}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -482,7 +483,7 @@ export default function FeedbackTypesPage() {
       if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
       await fetchTypes();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setTogglingActiveId(null);
     }
@@ -553,7 +554,7 @@ export default function FeedbackTypesPage() {
   const isAllSelected = sorted.length > 0 && selectedIds.size === sorted.length;
 
   const runBulk = async (operation: 'activate' | 'deactivate' | 'setCategory' | 'setSentiment', payload?: { category?: FeedbackTypeCategory; sentiment?: FeedbackSentiment; sentimentScore?: number }) => {
-    if (!apiBaseUrl || selectedArray.length === 0) return;
+    if (!getApiBaseUrl() || selectedArray.length === 0) return;
     setBulkSaving(true);
     setError(null);
     try {
@@ -563,7 +564,7 @@ export default function FeedbackTypesPage() {
         body.sentiment = payload.sentiment;
         body.sentimentScore = payload.sentimentScore ?? (payload.sentiment === 'positive' ? 1 : payload.sentiment === 'negative' ? -1 : 0);
       }
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types/bulk`, {
+      const res = await apiFetch('/api/v1/admin/feedback-types/bulk', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -575,7 +576,7 @@ export default function FeedbackTypesPage() {
       setSelectedIds(new Set());
       await fetchTypes();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setBulkSaving(false);
     }
@@ -593,14 +594,14 @@ export default function FeedbackTypesPage() {
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !apiBaseUrl) return;
+    if (!file || !getApiBaseUrl()) return;
     const reader = new FileReader();
     reader.onload = async () => {
       try {
         const raw = reader.result as string;
         const parsed = JSON.parse(raw);
         const items = Array.isArray(parsed) ? parsed : [parsed];
-        const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types/import`, {
+        const res = await apiFetch('/api/v1/admin/feedback-types/import', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -611,7 +612,7 @@ export default function FeedbackTypesPage() {
         setError(null);
         await fetchTypes();
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(GENERIC_ERROR_MESSAGE);
       }
       e.target.value = '';
     };
@@ -659,15 +660,25 @@ export default function FeedbackTypesPage() {
         </Link>
       </nav>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
       )}
 
       {loading && (
-        <div className="rounded-lg border p-6 bg-white dark:bg-gray-900">
-          <p className="text-sm text-gray-500">Loading…</p>
+        <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-hidden">
+          <div className="p-4 space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-4 flex-1 max-w-[120px]" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-14" />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -677,7 +688,7 @@ export default function FeedbackTypesPage() {
         </div>
       )}
 
-      {!loading && apiBaseUrl && (
+      {!loading && getApiBaseUrl() && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <Button asChild>
@@ -879,6 +890,13 @@ export default function FeedbackTypesPage() {
           </div>
 
           <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-hidden">
+            {sorted.length === 0 ? (
+              <EmptyState
+                title="No feedback types"
+                description="Create a type with the button above or import from JSON."
+                action={{ label: 'New type', href: '/admin/feedback/types/new' }}
+              />
+            ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -903,13 +921,7 @@ export default function FeedbackTypesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sorted.length === 0 ? (
-                    <tr>
-                      <td colSpan={11} className="p-6 text-gray-500 text-center">
-                        No feedback types found.
-                      </td>
-                    </tr>
-                  ) : (
+                  {
                     sorted.map((t) => (
                       <tr key={t.id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                         <td className="p-3">
@@ -1067,10 +1079,11 @@ export default function FeedbackTypesPage() {
                         </td>
                       </tr>
                     ))
-                  )}
+                  }
                 </tbody>
               </table>
             </div>
+            )}
           </div>
         </div>
       )}

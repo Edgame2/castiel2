@@ -9,9 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 interface SystemHealth {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -49,7 +47,7 @@ export default function MonitoringDashboardPage() {
   }, []);
 
   const fetchMonitoringData = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
       return;
@@ -58,9 +56,9 @@ export default function MonitoringDashboardPage() {
     setError(null);
     try {
       const [healthRes, queuesRes, processorsRes] = await Promise.all([
-        fetch(`${apiBaseUrl}/api/v1/admin/monitoring/health`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/v1/admin/monitoring/queues`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/v1/admin/monitoring/processors`, { credentials: 'include' }),
+        apiFetch('/api/v1/admin/monitoring/health'),
+        apiFetch('/api/v1/admin/monitoring/queues'),
+        apiFetch('/api/v1/admin/monitoring/processors'),
       ]);
 
       if (!healthRes.ok || !queuesRes.ok || !processorsRes.ok) {
@@ -80,7 +78,7 @@ export default function MonitoringDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     fetchMonitoringData();
@@ -111,25 +109,25 @@ export default function MonitoringDashboardPage() {
         </Button>
       </div>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20 mb-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
       )}
 
-      {apiBaseUrl && loading && (
+      {getApiBaseUrl() && loading && (
         <div className="rounded-lg border p-6 bg-white dark:bg-gray-900">
           <p className="text-sm text-gray-500">Loading monitoring data…</p>
         </div>
       )}
 
-      {apiBaseUrl && error && (
+      {getApiBaseUrl() && error && (
         <div className="rounded-lg border p-6 bg-white dark:bg-gray-900">
           <p className="text-sm text-red-600 dark:text-red-400">Error: {error}</p>
         </div>
       )}
 
-      {apiBaseUrl && !loading && !error && (
+      {getApiBaseUrl() && !loading && !error && (
         <div className="space-y-6">
           {/* System Health */}
           {health && (

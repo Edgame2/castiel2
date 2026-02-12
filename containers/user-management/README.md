@@ -61,6 +61,19 @@ npm run build
 npm start
 ```
 
+### Seed: Revimize Tenant + Super Admin
+
+To bootstrap the **Revimize** tenant with a Super Admin user:
+
+1. **Existing user** (user registered first): Set `SEED_SUPER_ADMIN_EMAIL=edouard.gamelin@revimize.com` and restart user-management. The seed promotes that user to Super Admin in the Revimize org.
+
+2. **Create user + tenant** (one-shot bootstrap): Set both:
+   - `SEED_SUPER_ADMIN_EMAIL=edouard.gamelin@revimize.com`
+   - `SEED_SUPER_ADMIN_PASSWORD=YourSecurePassword`
+   Restart user-management. The seed creates the Revimize org, the user, and membership.
+
+After seeding: **log out and log in again** to get a token with `tenantId`/`organizationId` (required for `/api/v1/integrations` and other protected routes).
+
 ## Configuration Reference
 
 | Key | Type | Default | Description |

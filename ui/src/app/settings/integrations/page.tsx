@@ -18,8 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface IntegrationType {
   id: string;
@@ -54,9 +55,7 @@ export default function IntegrationsPage() {
 
   const fetchIntegrations = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch('/api/v1/integrations');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -64,15 +63,13 @@ export default function IntegrationsPage() {
       const json = await res.json();
       setIntegrations(Array.isArray(json?.items) ? json.items : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
     }
   }, []);
 
   const fetchAvailableTypes = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/available`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch('/api/v1/integrations/available');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -99,11 +96,8 @@ export default function IntegrationsPage() {
 
   const handleOAuthConnect = async (type: IntegrationType) => {
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/integrations/oauth-url/${encodeURIComponent(type.integrationId)}?redirectUri=${encodeURIComponent(window.location.href)}`,
-        {
-          credentials: 'include',
-        }
+      const res = await apiFetch(
+        `/api/v1/integrations/oauth-url/${encodeURIComponent(type.integrationId)}?redirectUri=${encodeURIComponent(window.location.href)}`
       );
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -115,13 +109,13 @@ export default function IntegrationsPage() {
         window.location.href = json.authorizationUrl;
       }
     } catch (e) {
-      alert(`Failed to start OAuth flow: ${e instanceof Error ? e.message : String(e)}`);
+      alert(GENERIC_ERROR_MESSAGE);
     }
   };
 
   const handleApiKeyConnect = async (type: IntegrationType, apiKey: string, apiSecret?: string, instanceUrl?: string) => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/connect-api-key`, {
+      const res = await apiFetch('/api/v1/integrations/connect-api-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -139,14 +133,14 @@ export default function IntegrationsPage() {
       await fetchIntegrations();
       setShowConnectModal(false);
       setSelectedType(null);
-    } catch (e) {
-      alert(`Failed to connect: ${e instanceof Error ? e.message : String(e)}`);
+    } catch {
+      alert(GENERIC_ERROR_MESSAGE);
     }
   };
 
   const handleServiceAccountConnect = async (type: IntegrationType, serviceAccountJson: string) => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/connect-service-account`, {
+      const res = await apiFetch('/api/v1/integrations/connect-service-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -162,8 +156,8 @@ export default function IntegrationsPage() {
       await fetchIntegrations();
       setShowConnectModal(false);
       setSelectedType(null);
-    } catch (e) {
-      alert(`Failed to connect: ${e instanceof Error ? e.message : String(e)}`);
+    } catch {
+      alert(GENERIC_ERROR_MESSAGE);
     }
   };
 
@@ -172,7 +166,7 @@ export default function IntegrationsPage() {
       return;
     }
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/${id}`, {
+      const res = await apiFetch(`/api/v1/integrations/${id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -181,15 +175,15 @@ export default function IntegrationsPage() {
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
       }
       await fetchIntegrations();
-    } catch (e) {
-      alert(`Failed to disconnect: ${e instanceof Error ? e.message : String(e)}`);
+    } catch {
+      alert(GENERIC_ERROR_MESSAGE);
     }
   };
 
   const handleTestConnection = async (id: string) => {
     setTestingId(id);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/${id}/test`, {
+      const res = await apiFetch(`/api/v1/integrations/${id}/test`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -199,8 +193,8 @@ export default function IntegrationsPage() {
       }
       const json = await res.json();
       alert(json.success ? `Connection test successful! ${json.message || ''}` : `Connection test failed: ${json.message || ''}`);
-    } catch (e) {
-      alert(`Connection test failed: ${e instanceof Error ? e.message : String(e)}`);
+    } catch {
+      alert(GENERIC_ERROR_MESSAGE);
     } finally {
       setTestingId(null);
     }
@@ -230,8 +224,20 @@ export default function IntegrationsPage() {
       </div>
 
       {loading && (
-        <div className="rounded-lg border p-6 bg-white dark:bg-gray-900">
-          <p className="text-sm text-gray-500">Loading integrations…</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-lg border p-4 bg-white dark:bg-gray-900">
+              <div className="flex justify-between items-start mb-3">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-5 w-16 rounded" />
+              </div>
+              <Skeleton className="h-3 w-full mb-3" />
+              <div className="flex gap-2">
+                <Skeleton className="h-8 flex-1" />
+                <Skeleton className="h-8 w-16" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -247,12 +253,14 @@ export default function IntegrationsPage() {
           <div className="mb-8">
             <h2 className="text-lg font-semibold mb-4">Connected Integrations</h2>
             {integrations.length === 0 ? (
-              <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 text-center">
-                <p className="text-sm text-gray-500 mb-4">No integrations connected yet</p>
-                <Button onClick={() => setShowConnectModal(true)} size="sm">
-                  Connect Your First Integration
-                </Button>
-              </div>
+              <EmptyState
+                title="No integrations connected"
+                description="Connect your first integration to sync data and enable features."
+                actionButton={{
+                  label: 'Connect Your First Integration',
+                  onClick: () => setShowConnectModal(true),
+                }}
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {integrations.map((integration) => (

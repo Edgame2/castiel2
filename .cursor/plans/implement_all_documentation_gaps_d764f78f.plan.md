@@ -90,21 +90,23 @@ This plan consolidates the six gap documents under [documentation/gaps](document
 
 **Source:** [ui-pages-inventory.md](documentation/gaps/ui-pages-inventory.md)
 
-Implement in [containers/ui](containers/ui) (Next.js App Router) in the order below. All routes and CRUD are specified in the inventory; only groupings are listed here.
+Implement in [ui](ui) (Next.js App Router) in the order below. All routes and CRUD are specified in the inventory; only groupings are listed here.
 
 **UI–backend API surface (contract for Phase 2):**
 
-| UI group | API paths the UI calls (via gateway) |
-|----------|--------------------------------------|
-| Auth & session | `/api/auth/*` (login, register, forgot-password, reset-password, verify-email, logout, accept-invitation) |
-| MFA & profile | `/api/auth/*` (MFA), `/api/users/me`, `PUT /api/users/me` |
-| Settings & search | Integration manager, config service; `/api/search` or search-service route if client-facing |
-| Forecast | Risk-analytics / forecasting service routes (e.g. `/api/v1/*` per gateway) |
-| Recommendations | `/api/v1/recommendations`, `/api/v1/feedback` |
-| AI (conversations, prompts, multimodal) | `/api/conversations`, `/api/v1/prompts`, `/api/v1/multimodal` |
-| Admin security & tenants | `/api/users`, `/api/v1/users/:id`, user-management admin routes; recommendations/admin/tenants |
-| Admin CRUD | Risk-catalog, integration-manager, shard-manager, ml_service, recommendations, etc. per existing gateway routes |
-| Logging config | Logging service GET (and search) API for `data_collection` config |
+
+| UI group                                | API paths the UI calls (via gateway)                                                                            |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Auth & session                          | `/api/auth/*` (login, register, forgot-password, reset-password, verify-email, logout, accept-invitation)       |
+| MFA & profile                           | `/api/auth/*` (MFA), `/api/users/me`, `PUT /api/users/me`                                                       |
+| Settings & search                       | Integration manager, config service; `/api/search` or search-service route if client-facing                     |
+| Forecast                                | Risk-analytics / forecasting service routes (e.g. `/api/v1/*` per gateway)                                      |
+| Recommendations                         | `/api/v1/recommendations`, `/api/v1/feedback`                                                                   |
+| AI (conversations, prompts, multimodal) | `/api/conversations`, `/api/v1/prompts`, `/api/v1/multimodal`                                                   |
+| Admin security & tenants                | `/api/users`, `/api/v1/users/:id`, user-management admin routes; recommendations/admin/tenants                  |
+| Admin CRUD                              | Risk-catalog, integration-manager, shard-manager, ml_service, recommendations, etc. per existing gateway routes |
+| Logging config                          | Logging service GET (and search) API for `data_collection` config                                               |
+
 
 ### 2.1 Auth and session (unauthenticated)
 
@@ -164,12 +166,14 @@ Implement in [containers/ui](containers/ui) (Next.js App Router) in the order be
 
 **Phase 2 milestones (optional split for delivery):**
 
-| Milestone | Scope | Definition of done |
-|-----------|--------|---------------------|
-| M1 | §2.1 Auth + §2.2 MFA/profile + §2.3 Settings & search | All routes load without 404; auth flows call real APIs; settings landing and integration detail work. |
-| M2 | §2.4 Forecast + §2.5 Recommendations | Forecast and recommendation pages call real APIs where available. |
-| M3 | §2.6 AI in UI | Conversations, prompts, multimodal pages call gateway routes. |
-| M4 | §2.7–§2.10 Admin CRUD, security, tenants, system/context, errors | All admin list/new/[id] pages and error pages in place; logging config view uses logging API. |
+
+| Milestone | Scope                                                            | Definition of done                                                                                    |
+| --------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| M1        | §2.1 Auth + §2.2 MFA/profile + §2.3 Settings & search            | All routes load without 404; auth flows call real APIs; settings landing and integration detail work. |
+| M2        | §2.4 Forecast + §2.5 Recommendations                             | Forecast and recommendation pages call real APIs where available.                                     |
+| M3        | §2.6 AI in UI                                                    | Conversations, prompts, multimodal pages call gateway routes.                                         |
+| M4        | §2.7–§2.10 Admin CRUD, security, tenants, system/context, errors | All admin list/new/[id] pages and error pages in place; logging config view uses logging API.         |
+
 
 **Status:** All routes in [ui-pages-inventory.md](documentation/gaps/ui-pages-inventory.md) §3 are marked Done (138 total). Summary counts in §4 updated to 138 Done, 0 Todo. Pages exist for auth, MFA, profile, settings, search, forecast, recommendations, AI (conversations, prompts, multimodal), admin security/tenants/CRUD/system/context, and error pages.
 
@@ -260,7 +264,7 @@ flowchart LR
 | Gateway         | [containers/api-gateway/config/default.yaml](containers/api-gateway/config/default.yaml), [containers/api-gateway/src/routes/index.ts](containers/api-gateway/src/routes/index.ts), [containers/api-gateway/src/services/ProxyService.ts](containers/api-gateway/src/services/ProxyService.ts) |
 | User-management | [containers/user-management/src/routes/users.ts](containers/user-management/src/routes/users.ts), new `events/consumers`                                                                                                                                                                       |
 | Logging         | [containers/logging/config/default.yaml](containers/logging/config/default.yaml), [containers/logging/src/events/consumers/AuditEventConsumer.ts](containers/logging/src/events/consumers/AuditEventConsumer.ts)                                                                               |
-| UI              | [containers/ui/src/app](containers/ui/src/app) (new routes per inventory)                                                                                                                                                                                                                      |
+| UI              | [ui/src/app](ui/src/app) (new routes per inventory)                                                                                                                                                                                                                      |
 
 
 All gap sources are in [documentation/gaps](documentation/gaps); refer to them for exact tables, config examples, and priority labels (P1/P2/P3).

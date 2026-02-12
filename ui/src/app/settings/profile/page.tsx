@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface UserProfile {
   id: string;
@@ -42,9 +42,7 @@ export default function ProfilePage() {
     setLoading(true);
     setError(null);
     try {
-      const base = getApiBaseUrl().replace(/\/$/, '') || '';
-      const url = base ? `${base}/api/users/me` : '/api/users/me';
-      const res = await fetch(url, { credentials: 'include' });
+      const res = await apiFetch('/api/users/me');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error as string) || `HTTP ${res.status}`);
@@ -75,12 +73,9 @@ export default function ProfilePage() {
     setError(null);
     setSaving(true);
     try {
-      const base = getApiBaseUrl().replace(/\/$/, '') || '';
-      const url = base ? `${base}/api/users/me` : '/api/users/me';
-      const res = await fetch(url, {
+      const res = await apiFetch('/api/users/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           name: name.trim() || undefined,
           firstName: firstName.trim() || undefined,

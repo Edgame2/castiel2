@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface MethodologyCard {
   id: string;
@@ -16,15 +17,13 @@ interface MethodologyCard {
   avgComplianceScore: number | null;
 }
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-
 export function MethodologyCardGrid() {
   const [cards, setCards] = useState<MethodologyCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
       return;
@@ -32,7 +31,7 @@ export function MethodologyCardGrid() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`${apiBaseUrl}/api/v1/sales-methodology/templates`, { credentials: 'include' })
+    apiFetch('/api/v1/sales-methodology/templates')
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -40,8 +39,8 @@ export function MethodologyCardGrid() {
       .then((data: MethodologyCard[]) => {
         if (!cancelled) setCards(Array.isArray(data) ? data : []);
       })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      .catch(() => {
+        if (!cancelled) setError(GENERIC_ERROR_MESSAGE);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -51,7 +50,7 @@ export function MethodologyCardGrid() {
     };
   }, []);
 
-  if (!apiBaseUrl) {
+  if (!getApiBaseUrl()) {
     return (
       <p className="text-sm text-amber-800 dark:text-amber-200">
         Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL to load methodologies.

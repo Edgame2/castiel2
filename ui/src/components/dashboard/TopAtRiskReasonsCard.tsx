@@ -7,6 +7,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type TopAtRiskReason = {
   reason: string;
@@ -52,7 +53,7 @@ export function TopAtRiskReasonsCard({
       const json = (await res.json()) as { reasons?: TopAtRiskReason[] };
       setData({ reasons: Array.isArray(json?.reasons) ? json.reasons : [] });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setData(null);
     } finally {
       setLoading(false);

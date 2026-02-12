@@ -47,6 +47,14 @@ cosmos_db:
   endpoint: ${process.env.COSMOS_DB_ENDPOINT}
   key: ${process.env.COSMOS_DB_KEY}
   database_id: ${process.env.COSMOS_DB_DATABASE_ID}
+  containers:
+    imports: utility_imports
+    exports: utility_exports
+    migrations: utility_migrations
+    notifications: notification_notifications
+    batches: notification_batches
+    preferences: notification_preferences
+    templates: notification_templates
 jwt:
   secret: ${process.env.JWT_SECRET}
 rabbitmq:
@@ -71,6 +79,15 @@ vi.mock('yaml', () => ({
         endpoint: process.env.COSMOS_DB_ENDPOINT,
         key: process.env.COSMOS_DB_KEY,
         database_id: process.env.COSMOS_DB_DATABASE_ID,
+        containers: {
+          imports: 'utility_imports',
+          exports: 'utility_exports',
+          migrations: 'utility_migrations',
+          notifications: 'notification_notifications',
+          batches: 'notification_batches',
+          preferences: 'notification_preferences',
+          templates: 'notification_templates',
+        },
       },
       jwt: { secret: process.env.JWT_SECRET },
       rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
@@ -80,23 +97,34 @@ vi.mock('yaml', () => ({
   }),
 }));
 
+const stubJob = {
+  id: 'job-1',
+  tenantId: 'tenant-123',
+  importType: 'csv',
+  status: 'completed',
+  recordsProcessed: 0,
+  recordsImported: 0,
+  errors: [],
+  createdAt: new Date(),
+};
+
 // Mock @coder/shared database
 vi.mock('@coder/shared/database', () => ({
-  getContainer: vi.fn(() => ({
+  getContainer: vi.fn((name: string) => ({
     items: {
-      create: vi.fn(),
-      query: vi.fn(() => ({
-        fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
-      })),
+      create: vi.fn().mockImplementation((doc: any) => Promise.resolve({ resource: { ...doc } })),
+      query: vi.fn(() => ({ fetchAll: vi.fn().mockResolvedValue({ resources: [] }) })),
     },
-    item: vi.fn(() => ({
-      read: vi.fn().mockResolvedValue({ resource: null }),
-      replace: vi.fn(),
-      delete: vi.fn(),
+    item: vi.fn((id: string, _pk?: string) => ({
+      read: vi.fn().mockResolvedValue({
+        resource: id === 'job-1' ? stubJob : null,
+      }),
+      replace: vi.fn().mockResolvedValue({ resource: {} }),
+      delete: vi.fn().mockResolvedValue(undefined),
     })),
   })),
   initializeDatabase: vi.fn(),
-  connectDatabase: vi.fn(),
+  connectDatabase: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock @coder/shared events
@@ -120,8 +148,12 @@ vi.mock('@coder/shared', () => ({
     put: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   })),
-  authenticateRequest: vi.fn(() => vi.fn()),
-  tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
+  authenticateRequest: vi.fn(() => async (req: any) => {
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123', organizationId: 'org-1' };
+  }),
+  tenantEnforcementMiddleware: vi.fn(() => async (req: any) => {
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123', organizationId: 'org-1' };
+  }),
   setupJWT: vi.fn(),
 }));
 

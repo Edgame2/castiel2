@@ -9,8 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-
-const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface Integration {
   id: string;
@@ -46,21 +45,23 @@ export default function IntegrationDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchIntegration = useCallback(async () => {
+    if (!getApiBaseUrl()) {
+      setLoading(false);
+      setError(GENERIC_ERROR_MESSAGE);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const base = apiBaseUrl.replace(/\/$/, '');
-      const res = await fetch(`${base}/api/v1/integrations/${encodeURIComponent(integrationId)}`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch(`/api/v1/integrations/${encodeURIComponent(integrationId)}`);
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || (j?.error as string) || `HTTP ${res.status}`);
       }
       const json = await res.json();
       setIntegration(json);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch {
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }

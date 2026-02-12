@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type Cluster = {
   id: string;
@@ -27,25 +28,19 @@ export type ClusterVisualizationProps = {
 export function ClusterVisualization({
   title = 'Risk clusters',
   height = 280,
-  apiBaseUrl = '',
+  apiBaseUrl: _apiBaseUrl,
   getHeaders,
 }: ClusterVisualizationProps) {
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const base = apiBaseUrl.replace(/\/$/, '');
-  const url = `${base}/api/v1/risk-clustering/clusters`;
-
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const headers: HeadersInit = getHeaders ? await Promise.resolve(getHeaders()) : {};
-      const res = await fetch(url, {
-        headers: { ...headers },
-        credentials: getHeaders ? undefined : ('same-origin' as RequestCredentials),
-      });
+      const headers = getHeaders ? await Promise.resolve(getHeaders()) : undefined;
+      const res = await apiFetch('/api/v1/risk-clustering/clusters', { headers });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -53,13 +48,13 @@ export function ClusterVisualization({
       const json = (await res.json()) as { clusters?: Cluster[] } | Cluster[];
       const arr = Array.isArray(json) ? json : (json?.clusters ?? []);
       setClusters(Array.isArray(arr) ? arr : []);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch {
+      setError(GENERIC_ERROR_MESSAGE);
       setClusters([]);
     } finally {
       setLoading(false);
     }
-  }, [url, getHeaders]);
+  }, [getHeaders]);
 
   useEffect(() => {
     fetchData();

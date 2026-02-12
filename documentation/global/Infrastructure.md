@@ -419,7 +419,7 @@ The UI container provides the user interface for Castiel. It is a Next.js applic
 
 ### Location
 
-- **Source**: `containers/ui/`
+- **Source**: `ui/`
 - **Port**: 3000 (configurable via `PORT` environment variable)
 - **Technology**: Next.js 16 (App Router), React 19, TypeScript
 - **UI Components**: Reused from the legacy web app
@@ -500,7 +500,7 @@ graph TB
 ### Project Structure
 
 ```
-containers/ui/
+ui/
 ├── src/
 │   ├── app/                    # Next.js App Router
 │   │   ├── (auth)/            # Authentication routes
@@ -531,7 +531,7 @@ containers/ui/
 PORT=3000
 
 # API Gateway URL
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3002
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
 
 # Other environment variables
 NEXT_PUBLIC_APP_NAME=Castiel

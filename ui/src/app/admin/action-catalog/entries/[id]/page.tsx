@@ -12,8 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type EntryType = 'risk' | 'recommendation';
 type EntryStatus = 'active' | 'deprecated' | 'draft';
@@ -52,14 +51,14 @@ export default function ActionCatalogEntryDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchEntry = useCallback(() => {
-    if (!apiBase || !id) {
+    if (!getApiBaseUrl() || !id) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/action-catalog/entries/${encodeURIComponent(id)}`, { credentials: 'include' })
-      .then((r) => {
+    apiFetch(`/api/v1/action-catalog/entries/${encodeURIComponent(id)}`)
+      .then((r: Response) => {
         if (r.status === 404) throw new Error('Entry not found');
         if (!r.ok) throw new Error(r.statusText || 'Failed to load');
         return r.json();
@@ -71,8 +70,8 @@ export default function ActionCatalogEntryDetailPage() {
         setCategory(data.category ?? '');
         setStatus((data.status as EntryStatus) ?? 'active');
       })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+      .catch(() => {
+        setError(GENERIC_ERROR_MESSAGE);
         setEntry(null);
       })
       .finally(() => setLoading(false));
@@ -84,12 +83,11 @@ export default function ActionCatalogEntryDetailPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !id || !entry || saving) return;
+    if (!getApiBaseUrl() || !id || !entry || saving) return;
     setSaveError(null);
     setSaving(true);
-    fetch(`${apiBase}/api/v1/action-catalog/entries/${encodeURIComponent(id)}`, {
+    apiFetch(`/api/v1/action-catalog/entries/${encodeURIComponent(id)}`, {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         displayName: displayName.trim(),
@@ -98,29 +96,26 @@ export default function ActionCatalogEntryDetailPage() {
         status,
       }),
     })
-      .then((r) => r.json().catch(() => ({})))
+      .then((r: Response) => r.json().catch(() => ({})))
       .then((data: { error?: { message?: string } }) => {
         if (data?.error?.message) throw new Error(data.error.message);
         setEditing(false);
         fetchEntry();
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Save failed'))
+      .catch(() => setSaveError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSaving(false));
   };
 
   const handleDelete = () => {
-    if (!apiBase || !id || deleting) return;
+    if (!getApiBaseUrl() || !id || deleting) return;
     setDeleting(true);
-    fetch(`${apiBase}/api/v1/action-catalog/entries/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    })
-      .then((r) => {
+    apiFetch(`/api/v1/action-catalog/entries/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      .then((r: Response) => {
         if (!r.ok && r.status !== 204) return r.json().then((body: { error?: { message?: string } }) => { throw new Error(body?.error?.message ?? r.statusText); });
         router.push('/admin/action-catalog/entries');
       })
-      .catch((e) => {
-        setSaveError(e instanceof Error ? e.message : 'Delete failed');
+      .catch(() => {
+        setSaveError(GENERIC_ERROR_MESSAGE);
         setDeleting(false);
       });
   };

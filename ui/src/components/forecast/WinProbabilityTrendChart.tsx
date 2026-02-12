@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type WinProbabilityTrendChartProps = {
   opportunityId: string;
@@ -55,7 +56,7 @@ export function WinProbabilityTrendChart({
       const json = (await res.json()) as { points?: Array<{ date: string; probability: number; confidence?: number }> };
       setPoints(Array.isArray(json?.points) ? json.points : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setPoints([]);
     } finally {
       setLoading(false);

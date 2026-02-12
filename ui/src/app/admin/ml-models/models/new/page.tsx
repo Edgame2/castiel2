@@ -14,9 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 const TYPES = ['classification', 'regression', 'clustering', 'recommendation', 'forecasting', 'anomaly_detection'] as const;
 
 export default function MLModelsModelNewPage() {
@@ -32,12 +31,11 @@ export default function MLModelsModelNewPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const features = featuresStr.split(',').map((s) => s.trim()).filter(Boolean);
-    if (!apiBase || !name.trim() || features.length === 0 || submitting) return;
+    if (!getApiBaseUrl() || !name.trim() || features.length === 0 || submitting) return;
     setError(null);
     setSubmitting(true);
-    fetch(`${apiBase}/api/v1/ml/models`, {
+    apiFetch('/api/v1/ml/models', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name.trim(), type, features, description: description.trim() || undefined, algorithm: algorithm.trim() || undefined }),
     })

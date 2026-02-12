@@ -9,9 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface OverviewStats {
   rulesCount: number;
@@ -25,7 +23,7 @@ export default function DecisionRulesOverviewPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setStats(null);
       setLoading(false);
       return;
@@ -34,9 +32,9 @@ export default function DecisionRulesOverviewPage() {
     setError(null);
     try {
       const [rulesRes, templatesRes, conflictsRes] = await Promise.all([
-        fetch(`${apiBaseUrl}/api/v1/decisions/rules?all=true`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/v1/decisions/templates`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/v1/decisions/conflicts`, { credentials: 'include' }),
+        apiFetch('/api/v1/decisions/rules?all=true'),
+        apiFetch('/api/v1/decisions/templates'),
+        apiFetch('/api/v1/decisions/conflicts'),
       ]);
       if (!rulesRes.ok || !templatesRes.ok || !conflictsRes.ok) {
         throw new Error('Failed to load decision rules stats');
@@ -94,13 +92,13 @@ export default function DecisionRulesOverviewPage() {
             Rules, templates, and conflict detection for the decision engine (risk-analytics). Super Admin §6.
           </p>
         </div>
-        {apiBaseUrl && (
+        {getApiBaseUrl() && (
           <Button type="button" variant="outline" onClick={fetchStats} disabled={loading}>
             Refresh
           </Button>
         )}
       </div>
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-4 bg-amber-50 dark:bg-amber-900/20 mb-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>

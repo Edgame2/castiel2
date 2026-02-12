@@ -13,8 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 type Category = 'action' | 'relevance' | 'quality' | 'timing' | 'other';
 type Sentiment = 'positive' | 'neutral' | 'negative';
 const SENTIMENT_SCORE: Record<Sentiment, number> = { positive: 1, neutral: 0, negative: -1 };
@@ -32,13 +32,12 @@ export default function FeedbackTypeNewPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !displayName.trim() || submitting) return;
+    if (!getApiBaseUrl() || !displayName.trim() || submitting) return;
     const slug = name.trim() || displayName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'new_type';
     setError(null);
     setSubmitting(true);
-    fetch(`${apiBase}/api/v1/admin/feedback-types`, {
+    apiFetch('/api/v1/admin/feedback-types', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: slug,
@@ -53,13 +52,13 @@ export default function FeedbackTypeNewPage() {
         isDefault: false,
       }),
     })
-      .then((r) => r.json().catch(() => ({})))
+      .then((r: Response) => r.json().catch(() => ({})))
       .then((data: { id?: string; error?: { message?: string } }) => {
         if (data?.error?.message) throw new Error(data.error.message);
         if (data?.id) router.push(`/admin/feedback/types/${encodeURIComponent(data.id)}`);
         else router.push('/admin/feedback/types');
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Create failed'))
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSubmitting(false));
   };
 

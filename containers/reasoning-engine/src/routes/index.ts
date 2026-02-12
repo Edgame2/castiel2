@@ -108,6 +108,14 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           201: {
             type: 'object',
             description: 'Reasoning task created successfully',
+            properties: {
+              id: { type: 'string' },
+              tenantId: { type: 'string' },
+              type: { type: 'string' },
+              status: { type: 'string' },
+              input: { type: 'object' },
+            },
+            additionalProperties: true,
           },
         },
       },

@@ -1,109 +1,132 @@
 /**
  * Forecasting Routes Integration Tests
+ * GET /api/v1/forecasts/:period/scenarios, risk-adjusted, ml
+ * GET /api/v1/forecasts, GET /api/v1/forecasts/:forecastId
+ * POST /api/v1/forecasts, POST /api/v1/accuracy/actuals
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { buildApp } from '../../../src/server';
 
-// Mock dependencies are set up in tests/setup.ts
-vi.mock('@coder/shared/database');
-vi.mock('@coder/shared');
 vi.mock('../../../src/events/publishers/ForecastingEventPublisher');
 
-describe('POST /api/v1/forecasting/generate', () => {
+describe('Forecasting routes', () => {
   let app: FastifyInstance;
-  let authToken: string;
 
   beforeAll(async () => {
     app = await buildApp();
-    authToken = 'test-token';
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  it('should generate forecast and return 200', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/v1/forecasting/generate',
-      headers: {
-        authorization: `Bearer ${authToken}`,
-        'x-tenant-id': 'tenant-123',
-      },
-      payload: {
-        opportunityId: 'opp-123',
-        timeframe: 'quarter',
-        includeDecomposition: true,
-        includeConsensus: true,
-        includeCommitment: true,
-      },
+  const authHeaders = {
+    authorization: 'Bearer test-token',
+    'x-tenant-id': 'tenant-123',
+  };
+
+  describe('GET /api/v1/forecasts/:period/scenarios', () => {
+    it('returns 200 with period and scenarios', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/forecasts/Q1-2025/scenarios',
+        headers: authHeaders,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body).toHaveProperty('period');
+      expect(body).toHaveProperty('scenarios');
+      expect(Array.isArray(body.scenarios)).toBe(true);
     });
-
-    expect(response.statusCode).toBe(200);
-    const body = response.json();
-    expect(body).toHaveProperty('data');
-    expect(body.data).toHaveProperty('forecastId');
-    expect(body.data).toHaveProperty('revenueForecast');
   });
 
-  it('should return 400 for invalid input', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/v1/forecasting/generate',
-      headers: {
-        authorization: `Bearer ${authToken}`,
-        'x-tenant-id': 'tenant-123',
-      },
-      payload: {
-        // Missing required fields
-      },
+  describe('GET /api/v1/forecasts/:period/risk-adjusted', () => {
+    it('returns 200 with forecast data', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/forecasts/Q1-2025/risk-adjusted',
+        headers: authHeaders,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body).toHaveProperty('period');
+      expect(body).toHaveProperty('forecast');
+      expect(body).toHaveProperty('riskAdjustedForecast');
     });
-
-    expect(response.statusCode).toBe(400);
-  });
-});
-
-describe('GET /api/v1/forecasting/:forecastId', () => {
-  let app: FastifyInstance;
-  let authToken: string;
-
-  beforeAll(async () => {
-    app = await buildApp();
-    authToken = 'test-token';
   });
 
-  afterAll(async () => {
-    await app.close();
-  });
+  describe('GET /api/v1/forecasts/:period/ml', () => {
+    it('returns 200 with ML forecast', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/forecasts/Q1-2025/ml',
+        headers: authHeaders,
+      });
 
-  it('should retrieve forecast and return 200', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/forecasting/forecast-123',
-      headers: {
-        authorization: `Bearer ${authToken}`,
-        'x-tenant-id': 'tenant-123',
-      },
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body).toHaveProperty('period');
+      expect(body).toHaveProperty('pointForecast');
+      expect(body).toHaveProperty('modelId');
     });
-
-    expect(response.statusCode).toBe(200);
-    const body = response.json();
-    expect(body).toHaveProperty('data');
-    expect(body.data).toHaveProperty('forecastId');
   });
 
-  it('should return 404 for non-existent forecast', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/forecasting/non-existent',
-      headers: {
-        authorization: `Bearer ${authToken}`,
-        'x-tenant-id': 'tenant-123',
-      },
-    });
+  describe('GET /api/v1/forecasts', () => {
+    it('returns 200 with forecasts and total', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/forecasts?opportunityId=opp-123',
+        headers: authHeaders,
+      });
 
-    expect(response.statusCode).toBe(404);
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body).toHaveProperty('forecasts');
+      expect(body).toHaveProperty('total');
+      expect(Array.isArray(body.forecasts)).toBe(true);
+    });
+  });
+
+  describe('GET /api/v1/forecasts/:forecastId', () => {
+    it('returns 404 when forecast not found', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/forecasts/non-existent-forecast-id',
+        headers: authHeaders,
+      });
+      expect(response.statusCode).toBe(404);
+    });
+  });
+
+  describe('POST /api/v1/forecasts', () => {
+    it('returns 202 with forecastId when opportunityId provided', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/forecasts',
+        headers: authHeaders,
+        payload: { opportunityId: 'opp-123' },
+      });
+
+      expect(response.statusCode).toBe(202);
+      const body = response.json();
+      expect(body).toHaveProperty('forecastId');
+      expect(body).toHaveProperty('forecast');
+    });
+  });
+
+  describe('POST /api/v1/accuracy/actuals', () => {
+    it('returns 400 when required fields missing', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/accuracy/actuals',
+        headers: authHeaders,
+        payload: {},
+      });
+      expect(response.statusCode).toBe(400);
+    });
   });
 });

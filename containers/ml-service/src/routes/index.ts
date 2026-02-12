@@ -166,6 +166,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       schema: {
         description: 'List ML endpoints with health status. Super Admin §4.2.',
         tags: ['Models', 'Endpoints'],
+        security: [{ bearerAuth: [] }],
         response: {
           200: {
             type: 'object',
@@ -233,6 +234,76 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         }
       }
       return reply.send({ items, timestamp: now });
+    }
+  );
+
+  /**
+   * Get ML endpoint by ID (Super Admin §4.2). GET /api/v1/ml/endpoints/:id
+   */
+  app.get<{ Params: { id: string } }>(
+    '/api/v1/ml/endpoints/:id',
+    {
+      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()] as any,
+      schema: {
+        description: 'Get ML endpoint by ID. Super Admin §4.2.',
+        tags: ['Models', 'Endpoints'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          properties: { id: { type: 'string' } },
+          required: ['id'],
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              name: { type: 'string' },
+              url: { type: 'string' },
+              status: { type: 'string', enum: ['online', 'offline', 'degraded'] },
+              latencyMs: { type: 'number' },
+              models: { type: 'array', items: { type: 'string' } },
+              lastHealthCheck: { type: 'string' },
+            },
+          },
+          404: { type: 'object', description: 'Endpoint not found' },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params;
+      const ep = config.azure_ml?.endpoints ?? {};
+      const url = typeof ep[id] === 'string' ? (ep[id] as string) : null;
+      if (!url || url.length === 0) {
+        return reply.status(404).send({ error: { code: 'ENDPOINT_NOT_FOUND', message: `Endpoint ${id} not found` } });
+      }
+      const now = new Date().toISOString();
+      const t0 = Date.now();
+      let status: 'online' | 'offline' | 'degraded' = 'offline';
+      try {
+        await globalThis.fetch(url, { method: 'GET', signal: AbortSignal.timeout(2000) });
+        const latencyMs = Date.now() - t0;
+        status = latencyMs > 1500 ? 'degraded' : 'online';
+        return reply.send({
+          id,
+          name: id,
+          url,
+          status,
+          latencyMs,
+          models: [id],
+          lastHealthCheck: now,
+        });
+      } catch {
+        return reply.send({
+          id,
+          name: id,
+          url,
+          status: 'offline',
+          latencyMs: Date.now() - t0,
+          models: [id],
+          lastHealthCheck: now,
+        });
+      }
     }
   );
 

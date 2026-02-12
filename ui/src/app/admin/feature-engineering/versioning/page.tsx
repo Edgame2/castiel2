@@ -8,9 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 interface FeatureVersionItem {
   id?: string;
@@ -48,7 +46,7 @@ export default function FeatureEngineeringVersioningPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
       return;
@@ -58,8 +56,8 @@ export default function FeatureEngineeringVersioningPage() {
     setPolicyData(null);
     try {
       const [versionsRes, policyRes] = await Promise.all([
-        fetch(`${apiBaseUrl}/api/v1/ml/features/versions`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/v1/ml/features/version-policy`, { credentials: 'include' }),
+        apiFetch('/api/v1/ml/features/versions'),
+        apiFetch('/api/v1/ml/features/version-policy'),
       ]);
       if (!versionsRes.ok) {
         const j = await versionsRes.json().catch(() => ({}));
@@ -143,7 +141,7 @@ export default function FeatureEngineeringVersioningPage() {
         Version history, version policy, backward compatibility, deprecation. §5.2.
       </p>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20 mb-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>

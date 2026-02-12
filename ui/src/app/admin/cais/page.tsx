@@ -19,9 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 const WEIGHT_COMPONENTS = ['risk-evaluation', 'recommendations', 'forecasting', 'ml-prediction'] as const;
 const MODEL_CONTEXTS = ['risk-scoring', 'forecasting', 'recommendations'] as const;
@@ -45,9 +43,9 @@ export default function CAISAdminPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   const fetchTenants = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/tenants`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/admin/tenants');
       if (!res.ok) return;
       const json = await res.json();
       const items = Array.isArray(json?.items) ? json.items : [];
@@ -59,12 +57,11 @@ export default function CAISAdminPage() {
   }, [tenantId]);
 
   const fetchWeights = useCallback(async () => {
-    if (!apiBaseUrl || !tenantId) return;
+    if (!getApiBaseUrl() || !tenantId) return;
     setError(null);
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/adaptive-learning/weights/${encodeURIComponent(tenantId)}?component=${encodeURIComponent(weightsComponent)}`,
-        { credentials: 'include' }
+      const res = await apiFetch(
+        `/api/v1/adaptive-learning/weights/${encodeURIComponent(tenantId)}?component=${encodeURIComponent(weightsComponent)}`
       );
       if (!res.ok) throw new Error(`Weights: ${res.status}`);
       const data = await res.json();
@@ -77,12 +74,11 @@ export default function CAISAdminPage() {
   }, [tenantId, weightsComponent]);
 
   const fetchModelSelection = useCallback(async () => {
-    if (!apiBaseUrl || !tenantId) return;
+    if (!getApiBaseUrl() || !tenantId) return;
     setError(null);
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/adaptive-learning/model-selection/${encodeURIComponent(tenantId)}?context=${encodeURIComponent(modelContext)}`,
-        { credentials: 'include' }
+      const res = await apiFetch(
+        `/api/v1/adaptive-learning/model-selection/${encodeURIComponent(tenantId)}?context=${encodeURIComponent(modelContext)}`
       );
       if (!res.ok) throw new Error(`Model selection: ${res.status}`);
       const data = await res.json();
@@ -98,12 +94,11 @@ export default function CAISAdminPage() {
   }, [tenantId, modelContext]);
 
   const fetchTenantConfig = useCallback(async () => {
-    if (!apiBaseUrl || !tenantId) return;
+    if (!getApiBaseUrl() || !tenantId) return;
     setError(null);
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/adaptive-learning/tenant-config/${encodeURIComponent(tenantId)}`,
-        { credentials: 'include' }
+      const res = await apiFetch(
+        `/api/v1/adaptive-learning/tenant-config/${encodeURIComponent(tenantId)}`
       );
       if (!res.ok) throw new Error(`Tenant config: ${res.status}`);
       const data = await res.json();
@@ -124,7 +119,7 @@ export default function CAISAdminPage() {
   }, [tenantId, fetchTenantConfig]);
 
   useEffect(() => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
       return;
@@ -132,7 +127,7 @@ export default function CAISAdminPage() {
     setLoading(true);
     setError(null);
     fetchTenants().finally(() => setLoading(false));
-  }, [apiBaseUrl]);
+  }, []);
 
   useEffect(() => {
     if (!tenantId) return;
@@ -146,15 +141,14 @@ export default function CAISAdminPage() {
   }, [tenantId, modelContext, fetchModelSelection]);
 
   const handleSaveWeights = async () => {
-    if (!apiBaseUrl || !tenantId) return;
+    if (!getApiBaseUrl() || !tenantId) return;
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/adaptive-learning/weights/${encodeURIComponent(tenantId)}?component=${encodeURIComponent(weightsComponent)}`,
+      const res = await apiFetch(
+        `/api/v1/adaptive-learning/weights/${encodeURIComponent(tenantId)}?component=${encodeURIComponent(weightsComponent)}`,
         {
           method: 'PUT',
-          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(weights),
         }
@@ -171,15 +165,14 @@ export default function CAISAdminPage() {
   };
 
   const handleSaveModelSelection = async () => {
-    if (!apiBaseUrl || !tenantId) return;
+    if (!getApiBaseUrl() || !tenantId) return;
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/adaptive-learning/model-selection/${encodeURIComponent(tenantId)}?context=${encodeURIComponent(modelContext)}`,
+      const res = await apiFetch(
+        `/api/v1/adaptive-learning/model-selection/${encodeURIComponent(tenantId)}?context=${encodeURIComponent(modelContext)}`,
         {
           method: 'PUT',
-          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(modelSelection),
         }
@@ -199,15 +192,14 @@ export default function CAISAdminPage() {
     field: 'outcomeSyncToCais' | 'automaticLearningEnabled',
     value: boolean
   ) => {
-    if (!apiBaseUrl || !tenantId) return;
+    if (!getApiBaseUrl() || !tenantId) return;
     const next = { ...tenantConfig, [field]: value };
     setTenantConfig(next);
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/adaptive-learning/tenant-config/${encodeURIComponent(tenantId)}`,
+      const res = await apiFetch(
+        `/api/v1/adaptive-learning/tenant-config/${encodeURIComponent(tenantId)}`,
         {
           method: 'PUT',
-          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ outcomeSyncToCais: next.outcomeSyncToCais, automaticLearningEnabled: next.automaticLearningEnabled }),
         }
@@ -237,12 +229,12 @@ export default function CAISAdminPage() {
         <span className="text-sm font-medium">CAIS</span>
       </div>
       <h1 className="text-2xl font-bold mb-4">CAIS — Weights &amp; Model Selection</h1>
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <p className="text-sm text-amber-800 dark:text-amber-200">
           Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.
         </p>
       )}
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <>
           <div className="mb-6">
             <Label className="block mb-1">Tenant</Label>

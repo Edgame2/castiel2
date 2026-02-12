@@ -16,8 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type FeaturePurpose = 'risk-scoring' | 'win-probability' | 'lstm' | 'anomaly' | 'forecasting';
 
@@ -54,10 +53,10 @@ export default function FeatureEngineeringFeaturesPage() {
   const [purposeFilter, setPurposeFilter] = useState<FeaturePurpose | ''>('');
 
   const fetchVersions = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     try {
       const params = purposeFilter ? `?purpose=${encodeURIComponent(purposeFilter)}` : '';
-      const res = await fetch(`${apiBaseUrl}/api/v1/ml/features/versions${params}`, { credentials: 'include' });
+      const res = await apiFetch(`/api/v1/ml/features/versions${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setVersions(Array.isArray(json?.items) ? json.items : []);
@@ -67,10 +66,10 @@ export default function FeatureEngineeringFeaturesPage() {
   }, [purposeFilter]);
 
   const fetchSchema = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     try {
       const params = purposeFilter ? `?purpose=${encodeURIComponent(purposeFilter)}` : '';
-      const res = await fetch(`${apiBaseUrl}/api/v1/ml/features/schema${params}`, { credentials: 'include' });
+      const res = await apiFetch(`/api/v1/ml/features/schema${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setSchema(json);
@@ -80,10 +79,10 @@ export default function FeatureEngineeringFeaturesPage() {
   }, [purposeFilter]);
 
   const fetchStore = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setStoreLoading(true);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/ml/features?limit=100`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/ml/features?limit=100');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setStoreItems(Array.isArray(json?.items) ? json.items : []);
@@ -101,19 +100,19 @@ export default function FeatureEngineeringFeaturesPage() {
       await Promise.all([fetchVersions(), fetchSchema()]);
       await fetchStore();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setLoading(false);
     }
   }, [fetchVersions, fetchSchema, fetchStore]);
 
   useEffect(() => {
-    if (apiBaseUrl) fetchAll();
+    if (getApiBaseUrl()) fetchAll();
     else {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
     }
-  }, [apiBaseUrl, fetchAll]);
+  }, [fetchAll]);
 
   useEffect(() => {
     document.title = 'Features | Admin | Castiel';
@@ -159,13 +158,13 @@ export default function FeatureEngineeringFeaturesPage() {
         Feature versions and schema for ml-service Layer 2 (current tenant). §5.1, §4.3.
       </p>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
       )}
 
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <div className="mb-4 flex flex-wrap gap-4 items-end">
           <div className="space-y-2">
             <Label>Purpose filter</Label>
@@ -199,7 +198,7 @@ export default function FeatureEngineeringFeaturesPage() {
         </div>
       )}
 
-      {!loading && !error && apiBaseUrl && (
+      {!loading && !error && getApiBaseUrl() && (
         <div className="space-y-6">
           <section className="rounded-lg border bg-white dark:bg-gray-900 p-6">
             <div className="flex items-center justify-between gap-2 mb-3">

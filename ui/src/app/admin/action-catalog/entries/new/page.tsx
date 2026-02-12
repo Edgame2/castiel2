@@ -12,9 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type EntryType = 'risk' | 'recommendation';
 
@@ -30,12 +28,11 @@ export default function ActionCatalogEntryNewPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !name.trim() || !displayName.trim() || !category.trim() || submitting) return;
+    if (!getApiBaseUrl() || !name.trim() || !displayName.trim() || !category.trim() || submitting) return;
     setError(null);
     setSubmitting(true);
-    fetch(`${apiBase}/api/v1/action-catalog/entries`, {
+    apiFetch('/api/v1/action-catalog/entries', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         type,
@@ -46,13 +43,13 @@ export default function ActionCatalogEntryNewPage() {
         status: 'active',
       }),
     })
-      .then((r) => r.json().catch(() => ({})))
+      .then((r: Response) => r.json().catch(() => ({})))
       .then((data: { id?: string; error?: { message?: string } }) => {
         if (data?.error?.message) throw new Error(data.error.message);
         if (data?.id) router.push(`/admin/action-catalog/entries/${encodeURIComponent(data.id)}`);
         else router.push('/admin/action-catalog/entries');
       })
-      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSubmitting(false));
   };
 

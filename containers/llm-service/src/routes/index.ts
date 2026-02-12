@@ -41,7 +41,7 @@ function registerLLMRoute(
         tags: ['LLM'],
         security: [{ bearerAuth: [] }],
         body: requestBodySchema,
-        response: { 200: { type: 'object' } },
+        response: { 200: { type: 'object', additionalProperties: true } },
       },
     },
     async (request, reply) => {
@@ -123,7 +123,7 @@ export async function registerRoutes(
             reactivationPrediction: { type: 'object' },
           },
         },
-        response: { 200: { type: 'object', properties: { reactivationStrategy: { type: 'object' } } } },
+        response: { 200: { type: 'object', properties: { reactivationStrategy: { type: 'object', additionalProperties: true } }, additionalProperties: true } },
       },
     },
     async (request, reply) => {

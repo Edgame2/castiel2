@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { TopAtRiskReasonsCard } from '@/components/dashboard/TopAtRiskReasonsCard';
 import { RiskHeatmap } from '@/components/risk/RiskHeatmap';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type ExecutiveWidget = {
   id: string;
@@ -141,7 +142,7 @@ export function ExecutiveDashboardContent({ apiBaseUrl = '', getHeaders }: Execu
       const json = (await res.json()) as { widgets?: ExecutiveWidget[] };
       setWidgets(Array.isArray(json?.widgets) ? json.widgets : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setWidgets([]);
     } finally {
       setLoading(false);

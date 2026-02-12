@@ -15,9 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 type TenantDetailTab = 'overview' | 'feedback' | 'catalog' | 'methodology' | 'limits' | 'custom' | 'analytics';
 
@@ -129,12 +127,12 @@ function TenantDetailContent() {
 
   /** §1.3.2 Fetch tenant feedback stats when Feedback tab is active */
   useEffect(() => {
-    if (!apiBaseUrl || !id.trim() || activeTab !== 'feedback') return;
+    if (!getApiBaseUrl() || !id.trim() || activeTab !== 'feedback') return;
     setFeedbackStatsLoading(true);
     setFeedbackStatsError(null);
     setFeedbackStats(null);
     const encoded = encodeURIComponent(id.trim());
-    fetch(`${apiBaseUrl}/api/v1/admin/tenants/${encoded}/feedback-stats`, { credentials: 'include' })
+    apiFetch(`/api/v1/admin/tenants/${encoded}/feedback-stats`)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -150,16 +148,13 @@ function TenantDetailContent() {
   }, [id, activeTab]);
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBaseUrl || !id.trim()) return;
+    if (!getApiBaseUrl() || !id.trim()) return;
     setLoading(true);
     setError(null);
     setConfig(null);
     const encoded = encodeURIComponent(id.trim());
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/admin/tenants/${encoded}/feedback-config`,
-        { credentials: 'include' }
-      );
+      const res = await apiFetch(`/api/v1/admin/tenants/${encoded}/feedback-config`);
       if (!res.ok) {
         if (res.status === 404) throw new Error('Not found');
         throw new Error(`HTTP ${res.status}`);
@@ -176,8 +171,8 @@ function TenantDetailContent() {
       setEditAutoBoostEnabled(json.patternDetection?.autoBoostEnabled ?? true);
       try {
         const [ftRes, globalRes] = await Promise.all([
-          fetch(`${apiBaseUrl}/api/v1/admin/feedback-types`, { credentials: 'include' }),
-          fetch(`${apiBaseUrl}/api/v1/admin/feedback-config`, { credentials: 'include' }),
+          apiFetch('/api/v1/admin/feedback-types'),
+          apiFetch('/api/v1/admin/feedback-config'),
         ]);
         if (ftRes.ok) {
           const ftJson = await ftRes.json();
@@ -206,13 +201,13 @@ function TenantDetailContent() {
   }, [id]);
 
   const fetchOverview = useCallback(async () => {
-    if (!apiBaseUrl || !id.trim()) return;
+    if (!getApiBaseUrl() || !id.trim()) return;
     setOverviewLoading(true);
     setOverviewError(null);
     setOverviewTenant(null);
     const encoded = encodeURIComponent(id.trim());
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/tenants/${encoded}`, { credentials: 'include' });
+      const res = await apiFetch(`/api/v1/admin/tenants/${encoded}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: TenantOverview = await res.json();
       setOverviewTenant(json);
@@ -230,22 +225,19 @@ function TenantDetailContent() {
   }, [id, fetchConfig]);
 
   useEffect(() => {
-    if (id.trim() && apiBaseUrl) fetchOverview();
-  }, [id, apiBaseUrl, fetchOverview]);
+    if (id.trim() && getApiBaseUrl()) fetchOverview();
+  }, [id, fetchOverview]);
 
   const saveConfig = useCallback(async () => {
-    if (!apiBaseUrl || !id.trim()) return;
+    if (!getApiBaseUrl() || !id.trim()) return;
     const limits = globalLimits ?? { defaultLimit: 5, minLimit: 3, maxLimit: 10 };
     const effectiveLimit = useGlobalDefaultLimit ? limits.defaultLimit : Math.min(limits.maxLimit, Math.max(limits.minLimit, editActiveLimit));
     setSaving(true);
     setSaveError(null);
     const encoded = encodeURIComponent(id.trim());
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/admin/tenants/${encoded}/feedback-config`,
-        {
+      const res = await apiFetch(`/api/v1/admin/tenants/${encoded}/feedback-config`, {
           method: 'PUT',
-          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             activeLimit: effectiveLimit,
@@ -260,8 +252,7 @@ function TenantDetailContent() {
             },
             activeTypes: editActiveTypes,
           }),
-        }
-      );
+        });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         const msg = typeof body?.error === 'string' ? body.error : typeof body?.message === 'string' ? body.message : `HTTP ${res.status}`;
@@ -336,7 +327,7 @@ function TenantDetailContent() {
       </nav>
       <div className="flex items-center gap-3 mb-2">
         <h1 className="text-2xl font-bold">Tenant: {id || '—'}</h1>
-        {apiBaseUrl && id.trim() && (
+        {getApiBaseUrl() && id.trim() && (
           <Button type="button" variant="outline" size="sm" onClick={() => { setError(null); setOverviewError(null); fetchConfig(); fetchOverview(); }} disabled={loading || overviewLoading} title="Refetch tenant config and overview" aria-label="Refresh tenant config and overview">
             Refresh
           </Button>
@@ -364,7 +355,7 @@ function TenantDetailContent() {
         </div>
       )}
 
-      {apiBaseUrl && id.trim() && (
+      {getApiBaseUrl() && id.trim() && (
         <>
           {loading && (
             <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4">
@@ -670,7 +661,7 @@ function TenantDetailContent() {
                       setSaveError(null);
                       setFeedbackTypesLoading(true);
                       try {
-                        const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types`, { credentials: 'include' });
+                        const res = await apiFetch('/api/v1/admin/feedback-types');
                         if (!res.ok) throw new Error(`Feedback types: HTTP ${res.status}`);
                         const json = await res.json();
                         setAllFeedbackTypes(Array.isArray(json) ? json : []);
@@ -856,7 +847,7 @@ function TenantDetailContent() {
         </>
       )}
 
-      {!apiBaseUrl && id.trim() && (
+      {!getApiBaseUrl() && id.trim() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20 mb-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>

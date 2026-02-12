@@ -90,6 +90,37 @@ describe('ConfigurationService', () => {
 
       expect(result).toBeNull();
     });
+
+    it('should fall back to global config when no org-specific config exists', async () => {
+      const globalConfig = {
+        id: 'global-1',
+        organizationId: null,
+        captureIpAddress: true,
+        captureUserAgent: true,
+        captureGeolocation: false,
+        redactSensitiveData: true,
+        redactionPatterns: [],
+        hashChainEnabled: true,
+        alertsEnabled: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      vi.mocked(mockPrisma.audit_configurations.findFirst)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(globalConfig);
+
+      const result = await configService.getOrganizationConfig('org-1');
+
+      expect(result).toBeDefined();
+      expect(result?.organizationId).toBeUndefined();
+      expect(result?.captureIpAddress).toBe(true);
+      expect(mockPrisma.audit_configurations.findFirst).toHaveBeenCalledWith({
+        where: { organizationId: 'org-1' },
+      });
+      expect(mockPrisma.audit_configurations.findFirst).toHaveBeenCalledWith({
+        where: { organizationId: null },
+      });
+    });
     
     it('should cache configuration', async () => {
       const mockConfig = {

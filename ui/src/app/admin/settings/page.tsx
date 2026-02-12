@@ -11,8 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 /** Matches integration-manager SystemSettings (GET /api/v1/admin/settings). */
 interface SystemSettings {
@@ -152,9 +151,7 @@ export default function SystemSettingsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/settings`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch('/api/v1/admin/settings');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -162,7 +159,7 @@ export default function SystemSettingsPage() {
       const json = await res.json();
       setSettings(json?.settings || null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setSettings(null);
     } finally {
       setLoading(false);
@@ -174,7 +171,7 @@ export default function SystemSettingsPage() {
   }, [fetchSettings]);
 
   const handleSaveRateLimits = useCallback(async () => {
-    if (!apiBaseUrl || !rateLimitDraft || !settings?.rateLimits) return;
+    if (!getApiBaseUrl() || !rateLimitDraft || !settings?.rateLimits) return;
     setRateLimitsError(null);
     setRateLimitsSaving(true);
     try {
@@ -187,7 +184,7 @@ export default function SystemSettingsPage() {
         defaultByIntegrationType: settings.rateLimits.defaultByIntegrationType,
         bypassTenants: settings.rateLimits.bypassTenants,
       };
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/settings/rate-limits`, {
+      const res = await apiFetch('/api/v1/admin/settings/rate-limits', {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -199,14 +196,14 @@ export default function SystemSettingsPage() {
       }
       await fetchSettings();
     } catch (e) {
-      setRateLimitsError(e instanceof Error ? e.message : String(e));
+      setRateLimitsError(GENERIC_ERROR_MESSAGE);
     } finally {
       setRateLimitsSaving(false);
     }
-  }, [apiBaseUrl, rateLimitDraft, settings?.rateLimits, fetchSettings]);
+  }, [rateLimitDraft, settings?.rateLimits, fetchSettings]);
 
   const handleSaveCapacity = useCallback(async () => {
-    if (!apiBaseUrl || !capacityDraft) return;
+    if (!getApiBaseUrl() || !capacityDraft) return;
     setCapacityError(null);
     setCapacitySaving(true);
     try {
@@ -228,7 +225,7 @@ export default function SystemSettingsPage() {
           memoryLimitMB: Number(capacityDraft.heavyProcessors.memoryLimitMB) || 0,
         },
       };
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/settings/capacity`, {
+      const res = await apiFetch('/api/v1/admin/settings/capacity', {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -240,14 +237,14 @@ export default function SystemSettingsPage() {
       }
       await fetchSettings();
     } catch (e) {
-      setCapacityError(e instanceof Error ? e.message : String(e));
+      setCapacityError(GENERIC_ERROR_MESSAGE);
     } finally {
       setCapacitySaving(false);
     }
-  }, [apiBaseUrl, capacityDraft, fetchSettings]);
+  }, [capacityDraft, fetchSettings]);
 
   const handleSaveQueueConfig = useCallback(async () => {
-    if (!apiBaseUrl || !queueConfigDraft) return;
+    if (!getApiBaseUrl() || !queueConfigDraft) return;
     setQueueConfigError(null);
     setQueueConfigSaving(true);
     try {
@@ -276,7 +273,7 @@ export default function SystemSettingsPage() {
           },
         },
       };
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/settings`, {
+      const res = await apiFetch('/api/v1/admin/settings', {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -288,23 +285,22 @@ export default function SystemSettingsPage() {
       }
       await fetchSettings();
     } catch (e) {
-      setQueueConfigError(e instanceof Error ? e.message : String(e));
+      setQueueConfigError(GENERIC_ERROR_MESSAGE);
     } finally {
       setQueueConfigSaving(false);
     }
-  }, [apiBaseUrl, queueConfigDraft, fetchSettings]);
+  }, [queueConfigDraft, fetchSettings]);
 
   const handleToggleFeatureFlag = useCallback(
     async (flagName: string, enabled: boolean) => {
-      if (!apiBaseUrl) return;
+      if (!getApiBaseUrl()) return;
       setFeatureFlagsError(null);
       setFeatureFlagToggling(flagName);
       try {
-        const res = await fetch(
-          `${apiBaseUrl}/api/v1/admin/settings/feature-flags/${encodeURIComponent(flagName)}`,
+        const res = await apiFetch(
+          `/api/v1/admin/settings/feature-flags/${encodeURIComponent(flagName)}`,
           {
             method: 'PATCH',
-            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ enabled }),
           }
@@ -315,12 +311,12 @@ export default function SystemSettingsPage() {
         }
         await fetchSettings();
       } catch (e) {
-        setFeatureFlagsError(e instanceof Error ? e.message : String(e));
+        setFeatureFlagsError(GENERIC_ERROR_MESSAGE);
       } finally {
         setFeatureFlagToggling(null);
       }
     },
-    [apiBaseUrl, fetchSettings]
+    [fetchSettings]
   );
 
   return (
@@ -435,7 +431,7 @@ export default function SystemSettingsPage() {
                   <p className="text-sm text-red-600 dark:text-red-400 mt-2">{rateLimitsError}</p>
                 )}
                 <div className="flex items-center gap-2 mt-4">
-                  <Button type="button" onClick={handleSaveRateLimits} disabled={!apiBaseUrl || !rateLimitDraft || rateLimitsSaving} size="sm">
+                  <Button type="button" onClick={handleSaveRateLimits} disabled={ !getApiBaseUrl() || !rateLimitDraft || rateLimitsSaving} size="sm">
                     {rateLimitsSaving ? 'Saving…' : 'Save rate limits'}
                   </Button>
                 </div>
@@ -719,7 +715,7 @@ export default function SystemSettingsPage() {
                   <p className="text-sm text-red-600 dark:text-red-400 mt-2">{capacityError}</p>
                 )}
                 <div className="flex items-center gap-2 mt-4">
-                  <Button type="button" size="sm" onClick={handleSaveCapacity} disabled={!apiBaseUrl || !capacityDraft || capacitySaving}>
+                  <Button type="button" size="sm" onClick={handleSaveCapacity} disabled={ !getApiBaseUrl() || !capacityDraft || capacitySaving}>
                     {capacitySaving ? 'Saving…' : 'Save capacity'}
                   </Button>
                 </div>
@@ -862,7 +858,7 @@ export default function SystemSettingsPage() {
                   <p className="text-sm text-red-600 dark:text-red-400 mt-2">{queueConfigError}</p>
                 )}
                 <div className="flex items-center gap-2 mt-4">
-                  <Button type="button" size="sm" onClick={handleSaveQueueConfig} disabled={!apiBaseUrl || !queueConfigDraft || queueConfigSaving}>
+                  <Button type="button" size="sm" onClick={handleSaveQueueConfig} disabled={ !getApiBaseUrl() || !queueConfigDraft || queueConfigSaving}>
                     {queueConfigSaving ? 'Saving…' : 'Save queue config'}
                   </Button>
                 </div>
@@ -894,7 +890,7 @@ export default function SystemSettingsPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleToggleFeatureFlag(key, !value)}
-                            disabled={!apiBaseUrl || featureFlagToggling !== null}
+                            disabled={ !getApiBaseUrl() || featureFlagToggling !== null}
                           >
                             {featureFlagToggling === key ? '…' : value ? 'Disable' : 'Enable'}
                           </Button>

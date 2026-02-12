@@ -7,6 +7,7 @@
 
 import { getDatabaseClient, getContainer } from '@coder/shared';
 import { randomUUID } from 'crypto';
+import * as bcrypt from 'bcryptjs';
 import { log } from '../utils/logger';
 
 const USER_ORGANIZATIONS = 'user_organizations';
@@ -259,16 +260,19 @@ function getRoleDescription(roleName: string): string {
 }
 
 /**
- * Seed Revimize tenant and promote existing user to Super Admin (isEmailVerified: true).
+ * Seed Revimize tenant and promote user to Super Admin.
  * Runs when SEED_SUPER_ADMIN_EMAIL is set. Uses Cosmos getContainer for reliability.
  * - Ensures organization "Revimize" (slug: revimize) exists
- * - Ensures Super Admin role exists for that org (direct Cosmos create if missing)
- * - Finds user by email, sets isEmailVerified: true and tenantId to Revimize org id
- * - Creates organizationMembership for that user with Super Admin role
+ * - Ensures Super Admin role exists for that org
+ * - Finds user by email, or creates user if SEED_SUPER_ADMIN_PASSWORD is set
+ * - Sets isEmailVerified: true, tenantId to Revimize org id
+ * - Creates organizationMembership with Super Admin role
  */
 export async function seedRevimizeSuperAdmin(): Promise<void> {
   const email = process.env.SEED_SUPER_ADMIN_EMAIL?.trim();
+  const password = process.env.SEED_SUPER_ADMIN_PASSWORD?.trim();
   if (!email) {
+    log.info('Seed skipped: SEED_SUPER_ADMIN_EMAIL not set (add to .env and restart)', { service: 'user-management' });
     return;
   }
 
@@ -290,6 +294,7 @@ export async function seedRevimizeSuperAdmin(): Promise<void> {
       orgId = randomUUID();
       await orgs.items.create({
         id: orgId,
+        tenantId: orgId,
         partitionKey: orgId,
         name: REVIMIZE_NAME,
         slug: REVIMIZE_SLUG,
@@ -314,6 +319,7 @@ export async function seedRevimizeSuperAdmin(): Promise<void> {
       superAdminRoleId = randomUUID();
       await roles.items.create({
         id: superAdminRoleId,
+        tenantId: orgId,
         partitionKey: orgId,
         organizationId: orgId,
         name: SUPER_ADMIN_ROLE_NAME,
@@ -324,19 +330,41 @@ export async function seedRevimizeSuperAdmin(): Promise<void> {
       log.info('Created Super Admin role for Revimize', { orgId, roleId: superAdminRoleId, service: 'user-management' });
     }
 
-    // 3. Find user by email (cross-partition)
+    // 3. Find or create user by email (cross-partition)
     const { resources: userList } = await users.items
       .query({ query: 'SELECT * FROM c WHERE c.email = @email', parameters: [{ name: '@email', value: email }] })
       .fetchAll();
-    const user = userList[0] as (Record<string, unknown> & { id: string; tenantId?: string; partitionKey?: string }) | undefined;
+    let user = userList[0] as (Record<string, unknown> & { id: string; tenantId?: string; partitionKey?: string }) | undefined;
     if (!user) {
-      log.warn('Seed super admin: user not found by email', { email, service: 'user-management' });
-      return;
+      if (!password) {
+        log.warn('Seed super admin: user not found by email (set SEED_SUPER_ADMIN_PASSWORD to create user)', { email, service: 'user-management' });
+        return;
+      }
+      const userId = randomUUID();
+      const username = email.split('@')[0].replace(/[^a-z0-9]/gi, '') || 'admin';
+      const passwordHash = await bcrypt.hash(password, 12);
+      const userDoc = {
+        id: userId,
+        tenantId: orgId,
+        partitionKey: orgId,
+        email,
+        username: `${username}-${Date.now().toString(36)}`,
+        name: email.split('@')[0],
+        firstName: email.split('@')[0],
+        lastName: '',
+        passwordHash,
+        isEmailVerified: true,
+        isActive: true,
+        authProviders: ['email'],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as Record<string, unknown>;
+      await users.items.create(userDoc);
+      user = userDoc as Record<string, unknown> & { id: string; tenantId: string };
+      log.info('Created user for Revimize super admin', { userId, email, orgId, service: 'user-management' });
     }
     const userId = user.id;
-    const currentPartition = (user.tenantId ?? user.partitionKey ?? 'default') as string;
-
-    // 4. Update user: isEmailVerified true, tenantId = orgId (Cosmos: partition key must match target partition)
+    const currentPartition = (user.tenantId ?? user.partitionKey ?? 'default') as string;    // 4. Update user: isEmailVerified true, tenantId = orgId (Cosmos: partition key must match target partition)
     if (currentPartition === orgId) {
       const updatedSamePartition = { ...user, isEmailVerified: true, tenantId: orgId, updatedAt: new Date() };
       await users.item(userId, currentPartition).replace(updatedSamePartition as Record<string, unknown>);
@@ -369,6 +397,7 @@ export async function seedRevimizeSuperAdmin(): Promise<void> {
     await memberships.items.create(
       {
         id: randomUUID(),
+        tenantId: orgId,
         partitionKey: orgId,
         userId,
         organizationId: orgId,
@@ -383,4 +412,3 @@ export async function seedRevimizeSuperAdmin(): Promise<void> {
     throw err;
   }
 }
-

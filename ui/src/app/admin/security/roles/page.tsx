@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface RoleRow {
   id?: string;
@@ -78,14 +78,12 @@ export default function SecurityRolesPage() {
   })();
 
   const fetchRoles = useCallback(async () => {
-    const base = getApiBaseUrl().replace(/\/$/, '') || '';
-    if (!base || !orgId.trim()) return;
+    if (!getApiBaseUrl() || !orgId.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `${base}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/roles?includeSystemRoles=true`,
-        { credentials: 'include' }
+      const res = await apiFetch(
+        `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/roles?includeSystemRoles=true`
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: RolesResponse = await res.json();
@@ -100,15 +98,13 @@ export default function SecurityRolesPage() {
   }, [orgId]);
 
   const openCreateForm = useCallback(async () => {
-    const base = getApiBaseUrl().replace(/\/$/, '') || '';
-    if (!base || !orgId.trim()) return;
+    if (!getApiBaseUrl() || !orgId.trim()) return;
     setCreateError(null);
     setCreatePermissionsLoading(true);
     const encodedOrg = encodeURIComponent(orgId.trim());
     try {
-      const res = await fetch(
-        `${base}/api/v1/organizations/${encodedOrg}/permissions`,
-        { credentials: 'include' }
+      const res = await apiFetch(
+        `/api/v1/organizations/${encodedOrg}/permissions`
       );
       if (!res.ok) throw new Error(`Permissions: HTTP ${res.status}`);
       const json: { data?: PermissionRow[] } = await res.json();

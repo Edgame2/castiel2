@@ -1,7 +1,7 @@
 # Gap Analysis: UI, User Management, Auth, API Gateway
 
 **Date:** 2026-02-01  
-**Scope:** containers/ui, containers/user-management, containers/auth, containers/api-gateway  
+**Scope:** ui, containers/user-management, containers/auth, containers/api-gateway  
 **Standards:** ModuleImplementationGuide, .cursorrules
 
 ---

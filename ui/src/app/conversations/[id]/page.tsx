@@ -9,9 +9,7 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-
-const apiBase =
-  typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '') : '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type Message = {
   id: string;
@@ -40,23 +38,21 @@ export default function ConversationDetailPage() {
   const [sending, setSending] = useState(false);
 
   const fetchConversation = useCallback(() => {
-    if (!apiBase || !id) {
+    if (!getApiBaseUrl() || !id) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/conversations/${id}?includeMessages=true&messageLimit=100`, {
-      credentials: 'include',
-    })
+    apiFetch(`/api/conversations/${id}?includeMessages=true&messageLimit=100`)
       .then((r) => {
         if (r.status === 404) throw new Error('Conversation not found');
         if (!r.ok) throw new Error(r.statusText || 'Failed to load conversation');
         return r.json();
       })
       .then((data: Conversation) => setConversation(data))
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+      .catch(() => {
+        setError(GENERIC_ERROR_MESSAGE);
         setConversation(null);
       })
       .finally(() => setLoading(false));
@@ -69,11 +65,10 @@ export default function ConversationDetailPage() {
   const sendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     const content = message.trim();
-    if (!apiBase || !id || !content || sending) return;
+    if (!getApiBaseUrl() || !id || !content || sending) return;
     setSending(true);
-    fetch(`${apiBase}/api/conversations/${id}/messages`, {
+    apiFetch(`/api/conversations/${id}/messages`, {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
     })
@@ -85,7 +80,7 @@ export default function ConversationDetailPage() {
         setMessage('');
         fetchConversation();
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Send failed'))
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSending(false));
   };
 

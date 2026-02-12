@@ -9,9 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface IntegrationHealth {
   status: 'healthy' | 'degraded' | 'unhealthy' | 'disconnected';
@@ -95,9 +93,7 @@ export default function IntegrationHealthPage() {
 
   const fetchIntegration = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/${integrationId}`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch(`/api/v1/integrations/${integrationId}`);
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -112,9 +108,7 @@ export default function IntegrationHealthPage() {
 
   const fetchHealth = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/${integrationId}/health`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch(`/api/v1/integrations/${integrationId}/health`);
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -129,11 +123,8 @@ export default function IntegrationHealthPage() {
 
   const fetchSyncHistory = useCallback(async () => {
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/integrations/${integrationId}/sync-history?limit=50`,
-        {
-          credentials: 'include',
-        }
+      const res = await apiFetch(
+        `/api/v1/integrations/${integrationId}/sync-history?limit=50`
       );
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -148,9 +139,7 @@ export default function IntegrationHealthPage() {
 
   const fetchErrors = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/${integrationId}/errors?limit=50`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch(`/api/v1/integrations/${integrationId}/errors?limit=50`);
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -164,9 +153,7 @@ export default function IntegrationHealthPage() {
 
   const fetchDataQuality = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/${integrationId}/data-quality`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch(`/api/v1/integrations/${integrationId}/data-quality`);
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -180,11 +167,8 @@ export default function IntegrationHealthPage() {
 
   const fetchPerformance = useCallback(async () => {
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/integrations/${integrationId}/performance?timeRange=7d`,
-        {
-          credentials: 'include',
-        }
+      const res = await apiFetch(
+        `/api/v1/integrations/${integrationId}/performance?timeRange=7d`
       );
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -200,11 +184,8 @@ export default function IntegrationHealthPage() {
   const fetchSyncDetails = useCallback(
     async (syncId: string) => {
       try {
-        const res = await fetch(
-          `${apiBaseUrl}/api/v1/integrations/${integrationId}/sync-history/${syncId}`,
-          {
-            credentials: 'include',
-          }
+        const res = await apiFetch(
+          `/api/v1/integrations/${integrationId}/sync-history/${syncId}`
         );
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));

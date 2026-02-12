@@ -14,9 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 const TYPES = ['numeric', 'categorical', 'text', 'datetime', 'boolean'] as const;
 
 export default function FeatureEngineeringFeatureNewPage() {
@@ -31,12 +30,11 @@ export default function FeatureEngineeringFeatureNewPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !name.trim() || submitting) return;
+    if (!getApiBaseUrl() || !name.trim() || submitting) return;
     setError(null);
     setSubmitting(true);
-    fetch(`${apiBase}/api/v1/ml/features`, {
+    apiFetch('/api/v1/ml/features', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: name.trim(),
@@ -46,7 +44,7 @@ export default function FeatureEngineeringFeatureNewPage() {
         transformation: transformation.trim() || undefined,
       }),
     })
-      .then((r) => {
+      .then((r: Response) => {
         if (!r.ok) return r.json().then((j) => Promise.reject(new Error((j?.error?.message as string) || `HTTP ${r.status}`)));
         return r.json();
       })
@@ -54,7 +52,7 @@ export default function FeatureEngineeringFeatureNewPage() {
         if (saved?.id) router.push(`/admin/feature-engineering/features/${encodeURIComponent(saved.id)}`);
         else router.push('/admin/feature-engineering/features');
       })
-      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSubmitting(false));
   };
 

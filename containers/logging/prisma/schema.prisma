@@ -149,9 +149,10 @@ model audit_alert_rules {
   @@map("audit_alert_rules")
 }
 
-/// Hash chain verification checkpoints
+/// Hash chain verification checkpoints (tenant-scoped)
 model audit_hash_checkpoints {
   id                    String    @id @default(cuid())
+  organizationId        String?   @map("organization_id")
   checkpointTimestamp   DateTime  @map("checkpoint_timestamp")
   lastLogId             String    @map("last_log_id")
   lastHash              String    @map("last_hash")
@@ -164,6 +165,7 @@ model audit_hash_checkpoints {
   
   createdAt             DateTime  @default(now()) @map("created_at")
 
+  @@index([organizationId], name: "idx_checkpoints_org")
   @@index([checkpointTimestamp], name: "idx_checkpoints_time")
   @@index([status], name: "idx_checkpoints_status")
   @@map("audit_hash_checkpoints")

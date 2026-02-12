@@ -53,6 +53,8 @@ export async function registerRoutes(
     routeMappings.push({ path: '/api/v1/admin/settings', service: 'integration_manager', serviceUrl: config.services.integration_manager.url, stripPrefix: false });
     routeMappings.push({ path: '/api/v1/admin/integrations', service: 'integration_manager', serviceUrl: config.services.integration_manager.url, stripPrefix: false });
     routeMappings.push({ path: '/api/v1/integrations', service: 'integration_manager', serviceUrl: config.services.integration_manager.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/webhooks', service: 'integration_manager', serviceUrl: config.services.integration_manager.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/sync', service: 'integration_manager', serviceUrl: config.services.integration_manager.url, stripPrefix: false });
   }
   if (config.services.shard_manager?.url) {
     routeMappings.push({ path: '/api/v1/shards', service: 'shard_manager', serviceUrl: config.services.shard_manager.url, stripPrefix: false });
@@ -82,6 +84,51 @@ export async function registerRoutes(
   }
   if (config.services.search_service?.url) {
     routeMappings.push({ path: '/api/v1/search', service: 'search_service', serviceUrl: config.services.search_service.url, stripPrefix: false });
+  }
+  // Phase 2: Missing gateway routes (register before /api/v1 for path precedence)
+  if (config.services.forecasting?.url) {
+    routeMappings.push({ path: '/api/v1/forecasts', service: 'forecasting', serviceUrl: config.services.forecasting.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/accuracy', service: 'forecasting', serviceUrl: config.services.forecasting.url, stripPrefix: false });
+  }
+  if (config.services.reasoning_engine?.url) {
+    routeMappings.push({ path: '/api/v1/reasoning', service: 'reasoning_engine', serviceUrl: config.services.reasoning_engine.url, stripPrefix: false });
+  }
+  if (config.services.validation_engine?.url) {
+    routeMappings.push({ path: '/api/v1/validation', service: 'validation_engine', serviceUrl: config.services.validation_engine.url, stripPrefix: false });
+  }
+  if (config.services.workflow_orchestrator?.url) {
+    routeMappings.push({ path: '/api/v1/workflows', service: 'workflow_orchestrator', serviceUrl: config.services.workflow_orchestrator.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/hitl', service: 'workflow_orchestrator', serviceUrl: config.services.workflow_orchestrator.url, stripPrefix: false });
+  }
+  if (config.services.security_scanning?.url) {
+    routeMappings.push({ path: '/api/v1/security', service: 'security_scanning', serviceUrl: config.services.security_scanning.url, stripPrefix: false });
+  }
+  if (config.services.quality_monitoring?.url) {
+    routeMappings.push({ path: '/api/v1/quality', service: 'quality_monitoring', serviceUrl: config.services.quality_monitoring.url, stripPrefix: false });
+  }
+  if (config.services.pattern_recognition?.url) {
+    routeMappings.push({ path: '/api/v1/patterns', service: 'pattern_recognition', serviceUrl: config.services.pattern_recognition.url, stripPrefix: false });
+  }
+  if (config.services.data_enrichment?.url) {
+    routeMappings.push({ path: '/api/v1/enrichment', service: 'data_enrichment', serviceUrl: config.services.data_enrichment.url, stripPrefix: false });
+  }
+  if (config.services.llm_service?.url) {
+    routeMappings.push({ path: '/api/v1/llm', service: 'llm_service', serviceUrl: config.services.llm_service.url, stripPrefix: false });
+  }
+  if (config.services.learning_service?.url) {
+    routeMappings.push({ path: '/api/v1/learning', service: 'learning_service', serviceUrl: config.services.learning_service.url, stripPrefix: false });
+  }
+  if (config.services.context_service?.url) {
+    routeMappings.push({ path: '/api/v1/contexts', service: 'context_service', serviceUrl: config.services.context_service.url, stripPrefix: false });
+  }
+  if (config.services.utility_services?.url) {
+    routeMappings.push({ path: '/api/v1/utility', service: 'utility_services', serviceUrl: config.services.utility_services.url, stripPrefix: false });
+  }
+  if (config.services.ai_analytics?.url) {
+    routeMappings.push({ path: '/api/v1/ai-analytics', service: 'ai_analytics', serviceUrl: config.services.ai_analytics.url, stripPrefix: false });
+  }
+  if (config.services.signal_intelligence?.url) {
+    routeMappings.push({ path: '/api/v1/signals', service: 'signal_intelligence', serviceUrl: config.services.signal_intelligence.url, stripPrefix: false });
   }
   if (config.services.risk_analytics?.url) {
     routeMappings.push({ path: '/api/v1', service: 'risk_analytics', serviceUrl: config.services.risk_analytics.url, stripPrefix: false });

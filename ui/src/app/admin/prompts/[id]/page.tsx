@@ -7,8 +7,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type PromptDetail = {
   id: string;
@@ -29,21 +28,21 @@ export default function AdminPromptDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchPrompt = useCallback(() => {
-    if (!apiBase || !id) {
+    if (!getApiBaseUrl() || !id) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/prompts/${encodeURIComponent(id)}`, { credentials: 'include' })
-      .then((r) => {
+    apiFetch(`/api/v1/prompts/${encodeURIComponent(id)}`)
+      .then((r: Response) => {
         if (r.status === 404) throw new Error('Prompt not found');
         if (!r.ok) throw new Error(r.statusText || 'Failed to load prompt');
         return r.json();
       })
       .then((data: PromptDetail) => setPrompt(data))
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+      .catch(() => {
+        setError(GENERIC_ERROR_MESSAGE);
         setPrompt(null);
       })
       .finally(() => setLoading(false));

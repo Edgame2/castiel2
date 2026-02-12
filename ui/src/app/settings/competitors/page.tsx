@@ -10,9 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 type Competitor = { id: string; name: string; aliases?: string[]; industry?: string };
 
@@ -25,7 +23,7 @@ export default function CompetitorSettingsPage() {
   const [createError, setCreateError] = useState<string | null>(null);
 
   const fetchCompetitors = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
       return;
@@ -33,7 +31,7 @@ export default function CompetitorSettingsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/competitors`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/competitors');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -55,11 +53,11 @@ export default function CompetitorSettingsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!createName.trim() || !apiBaseUrl) return;
+    if (!createName.trim() || !getApiBaseUrl()) return;
     setCreating(true);
     setCreateError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/competitors`, {
+      const res = await apiFetch('/api/v1/competitors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

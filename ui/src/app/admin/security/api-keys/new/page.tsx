@@ -6,9 +6,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export default function AdminSecurityApiKeyNewPage() {
   const router = useRouter();
@@ -24,12 +22,11 @@ export default function AdminSecurityApiKeyNewPage() {
     e.preventDefault();
     const o = orgId.trim();
     const n = name.trim();
-    if (!apiBase || !o || !n || submitting) return;
+    if (!getApiBaseUrl() || !o || !n || submitting) return;
     setError(null);
     setSubmitting(true);
-    fetch(`${apiBase}/api/v1/organizations/${encodeURIComponent(o)}/api-keys`, {
+    apiFetch(`/api/v1/organizations/${encodeURIComponent(o)}/api-keys`, {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: n, scope: scope.trim() || undefined, expiresAt: expiresAt.trim() || undefined }),
     })

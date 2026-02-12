@@ -10,7 +10,7 @@ process.env.NODE_ENV = 'test';
 process.env.COSMOS_DB_ENDPOINT = process.env.TEST_COSMOS_DB_ENDPOINT || 'https://test.documents.azure.com:443/';
 process.env.COSMOS_DB_KEY = process.env.TEST_COSMOS_DB_KEY || 'test-key';
 process.env.COSMOS_DB_DATABASE_ID = process.env.TEST_COSMOS_DB_DATABASE_ID || 'test';
-process.env.RABBITMQ_URL = process.env.TEST_RABBITMQ_URL || '';
+process.env.RABBITMQ_URL = process.env.TEST_RABBITMQ_URL || 'amqp://localhost';
 process.env.JWT_SECRET = process.env.TEST_JWT_SECRET || 'test-jwt-secret-key-for-testing-only';
 process.env.PORT = '3010';
 process.env.HOST = '0.0.0.0';
@@ -71,6 +71,13 @@ vi.mock('yaml', () => ({
         endpoint: process.env.COSMOS_DB_ENDPOINT,
         key: process.env.COSMOS_DB_KEY,
         database_id: process.env.COSMOS_DB_DATABASE_ID,
+        containers: {
+          contexts: 'context_contexts',
+          assemblies: 'context_assemblies',
+          dependency_trees: 'context_dependency_trees',
+          call_graphs: 'context_call_graphs',
+          analyses: 'context_analyses',
+        },
       },
       jwt: { secret: process.env.JWT_SECRET },
       rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
@@ -82,20 +89,31 @@ vi.mock('yaml', () => ({
 
 // Mock @coder/shared database
 vi.mock('@coder/shared/database', () => ({
-  getContainer: vi.fn(() => ({
-    items: {
-      create: vi.fn(),
-      query: vi.fn(() => ({
-        fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
-        fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
+  getContainer: vi.fn((name: string) => {
+    const stubContext = { id: 'ctx-1', tenantId: 'tenant-123', path: '/test/file.ts', name: 'test', type: 'file', scope: 'file' };
+    const isContexts = name === 'context_contexts' || name.includes('context');
+    return {
+      items: {
+        create: vi.fn().mockImplementation((doc: any) =>
+          Promise.resolve({ resource: { ...doc, id: doc.id || 'created-id' } })
+        ),
+        query: vi.fn(() => ({
+          fetchAll: vi.fn().mockResolvedValue({
+            resources: isContexts ? [stubContext] : [],
+          }),
+          fetchNext: vi.fn().mockResolvedValue({
+            resources: isContexts ? [stubContext] : [],
+            continuationToken: undefined,
+          }),
+        })),
+      },
+      item: vi.fn(() => ({
+        read: vi.fn().mockResolvedValue({ resource: null }),
+        replace: vi.fn().mockImplementation((doc: any) => Promise.resolve({ resource: doc })),
+        delete: vi.fn().mockResolvedValue(undefined),
       })),
-    },
-    item: vi.fn(() => ({
-      read: vi.fn().mockResolvedValue({ resource: null }),
-      replace: vi.fn(),
-      delete: vi.fn(),
-    })),
-  })),
+    };
+  }),
   initializeDatabase: vi.fn(),
   connectDatabase: vi.fn(),
   disconnectDatabase: vi.fn(),
@@ -114,7 +132,7 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient (must be constructor for `new ServiceClient()`)
+// Mock @coder/shared
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn().mockImplementation(function (this: any) {
     this.get = vi.fn().mockResolvedValue({ data: {} });
@@ -123,10 +141,17 @@ vi.mock('@coder/shared', () => ({
     this.delete = vi.fn().mockResolvedValue({ data: {} });
   }),
   generateServiceToken: vi.fn(() => 'token'),
-  authenticateRequest: vi.fn(() => vi.fn()),
-  tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
+  authenticateRequest: vi.fn(() => async (req: any) => {
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+  }),
+  tenantEnforcementMiddleware: vi.fn(() => async (req: any) => {
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+  }),
   setupJWT: vi.fn(),
   setupHealthCheck: vi.fn(),
+  initializeDatabase: vi.fn(),
+  connectDatabase: vi.fn().mockResolvedValue(undefined),
+  disconnectDatabase: vi.fn(),
 }));
 
 // Global test setup

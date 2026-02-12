@@ -8,6 +8,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type PrioritizedOpportunity = {
   opportunityId: string;
@@ -55,7 +56,7 @@ export function RecommendedTodayCard({
         suggestedAction: json?.suggestedAction ?? null,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setData(null);
     } finally {
       setLoading(false);

@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -9,15 +10,13 @@ import {
   getRecommendations,
 } from "@/data/mock";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { OverviewTab } from "./OverviewTab";
 import { RiskTab } from "./RiskTab";
 import { RecommendationsTab } from "./RecommendationsTab";
 import { ArrowLeft } from "lucide-react";
 
-export default function OpportunityDetailPage() {
+export default function OpportunityDetailPage(): React.ReactElement {
   const params = useParams();
   const id = params.id as string;
   const opp = getOpportunity(id);

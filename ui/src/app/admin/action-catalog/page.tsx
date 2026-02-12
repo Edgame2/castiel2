@@ -9,9 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 interface OverviewStats {
   entriesCount: number;
@@ -25,7 +23,7 @@ export default function ActionCatalogOverviewPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setStats(null);
       setLoading(false);
       return;
@@ -34,9 +32,9 @@ export default function ActionCatalogOverviewPage() {
     setError(null);
     try {
       const [entriesRes, categoriesRes, relationshipsRes] = await Promise.all([
-        fetch(`${apiBaseUrl}/api/v1/action-catalog/entries`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/v1/action-catalog/categories`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/v1/action-catalog/relationships`, { credentials: 'include' }),
+        apiFetch('/api/v1/action-catalog/entries'),
+        apiFetch('/api/v1/action-catalog/categories'),
+        apiFetch('/api/v1/action-catalog/relationships'),
       ]);
       if (!entriesRes.ok || !categoriesRes.ok || !relationshipsRes.ok) {
         throw new Error('Failed to load catalog stats');
@@ -91,13 +89,13 @@ export default function ActionCatalogOverviewPage() {
             Manage risks and recommendations (catalog entries), categories, and risk–recommendation relationships. Super Admin §2.
           </p>
         </div>
-        {apiBaseUrl && (
+        {getApiBaseUrl() && (
           <Button type="button" variant="outline" onClick={fetchStats} disabled={loading}>
             Refresh
           </Button>
         )}
       </div>
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-4 bg-amber-50 dark:bg-amber-900/20 mb-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>

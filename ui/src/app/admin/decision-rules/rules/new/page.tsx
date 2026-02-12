@@ -8,9 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface RuleCondition {
   field: string;
@@ -40,7 +38,7 @@ export default function DecisionRuleNewPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !name.trim() || conditions.length === 0 || actions.length === 0 || submitting) return;
+    if (!getApiBaseUrl() || !name.trim() || conditions.length === 0 || actions.length === 0 || submitting) return;
     setError(null);
     setSubmitting(true);
     const body = {
@@ -53,13 +51,12 @@ export default function DecisionRuleNewPage() {
       actions: actions.map((a) => ({ type: a.type, details: a.details ?? {}, priority: (a.priority as string) ?? 'medium', idempotencyKey: a.idempotencyKey ?? `rule_${Date.now()}` })),
       createdBy: createdBy.trim() || 'admin',
     };
-    fetch(`${apiBase}/api/v1/decisions/rules`, {
+    apiFetch('/api/v1/decisions/rules', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-      .then((r) => {
+      .then((r: Response) => {
         if (!r.ok) return r.json().then((j) => Promise.reject(new Error((j?.error?.message as string) || `HTTP ${r.status}`)));
         return r.json();
       })
@@ -68,7 +65,7 @@ export default function DecisionRuleNewPage() {
         if (id) router.push(`/admin/decision-rules/rules/${encodeURIComponent(id)}`);
         else router.push('/admin/decision-rules/rules');
       })
-      .catch((e) => { if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') console.error(e); setError(GENERIC_ERROR_MESSAGE); })
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSubmitting(false));
   };
 

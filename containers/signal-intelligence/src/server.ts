@@ -198,7 +198,9 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   log.error('Unhandled promise rejection', reason as Error, { service: 'signal_intelligence', promise: promise.toString() });
 });
 
-start().catch((error) => {
-  console.error('Fatal error starting server:', error);
-  process.exit(1);
-});
+if (process.env.NODE_ENV !== 'test') {
+  start().catch((error) => {
+    console.error('Fatal error starting server:', error);
+    process.exit(1);
+  });
+}

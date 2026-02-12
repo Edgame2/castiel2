@@ -120,18 +120,20 @@ export class HashChainService {
   }
 
   /**
-   * Create a verification checkpoint
+   * Create a verification checkpoint (tenant-scoped).
    */
   async createCheckpoint(
     lastLogId: string,
     lastHash: string,
     logCount: bigint,
-    verifiedBy?: string
+    verifiedBy?: string,
+    organizationId?: string
   ): Promise<string> {
     if (!this.prisma) throw new Error('Hash chain checkpoints not available when using Cosmos DB');
     const checkpoint = await this.prisma.audit_hash_checkpoints.create({
       data: {
         id: randomUUID(),
+        organizationId: organizationId ?? null,
         checkpointTimestamp: new Date(),
         lastLogId,
         lastHash,
@@ -152,11 +154,12 @@ export class HashChainService {
   }
 
   /**
-   * Get verification checkpoints
+   * Get verification checkpoints (tenant-scoped).
    */
-  async getCheckpoints(limit: number = 10): Promise<any[]> {
+  async getCheckpoints(tenantId: string, limit: number = 10): Promise<any[]> {
     if (!this.prisma) return [];
     const checkpoints = await this.prisma.audit_hash_checkpoints.findMany({
+      where: { organizationId: tenantId },
       orderBy: { checkpointTimestamp: 'desc' },
       take: limit,
     });
@@ -165,15 +168,15 @@ export class HashChainService {
   }
 
   /**
-   * Verify logs since last checkpoint
+   * Verify logs since checkpoint (tenant-scoped: only checkpoints belonging to tenantId).
    */
-  async verifySinceCheckpoint(checkpointId: string): Promise<VerificationResult> {
+  async verifySinceCheckpoint(checkpointId: string, tenantId: string): Promise<VerificationResult> {
     if (!this.prisma) return { status: 'verified', checkedLogs: 0, failedLogs: [] };
     const checkpoint = await this.prisma.audit_hash_checkpoints.findUnique({
       where: { id: checkpointId },
     });
 
-    if (!checkpoint) {
+    if (!checkpoint || checkpoint.organizationId !== tenantId) {
       throw new Error('Checkpoint not found');
     }
 

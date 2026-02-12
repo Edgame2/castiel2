@@ -84,7 +84,17 @@ vi.mock('yaml', () => ({
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(() => ({
     items: {
-      create: vi.fn(),
+      create: vi.fn().mockResolvedValue({
+        resource: {
+          id: 'task-mock-1',
+          tenantId: 'tenant-123',
+          type: 'chain_of_thought',
+          status: 'pending',
+          input: { query: 'test' },
+          createdAt: new Date(),
+          createdBy: 'user-1',
+        },
+      }),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
         fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
@@ -92,7 +102,7 @@ vi.mock('@coder/shared/database', () => ({
     },
     item: vi.fn(() => ({
       read: vi.fn().mockResolvedValue({ resource: null }),
-      replace: vi.fn(),
+      replace: vi.fn((doc: unknown) => Promise.resolve({ resource: doc })),
       delete: vi.fn(),
     })),
   })),
@@ -114,7 +124,7 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn(() => ({
     get: vi.fn().mockResolvedValue({ data: {} }),
@@ -122,10 +132,21 @@ vi.mock('@coder/shared', () => ({
     put: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   })),
-  authenticateRequest: vi.fn(() => vi.fn()),
-  tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
+  authenticateRequest: vi.fn(
+    () => async (req: { user?: { id: string; tenantId: string }; headers?: { 'x-tenant-id'?: string } }) => {
+      req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+    }
+  ),
+  tenantEnforcementMiddleware: vi.fn(
+    () => async (req: { user?: { id: string; tenantId: string }; headers?: { 'x-tenant-id'?: string } }) => {
+      req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+    }
+  ),
   setupJWT: vi.fn(),
   setupHealthCheck: vi.fn(),
+  initializeDatabase: vi.fn(),
+  connectDatabase: vi.fn().mockResolvedValue(undefined),
+  disconnectDatabase: vi.fn(),
 }));
 
 // Global test setup

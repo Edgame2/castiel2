@@ -19,9 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 type PatternReportFrequency = 'daily' | 'weekly' | 'monthly';
 
@@ -130,9 +128,9 @@ export default function FeedbackGlobalSettingsPage() {
   } | null>(null);
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-config`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/admin/feedback-config');
       if (res.status === 404) {
         setConfig(null);
         return;
@@ -148,13 +146,13 @@ export default function FeedbackGlobalSettingsPage() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    if (apiBaseUrl) {
+    if (getApiBaseUrl()) {
       fetchConfig().finally(() => setLoading(false));
     } else {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
     }
-  }, [apiBaseUrl, fetchConfig]);
+  }, [fetchConfig]);
 
   useEffect(() => {
     document.title = 'Global Settings | Admin | Castiel';
@@ -267,7 +265,7 @@ export default function FeedbackGlobalSettingsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     const bodyConfig = config ?? DEFAULT_CONFIG;
     const errs = validateLimits(bodyConfig);
     if (errs.length > 0) {
@@ -309,7 +307,7 @@ export default function FeedbackGlobalSettingsPage() {
         },
         feedbackCollection: fcSave,
       };
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-config`, {
+      const res = await apiFetch('/api/v1/admin/feedback-config', {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -331,7 +329,7 @@ export default function FeedbackGlobalSettingsPage() {
 
   /** §1.2.1 Apply current global config to all existing tenant configs (with confirmation). */
   const handleApplyToAllTenants = async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     if (
       !window.confirm(
         'Apply current global feedback config (default limit, active types, pattern detection, collection settings) to all existing tenant configs? This overwrites per-tenant overrides.',
@@ -342,7 +340,7 @@ export default function FeedbackGlobalSettingsPage() {
     setError(null);
     setApplyToAllResult(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-config/apply-to-all-tenants`, {
+      const res = await apiFetch('/api/v1/admin/feedback-config/apply-to-all-tenants', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -398,7 +396,7 @@ export default function FeedbackGlobalSettingsPage() {
         </span>
       </nav>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
@@ -438,7 +436,7 @@ export default function FeedbackGlobalSettingsPage() {
         </div>
       )}
 
-      {!loading && apiBaseUrl && (
+      {!loading && getApiBaseUrl() && (
         <section className="rounded-lg border bg-white dark:bg-gray-900 p-6">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <h2 className="text-lg font-semibold">Global feedback config</h2>
@@ -987,12 +985,12 @@ export default function FeedbackGlobalSettingsPage() {
                 <Button
                   type="button"
                   onClick={async () => {
-                    if (!apiBaseUrl) return;
+                    if (!getApiBaseUrl()) return;
                     setPatternTestLoading(true);
                     setPatternTestError(null);
                     setPatternTestResult(null);
                     try {
-                      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-config/test-pattern-detection`, {
+                      const res = await apiFetch('/api/v1/admin/feedback-config/test-pattern-detection', {
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },

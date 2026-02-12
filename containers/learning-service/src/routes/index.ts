@@ -60,7 +60,7 @@ export async function registerRoutes(
         tags: ['Feedback'],
         security: [{ bearerAuth: [] }],
         body: feedbackBodySchema,
-        response: { 201: { type: 'object', properties: { id: { type: 'string' }, recordedAt: { type: 'string' } } } },
+        response: { 201: { type: 'object', properties: { id: { type: 'string' }, recordedAt: { type: 'string' } }, additionalProperties: true } },
       },
     },
     async (request, reply) => {
@@ -87,7 +87,7 @@ export async function registerRoutes(
         tags: ['Feedback'],
         security: [{ bearerAuth: [] }],
         body: outcomeBodySchema,
-        response: { 201: { type: 'object', properties: { id: { type: 'string' }, recordedAt: { type: 'string' } } } },
+        response: { 201: { type: 'object', properties: { id: { type: 'string' }, recordedAt: { type: 'string' } }, additionalProperties: true } },
       },
     },
     async (request, reply) => {
@@ -122,7 +122,7 @@ export async function registerRoutes(
             to: { type: 'string', format: 'date-time' },
           },
         },
-        response: { 200: { type: 'object' } },
+        response: { 200: { type: 'object', additionalProperties: true } },
       },
     },
     async (request, reply) => {
@@ -153,7 +153,7 @@ export async function registerRoutes(
         params: { type: 'object', required: ['feedbackId'], properties: { feedbackId: { type: 'string' } } },
         body: linkPredictionBodySchema,
         response: {
-          200: { type: 'object', properties: { id: { type: 'string' }, predictionId: { type: 'string' }, linkedAt: { type: 'string' } } },
+          200: { type: 'object', properties: { id: { type: 'string' }, predictionId: { type: 'string' }, linkedAt: { type: 'string' } }, additionalProperties: true },
           404: { type: 'object', properties: { message: { type: 'string' } } },
         },
       },
@@ -188,7 +188,7 @@ export async function registerRoutes(
             alertThreshold: { type: 'string' },
           },
         },
-        response: { 200: { type: 'object' } },
+        response: { 200: { type: 'object', additionalProperties: true } },
       },
     },
     async (request, reply) => {

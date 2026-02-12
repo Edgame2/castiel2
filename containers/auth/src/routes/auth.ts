@@ -6,7 +6,7 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { getDatabaseClient } from '@coder/shared';
+import { getDatabaseClient, tenantEnforcementMiddleware } from '@coder/shared';
 import { getGoogleUserInfo } from '../services/providers/GoogleOAuth';
 import { getGitHubUserInfo } from '../services/providers/GitHubOAuth';
 import { optionalAuth, authenticateRequest } from '../middleware/auth';
@@ -829,9 +829,36 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
       }
     }
   );
-  fastify.post(
+  fastify.post<{ Body: { name?: string; expiresInDays?: number } }>(
     '/api/v1/auth/api-keys',
-    { preHandler: authenticateRequest },
+    {
+      preHandler: [authenticateRequest, tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Create API key (JWT only; feature flag required)',
+        tags: ['API Keys'],
+        security: [{ bearerAuth: [] }],
+        body: {
+          type: 'object',
+          required: ['name'],
+          properties: {
+            name: { type: 'string', description: 'Key label' },
+            expiresInDays: { type: 'number', description: 'Optional expiry in days' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              name: { type: 'string' },
+              key: { type: 'string' },
+              createdAt: { type: 'string' },
+              expiresAt: { type: ['string', 'null'] },
+            },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest, reply: FastifyReply) => {
       if (!routeConfig.features?.api_keys) {
         reply.code(403).send({ error: 'API keys are not enabled' });
@@ -844,6 +871,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
       try {
         const requestUser = (request as any).user;
         const organizationId = (request as any).organizationId;
+        const xTenantId = (request.headers['x-tenant-id'] as string)?.trim();
         if (!requestUser?.id) {
           reply.code(401).send({ error: 'Not authenticated' });
           return;
@@ -854,7 +882,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           reply.code(400).send({ error: 'name is required' });
           return;
         }
-        const tenantId = organizationId || '';
+        const tenantId = (request as any).tenantContext?.tenantId ?? organizationId ?? xTenantId ?? '';
         const { ApiKeyService } = await import('../services/ApiKeyService');
         const result = await new ApiKeyService().create(
           requestUser.id,
@@ -871,7 +899,33 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
   );
   fastify.get(
     '/api/v1/auth/api-keys',
-    { preHandler: authenticateRequest },
+    {
+      preHandler: [authenticateRequest, tenantEnforcementMiddleware()],
+      schema: {
+        description: 'List API keys for current user (feature flag required)',
+        tags: ['API Keys'],
+        security: [{ bearerAuth: [] }],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              keys: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string' },
+                    name: { type: 'string' },
+                    createdAt: { type: 'string' },
+                    expiresAt: { type: ['string', 'null'] },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest, reply: FastifyReply) => {
       if (!routeConfig.features?.api_keys) {
         reply.code(403).send({ error: 'API keys are not enabled' });
@@ -892,9 +946,31 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
       }
     }
   );
-  fastify.delete(
+  fastify.delete<{ Params: { id: string } }>(
     '/api/v1/auth/api-keys/:id',
-    { preHandler: authenticateRequest },
+    {
+      preHandler: [authenticateRequest, tenantEnforcementMiddleware()],
+      schema: {
+        description: 'Revoke an API key (own keys only; feature flag required)',
+        tags: ['API Keys'],
+        security: [{ bearerAuth: [] }],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', description: 'API key id' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    },
     async (request: FastifyRequest, reply: FastifyReply) => {
       if (!routeConfig.features?.api_keys) {
         reply.code(403).send({ error: 'API keys are not enabled' });
@@ -992,58 +1068,63 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
     }
   });
 
-  // Logout
+  // Logout — always clear cookies and return 200; revoke/log/event are best-effort
   fastify.post('/api/v1/auth/logout', { preHandler: optionalAuth }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = (request as any).user?.id;
       const sessionId = (request as any).sessionId;
       const organizationId = (request as any).organizationId;
-      
-      // Revoke session if sessionId is available
+
       if (sessionId) {
-        const { revokeSession } = await import('../services/SessionService');
-        await revokeSession(sessionId);
-      }
-      
-      // Log logout
-      if (userId) {
-        const loggingService = getLoggingService();
-        await loggingService.logFromRequest(
-          request,
-          'logout',
-          `User ${userId} logged out`,
-          {
-            category: 'ACCESS',
-            severity: 'INFO',
-            resourceType: 'user',
-            resourceId: userId,
-            metadata: {
-              sessionId: sessionId || undefined,
-              organizationId,
-            },
-          }
-        );
+        try {
+          const { revokeSession } = await import('../services/SessionService');
+          await revokeSession(sessionId);
+        } catch (err: any) {
+          log.warn('Logout: revokeSession failed (continuing)', { sessionId, error: err?.message, service: 'auth' });
+        }
       }
 
-      // Publish user.logged_out event
       if (userId) {
-        const metadata = extractEventMetadata(request);
-        await publishEventSafely({
-          ...createBaseEvent('auth.user.logged_out', userId, organizationId, request.id, {
-            userId,
-            sessionId: sessionId || undefined,
-            reason: 'user_initiated',
-          }),
-        } as AuthEvent);
+        try {
+          const loggingService = getLoggingService();
+          await loggingService.logFromRequest(
+            request,
+            'logout',
+            `User ${userId} logged out`,
+            {
+              category: 'ACCESS',
+              severity: 'INFO',
+              resourceType: 'user',
+              resourceId: userId,
+              metadata: {
+                sessionId: sessionId || undefined,
+                organizationId,
+              },
+            }
+          );
+        } catch (err: any) {
+          log.warn('Logout: audit log failed (continuing)', { userId, error: err?.message, service: 'auth' });
+        }
+
+        try {
+          await publishEventSafely({
+            ...createBaseEvent('auth.user.logged_out', userId, organizationId, request.id, {
+              userId,
+              sessionId: sessionId || undefined,
+              reason: 'user_initiated',
+            }),
+          } as AuthEvent);
+        } catch (err: any) {
+          log.warn('Logout: event publish failed (continuing)', { userId, error: err?.message, service: 'auth' });
+        }
       }
-      
+    } catch (err: any) {
+      log.warn('Logout: unexpected error (continuing)', { error: err?.message, service: 'auth' });
+    } finally {
       reply.clearCookie('accessToken', { path: '/' });
       reply.clearCookie('refreshToken', { path: '/' });
-      return { message: 'Logged out successfully' };
-    } catch (error: any) {
-      log.error('Logout error', error, { route: '/api/v1/auth/logout', service: 'auth' });
-      reply.code(500).send({ error: 'Failed to logout' });
     }
+    return { message: 'Logged out successfully' };
   });
 
   // Register (email/password)

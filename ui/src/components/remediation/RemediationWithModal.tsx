@@ -6,6 +6,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { getApiBaseUrl } from '@/lib/api';
 import { RemediationWorkflowCard, type RemediationWorkflow } from './RemediationWorkflowCard';
 import { CompleteRemediationStepModal } from './CompleteRemediationStepModal';
 
@@ -72,7 +73,7 @@ export function RemediationWithModal({
           stepNumber={modal.stepNumber}
           stepDescription={modal.stepDescription}
           onSubmitted={handleSubmitted}
-          apiBaseUrl={apiBaseUrl}
+          apiBaseUrl={apiBaseUrl ?? getApiBaseUrl()}
           getHeaders={getHeaders}
         />
       )}

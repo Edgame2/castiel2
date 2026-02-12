@@ -6,9 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface DashboardDef {
   id: string;
@@ -43,13 +41,13 @@ export default function AnalyticsDashboardDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBase) {
+    if (!getApiBaseUrl()) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/system/analytics`, { credentials: 'include' })
+    apiFetch('/api/v1/system/analytics')
       .then((r) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load');
         return r.json();
@@ -79,7 +77,7 @@ export default function AnalyticsDashboardDetailPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !config || !dashboard || saving) return;
+    if (!getApiBaseUrl() || !config || !dashboard || saving) return;
     setSaveError(null);
     setSaving(true);
     const updated = config.dashboards.map((d) =>
@@ -87,9 +85,8 @@ export default function AnalyticsDashboardDetailPage() {
         ? { ...d, name: name.trim(), dataSource: dataSource.trim() || undefined, refreshIntervalSeconds }
         : d
     );
-    fetch(`${apiBase}/api/v1/system/analytics`, {
+    apiFetch('/api/v1/system/analytics', {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...config, dashboards: updated }),
     })
@@ -103,12 +100,11 @@ export default function AnalyticsDashboardDetailPage() {
   };
 
   const handleDelete = () => {
-    if (!apiBase || !config || !dashboard || deleting) return;
+    if (!getApiBaseUrl() || !config || !dashboard || deleting) return;
     setDeleting(true);
     const next = (config.dashboards ?? []).filter((d) => d.id !== id);
-    fetch(`${apiBase}/api/v1/system/analytics`, {
+    apiFetch('/api/v1/system/analytics', {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...config, dashboards: next }),
     })

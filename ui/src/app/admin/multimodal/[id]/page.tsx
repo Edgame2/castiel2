@@ -7,8 +7,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type JobDetail = {
   id: string;
@@ -31,21 +30,21 @@ export default function AdminMultimodalJobDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchJob = useCallback(() => {
-    if (!apiBase || !id) {
+    if (!getApiBaseUrl() || !id) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/multimodal/jobs/${encodeURIComponent(id)}`, { credentials: 'include' })
-      .then((r) => {
+    apiFetch(`/api/v1/multimodal/jobs/${encodeURIComponent(id)}`)
+      .then((r: Response) => {
         if (r.status === 404) throw new Error('Job not found');
         if (!r.ok) throw new Error(r.statusText || 'Failed to load job');
         return r.json();
       })
       .then((data: JobDetail) => setJob(data))
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+      .catch(() => {
+        setError(GENERIC_ERROR_MESSAGE);
         setJob(null);
       })
       .finally(() => setLoading(false));

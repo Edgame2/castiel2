@@ -2,6 +2,7 @@
 name: Enterprise Migration Plan - Updated
 overview: Comprehensive enterprise-grade migration plan with security, performance, and multi-tenancy recommendations integrated throughout all phases.
 todos: []
+isProject: false
 ---
 
 # Enterprise Migration P
@@ -97,8 +98,8 @@ services:
 - Routing keys: `{module}.{resource}.{action}`
 - Example: `auth.user.created`, `shard.document.updated`
 
-2. `coder.notifications` (Topic Exchange) - Notification events
-3. `coder.audit` (Direct Exchange) - Audit events
+1. `coder.notifications` (Topic Exchange) - Notification events
+2. `coder.audit` (Direct Exchange) - Audit events
 
 **Queue Structure**:
 
@@ -139,13 +140,13 @@ interface Event {
 - TTL: 1-5 minutes (hot data)
 - Key pattern: `service:{serviceName}:{key}`
 
-2. **Layer 2**: Redis cache (shared across instances)
+1. **Layer 2**: Redis cache (shared across instances)
 
 - TTL: 5-60 minutes (warm data)
 - Key pattern: `tenant:{tenantId}:{resource}:{id}`
 - Automatic invalidation on updates
 
-3. **Layer 3**: Database (source of truth)
+1. **Layer 3**: Database (source of truth)
 
 **Cache Strategies by Data Type**:
 
@@ -255,39 +256,28 @@ containers/shared/
 **Implementation Priority**:
 
 1. **Database Module** (BLOCKER - used by all containers):
-
-   - `CosmosDBClient.ts` - Singleton client with connection pooling
-   - `containerManager.ts` - Container initialization and management
-   - `getDatabaseClient()` - Export function
-   - `connectDatabase()` - Export function
-   - `disconnectDatabase()` - Export function
-
+  - `CosmosDBClient.ts` - Singleton client with connection pooling
+  - `containerManager.ts` - Container initialization and management
+  - `getDatabaseClient()` - Export function
+  - `connectDatabase()` - Export function
+  - `disconnectDatabase()` - Export function
 2. **Auth Module** (BLOCKER - used by all containers):
-
-   - `jwt.ts` - `setupJWT(fastify, options)` function
-   - JWT verification utilities
-   - Token generation helpers
-
+  - `jwt.ts` - `setupJWT(fastify, options)` function
+  - JWT verification utilities
+  - Token generation helpers
 3. **Cache Module** (HIGH PRIORITY - used by auth, user-management):
-
-   - `RedisClient.ts` - Singleton Redis client
-   - `MultiLayerCache.ts` - Multi-layer caching implementation
-   - Connection pooling
-
+  - `RedisClient.ts` - Singleton Redis client
+  - `MultiLayerCache.ts` - Multi-layer caching implementation
+  - Connection pooling
 4. **Events Module** (HIGH PRIORITY - used by auth, user-management, logging):
-
-   - `EventPublisher.ts` - RabbitMQ publisher
-   - `EventConsumer.ts` - RabbitMQ consumer
-   - `EventSchema.ts` - Schema validation
-
+  - `EventPublisher.ts` - RabbitMQ publisher
+  - `EventConsumer.ts` - RabbitMQ consumer
+  - `EventSchema.ts` - Schema validation
 5. **Services Module** (MEDIUM PRIORITY - for inter-service communication):
-
-   - `ServiceClient.ts` - HTTP client with circuit breaker
-   - `ServiceRegistry.ts` - Service discovery
-
+  - `ServiceClient.ts` - HTTP client with circuit breaker
+  - `ServiceRegistry.ts` - Service discovery
 6. **Health Check** (BLOCKER - used by ai-service, embeddings, dashboard):
-
-   - `setupHealthCheck(fastify)` - Add to utils or create health module
+  - `setupHealthCheck(fastify)` - Add to utils or create health module
 
 **Migration Sources** (legacy):
 
@@ -388,9 +378,9 @@ export * from './services';
 
 **Tasks**:
 
-- [ ] Generate `openapi.yaml` from Fastify Swagger configuration
-- [ ] Place in container root (`containers/auth/openapi.yaml`)
-- [ ] Verify all endpoints are documented
+- Generate `openapi.yaml` from Fastify Swagger configuration
+- Place in container root (`containers/auth/openapi.yaml`)
+- Verify all endpoints are documented
 
 **Port**: 3021
 
@@ -400,9 +390,9 @@ export * from './services';
 
 **Tasks**:
 
-- [ ] Generate `openapi.yaml` from Fastify Swagger configuration
-- [ ] Place in container root (`containers/user-management/openapi.yaml`)
-- [ ] Verify all endpoints are documented
+- Generate `openapi.yaml` from Fastify Swagger configuration
+- Place in container root (`containers/user-management/openapi.yaml`)
+- Verify all endpoints are documented
 
 **Port**: 3022
 
@@ -412,9 +402,9 @@ export * from './services';
 
 **Tasks**:
 
-- [ ] Generate `openapi.yaml` from Fastify Swagger configuration (already configured in server.ts)
-- [ ] Place in container root (`containers/secret-management/openapi.yaml`)
-- [ ] Verify all endpoints are documented
+- Generate `openapi.yaml` from Fastify Swagger configuration (already configured in server.ts)
+- Place in container root (`containers/secret-management/openapi.yaml`)
+- Verify all endpoints are documented
 
 **Port**: 3003
 
@@ -424,8 +414,8 @@ export * from './services';
 
 **Tasks**:
 
-- [ ] Move `docs/openapi.yaml` to root (`containers/logging/openapi.yaml`) OR verify docs/ location is acceptable
-- [ ] Verify all endpoints are documented
+- Move `docs/openapi.yaml` to root (`containers/logging/openapi.yaml`) OR verify docs/ location is acceptable
+- Verify all endpoints are documented
 
 **Port**: 3014
 
@@ -435,9 +425,9 @@ export * from './services';
 
 **Tasks**:
 
-- [ ] Generate `openapi.yaml` from Fastify Swagger configuration
-- [ ] Place in container root (`containers/notification-manager/openapi.yaml`)
-- [ ] Verify all endpoints are documented
+- Generate `openapi.yaml` from Fastify Swagger configuration
+- Place in container root (`containers/notification-manager/openapi.yaml`)
+- Verify all endpoints are documented
 
 **Port**: 3001
 
@@ -455,13 +445,13 @@ export * from './services';
 - Validate and inject `X-Tenant-ID` header
 - Block invalid tenant requests
 
-2. **Service Layer**:
+1. **Service Layer**:
 
 - Validate `X-Tenant-ID` header
 - Enforce `tenantId` in all database queries
 - Reject cross-tenant requests
 
-3. **Database Layer**:
+1. **Database Layer**:
 
 - All queries MUST include `tenantId` in partition key
 - Partition key enforcement prevents cross-tenant access
@@ -474,7 +464,7 @@ export * from './services';
 - Service identity verification
 - Token rotation
 
-2. **Authorization**:
+1. **Authorization**:
 
 - Service permissions in tokens
 - Rate limiting per service
@@ -488,13 +478,13 @@ export * from './services';
 - Cache-aside pattern
 - Automatic invalidation
 
-2. **Connection Pooling**:
+1. **Connection Pooling**:
 
 - Shared pools with per-service limits
 - Health monitoring
 - Automatic reconnection
 
-3. **Database Queries**:
+1. **Database Queries**:
 
 - Always use partition key (`tenantId`)
 - Composite indexes for common queries

@@ -98,13 +98,31 @@ export class AlertService {
   }
 
   /**
-   * Update an alert rule
+   * Get an alert rule (tenant-scoped).
+   */
+  async getRule(id: string, tenantId: string): Promise<AlertRule | null> {
+    if (this.cosmosAlertRules) {
+      const rule = await this.cosmosAlertRules.findUniqueByIdAndTenant(id, tenantId);
+      return rule ? this.mapToAlertRule(rule) : null;
+    }
+    const rule = await this.prisma!.audit_alert_rules.findUnique({
+      where: { id },
+    });
+    if (!rule || rule.organizationId !== tenantId) return null;
+    return this.mapToAlertRule(rule);
+  }
+
+  /**
+   * Update an alert rule (tenant-scoped: only if rule belongs to tenantId).
    */
   async updateRule(
     id: string,
     input: UpdateAlertRuleInput,
-    updatedBy: string
+    updatedBy: string,
+    tenantId: string
   ): Promise<AlertRule> {
+    const existing = await this.getRule(id, tenantId);
+    if (!existing) throw new Error('Alert rule not found');
     if (this.cosmosAlertRules) {
       const rule = await this.cosmosAlertRules.update({
         where: { id },
@@ -135,9 +153,11 @@ export class AlertService {
   }
 
   /**
-   * Delete an alert rule
+   * Delete an alert rule (tenant-scoped).
    */
-  async deleteRule(id: string): Promise<void> {
+  async deleteRule(id: string, tenantId: string): Promise<void> {
+    const existing = await this.getRule(id, tenantId);
+    if (!existing) throw new Error('Alert rule not found');
     if (this.cosmosAlertRules) {
       await this.cosmosAlertRules.delete({ where: { id } });
       return;
@@ -145,21 +165,6 @@ export class AlertService {
     await this.prisma!.audit_alert_rules.delete({
       where: { id },
     });
-  }
-
-  /**
-   * Get an alert rule
-   */
-  async getRule(id: string): Promise<AlertRule | null> {
-    if (this.cosmosAlertRules) {
-      const rule = await this.cosmosAlertRules.findUnique({ where: { id } });
-      return rule ? this.mapToAlertRule(rule) : null;
-    }
-    const rule = await this.prisma!.audit_alert_rules.findUnique({
-      where: { id },
-    });
-    if (!rule) return null;
-    return this.mapToAlertRule(rule);
   }
 
   /**
@@ -185,10 +190,10 @@ export class AlertService {
   }
 
   /**
-   * Evaluate an alert rule
+   * Evaluate an alert rule (tenant-scoped).
    */
-  async evaluateRule(ruleId: string): Promise<boolean> {
-    const rule = await this.getRule(ruleId);
+  async evaluateRule(ruleId: string, tenantId: string): Promise<boolean> {
+    const rule = await this.getRule(ruleId, tenantId);
     
     if (!rule || !rule.enabled) {
       return false;

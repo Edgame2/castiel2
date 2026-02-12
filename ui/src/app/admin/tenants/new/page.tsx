@@ -12,8 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type CreateResponse = { data?: { id: string; name?: string } };
 
@@ -28,10 +27,10 @@ export default function AdminTenantsNewPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const n = name.trim();
-    if (!apiBase || !n || submitting) return;
+    if (!getApiBaseUrl() || !n || submitting) return;
     setError(null);
     setSubmitting(true);
-    fetch(`${apiBase}/api/v1/organizations`, {
+    apiFetch('/api/v1/organizations', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -41,7 +40,7 @@ export default function AdminTenantsNewPage() {
         description: description.trim() || undefined,
       }),
     })
-      .then((r) => {
+      .then((r: Response) => {
         if (!r.ok) return r.json().then((body: { error?: string }) => { throw new Error(body?.error || r.statusText); });
         return r.json();
       })
@@ -49,7 +48,7 @@ export default function AdminTenantsNewPage() {
         if (data?.data?.id) router.push(`/admin/tenants/${data.data.id}`);
         else router.push('/admin/tenants');
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Create failed'))
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSubmitting(false));
   };
 

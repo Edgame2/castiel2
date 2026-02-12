@@ -269,6 +269,37 @@ describe('PromptService', () => {
     });
   });
 
+  describe('getAnalytics', () => {
+    it('throws BadRequestError when tenantId is missing', async () => {
+      await expect(service.getAnalytics('')).rejects.toThrow(BadRequestError);
+    });
+
+    it('returns totalPrompts, byStatus, and byCategory from tenant prompts', async () => {
+      const resources = [
+        { status: 'active', category: 'sales' },
+        { status: 'active', category: 'support' },
+        { status: 'draft', category: 'sales' },
+        { status: undefined, category: undefined },
+      ];
+      vi.mocked(getContainer).mockReturnValue({
+        items: {
+          create: vi.fn(),
+          query: vi.fn(() => ({
+            fetchNext: vi.fn(),
+            fetchAll: vi.fn().mockResolvedValue({ resources }),
+          })),
+        },
+        item: vi.fn(() => ({ read: vi.fn(), replace: vi.fn(), delete: vi.fn() })),
+      } as any);
+
+      const result = await service.getAnalytics('tenant-1');
+
+      expect(result.totalPrompts).toBe(4);
+      expect(result.byStatus).toEqual({ active: 2, draft: 2 });
+      expect(result.byCategory).toEqual({ sales: 2, support: 1, uncategorized: 1 });
+    });
+  });
+
   describe('list', () => {
     it('throws BadRequestError when tenantId is missing', async () => {
       await expect(service.list('')).rejects.toThrow(BadRequestError);

@@ -10,7 +10,7 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:5432/test_auth';
 process.env.RABBITMQ_URL = process.env.TEST_RABBITMQ_URL || '';
 process.env.JWT_SECRET = process.env.TEST_JWT_SECRET || 'test-jwt-secret-key-for-testing-only';
-process.env.REDIS_URL = process.env.TEST_REDIS_URL || '';
+process.env.REDIS_URL = process.env.TEST_REDIS_URL || 'redis://localhost:6379/0';
 process.env.PORT = '3000';
 process.env.HOST = '0.0.0.0';
 
@@ -141,7 +141,7 @@ vi.mock('bcryptjs', async () => {
   }
 });
 
-// Mock ioredis - provide mock implementation
+// Mock ioredis - provide mock implementation (must be a constructor for new Redis())
 vi.mock('ioredis', () => {
   const mockRedisInstance = {
     get: vi.fn().mockResolvedValue(null),
@@ -154,9 +154,9 @@ vi.mock('ioredis', () => {
     quit: vi.fn().mockResolvedValue('OK'),
     disconnect: vi.fn(),
   };
-  
-  const MockRedis = vi.fn(() => mockRedisInstance);
-  
+  function MockRedis() {
+    return mockRedisInstance;
+  }
   return {
     default: MockRedis,
   };

@@ -12,9 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type RiskToleranceLevel = 'conservative' | 'balanced' | 'aggressive';
 
@@ -84,7 +82,7 @@ export default function TenantMLConfigPage() {
   }, []);
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
       return;
@@ -92,7 +90,7 @@ export default function TenantMLConfigPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/tenant-ml-config`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/tenant-ml-config');
       if (res.status === 404) {
         setConfig({
           tenantId: '',
@@ -125,7 +123,7 @@ export default function TenantMLConfigPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     const bodyConfig = config ?? formData;
     setSaving(true);
     setSaveMessage(null);
@@ -137,9 +135,8 @@ export default function TenantMLConfigPage() {
         modelPreferences: bodyConfig.modelPreferences,
         customFeatures: bodyConfig.customFeatures,
       };
-      const res = await fetch(`${apiBaseUrl}/api/v1/tenant-ml-config`, {
+      const res = await apiFetch('/api/v1/tenant-ml-config', {
         method: 'PUT',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
@@ -202,7 +199,7 @@ export default function TenantMLConfigPage() {
         Risk tolerance, decision preferences, model preferences (current tenant). Via risk-analytics.
       </p>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
@@ -226,7 +223,7 @@ export default function TenantMLConfigPage() {
         </div>
       )}
 
-      {!loading && apiBaseUrl && (
+      {!loading && getApiBaseUrl() && (
         <form onSubmit={handleSave} className="rounded-lg border bg-white dark:bg-gray-900">
           <div className="p-6 space-y-6">
             <section>

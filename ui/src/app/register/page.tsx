@@ -8,6 +8,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -19,38 +22,46 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
+
+const registerSchema = z.object({
+  email: z.string().min(1, 'Email is required').email('Invalid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+});
+
+type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { email: '', password: '', firstName: '', lastName: '' },
+  });
+
+  const onSubmit = async (data: RegisterFormData) => {
     setError(null);
     setLoading(true);
     try {
-      const base = getApiBaseUrl();
-      const res = await fetch(`${base ? `${base.replace(/\/$/, '')}` : ''}/api/auth/register`, {
+      const res = await apiFetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
-          email,
-          password,
-          firstName: firstName.trim() || undefined,
-          lastName: lastName.trim() || undefined,
+          email: data.email,
+          password: data.password,
+          firstName: data.firstName?.trim() || undefined,
+          lastName: data.lastName?.trim() || undefined,
         }),
+        skip401Redirect: true,
       });
-      const data = await res.json().catch(() => ({}));
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const msg = data?.error || data?.message || `HTTP ${res.status}`;
-        const details = Array.isArray(data?.errors) ? data.errors.join('. ') : null;
+        const msg = json?.error || json?.message || `HTTP ${res.status}`;
+        const details = Array.isArray(json?.errors) ? json.errors.join('. ') : null;
         setError(typeof msg === 'string' ? (details ? `${msg}: ${details}` : msg) : JSON.stringify(msg));
         return;
       }
@@ -72,7 +83,7 @@ export default function RegisterPage() {
           <CardDescription>Enter your details to register.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {error && (
               <div className="rounded-md bg-destructive/10 text-destructive text-sm p-3 border border-destructive/20">
                 {error}
@@ -86,11 +97,13 @@ export default function RegisterPage() {
                 id="register-email"
                 type="email"
                 autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                placeholder="you@example.com"
                 className="w-full"
+                {...register('email')}
               />
+              {errors.email && (
+                <p className="text-sm text-destructive" role="alert">{errors.email.message}</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
@@ -99,9 +112,8 @@ export default function RegisterPage() {
                   id="register-firstName"
                   type="text"
                   autoComplete="given-name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
                   className="w-full"
+                  {...register('firstName')}
                 />
               </div>
               <div className="space-y-2">
@@ -110,9 +122,8 @@ export default function RegisterPage() {
                   id="register-lastName"
                   type="text"
                   autoComplete="family-name"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
                   className="w-full"
+                  {...register('lastName')}
                 />
               </div>
             </div>
@@ -124,11 +135,12 @@ export default function RegisterPage() {
                 id="register-password"
                 type="password"
                 autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
                 className="w-full"
+                {...register('password')}
               />
+              {errors.password && (
+                <p className="text-sm text-destructive" role="alert">{errors.password.message}</p>
+              )}
             </div>
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? 'Creating account…' : 'Create account'}

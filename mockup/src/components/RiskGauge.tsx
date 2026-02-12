@@ -1,10 +1,15 @@
 "use client";
 
+import type React from "react";
 import { RadialBarChart, RadialBar, ResponsiveContainer } from "recharts";
 
 function colorForValue(v: number): string {
-  if (v < 0.33) return "#22c55e";
-  if (v < 0.66) return "#eab308";
+  if (v < 0.33) {
+    return "#22c55e";
+  }
+  if (v < 0.66) {
+    return "#eab308";
+  }
   return "#ef4444";
 }
 
@@ -16,7 +21,7 @@ export function RiskGauge({
   value: number;
   label?: string;
   size?: number;
-}) {
+}): React.ReactElement {
   const clamped = Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
   const pct = Math.round(clamped * 100);
   const data = [{ value: pct, fill: colorForValue(clamped) }];

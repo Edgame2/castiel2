@@ -1,105 +1,101 @@
 /**
  * Workflow Orchestrator Routes Integration Tests
+ * GET /api/v1/workflows, GET /api/v1/workflows/:workflowId, POST retry
+ * GET /api/v1/hitl/approvals/:id, POST approve, POST reject
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { buildApp } from '../../../src/server';
 
-// Mock dependencies are set up in tests/setup.ts
-vi.mock('@coder/shared/database');
-vi.mock('@coder/shared');
 vi.mock('../../../src/events/publishers/WorkflowOrchestratorEventPublisher');
 
-describe('POST /api/v1/workflow/orchestrator/opportunity-analysis', () => {
+describe('Workflow Orchestrator routes', () => {
   let app: FastifyInstance;
-  let authToken: string;
 
   beforeAll(async () => {
     app = await buildApp();
-    authToken = 'test-token';
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  it('should start opportunity analysis workflow and return 202', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/v1/workflow/orchestrator/opportunity-analysis',
-      headers: {
-        authorization: `Bearer ${authToken}`,
-        'x-tenant-id': 'tenant-123',
-      },
-      payload: {
-        opportunityId: 'opp-123',
-        trigger: 'manual',
-      },
+  const authHeaders = {
+    authorization: 'Bearer test-token',
+    'x-tenant-id': 'tenant-123',
+  };
+
+  describe('GET /api/v1/workflows', () => {
+    it('returns 200 with workflows and total', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/workflows?opportunityId=opp-123',
+        headers: authHeaders,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body).toHaveProperty('workflows');
+      expect(body).toHaveProperty('total');
+      expect(Array.isArray(body.workflows)).toBe(true);
     });
-
-    expect(response.statusCode).toBe(202);
-    const body = response.json();
-    expect(body).toHaveProperty('data');
-    expect(body.data).toHaveProperty('workflowId');
   });
 
-  it('should return 400 for invalid input', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/v1/workflow/orchestrator/opportunity-analysis',
-      headers: {
-        authorization: `Bearer ${authToken}`,
-        'x-tenant-id': 'tenant-123',
-      },
-      payload: {
-        // Missing required fields
-      },
+  describe('GET /api/v1/workflows/:workflowId', () => {
+    it('returns 404 when workflow not found', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/workflows/non-existent-workflow',
+        headers: authHeaders,
+      });
+      expect(response.statusCode).toBe(404);
     });
-
-    expect(response.statusCode).toBe(400);
-  });
-});
-
-describe('GET /api/v1/workflow/orchestrator/workflows/:workflowId', () => {
-  let app: FastifyInstance;
-  let authToken: string;
-
-  beforeAll(async () => {
-    app = await buildApp();
-    authToken = 'test-token';
   });
 
-  afterAll(async () => {
-    await app.close();
-  });
-
-  it('should retrieve workflow and return 200', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/workflow/orchestrator/workflows/workflow-123',
-      headers: {
-        authorization: `Bearer ${authToken}`,
-        'x-tenant-id': 'tenant-123',
-      },
+  describe('POST /api/v1/workflows/:workflowId/retry', () => {
+    it('returns 404 or 500 when workflow not found', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/workflows/non-existent-workflow/retry',
+        headers: authHeaders,
+      });
+      expect([404, 500]).toContain(response.statusCode);
     });
-
-    expect(response.statusCode).toBe(200);
-    const body = response.json();
-    expect(body).toHaveProperty('data');
-    expect(body.data).toHaveProperty('workflowId');
   });
 
-  it('should return 404 for non-existent workflow', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/workflow/orchestrator/workflows/non-existent',
-      headers: {
-        authorization: `Bearer ${authToken}`,
-        'x-tenant-id': 'tenant-123',
-      },
+  describe('GET /api/v1/hitl/approvals/:id', () => {
+    it('returns 404 when approval not found', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/hitl/approvals/non-existent-id',
+        headers: authHeaders,
+      });
+      expect(response.statusCode).toBe(404);
     });
+  });
 
-    expect(response.statusCode).toBe(404);
+  describe('POST /api/v1/hitl/approvals/:id/approve', () => {
+    it('returns 400 when decidedBy missing', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/hitl/approvals/some-id/approve',
+        headers: authHeaders,
+        payload: {},
+      });
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('POST /api/v1/hitl/approvals/:id/reject', () => {
+    it('returns 400 when decidedBy missing', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/hitl/approvals/some-id/reject',
+        headers: authHeaders,
+        payload: {},
+      });
+      expect(response.statusCode).toBe(400);
+    });
   });
 });

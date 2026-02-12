@@ -2,29 +2,56 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "API Gateway Module Configuration",
   "type": "object",
-  "required": ["module", "server", "jwt"],
+  "required": [
+    "module",
+    "server",
+    "jwt"
+  ],
   "properties": {
     "module": {
       "type": "object",
-      "required": ["name", "version"],
+      "required": [
+        "name",
+        "version"
+      ],
       "properties": {
-        "name": { "type": "string" },
-        "version": { "type": "string" }
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
       }
     },
     "server": {
       "type": "object",
-      "required": ["port", "host"],
+      "required": [
+        "port",
+        "host"
+      ],
       "properties": {
-        "port": { "type": ["integer", "string"], "minimum": 1, "maximum": 65535 },
-        "host": { "type": "string" }
+        "port": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "host": {
+          "type": "string"
+        }
       }
     },
     "jwt": {
       "type": "object",
-      "required": ["secret"],
+      "required": [
+        "secret"
+      ],
       "properties": {
-        "secret": { "type": "string" }
+        "secret": {
+          "type": "string"
+        }
       }
     },
     "services": {
@@ -33,121 +60,307 @@
         "auth": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "user_management": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "secret_management": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "logging": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "notification": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "ai_service": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "embeddings": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "dashboard": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "risk_analytics": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "risk_catalog": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "recommendations": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "integration_manager": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "shard_manager": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "integration_processors": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "ml_service": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "ai_conversation": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "multi_modal_service": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "prompt_service": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "web_search": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         },
         "search_service": {
           "type": "object",
           "properties": {
-            "url": { "type": "string", "format": "uri" }
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "reasoning_engine": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "validation_engine": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "workflow_orchestrator": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "forecasting": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "security_scanning": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "quality_monitoring": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "pattern_recognition": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "data_enrichment": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "llm_service": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "learning_service": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "context_service": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "utility_services": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "ai_analytics": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "signal_intelligence": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         }
       }
@@ -155,27 +368,55 @@
     "rate_limit": {
       "type": "object",
       "properties": {
-        "max": { "type": ["integer", "string"], "minimum": 1 },
-        "timeWindow": { "type": ["integer", "string"], "minimum": 1 }
+        "max": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "minimum": 1
+        },
+        "timeWindow": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "minimum": 1
+        }
       }
     },
     "circuit_breaker": {
       "type": "object",
       "properties": {
-        "threshold": { "type": ["integer", "string"], "minimum": 1 },
-        "timeout": { "type": ["integer", "string"], "minimum": 1 }
+        "threshold": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "minimum": 1
+        },
+        "timeout": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "minimum": 1
+        }
       }
     },
     "cors": {
       "type": "object",
       "properties": {
-        "origin": { "type": "string" }
+        "origin": {
+          "type": "string"
+        }
       }
     },
     "redis": {
       "type": "object",
       "properties": {
-        "url": { "type": "string" }
+        "url": {
+          "type": "string"
+        }
       }
     }
   }

@@ -123,12 +123,13 @@ export class RetentionService {
   }
 
   /**
-   * Update retention policy
+   * Update retention policy (tenant-scoped: only if policy.organizationId matches tenantId).
    */
   async updatePolicy(
     id: string,
     input: UpdateRetentionPolicyInput,
-    updatedBy: string
+    updatedBy: string,
+    tenantId: string
   ): Promise<RetentionPolicy> {
     if (!this.prisma) throw new Error('Retention policies not available when using Cosmos DB');
     const existing = await this.prisma.audit_retention_policies.findUnique({
@@ -136,6 +137,10 @@ export class RetentionService {
     });
 
     if (!existing) {
+      throw new Error('Retention policy not found');
+    }
+
+    if (existing.organizationId !== tenantId) {
       throw new Error('Retention policy not found');
     }
 
@@ -170,15 +175,19 @@ export class RetentionService {
   }
 
   /**
-   * Delete retention policy
+   * Delete retention policy (tenant-scoped: only if policy.organizationId matches tenantId).
    */
-  async deletePolicy(id: string): Promise<void> {
+  async deletePolicy(id: string, tenantId: string): Promise<void> {
     if (!this.prisma) throw new Error('Retention policies not available when using Cosmos DB');
     const existing = await this.prisma.audit_retention_policies.findUnique({
       where: { id },
     });
 
     if (!existing) {
+      throw new Error('Retention policy not found');
+    }
+
+    if (existing.organizationId !== tenantId) {
       throw new Error('Retention policy not found');
     }
 

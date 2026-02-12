@@ -60,6 +60,13 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           201: {
             type: 'object',
             description: 'Pattern created successfully',
+            properties: {
+              id: { type: 'string' },
+              tenantId: { type: 'string' },
+              name: { type: 'string' },
+              type: { type: 'string' },
+            },
+            additionalProperties: true,
           },
         },
       },
@@ -281,6 +288,13 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           201: {
             type: 'object',
             description: 'Pattern scan started',
+            properties: {
+              id: { type: 'string' },
+              tenantId: { type: 'string' },
+              status: { type: 'string' },
+              target: { type: 'object' },
+            },
+            additionalProperties: true,
           },
         },
       },

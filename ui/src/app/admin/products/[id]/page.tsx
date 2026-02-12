@@ -11,9 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface Product {
   id: string;
@@ -40,14 +38,14 @@ export default function AdminProductDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchProduct = useCallback(() => {
-    if (!apiBase || !id) {
+    if (!getApiBaseUrl() || !id) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/products/${encodeURIComponent(id)}`, { credentials: 'include' })
-      .then((r) => {
+    apiFetch(`/api/v1/products/${encodeURIComponent(id)}`)
+      .then((r: Response) => {
         if (r.status === 404) throw new Error('Product not found');
         if (!r.ok) throw new Error(r.statusText || 'Failed to load');
         return r.json();
@@ -57,8 +55,7 @@ export default function AdminProductDetailPage() {
         setName(data.name ?? '');
         setDescription(data.description ?? '');
       })
-      .catch((e) => {
-        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      .catch(() => {
         setError(GENERIC_ERROR_MESSAGE);
         setProduct(null);
       })
@@ -71,36 +68,34 @@ export default function AdminProductDetailPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !id || !product || saving) return;
+    if (!getApiBaseUrl() || !id || !product || saving) return;
     setSaveError(null);
     setSaving(true);
-    fetch(`${apiBase}/api/v1/products/${encodeURIComponent(id)}`, {
+    apiFetch(`/api/v1/products/${encodeURIComponent(id)}`, {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name.trim(), description: description.trim() || undefined }),
     })
-      .then((r) => {
+      .then((r: Response) => {
         if (!r.ok) return r.json().then((d: { error?: { message?: string } }) => { throw new Error(d?.error?.message ?? r.statusText); });
       })
       .then(() => {
         setEditing(false);
         fetchProduct();
       })
-      .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setSaveError(GENERIC_ERROR_MESSAGE); })
+      .catch(() => setSaveError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSaving(false));
   };
 
   const handleDelete = () => {
-    if (!apiBase || !id || deleting) return;
+    if (!getApiBaseUrl() || !id || deleting) return;
     setDeleting(true);
-    fetch(`${apiBase}/api/v1/products/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' })
-      .then((r) => {
+    apiFetch(`/api/v1/products/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      .then((r: Response) => {
         if (!r.ok && r.status !== 204) return r.json().then((d: { error?: { message?: string } }) => { throw new Error(d?.error?.message ?? r.statusText); });
         router.push('/admin/products');
       })
-      .catch((e) => {
-        if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+      .catch(() => {
         setSaveError(GENERIC_ERROR_MESSAGE);
         setDeleting(false);
       });

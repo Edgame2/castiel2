@@ -18,9 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 interface DataLakeConfig {
   connectionString?: string;
@@ -52,7 +50,7 @@ export default function SystemDataLakePage() {
   const [dirty, setDirty] = useState(false);
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setConfig(DEFAULT_CONFIG);
       setLoading(false);
@@ -61,7 +59,7 @@ export default function SystemDataLakePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/system/datalake`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/system/datalake');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setConfig({ ...DEFAULT_CONFIG, ...data });
@@ -84,11 +82,11 @@ export default function SystemDataLakePage() {
   }, []);
 
   const handleSave = async () => {
-    if (!apiBaseUrl || !config) return;
+    if (!getApiBaseUrl() || !config) return;
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/system/datalake`, {
+      const res = await apiFetch('/api/v1/system/datalake', {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

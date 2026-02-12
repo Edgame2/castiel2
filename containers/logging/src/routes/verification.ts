@@ -45,10 +45,11 @@ export async function registerVerificationRoutes(app: FastifyInstance): Promise<
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const body = verifySchema.parse(request.body);
 
       const result = await hashChainService.verifyChain(
-        body.organizationId || user.organizationId,
+        body.organizationId || tenantId,
         body.startDate ? new Date(body.startDate) : undefined,
         body.endDate ? new Date(body.endDate) : undefined
       );
@@ -86,6 +87,7 @@ export async function registerVerificationRoutes(app: FastifyInstance): Promise<
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const body = request.body as {
         lastLogId: string;
         lastHash: string;
@@ -96,7 +98,8 @@ export async function registerVerificationRoutes(app: FastifyInstance): Promise<
         body.lastLogId,
         body.lastHash,
         BigInt(body.logCount),
-        user.id
+        user.id,
+        tenantId
       );
 
       reply.code(201).send({ id: checkpointId });
@@ -128,9 +131,12 @@ export async function registerVerificationRoutes(app: FastifyInstance): Promise<
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const query = request.query as { limit?: string };
 
       const checkpoints = await hashChainService.getCheckpoints(
+        tenantId,
         query.limit ? parseInt(query.limit, 10) : 10
       );
 
@@ -164,9 +170,11 @@ export async function registerVerificationRoutes(app: FastifyInstance): Promise<
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const { id } = request.params as { id: string };
 
-      const result = await hashChainService.verifySinceCheckpoint(id);
+      const result = await hashChainService.verifySinceCheckpoint(id, tenantId);
 
       reply.send(result);
     } catch (error: any) {

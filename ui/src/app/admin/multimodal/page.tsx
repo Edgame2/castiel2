@@ -6,8 +6,9 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type JobItem = { id: string; type?: string; status?: string; name?: string; createdAt?: string };
 
@@ -19,19 +20,19 @@ export default function AdminMultimodalListPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchJobs = useCallback(() => {
-    if (!apiBase) {
+    if (!getApiBaseUrl()) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/multimodal/jobs?limit=100`, { credentials: 'include' })
-      .then((r) => {
+    apiFetch('/api/v1/multimodal/jobs?limit=100')
+      .then((r: Response) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load jobs');
         return r.json();
       })
       .then((data: ListResponse) => setItems(Array.isArray(data.items) ? data.items : []))
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setLoading(false));
   }, []);
 
@@ -44,16 +45,26 @@ export default function AdminMultimodalListPage() {
       <div className="max-w-2xl mx-auto">
         <h1 className="text-xl font-semibold mb-4">Multi-modal jobs</h1>
 
-        {loading && <p className="text-sm text-gray-500">Loading…</p>}
+        {loading && (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="border rounded-lg p-3 dark:border-gray-700">
+                <Skeleton className="h-5 w-48 mb-2" />
+                <Skeleton className="h-4 w-full max-w-xs" />
+              </div>
+            ))}
+          </div>
+        )}
         {error && (
           <p className="text-sm text-red-600 dark:text-red-400 mb-4" role="alert">
             {error}
           </p>
         )}
         {!loading && !error && items.length === 0 && (
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            No multi-modal jobs. Create a job via API (POST /api/v1/multimodal/jobs) with type and input.
-          </p>
+          <EmptyState
+            title="No multi-modal jobs"
+            description="Create a job via API (POST /api/v1/multimodal/jobs) with type and input."
+          />
         )}
         {!loading && !error && items.length > 0 && (
           <ul className="space-y-2">

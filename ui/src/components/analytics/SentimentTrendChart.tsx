@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type SentimentTrendChartProps = {
   opportunityId: string;
@@ -47,7 +48,7 @@ export function SentimentTrendChart({
       const json = (await res.json()) as { trends?: Array<{ period: string; score: number; sampleSize?: number }> };
       setTrends(Array.isArray(json?.trends) ? json.trends : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setTrends([]);
     } finally {
       setLoading(false);

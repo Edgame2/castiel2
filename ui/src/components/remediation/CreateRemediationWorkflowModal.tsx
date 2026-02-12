@@ -8,6 +8,7 @@
 
 import * as Dialog from '@radix-ui/react-dialog';
 import { useState, useCallback, useEffect } from 'react';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -35,7 +36,7 @@ export function CreateRemediationWorkflowModal({
   onClose,
   opportunityId,
   onCreated,
-  apiBaseUrl = '',
+  apiBaseUrl,
   getHeaders,
 }: CreateRemediationWorkflowModalProps) {
   const [actions, setActions] = useState<MitigationAction[]>([]);
@@ -48,13 +49,9 @@ export function CreateRemediationWorkflowModal({
   const [submitLoading, setSubmitLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const base = apiBaseUrl.replace(/\/$/, '');
-  const actionsUrl = `${base}/api/v1/opportunities/${opportunityId}/mitigation-actions`;
-  const createUrl = `${base}/api/v1/remediation-workflows`;
-
   const doFetch = useCallback(async () => {
     const headers: HeadersInit = getHeaders ? await Promise.resolve(getHeaders()) : {};
-    return { headers, credentials: getHeaders ? undefined : ('same-origin' as RequestCredentials) };
+    return headers;
   }, [getHeaders]);
 
   useEffect(() => {
@@ -63,8 +60,8 @@ export function CreateRemediationWorkflowModal({
     setError(null);
     (async () => {
       try {
-        const { headers, credentials } = await doFetch();
-        const res = await fetch(actionsUrl, { headers, credentials });
+        const headers = await doFetch();
+        const res = await apiFetch(`/api/v1/opportunities/${opportunityId}/mitigation-actions`, { headers });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
           throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -72,13 +69,13 @@ export function CreateRemediationWorkflowModal({
         const json = (await res.json()) as { actions?: MitigationAction[] };
         setActions(Array.isArray(json?.actions) ? json.actions : []);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(GENERIC_ERROR_MESSAGE);
         setActions([]);
       } finally {
         setActionsLoading(false);
       }
     })();
-  }, [isOpen, opportunityId, actionsUrl, doFetch]);
+  }, [isOpen, opportunityId, doFetch]);
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
@@ -128,8 +125,8 @@ export function CreateRemediationWorkflowModal({
       setError(null);
       setSubmitLoading(true);
       try {
-        const { headers, credentials } = await doFetch();
-        const res = await fetch(createUrl, {
+        const headers = await doFetch();
+        const res = await apiFetch('/api/v1/remediation-workflows', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...headers },
           body: JSON.stringify({
@@ -138,7 +135,6 @@ export function CreateRemediationWorkflowModal({
             assignedTo: assignedTo.trim() || undefined,
             steps,
           }),
-          credentials,
         });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
@@ -147,12 +143,12 @@ export function CreateRemediationWorkflowModal({
         onCreated?.();
         onClose();
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(GENERIC_ERROR_MESSAGE);
       } finally {
         setSubmitLoading(false);
       }
     },
-    [canSubmit, createUrl, opportunityId, riskId, assignedTo, steps, doFetch, onCreated, onClose]
+    [canSubmit, opportunityId, riskId, assignedTo, steps, doFetch, onCreated, onClose]
   );
 
   return (

@@ -6,8 +6,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type AnalyticsResponse = {
   totalPrompts?: number;
@@ -21,20 +20,20 @@ export default function AdminPromptsAnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchAnalytics = useCallback(() => {
-    if (!apiBase) {
+    if (!getApiBaseUrl()) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/prompts/analytics`, { credentials: 'include' })
-      .then((r) => {
+    apiFetch('/api/v1/prompts/analytics')
+      .then((r: Response) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load analytics');
         return r.json();
       })
       .then((d: AnalyticsResponse) => setData(d))
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+      .catch(() => {
+        setError(GENERIC_ERROR_MESSAGE);
         setData(null);
       })
       .finally(() => setLoading(false));

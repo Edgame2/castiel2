@@ -19,9 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface FieldMapping {
   externalField: string;
@@ -61,6 +59,13 @@ interface Integration {
   };
 }
 
+/** Response from POST .../field-mappings/:entityType/test */
+interface FieldMappingTestResult {
+  transformedData?: unknown;
+  errors?: Array<{ message?: string } | string>;
+  warnings?: Array<{ message?: string } | string>;
+}
+
 export default function FieldMappingsPage() {
   const params = useParams();
   const router = useRouter();
@@ -83,9 +88,7 @@ export default function FieldMappingsPage() {
 
   const fetchIntegration = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/${integrationId}`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch(`/api/v1/integrations/${integrationId}`);
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -100,11 +103,8 @@ export default function FieldMappingsPage() {
 
   const fetchFieldMappings = useCallback(async () => {
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/integrations/${integrationId}/field-mappings/${selectedEntityType}`,
-        {
-          credentials: 'include',
-        }
+      const res = await apiFetch(
+        `/api/v1/integrations/${integrationId}/field-mappings/${selectedEntityType}`
       );
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -121,11 +121,8 @@ export default function FieldMappingsPage() {
 
   const fetchExternalFields = useCallback(async () => {
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/integrations/${integrationId}/external-fields/${selectedEntityType}`,
-        {
-          credentials: 'include',
-        }
+      const res = await apiFetch(
+        `/api/v1/integrations/${integrationId}/external-fields/${selectedEntityType}`
       );
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -140,11 +137,8 @@ export default function FieldMappingsPage() {
 
   const fetchInternalFields = useCallback(async () => {
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/integrations/${integrationId}/internal-fields/${selectedEntityType}`,
-        {
-          credentials: 'include',
-        }
+      const res = await apiFetch(
+        `/api/v1/integrations/${integrationId}/internal-fields/${selectedEntityType}`
       );
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -159,9 +153,7 @@ export default function FieldMappingsPage() {
 
   const fetchTransforms = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/integrations/transform-functions`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch('/api/v1/integrations/transform-functions');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -197,12 +189,11 @@ export default function FieldMappingsPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/integrations/${integrationId}/field-mappings/${selectedEntityType}`,
+      const res = await apiFetch(
+        `/api/v1/integrations/${integrationId}/field-mappings/${selectedEntityType}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ fieldMappings }),
         }
       );
@@ -231,11 +222,8 @@ export default function FieldMappingsPage() {
 
   const handleExport = async () => {
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/integrations/${integrationId}/field-mappings/${selectedEntityType}/export`,
-        {
-          credentials: 'include',
-        }
+      const res = await apiFetch(
+        `/api/v1/integrations/${integrationId}/field-mappings/${selectedEntityType}/export`
       );
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -267,12 +255,11 @@ export default function FieldMappingsPage() {
         const data = JSON.parse(text);
         const mappings = Array.isArray(data) ? data : data.fieldMappings || [];
         
-        const res = await fetch(
-          `${apiBaseUrl}/api/v1/integrations/${integrationId}/field-mappings/${selectedEntityType}/import`,
+        const res = await apiFetch(
+          `/api/v1/integrations/${integrationId}/field-mappings/${selectedEntityType}/import`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
             body: JSON.stringify({ fieldMappings: mappings }),
           }
         );
@@ -558,7 +545,7 @@ interface FieldMappingTesterProps {
 
 function FieldMappingTester({ mappings, entityType, integrationId, onClose }: FieldMappingTesterProps) {
   const [testData, setTestData] = useState('{}');
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<FieldMappingTestResult | null>(null);
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -567,12 +554,11 @@ function FieldMappingTester({ mappings, entityType, integrationId, onClose }: Fi
     setError(null);
     try {
       const parsedData = JSON.parse(testData);
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/integrations/${integrationId}/field-mappings/${entityType}/test`,
+      const res = await apiFetch(
+        `/api/v1/integrations/${integrationId}/field-mappings/${entityType}/test`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({
             testData: parsedData,
             fieldMappings: mappings,
@@ -583,7 +569,7 @@ function FieldMappingTester({ mappings, entityType, integrationId, onClose }: Fi
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
       }
-      const json = await res.json();
+      const json = (await res.json()) as FieldMappingTestResult;
       setResult(json);
     } catch (e) {
       if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);

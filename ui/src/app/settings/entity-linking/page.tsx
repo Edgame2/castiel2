@@ -11,9 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 interface EntityLinkingSettings {
   tenantId: string;
@@ -79,9 +77,7 @@ export default function EntityLinkingPage() {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/entity-linking/settings`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch('/api/v1/entity-linking/settings');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -96,12 +92,7 @@ export default function EntityLinkingPage() {
 
   const fetchSuggestedLinks = useCallback(async () => {
     try {
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/entity-linking/suggested-links?status=pending_review&limit=50`,
-        {
-          credentials: 'include',
-        }
-      );
+      const res = await apiFetch('/api/v1/entity-linking/suggested-links?status=pending_review&limit=50');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -115,9 +106,7 @@ export default function EntityLinkingPage() {
 
   const fetchLinkingRules = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/entity-linking/rules`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch('/api/v1/entity-linking/rules');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -141,7 +130,7 @@ export default function EntityLinkingPage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/entity-linking/settings`, {
+      const res = await apiFetch('/api/v1/entity-linking/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -168,7 +157,7 @@ export default function EntityLinkingPage() {
 
   const handleApproveLink = async (id: string) => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/entity-linking/suggested-links/${id}/approve`, {
+      const res = await apiFetch(`/api/v1/entity-linking/suggested-links/${id}/approve`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -184,7 +173,7 @@ export default function EntityLinkingPage() {
 
   const handleRejectLink = async (id: string) => {
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/entity-linking/suggested-links/${id}/reject`, {
+      const res = await apiFetch(`/api/v1/entity-linking/suggested-links/${id}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -205,7 +194,7 @@ export default function EntityLinkingPage() {
       return;
     }
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/entity-linking/suggested-links/approve-all`, {
+      const res = await apiFetch('/api/v1/entity-linking/suggested-links/approve-all', {
         method: 'POST',
         credentials: 'include',
       });

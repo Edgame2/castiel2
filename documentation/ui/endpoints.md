@@ -33,4 +33,19 @@ Single source of truth for each page/flow: method, gateway path, gateway mapping
 
 Existing admin and settings pages use gateway paths per `.cursor/commands/endpoints.md` (Full endpoints audit). Consistency checklist: list pages use data table pattern; delete uses AlertDialog + toast; loading/empty states; apiFetch/getApiBaseUrl only. i18n and a11y to be completed per requirements.
 
+### Phase 3 checklist audit (per list page)
+
+| Page | apiFetch/getApiBaseUrl | Loading | Empty | 401 via apiFetch | Notes |
+|------|------------------------|---------|-------|------------------|--------|
+| admin/risk-catalog | Yes (2026-02-12) | Yes | Yes | Yes | Tenant catalog view; first column → detail |
+| admin/products | Yes | Yes | Yes | Yes | List + create; first column → detail |
+| admin/prompts | Yes (2026-02-12) | Yes | Yes | Yes | List (ul); first column link → detail |
+| admin/security/users | Yes | Yes | Yes | Yes | Org-scoped (member-count, member-limit, members); table with sort |
+| admin/tenants/list | Yes | Yes | Yes | Yes | GET /api/v1/admin/tenants; table, filters, sort |
+| admin/feedback | Yes | Yes | Yes | Yes | Feedback types, config, aggregation; multiple API calls |
+| admin/decision-rules | Yes | Yes | Yes | Yes | Overview (rules, templates, conflicts counts); links to subpages |
+| admin/ml-models | Yes | Yes | Yes | Yes | Overview (models health, endpoints); links to subpages |
+
+Remaining admin/settings list pages: to be audited in same way (apiFetch, loading, empty, 401, data table pattern).
+
 All above are protected (credentials/include; gateway forwards Authorization when present).

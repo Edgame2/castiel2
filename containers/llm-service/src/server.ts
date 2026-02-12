@@ -2,6 +2,7 @@
  * LLM Service Module Server (Plan W5 Layer 5 – LLM Reasoning)
  */
 
+import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
 import { initializeDatabase, connectDatabase } from '@coder/shared';
@@ -193,7 +194,8 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
   log.error('Unhandled promise rejection', reason as Error, { service: 'llm-service', promise: String(promise) });
 });
 
-if (process.argv[1]?.endsWith('server.js')) {
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
   start().catch((error) => {
     console.error('Fatal error starting server:', error);
     process.exit(1);

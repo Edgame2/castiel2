@@ -6,6 +6,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import {
   Table,
@@ -54,6 +55,7 @@ function getContactDisplayName(row: ShardItem): string {
 }
 
 export default function ContactsListPage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<ShardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,9 +94,9 @@ export default function ContactsListPage() {
   }, [fetchContacts]);
 
   useEffect(() => {
-    document.title = 'Contacts | Castiel';
-    return () => { document.title = 'Castiel'; };
-  }, []);
+    document.title = t('contacts.pageTitle');
+    return () => { document.title = t('common.appName'); };
+  }, [t]);
 
   const handleDeleteConfirm = async () => {
     if (!deleteId) return;
@@ -160,12 +162,12 @@ export default function ContactsListPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
-          aria-label="Search contacts"
+          aria-label={t('contacts.searchAriaLabel')}
         />
       </div>
 
       {!error && filtered.length === 0 && (
-        <p className="text-muted-foreground">No contacts found.</p>
+        <p className="text-muted-foreground">{t('contacts.noContacts')}</p>
       )}
 
       {!error && filtered.length > 0 && (

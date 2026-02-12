@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { CheckCircle, AlertTriangle, XCircle, HelpCircle } from 'lucide-react';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export type LeadingIndicatorsCardProps = {
   opportunityId: string;
@@ -53,7 +54,7 @@ export function LeadingIndicatorsCard({
       const json = (await res.json()) as { indicators?: Indicator[] };
       setIndicators(Array.isArray(json?.indicators) ? json.indicators : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setIndicators([]);
     } finally {
       setLoading(false);

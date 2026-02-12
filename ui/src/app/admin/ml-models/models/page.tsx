@@ -8,9 +8,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { DataTable } from '@/components/ui/data-table';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface ModelHealthResponse {
   endpoints: Record<string, { status: 'ok' | 'unreachable'; latencyMs?: number }>;
@@ -33,10 +32,10 @@ export default function MLModelsModelsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchModels = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setModelsLoading(true);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/ml/models?limit=100`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/ml/models?limit=100');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setModels(Array.isArray(json?.items) ? json.items : []);
@@ -48,23 +47,22 @@ export default function MLModelsModelsPage() {
   }, []);
 
   const fetchHealth = useCallback(async () => {
-    if (!apiBaseUrl) {
-      setError('NEXT_PUBLIC_API_BASE_URL is not set');
+    if (!getApiBaseUrl()) {
+      setError(GENERIC_ERROR_MESSAGE);
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/ml/models/health`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/ml/models/health');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
       }
       const json = await res.json();
       setHealth(json);
-    } catch (e) {
-      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+    } catch {
       setError(GENERIC_ERROR_MESSAGE);
       setHealth(null);
     } finally {
@@ -76,11 +74,11 @@ export default function MLModelsModelsPage() {
     let cancelled = false;
     const run = async () => {
       await fetchHealth();
-      if (apiBaseUrl && !cancelled) await fetchModels();
+      if (getApiBaseUrl() && !cancelled) await fetchModels();
     };
     run();
     return () => { cancelled = true; };
-  }, [fetchHealth, fetchModels, apiBaseUrl]);
+  }, [fetchHealth, fetchModels]);
 
   useEffect(() => {
     document.title = 'Models & health | Admin | Castiel';
@@ -144,7 +142,7 @@ export default function MLModelsModelsPage() {
       </p>
       {subNav}
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
@@ -162,7 +160,7 @@ export default function MLModelsModelsPage() {
         </div>
       )}
 
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <div className="rounded-lg border bg-white dark:bg-gray-900 mb-6">
           <div className="p-4 border-b flex justify-between items-center">
             <h2 className="text-lg font-semibold">Models</h2>
@@ -171,36 +169,25 @@ export default function MLModelsModelsPage() {
             </Button>
           </div>
           <div className="p-6">
-            {modelsLoading ? (
-              <p className="text-sm text-gray-500">Loading…</p>
-            ) : models.length === 0 ? (
-              <p className="text-sm text-gray-500">No models.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-gray-50 dark:bg-gray-800">
-                      <th className="text-left py-2 px-4">Name</th>
-                      <th className="text-left py-2 px-4">Type</th>
-                      <th className="text-left py-2 px-4">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {models.map((m) => (
-                      <tr key={m.id} className="border-b">
-                        <td className="py-2 px-4">
-                          <Link href={`/admin/ml-models/models/${encodeURIComponent(m.id)}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                            {m.name ?? m.id}
-                          </Link>
-                        </td>
-                        <td className="py-2 px-4">{m.type ?? '—'}</td>
-                        <td className="py-2 px-4">{m.status ?? '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <DataTable<ModelItem>
+              columns={[
+                { id: 'name', header: 'Name', cell: (m) => m.name ?? m.id },
+                { id: 'type', header: 'Type', cell: (m) => m.type ?? '—' },
+                { id: 'status', header: 'Status', cell: (m) => m.status ?? '—' },
+              ]}
+              data={models}
+              getRowId={(m) => m.id}
+              isLoading={modelsLoading}
+              firstColumnHref={(m) => `/admin/ml-models/models/${encodeURIComponent(m.id)}`}
+              actionsColumn={(m) => (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/admin/ml-models/models/${encodeURIComponent(m.id)}`}>Edit</Link>
+                </Button>
+              )}
+              emptyTitle="No models"
+              emptyDescription="Create a model to get started."
+              emptyAction={{ label: 'New model', href: '/admin/ml-models/models/new' }}
+            />
           </div>
         </div>
       )}

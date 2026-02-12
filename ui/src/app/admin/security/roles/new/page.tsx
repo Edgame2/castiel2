@@ -8,9 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface Permission {
   id: string;
@@ -30,12 +28,12 @@ export default function AdminSecurityRoleNewPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchPermissions = useCallback(() => {
-    if (!apiBase || !orgId.trim()) {
+    if (!getApiBaseUrl() || !orgId.trim()) {
       setPermissions([]);
       return;
     }
     setPermsLoading(true);
-    fetch(`${apiBase}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/permissions`, { credentials: 'include' })
+    apiFetch(`/api/v1/organizations/${encodeURIComponent(orgId.trim())}/permissions`)
       .then((r) => (r.ok ? r.json() : { data: [] }))
       .then((json: { data?: Permission[] }) => setPermissions(Array.isArray(json?.data) ? json.data : []))
       .catch(() => setPermissions([]))
@@ -54,12 +52,11 @@ export default function AdminSecurityRoleNewPage() {
     e.preventDefault();
     const o = orgId.trim();
     const n = name.trim();
-    if (!apiBase || !o || !n || submitting) return;
+    if (!getApiBaseUrl() || !o || !n || submitting) return;
     setError(null);
     setSubmitting(true);
-    fetch(`${apiBase}/api/v1/organizations/${encodeURIComponent(o)}/roles`, {
+    apiFetch(`/api/v1/organizations/${encodeURIComponent(o)}/roles`, {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: n, description: description.trim() || null, permissionIds }),
     })

@@ -17,11 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const AUDIT_PAGE_TITLE = 'Audit | Admin | Castiel';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
 type LogCategory = 'ACTION' | 'ACCESS' | 'SECURITY' | 'SYSTEM' | 'CUSTOM';
 type LogSeverity = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL';
@@ -75,7 +73,7 @@ export default function SecurityAuditPage() {
   }, []);
 
   const fetchLogs = useCallback(async (overrideOffset?: number) => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     const currentOffset = overrideOffset !== undefined ? overrideOffset : offsetRef.current;
     setLoading(true);
     setError(null);
@@ -92,7 +90,7 @@ export default function SecurityAuditPage() {
       if (category) params.set('category', category);
       if (severity) params.set('severity', severity);
       if (resourceType) params.set('resourceType', resourceType);
-      const res = await fetch(`${apiBaseUrl}/api/logging/api/v1/logs?${params.toString()}`, { credentials: 'include' });
+      const res = await apiFetch(`/api/logging/api/v1/logs?${params.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: LogsResponse = await res.json();
       setItems(Array.isArray(json?.data) ? json.data : []);
@@ -117,7 +115,7 @@ export default function SecurityAuditPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl, startDate, endDate, userId, action, category, severity, resourceType, sortOrder]);
+  }, [startDate, endDate, userId, action, category, severity, resourceType, sortOrder]);
 
   const offsetRef = useRef(0);
   offsetRef.current = offset;
@@ -128,15 +126,15 @@ export default function SecurityAuditPage() {
   }, [sortOrder]);
 
   useEffect(() => {
-    if (apiBaseUrl) fetchLogs(offsetRef.current);
+    if (getApiBaseUrl()) fetchLogs(offsetRef.current);
     else {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
     }
-  }, [apiBaseUrl, fetchLogs]);
+  }, [fetchLogs]);
 
   const handleExport = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setExportError(null);
     setExportJobId(null);
     try {
@@ -150,10 +148,9 @@ export default function SecurityAuditPage() {
         if (category) body.filters.category = category;
         if (severity) body.filters.severity = severity;
       }
-      const res = await fetch(`${apiBaseUrl}/api/logging/api/v1/export`, {
+      const res = await apiFetch('/api/logging/api/v1/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -186,13 +183,13 @@ export default function SecurityAuditPage() {
         <span className="text-sm font-medium text-gray-900 dark:text-gray-100 border-b-2 border-blue-600 pb-2 -mb-0.5">Audit Log</span>
       </nav>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20 mb-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
       )}
 
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <>
           <div className="rounded-lg border bg-white dark:bg-gray-900 p-4 mb-4">
             <h2 className="text-sm font-semibold mb-3">Filters</h2>

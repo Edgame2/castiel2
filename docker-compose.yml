@@ -57,28 +57,6 @@ services:
       - castiel-network
     restart: unless-stopped
 
-  # UI Container
-  # Client uses same-origin /api; server rewrites /api/* to gateway via API_GATEWAY_URL (must be reachable from container).
-  ui:
-    build:
-      context: ./containers/ui
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3000
-      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-}
-      # Must be last: internal URL so UI container can reach gateway (overrides .env).
-      - API_GATEWAY_URL=http://api-gateway:3001
-    depends_on:
-      - api-gateway
-    networks:
-      - castiel-network
-    restart: unless-stopped
-
   # Core Services
   auth:
     build:
@@ -110,6 +88,8 @@ services:
       dockerfile: containers/user-management/Dockerfile
     ports:
       - "3022:3022"
+    env_file:
+      - .env
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3022
@@ -122,6 +102,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - RABBITMQ_URL=amqp://${RABBITMQ_USER:-admin}:${RABBITMQ_PASSWORD:-admin}@rabbitmq:5672
       - SEED_SUPER_ADMIN_EMAIL=${SEED_SUPER_ADMIN_EMAIL:-}
+      - SEED_SUPER_ADMIN_PASSWORD=${SEED_SUPER_ADMIN_PASSWORD:-}
     depends_on:
       redis: { condition: service_started }
       rabbitmq: { condition: service_healthy }

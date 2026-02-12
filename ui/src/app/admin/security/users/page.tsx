@@ -17,7 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface MemberCountResponse {
   data?: { memberCount?: number };
@@ -77,8 +79,7 @@ export default function SecurityUsersPage() {
   }, []);
 
   const fetchSummary = useCallback(async () => {
-    const base = getApiBaseUrl().replace(/\/$/, '') || '';
-    if (!base || !orgId.trim()) return;
+    if (!getApiBaseUrl() || !orgId.trim()) return;
     setLoading(true);
     setError(null);
     setMemberCount(null);
@@ -86,12 +87,11 @@ export default function SecurityUsersPage() {
     setIsAtLimit(null);
     setMembers([]);
     const encoded = encodeURIComponent(orgId.trim());
-    const prefix = base ? `${base}/api/v1/organizations` : '/api/v1/organizations';
     try {
       const [countRes, limitRes, membersRes] = await Promise.all([
-        fetch(`${prefix}/${encoded}/member-count`, { credentials: 'include' }),
-        fetch(`${prefix}/${encoded}/member-limit`, { credentials: 'include' }),
-        fetch(`${prefix}/${encoded}/members`, { credentials: 'include' }),
+        apiFetch(`/api/v1/organizations/${encoded}/member-count`),
+        apiFetch(`/api/v1/organizations/${encoded}/member-limit`),
+        apiFetch(`/api/v1/organizations/${encoded}/members`),
       ]);
       if (!countRes.ok) throw new Error(`member-count: HTTP ${countRes.status}`);
       if (!limitRes.ok) throw new Error(`member-limit: HTTP ${limitRes.status}`);
@@ -180,8 +180,21 @@ export default function SecurityUsersPage() {
           </div>
 
           {loading && orgId.trim() && (
-            <div className="rounded-lg border p-6 bg-white dark:bg-gray-900 mb-4">
-              <p className="text-sm text-gray-500">Loading member summary…</p>
+            <div className="rounded-lg border bg-white dark:bg-gray-900 mb-4 overflow-hidden">
+              <div className="p-4 space-y-3">
+                <div className="flex gap-4 mb-4">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 flex-1 max-w-[140px]" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -264,10 +277,11 @@ export default function SecurityUsersPage() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-lg border bg-white dark:bg-gray-900 p-6">
-                  <h2 className="text-lg font-semibold mb-2">Members</h2>
-                  <p className="text-sm text-gray-500">No members in this organization.</p>
-                </div>
+                <EmptyState
+                  title="No members"
+                  description="No members in this organization. Invite users to get started."
+                  action={{ label: 'Invite user', href: '/admin/security/users/invite' }}
+                />
               )}
             </>
           )}

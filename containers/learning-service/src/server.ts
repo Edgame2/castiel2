@@ -2,6 +2,7 @@
  * Learning Service Module Server (Plan W6 Layer 7 – Feedback Loop)
  */
 
+import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
 import { initializeDatabase, connectDatabase } from '@coder/shared';
@@ -200,7 +201,8 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
   });
 });
 
-if (process.argv[1]?.endsWith('server.js')) {
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
   start().catch((error) => {
     console.error('Fatal error starting server:', error);
     process.exit(1);

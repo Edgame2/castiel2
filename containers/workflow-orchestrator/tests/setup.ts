@@ -47,6 +47,11 @@ cosmos_db:
   endpoint: ${process.env.COSMOS_DB_ENDPOINT}
   key: ${process.env.COSMOS_DB_KEY}
   database_id: ${process.env.COSMOS_DB_DATABASE_ID}
+  containers:
+    workflows: workflow_workflows
+    steps: workflow_steps
+    executions: workflow_executions
+    hitl_approvals: hitl_approvals
 jwt:
   secret: ${process.env.JWT_SECRET}
 rabbitmq:
@@ -71,6 +76,12 @@ vi.mock('yaml', () => ({
         endpoint: process.env.COSMOS_DB_ENDPOINT,
         key: process.env.COSMOS_DB_KEY,
         database_id: process.env.COSMOS_DB_DATABASE_ID,
+        containers: {
+          workflows: 'workflow_workflows',
+          steps: 'workflow_steps',
+          executions: 'workflow_executions',
+          hitl_approvals: 'hitl_approvals',
+        },
       },
       jwt: { secret: process.env.JWT_SECRET },
       rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
@@ -87,6 +98,7 @@ vi.mock('@coder/shared/database', () => ({
       create: vi.fn(),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [], continuationToken: undefined }),
       })),
     },
     item: vi.fn(() => ({
@@ -113,9 +125,20 @@ vi.mock('@coder/shared', () => ({
   EventConsumer: vi.fn().mockImplementation(function (this: unknown) {
     return { on: vi.fn(), start: vi.fn().mockResolvedValue(undefined), stop: vi.fn().mockResolvedValue(undefined), close: vi.fn() };
   }),
-  authenticateRequest: vi.fn(() => vi.fn()),
-  tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
+  authenticateRequest: vi.fn(
+    () => async (req: { user?: { id: string; tenantId: string }; headers?: { 'x-tenant-id'?: string } }) => {
+      req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+    }
+  ),
+  tenantEnforcementMiddleware: vi.fn(
+    () => async (req: { user?: { id: string; tenantId: string }; headers?: { 'x-tenant-id'?: string } }) => {
+      req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+    }
+  ),
   setupJWT: vi.fn(),
+  initializeDatabase: vi.fn(),
+  connectDatabase: vi.fn().mockResolvedValue(undefined),
+  disconnectDatabase: vi.fn(),
 }));
 
 // Global test setup

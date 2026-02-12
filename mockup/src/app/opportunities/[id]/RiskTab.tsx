@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import type { RiskData } from "@/data/mock";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,12 +14,12 @@ import { RiskTrajectoryChart } from "@/components/RiskTrajectoryChart";
 import { RiskVelocityChart } from "@/components/RiskVelocityChart";
 
 export function RiskTab({
-  opportunityId,
+  opportunityId: _opportunityId,
   riskData,
 }: {
   opportunityId: string;
   riskData: RiskData;
-}) {
+}): React.ReactElement {
   const d = riskData;
   const similar = d.similarDeals;
 
@@ -71,12 +72,12 @@ export function RiskTab({
               <p className="text-xs text-muted-foreground">
                 Based on {similar.count} similar deals (industry, size)
               </p>
-              {similar.medianCycleTimeDays != null && (
+              {similar.medianCycleTimeDays !== null && (
                 <p className="text-xs text-muted-foreground">
                   Median cycle: {similar.medianCycleTimeDays} days
                 </p>
               )}
-              {similar.p25CloseAmount != null && similar.p25CloseAmount > 0 && (
+              {similar.p25CloseAmount !== null && similar.p25CloseAmount > 0 && (
                 <p className="text-xs text-muted-foreground">
                   P25 close: ${(similar.p25CloseAmount / 1000).toFixed(0)}k
                 </p>
@@ -148,7 +149,7 @@ export function RiskTab({
                 <div className="relative border-l-2 border-muted pl-6 pb-2 space-y-4">
                   {d.reasoningSteps
                     .sort((a, b) => a.order - b.order)
-                    .map((step, i) => (
+                    .map((step, _i) => (
                       <div key={step.id} className="relative">
                         <span className="absolute -left-[29px] top-0 h-3 w-3 rounded-full bg-primary" />
                         <p className="text-sm font-medium">{step.content}</p>

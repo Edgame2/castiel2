@@ -3,6 +3,7 @@
  * Data enrichment and vectorization pipeline
  */
 
+import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
 import { initializeDatabase, connectDatabase } from '@coder/shared';
@@ -219,7 +220,10 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
   log.error('Unhandled promise rejection', reason instanceof Error ? reason : new Error(String(reason)), { service: 'data-enrichment', promise: String(promise) });
 });
 
-start().catch((error) => {
-  console.error('Fatal error starting server:', error);
-  process.exit(1);
-});
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  start().catch((error) => {
+    console.error('Fatal error starting server:', error);
+    process.exit(1);
+  });
+}

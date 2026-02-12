@@ -12,8 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type CategoryType = 'risk' | 'recommendation' | 'both';
 
@@ -56,14 +55,14 @@ export default function ActionCatalogCategoryDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   const fetchCategory = useCallback(() => {
-    if (!apiBase || !id) {
+    if (!getApiBaseUrl() || !id) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/v1/action-catalog/categories/${encodeURIComponent(id)}`, { credentials: 'include' })
-      .then((r) => {
+    apiFetch(`/api/v1/action-catalog/categories/${encodeURIComponent(id)}`)
+      .then((r: Response) => {
         if (r.status === 404) throw new Error('Category not found');
         if (!r.ok) throw new Error(r.statusText || 'Failed to load');
         return r.json();
@@ -77,8 +76,8 @@ export default function ActionCatalogCategoryDetailPage() {
         setDescription(data.description ?? '');
         setOrder(data.order ?? 0);
       })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+      .catch(() => {
+        setError(GENERIC_ERROR_MESSAGE);
         setCategory(null);
       })
       .finally(() => setLoading(false));
@@ -90,12 +89,11 @@ export default function ActionCatalogCategoryDetailPage() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !id || !category || saving) return;
+    if (!getApiBaseUrl() || !id || !category || saving) return;
     setSaveError(null);
     setSaving(true);
-    fetch(`${apiBase}/api/v1/action-catalog/categories/${encodeURIComponent(id)}`, {
+    apiFetch(`/api/v1/action-catalog/categories/${encodeURIComponent(id)}`, {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         displayName: displayName.trim(),
@@ -106,29 +104,28 @@ export default function ActionCatalogCategoryDetailPage() {
         order,
       }),
     })
-      .then((r) => r.json().catch(() => ({})))
+      .then((r: Response) => r.json().catch(() => ({})))
       .then((data: { error?: { message?: string } }) => {
         if (data?.error?.message) throw new Error(data.error.message);
         setEditing(false);
         fetchCategory();
       })
-      .catch((e) => setSaveError(e instanceof Error ? e.message : 'Save failed'))
+      .catch(() => setSaveError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSaving(false));
   };
 
   const handleDelete = () => {
-    if (!apiBase || !id || deleting) return;
+    if (!getApiBaseUrl() || !id || deleting) return;
     setDeleting(true);
-    fetch(`${apiBase}/api/v1/action-catalog/categories/${encodeURIComponent(id)}`, {
+    apiFetch(`/api/v1/action-catalog/categories/${encodeURIComponent(id)}`, {
       method: 'DELETE',
-      credentials: 'include',
     })
-      .then((r) => {
+      .then((r: Response) => {
         if (!r.ok) return r.json().then((body: { error?: { message?: string } }) => { throw new Error(body?.error?.message ?? r.statusText); });
         router.push('/admin/action-catalog/categories');
       })
-      .catch((e) => {
-        setSaveError(e instanceof Error ? e.message : 'Delete failed');
+      .catch(() => {
+        setSaveError(GENERIC_ERROR_MESSAGE);
         setDeleting(false);
       });
   };

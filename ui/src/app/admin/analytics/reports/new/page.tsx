@@ -13,8 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 function generateId(): string {
   if (typeof crypto !== 'undefined' && (crypto as { randomUUID?: () => string }).randomUUID) {
@@ -50,10 +49,10 @@ export default function AnalyticsReportNewPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !name.trim() || submitting) return;
+    if (!getApiBaseUrl() || !name.trim() || submitting) return;
     setError(null);
     setSubmitting(true);
-    fetch(`${apiBase}/api/v1/system/analytics`, { credentials: 'include' })
+    apiFetch('/api/v1/system/analytics')
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((config: AnalyticsConfig) => {
         const newId = generateId();
@@ -67,9 +66,8 @@ export default function AnalyticsReportNewPage() {
           recipients: [],
           createdAt: new Date().toISOString(),
         };
-        return fetch(`${apiBase}/api/v1/system/analytics`, {
+        return apiFetch('/api/v1/system/analytics', {
           method: 'PUT',
-          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...config, reports: [...(config.reports ?? []), newReport] }),
         }).then((r) => {
@@ -77,7 +75,7 @@ export default function AnalyticsReportNewPage() {
           router.push(`/admin/analytics/reports/${encodeURIComponent(newId)}`);
         });
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed'))
+      .catch(() => setError(GENERIC_ERROR_MESSAGE))
       .finally(() => setSubmitting(false));
   };
 

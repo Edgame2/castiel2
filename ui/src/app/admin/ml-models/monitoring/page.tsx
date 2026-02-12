@@ -12,9 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 interface EndpointItem {
   id: string;
@@ -89,7 +87,7 @@ export default function MLModelsMonitoringPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const fetchEndpoints = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
       return;
@@ -98,8 +96,8 @@ export default function MLModelsMonitoringPage() {
     setError(null);
     try {
       const [epRes, alRes] = await Promise.all([
-        fetch(`${apiBaseUrl}/api/v1/ml/endpoints`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/v1/ml/monitoring/alerts`, { credentials: 'include' }),
+        apiFetch('/api/v1/ml/endpoints'),
+        apiFetch('/api/v1/ml/monitoring/alerts'),
       ]);
       if (!epRes.ok) {
         const j = await epRes.json().catch(() => ({}));
@@ -152,7 +150,7 @@ export default function MLModelsMonitoringPage() {
 
   const handleCreateAlert = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     const name = createForm.name.trim();
     if (!name) {
       setFormError('Name is required');
@@ -161,7 +159,7 @@ export default function MLModelsMonitoringPage() {
     setFormSaving(true);
     setFormError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/ml/monitoring/alerts`, {
+      const res = await apiFetch('/api/v1/ml/monitoring/alerts', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -215,7 +213,7 @@ export default function MLModelsMonitoringPage() {
 
   const handleEditAlert = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl || !editAlert?.id) return;
+    if (!getApiBaseUrl() || !editAlert?.id) return;
     const name = editForm.name.trim();
     if (!name) {
       setFormError('Name is required');
@@ -224,7 +222,7 @@ export default function MLModelsMonitoringPage() {
     setFormSaving(true);
     setFormError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/ml/monitoring/alerts/${encodeURIComponent(editAlert.id)}`, {
+      const res = await apiFetch(`/api/v1/ml/monitoring/alerts/${encodeURIComponent(editAlert.id)}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -259,11 +257,11 @@ export default function MLModelsMonitoringPage() {
   };
 
   const handleDeleteAlert = async () => {
-    if (!apiBaseUrl || !deleteAlert?.id) return;
+    if (!getApiBaseUrl() || !deleteAlert?.id) return;
     setDeleteSaving(true);
     setDeleteError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/ml/monitoring/alerts/${encodeURIComponent(deleteAlert.id)}`, {
+      const res = await apiFetch(`/api/v1/ml/monitoring/alerts/${encodeURIComponent(deleteAlert.id)}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -332,7 +330,7 @@ export default function MLModelsMonitoringPage() {
         </span>
       </nav>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>

@@ -8,9 +8,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type UserProfile = {
   id?: string;
@@ -34,13 +32,13 @@ export default function AdminSecurityUserDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchUser = useCallback(() => {
-    if (!apiBase || !id) {
+    if (!getApiBaseUrl() || !id) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
-    fetch(`${apiBase}/api/users/${encodeURIComponent(id)}`, { credentials: 'include' })
+    apiFetch(`/api/users/${encodeURIComponent(id)}`)
       .then((r) => {
         if (r.status === 404) throw new Error('User not found');
         if (r.status === 403) throw new Error('Permission denied');

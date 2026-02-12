@@ -12,9 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 interface RuleCondition {
   field: string;
@@ -74,7 +72,7 @@ export default function DecisionRulesRulesPage() {
   const [formOpen, setFormOpen] = useState(false);
 
   const fetchRules = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
       return;
@@ -82,7 +80,7 @@ export default function DecisionRulesRulesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/decisions/rules?all=true`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/decisions/rules?all=true');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -110,7 +108,7 @@ export default function DecisionRulesRulesPage() {
   }, []);
 
   const runTest = async (ruleId: string) => {
-    if (!apiBaseUrl || !testOpportunityId.trim()) {
+    if (!getApiBaseUrl() || !testOpportunityId.trim()) {
       setTestError('Enter an opportunity ID');
       return;
     }
@@ -126,7 +124,7 @@ export default function DecisionRulesRulesPage() {
     try {
       const body: { opportunityId: string; riskScore?: number } = { opportunityId: testOpportunityId.trim() };
       if (riskScoreVal !== undefined) body.riskScore = riskScoreVal;
-      const res = await fetch(`${apiBaseUrl}/api/v1/decisions/rules/${encodeURIComponent(ruleId)}/test`, {
+      const res = await apiFetch(`/api/v1/decisions/rules/${encodeURIComponent(ruleId)}/test`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -156,11 +154,11 @@ export default function DecisionRulesRulesPage() {
   };
 
   const handleToggleEnabled = async (r: Rule) => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setTogglingRuleId(r.id);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/decisions/rules/${encodeURIComponent(r.id)}`, {
+      const res = await apiFetch(`/api/v1/decisions/rules/${encodeURIComponent(r.id)}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -180,12 +178,12 @@ export default function DecisionRulesRulesPage() {
   };
 
   const handleDelete = async (r: Rule) => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     if (!window.confirm(`Delete rule "${r.name}"?`)) return;
     setDeletingRuleId(r.id);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/decisions/rules/${encodeURIComponent(r.id)}`, {
+      const res = await apiFetch(`/api/v1/decisions/rules/${encodeURIComponent(r.id)}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -278,7 +276,7 @@ export default function DecisionRulesRulesPage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl || !formName.trim()) {
+    if (!getApiBaseUrl() || !formName.trim()) {
       setFormError('Name is required');
       return;
     }
@@ -300,7 +298,7 @@ export default function DecisionRulesRulesPage() {
     setFormError(null);
     try {
       if (formRule) {
-        const res = await fetch(`${apiBaseUrl}/api/v1/decisions/rules/${encodeURIComponent(formRule.id)}`, {
+        const res = await apiFetch(`/api/v1/decisions/rules/${encodeURIComponent(formRule.id)}`, {
           method: 'PUT',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -321,7 +319,7 @@ export default function DecisionRulesRulesPage() {
           throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
         }
       } else {
-        const res = await fetch(`${apiBaseUrl}/api/v1/decisions/rules`, {
+        const res = await apiFetch('/api/v1/decisions/rules', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -402,7 +400,7 @@ export default function DecisionRulesRulesPage() {
       </p>
       {subNav}
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
@@ -420,7 +418,7 @@ export default function DecisionRulesRulesPage() {
         </div>
       )}
 
-      {!loading && apiBaseUrl && (
+      {!loading && getApiBaseUrl() && (
         <div className="rounded-lg border bg-white dark:bg-gray-900">
           <div className="p-4 border-b flex justify-between items-center">
             <h2 className="text-lg font-semibold">Rules</h2>

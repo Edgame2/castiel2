@@ -10,8 +10,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface TenantCatalogView {
   tenantRiskCategories: string[];
@@ -36,8 +35,8 @@ export default function RiskCatalogPage() {
   }, []);
 
   const fetchCatalog = useCallback(async () => {
-    if (!apiBaseUrl) {
-      setError('NEXT_PUBLIC_API_BASE_URL is not set');
+    if (!getApiBaseUrl()) {
+      setError('API base URL not configured');
       setLoading(false);
       return;
     }
@@ -48,8 +47,7 @@ export default function RiskCatalogPage() {
       if (industry) params.set('industry', industry);
       if (stage) params.set('stage', stage);
       const qs = params.toString();
-      const url = `${apiBaseUrl}/api/v1/risk-catalog/tenant-catalog${qs ? `?${qs}` : ''}`;
-      const res = await fetch(url, { credentials: 'include' });
+      const res = await apiFetch(`/api/v1/risk-catalog/tenant-catalog${qs ? `?${qs}` : ''}`);
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error?.message as string) || `HTTP ${res.status}`);
@@ -57,7 +55,7 @@ export default function RiskCatalogPage() {
       const json = await res.json();
       setView(json);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setView(null);
     } finally {
       setLoading(false);
@@ -91,13 +89,13 @@ export default function RiskCatalogPage() {
         </Button>
       </div>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
       )}
 
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <div className="mb-4 flex flex-wrap gap-4 items-end">
           <div className="space-y-2">
             <Label>Industry (filter)</Label>

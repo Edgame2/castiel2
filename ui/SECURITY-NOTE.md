@@ -22,14 +22,14 @@
    - Treat the current UI image and build cache as compromised.
    - Stop the UI: `docker-compose stop ui`
    - Rebuild from a clean state (no cache, clean `node_modules` and lockfile):
-     - On host: in `containers/ui` run `rm -rf node_modules .next` then `npm ci`
+     - On host: in `ui` run `rm -rf node_modules .next` then `npm ci`
      - Rebuild image: `docker-compose build --no-cache ui`
    - Run `npm audit` and fix high/critical issues; review recently added or updated dependencies.
    - Use a clean runner/machine for production builds if the current one may be compromised.
 
 ## npm audit – current status and safe fixes
 
-Run in `containers/ui`: `npm audit`.
+Run in `ui`: `npm audit`.
 
 **Applied (safe):**
 

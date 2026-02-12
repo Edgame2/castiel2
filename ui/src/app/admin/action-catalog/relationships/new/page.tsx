@@ -16,9 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface EntryMin {
   id: string;
@@ -36,10 +34,10 @@ export default function ActionCatalogRelationshipNewPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchEntries = useCallback(async () => {
-    if (!apiBase) return;
+    if (!getApiBaseUrl()) return;
     setLoadingEntries(true);
     try {
-      const res = await fetch(`${apiBase}/api/v1/action-catalog/entries`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/action-catalog/entries');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setEntries(Array.isArray(json) ? json : []);
@@ -61,12 +59,11 @@ export default function ActionCatalogRelationshipNewPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBase || !riskId || !recommendationId || submitting) return;
+    if (!getApiBaseUrl() || !riskId || !recommendationId || submitting) return;
     setError(null);
     setSubmitting(true);
-    fetch(`${apiBase}/api/v1/action-catalog/relationships`, {
+    apiFetch('/api/v1/action-catalog/relationships', {
       method: 'POST',
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ riskId, recommendationId }),
     })

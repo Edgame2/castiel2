@@ -3,15 +3,18 @@
  * Mocks config, database, and auth for integration tests.
  */
 
-import { vi } from 'vitest';
+import { vi, afterEach } from 'vitest';
 
 process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = process.env.TEST_JWT_SECRET || 'test-jwt-secret';
+process.env.COSMOS_DB_ENDPOINT = process.env.TEST_COSMOS_DB_ENDPOINT || 'https://test.documents.azure.com:443/';
+process.env.COSMOS_DB_KEY = process.env.TEST_COSMOS_DB_KEY || 'test-key';
+process.env.COSMOS_DB_DATABASE_ID = process.env.TEST_COSMOS_DB_DATABASE_ID || 'test';
+process.env.JWT_SECRET = process.env.TEST_JWT_SECRET || 'test-jwt-secret-key-for-testing-only';
 
 vi.mock('../src/config', () => ({
   loadConfig: vi.fn(() => ({
     module: { name: 'learning-service', version: '1.0.0' },
-    server: { port: 3050, host: '0.0.0.0' },
+    server: { port: 3063, host: '0.0.0.0' },
     cosmos_db: {
       endpoint: process.env.COSMOS_DB_ENDPOINT || 'https://test.documents.azure.com:443/',
       key: process.env.COSMOS_DB_KEY || 'test-key',
@@ -24,25 +27,28 @@ vi.mock('../src/config', () => ({
   })),
 }));
 
-const mockState: { resource: Record<string, unknown> | null } = {
-  resource: {
-    id: 'fb-1',
-    tenantId: 'tenant-123',
-    modelId: 'm1',
-    feedbackType: 'action',
-    recordedAt: new Date().toISOString(),
-  },
-};
 const mockUpsert = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(() => ({
-    item: vi.fn(() => ({
-      read: vi.fn().mockImplementation(() =>
-        Promise.resolve({ resource: mockState.resource })
-      ),
+    item: vi.fn((id: string, _partitionKey?: string) => ({
+      read: vi.fn().mockResolvedValue({
+        resource: id === 'not-found' ? null : {
+          id: id || 'fb-1',
+          tenantId: 'tenant-123',
+          modelId: 'm1',
+          feedbackType: 'action',
+          recordedAt: new Date().toISOString(),
+        },
+      }),
     })),
-    items: { upsert: mockUpsert },
+    items: {
+      upsert: mockUpsert,
+      query: vi.fn(() => ({
+        fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+      })),
+    },
+    read: vi.fn().mockResolvedValue(undefined),
   })),
 }));
 
@@ -51,13 +57,14 @@ vi.mock('@coder/shared', async (importOriginal) => {
   return {
     ...actual,
     initializeDatabase: vi.fn(),
-    connectDatabase: vi.fn(),
+    connectDatabase: vi.fn().mockResolvedValue(undefined),
     setupJWT: vi.fn(),
-    authenticateRequest: vi.fn(() => (_req: { user?: { id: string; tenantId: string } }, _r: unknown, next: () => void) => {
-      (_req as { user: { id: string; tenantId: string } }).user = { id: 'test-user', tenantId: 'tenant-123' };
-      next();
+    authenticateRequest: vi.fn(() => async (req: { user?: { id: string; tenantId: string }; headers?: Record<string, string> }) => {
+      req.user = req.user || { id: 'test-user', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
     }),
-    tenantEnforcementMiddleware: vi.fn(() => (_req: unknown, _reply: unknown, next: () => void) => next()),
+    tenantEnforcementMiddleware: vi.fn(() => async (req: { user?: { id: string; tenantId: string }; headers?: Record<string, string> }) => {
+      req.user = req.user || { id: 'test-user', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+    }),
   };
 });
 
@@ -69,4 +76,8 @@ vi.mock('../src/events/publishers/FeedbackLearningEventPublisher', () => ({
   publishFeedbackTrendAlert: vi.fn().mockResolvedValue(undefined),
 }));
 
-export { mockState, mockUpsert };
+afterEach(() => {
+  vi.clearAllMocks();
+});
+
+export { mockUpsert };

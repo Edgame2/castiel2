@@ -1,14 +1,14 @@
-# UI Container
+# Castiel UI
 
-Next.js 16 web application for Castiel.
+Next.js 16 web application for Castiel. Runs standalone (not in Docker Compose).
 
 ## Overview
 
-The UI Container is a Next.js 16 application (App Router) that provides the frontend interface for Castiel. It communicates with backend microservices through the API Gateway.
+The UI is a Next.js 16 application (App Router) that provides the frontend interface for Castiel. It communicates directly with the API Gateway via `NEXT_PUBLIC_API_BASE_URL`.
 
 ## Features
 
-- **Next.js 16**: App Router, Server Components, API Routes
+- **Next.js 16**: App Router, Server Components
 - **React 19**: Latest React features
 - **TypeScript**: Full type safety
 - **Shadcn UI**: Component library
@@ -50,25 +50,22 @@ npm start
 ### Environment Variables
 
 - `PORT`: Server port (default: 3000)
-- `NEXT_PUBLIC_API_BASE_URL`: API Gateway URL (default: http://localhost:3001)
+- `NEXT_PUBLIC_API_BASE_URL`: API Gateway URL (required; e.g. http://localhost:3001). All API calls go directly from the browser to this URL.
 - `NODE_ENV`: Environment (development/production)
 
 ### API Communication
 
-The UI communicates with backend services through:
-- **Direct API calls** (90%): Axios client to API Gateway
-- **BFF pattern** (10%): Next.js API routes for sensitive operations
+All API calls go directly from the browser to the gateway. Set `NEXT_PUBLIC_API_BASE_URL` to the gateway URL. The gateway must allow CORS from the UI origin.
 
 ## Project Structure
 
 ```
-containers/ui/
+ui/
 ├── src/
 │   ├── app/                    # Next.js App Router
 │   │   ├── (auth)/            # Authentication routes
 │   │   ├── (protected)/       # Protected routes
-│   │   ├── (public)/          # Public routes
-│   │   └── api/               # API routes (BFF)
+│   │   └── (public)/          # Public routes
 │   ├── components/            # React components
 │   ├── hooks/                 # Custom React hooks
 │   ├── lib/                   # Utilities and helpers
@@ -92,8 +89,18 @@ containers/ui/
 - **API Gateway**: URL set via `NEXT_PUBLIC_API_BASE_URL` (required for API calls)
 - **Backend Services**: Accessed via API Gateway
 
+## Optional Docker Build
+
+A Dockerfile is provided for optional containerized deployment. Build with:
+
+```bash
+docker build -t castiel-ui .
+```
+
+Pass `NEXT_PUBLIC_API_BASE_URL` as a build ARG if the app requires it at build time.
+
 ## Related Documentation
 
-- [UI Container Architecture](../../documentation/UI_CONTAINER_ARCHITECTURE.md)
-- [Module Implementation Guide](../../documentation/global/ModuleImplementationGuide.md)
+- [UI Container Architecture](../documentation/UI_CONTAINER_ARCHITECTURE.md)
+- [Module Implementation Guide](../documentation/global/ModuleImplementationGuide.md)
 

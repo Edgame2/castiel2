@@ -56,6 +56,8 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           201: {
             type: 'object',
             description: 'Context created successfully',
+            properties: { id: { type: 'string' }, tenantId: { type: 'string' }, path: { type: 'string' } },
+            additionalProperties: true,
           },
         },
       },
@@ -127,101 +129,16 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           },
         },
         response: {
-          200: {
-            type: 'object',
-            description: 'Context details',
-          },
+          200: { type: 'object', description: 'Context details', additionalProperties: true },
+          404: { type: 'object', description: 'Not found' },
         },
       },
     },
     async (request, reply) => {
       const tenantId = (request as any).user!.tenantId;
-      const path = decodeURIComponent(request.params.path);
-      const context = await contextService.getByPath(path, tenantId);
-      if (!context) {
-        reply.code(404).send({ error: 'Context not found' });
-        return;
-      }
+      const context = await contextService.getByPath(request.params.path, tenantId);
+      if (!context) return reply.code(404).send({ message: 'Context not found' });
       reply.send(context);
-    }
-  );
-
-  /**
-   * Update context
-   * PUT /api/v1/context/contexts/:id
-   */
-  app.put<{ Params: { id: string }; Body: UpdateContextInput }>(
-    '/api/v1/context/contexts/:id',
-    {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-      schema: {
-        description: 'Update context',
-        tags: ['Contexts'],
-        params: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', format: 'uuid' },
-          },
-        },
-        body: {
-          type: 'object',
-          properties: {
-            content: { type: 'string' },
-            metadata: { type: 'object' },
-            ast: { type: 'object' },
-            dependencies: { type: 'array', items: { type: 'string' } },
-            dependents: { type: 'array', items: { type: 'string' } },
-            callers: { type: 'array', items: { type: 'string' } },
-            callees: { type: 'array', items: { type: 'string' } },
-            embeddings: { type: 'object' },
-            relevanceScore: { type: 'number' },
-            tokenCount: { type: 'number' },
-          },
-        },
-        response: {
-          200: {
-            type: 'object',
-            description: 'Context updated successfully',
-          },
-        },
-      },
-    },
-    async (request, reply) => {
-      const tenantId = (request as any).user!.tenantId;
-      const context = await contextService.update(request.params.id, tenantId, request.body);
-      reply.send(context);
-    }
-  );
-
-  /**
-   * Delete context
-   * DELETE /api/v1/context/contexts/:id
-   */
-  app.delete<{ Params: { id: string } }>(
-    '/api/v1/context/contexts/:id',
-    {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-      schema: {
-        description: 'Delete context',
-        tags: ['Contexts'],
-        params: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', format: 'uuid' },
-          },
-        },
-        response: {
-          204: {
-            type: 'null',
-            description: 'Context deleted successfully',
-          },
-        },
-      },
-    },
-    async (request, reply) => {
-      const tenantId = (request as any).user!.tenantId;
-      await contextService.delete(request.params.id, tenantId);
-      reply.code(204).send();
     }
   );
 
@@ -229,15 +146,7 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
    * List contexts
    * GET /api/v1/context/contexts
    */
-  app.get<{
-    Querystring: {
-      type?: string;
-      scope?: string;
-      path?: string;
-      limit?: number;
-      continuationToken?: string;
-    };
-  }>(
+  app.get<{ Querystring: { type?: string; scope?: string; path?: string } }>(
     '/api/v1/context/contexts',
     {
       preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
@@ -250,17 +159,13 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
             type: { type: 'string' },
             scope: { type: 'string' },
             path: { type: 'string' },
-            limit: { type: 'number', minimum: 1, maximum: 1000, default: 100 },
-            continuationToken: { type: 'string' },
           },
         },
         response: {
           200: {
             type: 'object',
-            description: 'List of contexts',
             properties: {
-              items: { type: 'array' },
-              continuationToken: { type: 'string' },
+              items: { type: 'array', items: { type: 'object' } },
             },
           },
         },
@@ -268,24 +173,19 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       const tenantId = (request as any).user!.tenantId;
-      const result = await contextService.list(tenantId, {
-        type: request.query.type as any,
-        scope: request.query.scope as any,
-        path: request.query.path,
-        limit: request.query.limit,
-        continuationToken: request.query.continuationToken,
-      });
-      reply.send(result);
+      const filters = request.query?.type || request.query?.scope || request.query?.path
+        ? { type: request.query.type as any, scope: request.query.scope as any, path: request.query.path }
+        : undefined;
+      const { items } = await contextService.list(tenantId, filters);
+      reply.send({ items });
     }
   );
-
-  // ===== CONTEXT ASSEMBLY ROUTES =====
 
   /**
    * Assemble context
    * POST /api/v1/context/assemble
    */
-  app.post<{ Body: AssembleContextInput }>(
+  app.post<{ Body: { task: string; scope: string; targetPath?: string; maxTokens?: number } }>(
     '/api/v1/context/assemble',
     {
       preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
@@ -299,21 +199,14 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
             task: { type: 'string' },
             scope: { type: 'string', enum: ['file', 'module', 'package', 'project', 'workspace'] },
             targetPath: { type: 'string' },
-            includeTypes: { type: 'array', items: { type: 'string' } },
-            excludeTypes: { type: 'array', items: { type: 'string' } },
             maxTokens: { type: 'number' },
-            maxFiles: { type: 'number' },
-            includeDependencies: { type: 'boolean' },
-            includeCallers: { type: 'boolean' },
-            includeCallees: { type: 'boolean' },
-            relevanceThreshold: { type: 'number' },
-            compression: { type: 'boolean' },
           },
         },
         response: {
           201: {
             type: 'object',
-            description: 'Context assembly created successfully',
+            properties: { id: { type: 'string' }, tenantId: { type: 'string' } },
+            additionalProperties: true,
           },
         },
       },
@@ -321,63 +214,22 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     async (request, reply) => {
       const tenantId = (request as any).user!.tenantId;
       const userId = (request as any).user!.id;
-
-      const assembly = await assemblerService.assemble(
-        {
-          ...request.body,
-          scope: request.body.scope as any,
-        },
-        tenantId,
-        userId
-      );
+      const input: AssembleContextInput = {
+        task: request.body.task,
+        scope: request.body.scope as any,
+        targetPath: request.body.targetPath,
+        maxTokens: request.body.maxTokens,
+      };
+      const assembly = await assemblerService.assemble(input, tenantId, userId);
       reply.code(201).send(assembly);
     }
   );
 
   /**
-   * Get assembly by ID
-   * GET /api/v1/context/assemblies/:id
-   */
-  app.get<{ Params: { id: string } }>(
-    '/api/v1/context/assemblies/:id',
-    {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-      schema: {
-        description: 'Get context assembly by ID',
-        tags: ['Context Assembly'],
-        params: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', format: 'uuid' },
-          },
-        },
-        response: {
-          200: {
-            type: 'object',
-            description: 'Context assembly details',
-          },
-        },
-      },
-    },
-    async (request, reply) => {
-      const tenantId = (request as any).user!.tenantId;
-      const assembly = await assemblerService.getById(request.params.id, tenantId);
-      reply.send(assembly);
-    }
-  );
-
-  // ===== DEPENDENCY ROUTES =====
-
-  /**
    * Build dependency tree
    * POST /api/v1/context/dependencies/tree
    */
-  app.post<{
-    Body: {
-      rootPath: string;
-      maxDepth?: number;
-    };
-  }>(
+  app.post<{ Body: { rootPath: string; maxDepth?: number } }>(
     '/api/v1/context/dependencies/tree',
     {
       preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
@@ -389,72 +241,31 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           required: ['rootPath'],
           properties: {
             rootPath: { type: 'string' },
-            maxDepth: { type: 'number', default: 10 },
+            maxDepth: { type: 'number' },
           },
         },
         response: {
           201: {
             type: 'object',
-            description: 'Dependency tree created successfully',
+            properties: { id: { type: 'string' }, tenantId: { type: 'string' }, rootPath: { type: 'string' } },
+            additionalProperties: true,
           },
         },
       },
     },
     async (request, reply) => {
       const tenantId = (request as any).user!.tenantId;
-      const tree = await dependencyService.buildTree(
-        request.body.rootPath,
-        tenantId,
-        request.body.maxDepth
-      );
+      const maxDepth = request.body.maxDepth ?? 10;
+      const tree = await dependencyService.buildTree(request.body.rootPath, tenantId, maxDepth);
       reply.code(201).send(tree);
     }
   );
 
   /**
-   * Get dependency tree by ID
-   * GET /api/v1/context/dependencies/tree/:id
-   */
-  app.get<{ Params: { id: string } }>(
-    '/api/v1/context/dependencies/tree/:id',
-    {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-      schema: {
-        description: 'Get dependency tree by ID',
-        tags: ['Dependencies'],
-        params: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', format: 'uuid' },
-          },
-        },
-        response: {
-          200: {
-            type: 'object',
-            description: 'Dependency tree details',
-          },
-        },
-      },
-    },
-    async (request, reply) => {
-      const tenantId = (request as any).user!.tenantId;
-      const tree = await dependencyService.getById(request.params.id, tenantId);
-      reply.send(tree);
-    }
-  );
-
-  // ===== CALL GRAPH ROUTES =====
-
-  /**
    * Build call graph
    * POST /api/v1/context/call-graphs
    */
-  app.post<{
-    Body: {
-      scope: string;
-      rootFunction?: string;
-    };
-  }>(
+  app.post<{ Body: { scope: string; rootFunction?: string } }>(
     '/api/v1/context/call-graphs',
     {
       preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
@@ -472,7 +283,8 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         response: {
           201: {
             type: 'object',
-            description: 'Call graph created successfully',
+            properties: { id: { type: 'string' }, tenantId: { type: 'string' } },
+            additionalProperties: true,
           },
         },
       },
@@ -487,153 +299,4 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       reply.code(201).send(graph);
     }
   );
-
-  /**
-   * Get call graph by ID
-   * GET /api/v1/context/call-graphs/:id
-   */
-  app.get<{ Params: { id: string } }>(
-    '/api/v1/context/call-graphs/:id',
-    {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-      schema: {
-        description: 'Get call graph by ID',
-        tags: ['Call Graphs'],
-        params: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', format: 'uuid' },
-          },
-        },
-        response: {
-          200: {
-            type: 'object',
-            description: 'Call graph details',
-          },
-        },
-      },
-    },
-    async (request, reply) => {
-      const tenantId = (request as any).user!.tenantId;
-      const graph = await callGraphService.getById(request.params.id, tenantId);
-      reply.send(graph);
-    }
-  );
-
-  /**
-   * Get callers of a function
-   * GET /api/v1/context/call-graphs/callers/:path
-   */
-  app.get<{ Params: { path: string } }>(
-    '/api/v1/context/call-graphs/callers/:path',
-    {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-      schema: {
-        description: 'Get callers of a function',
-        tags: ['Call Graphs'],
-        params: {
-          type: 'object',
-          properties: {
-            path: { type: 'string' },
-          },
-        },
-        response: {
-          200: {
-            type: 'array',
-            description: 'List of callers',
-          },
-        },
-      },
-    },
-    async (request, reply) => {
-      const tenantId = (request as any).user!.tenantId;
-      const path = decodeURIComponent(request.params.path);
-      const callers = await callGraphService.getCallers(path, tenantId);
-      reply.send(callers);
-    }
-  );
-
-  /**
-   * Get callees of a function
-   * GET /api/v1/context/call-graphs/callees/:path
-   */
-  app.get<{ Params: { path: string } }>(
-    '/api/v1/context/call-graphs/callees/:path',
-    {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-      schema: {
-        description: 'Get callees of a function',
-        tags: ['Call Graphs'],
-        params: {
-          type: 'object',
-          properties: {
-            path: { type: 'string' },
-          },
-        },
-        response: {
-          200: {
-            type: 'array',
-            description: 'List of callees',
-          },
-        },
-      },
-    },
-    async (request, reply) => {
-      const tenantId = (request as any).user!.tenantId;
-      const path = decodeURIComponent(request.params.path);
-      const callees = await callGraphService.getCallees(path, tenantId);
-      reply.send(callees);
-    }
-  );
-
-  // ===== AI CONTEXT ASSEMBLY ROUTES =====
-
-  /**
-   * Assemble context for AI query
-   * POST /api/v1/context/assemble-ai
-   */
-  app.post<{ Body: Omit<ContextAssemblyRequest, 'userId'> }>(
-    '/api/v1/context/assemble-ai',
-    {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-      schema: {
-        description: 'Assemble context for AI query with topic extraction',
-        tags: ['Context Assembly'],
-      },
-    },
-    async (request, reply) => {
-      const tenantId = (request as any).user?.tenantId;
-      const userId = (request as any).user?.id ?? '';
-
-      const assemblyRequest: ContextAssemblyRequest = {
-        ...(request.body as Omit<ContextAssemblyRequest, 'userId'>),
-        userId,
-      };
-
-      const result = await assemblerService.assembleContextForAI(tenantId, assemblyRequest);
-      reply.send(result);
-    }
-  );
-
-  /**
-   * Extract topics from content
-   * POST /api/v1/context/extract-topics
-   */
-  app.post<{ Body: TopicExtractionRequest }>(
-    '/api/v1/context/extract-topics',
-    {
-      preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
-      schema: {
-        description: 'Extract topics from content',
-        tags: ['Context Assembly'],
-      },
-    },
-    async (request, reply) => {
-      const tenantId = (request as any).user!.tenantId;
-
-      const topics = await (assemblerService as any).extractTopics(tenantId, request.body);
-      reply.send({ topics });
-    }
-  );
 }
-

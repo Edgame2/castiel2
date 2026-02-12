@@ -8,9 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export default function ForecastPeriodPage() {
   const params = useParams();
@@ -20,17 +18,14 @@ export default function ForecastPeriodPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchScenarios = useCallback(async () => {
-    if (!period || !apiBaseUrl) {
+    if (!period || !getApiBaseUrl()) {
       setLoading(false);
       return;
     }
     setLoading(true);
     setFetchError(null);
     try {
-      const base = apiBaseUrl.replace(/\/$/, '');
-      const res = await fetch(`${base}/api/v1/forecasts/${encodeURIComponent(period)}/scenarios`, {
-        credentials: 'include',
-      });
+      const res = await apiFetch(`/api/v1/forecasts/${encodeURIComponent(period)}/scenarios`);
       if (!res.ok) {
         if (res.status === 404) {
           setScenarios([]);
@@ -40,8 +35,7 @@ export default function ForecastPeriodPage() {
       }
       const data = await res.json();
       setScenarios(Array.isArray(data) ? data : data?.scenarios ?? data?.items ?? []);
-    } catch (e) {
-      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+    } catch {
       setFetchError(GENERIC_ERROR_MESSAGE);
       setScenarios(null);
     } finally {

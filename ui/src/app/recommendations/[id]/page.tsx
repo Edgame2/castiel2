@@ -8,9 +8,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import type { RecommendationItem } from '@/components/recommendations/RecommendationsCard';
-
-const apiBase =
-  typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '') : '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 const SOURCE_LABELS: Record<string, string> = {
   vector_search: 'Similar opportunities',
@@ -29,23 +27,22 @@ export default function RecommendationDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchRecommendation = useCallback(() => {
-    if (!apiBase || !id) {
+    if (!getApiBaseUrl() || !id) {
       setLoading(false);
       if (!id) setError('Missing recommendation id');
       return;
     }
     setLoading(true);
     setError(null);
-    const url = `${apiBase}/api/v1/recommendations/${encodeURIComponent(id)}`;
-    fetch(url, { credentials: 'include' })
-      .then((r) => {
+    apiFetch(`/api/v1/recommendations/${encodeURIComponent(id)}`)
+      .then((r: Response) => {
         if (r.status === 404) throw new Error('Recommendation not found');
         if (!r.ok) throw new Error(r.statusText || 'Failed to load recommendation');
         return r.json();
       })
       .then((data: RecommendationItem) => setItem(data))
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Failed to load');
+      .catch(() => {
+        setError(GENERIC_ERROR_MESSAGE);
         setItem(null);
       })
       .finally(() => setLoading(false));

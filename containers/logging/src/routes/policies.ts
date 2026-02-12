@@ -70,9 +70,10 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const body = createPolicySchema.parse(request.body);
 
-      const policy = await retentionService.createPolicy(body, user.id);
+      const policy = await retentionService.createPolicy({ ...body, organizationId: body.organizationId ?? tenantId }, user.id);
 
       reply.code(201).send(policy);
     } catch (error: any) {
@@ -108,10 +109,11 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const { id } = request.params as { id: string };
 
-      // Get policy by querying all and finding by ID
-      const policies = await retentionService.listPolicies();
+      const policies = await retentionService.listPolicies(tenantId);
       const policy = policies.find((p: { id: string }) => p.id === id);
 
       if (!policy) {
@@ -147,9 +149,11 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const query = request.query as { organizationId?: string };
 
-      const policies = await retentionService.listPolicies(query.organizationId);
+      const policies = await retentionService.listPolicies(query.organizationId ?? tenantId);
 
       reply.send({ items: policies, total: policies.length });
     } catch (error: any) {
@@ -195,10 +199,11 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const { id } = request.params as { id: string };
       const body = updatePolicySchema.parse(request.body);
 
-      const policy = await retentionService.updatePolicy(id, body, user.id);
+      const policy = await retentionService.updatePolicy(id, body, user.id, tenantId);
 
       reply.send(policy);
     } catch (error: any) {
@@ -233,9 +238,11 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const user = (request as any).user;
+      const tenantId = user.tenantId ?? user.organizationId;
       const { id } = request.params as { id: string };
 
-      await retentionService.deletePolicy(id);
+      await retentionService.deletePolicy(id, tenantId);
 
       reply.code(204).send();
     } catch (error: any) {

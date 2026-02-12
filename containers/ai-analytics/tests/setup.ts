@@ -47,6 +47,10 @@ cosmos_db:
   endpoint: ${process.env.COSMOS_DB_ENDPOINT}
   key: ${process.env.COSMOS_DB_KEY}
   database_id: ${process.env.COSMOS_DB_DATABASE_ID}
+  containers:
+    events: ai_analytics_events
+    models: ai_analytics_models
+    feedback: ai_analytics_feedback
 jwt:
   secret: ${process.env.JWT_SECRET}
 rabbitmq:
@@ -71,6 +75,7 @@ vi.mock('yaml', () => ({
         endpoint: process.env.COSMOS_DB_ENDPOINT,
         key: process.env.COSMOS_DB_KEY,
         database_id: process.env.COSMOS_DB_DATABASE_ID,
+        containers: { events: 'ai_analytics_events', models: 'ai_analytics_models', feedback: 'ai_analytics_feedback' },
       },
       jwt: { secret: process.env.JWT_SECRET },
       rabbitmq: { url: process.env.RABBITMQ_URL || '', exchange: 'test_events', queue: 'test_queue', bindings: [] },
@@ -84,9 +89,10 @@ vi.mock('yaml', () => ({
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(() => ({
     items: {
-      create: vi.fn(),
+      create: vi.fn().mockResolvedValue({ resource: {} }),
       query: vi.fn(() => ({
         fetchAll: vi.fn().mockResolvedValue({ resources: [] }),
+        fetchNext: vi.fn().mockResolvedValue({ resources: [] }),
       })),
     },
     item: vi.fn(() => ({
@@ -96,7 +102,7 @@ vi.mock('@coder/shared/database', () => ({
     })),
   })),
   initializeDatabase: vi.fn(),
-  connectDatabase: vi.fn(),
+  connectDatabase: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock @coder/shared events
@@ -125,8 +131,12 @@ vi.mock('@coder/shared', () => ({
     this.close = vi.fn();
     return this;
   }),
-  authenticateRequest: vi.fn(() => vi.fn()),
-  tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
+  authenticateRequest: vi.fn(() => async (req: any) => {
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+  }),
+  tenantEnforcementMiddleware: vi.fn(() => async (req: any) => {
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
+  }),
   setupJWT: vi.fn(),
 }));
 

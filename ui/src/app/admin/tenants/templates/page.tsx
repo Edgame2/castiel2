@@ -13,9 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 interface ActiveTypeRow {
   feedbackTypeId: string;
@@ -123,11 +121,11 @@ export default function TenantTemplatesPage() {
   const tenantPickerWasOpenRef = useRef(false);
 
   const fetchTemplates = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/tenant-templates`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/admin/tenant-templates');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setItems(Array.isArray(json?.items) ? json.items : []);
@@ -141,12 +139,12 @@ export default function TenantTemplatesPage() {
   }, []);
 
   useEffect(() => {
-    if (apiBaseUrl) fetchTemplates();
+    if (getApiBaseUrl()) fetchTemplates();
     else {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
     }
-  }, [apiBaseUrl, fetchTemplates]);
+  }, [getApiBaseUrl(), fetchTemplates]);
 
   /** Escape key closes Tenant Picker, then Create, Edit, or Apply panel (do not close while submitting). */
   useEffect(() => {
@@ -199,9 +197,9 @@ export default function TenantTemplatesPage() {
   }, [showTenantPicker]);
 
   const loadFeedbackTypes = useCallback(async () => {
-    if (!apiBaseUrl || feedbackTypesLoaded) return;
+    if (!getApiBaseUrl() || feedbackTypesLoaded) return;
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/feedback-types`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/admin/feedback-types');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setAllFeedbackTypes(Array.isArray(json) ? json : []);
@@ -209,7 +207,7 @@ export default function TenantTemplatesPage() {
     } catch {
       setAllFeedbackTypes([]);
     }
-  }, [apiBaseUrl, feedbackTypesLoaded]);
+  }, [getApiBaseUrl(), feedbackTypesLoaded]);
 
   const handleOpenCreate = useCallback(() => {
     setShowCreate(true);
@@ -234,7 +232,7 @@ export default function TenantTemplatesPage() {
   }, [loadFeedbackTypes]);
 
   const handleCreateSubmit = useCallback(async () => {
-    if (!apiBaseUrl || !createName.trim()) {
+    if (!getApiBaseUrl() || !createName.trim()) {
       setCreateError('Name is required');
       return;
     }
@@ -250,7 +248,7 @@ export default function TenantTemplatesPage() {
     if (Number.isFinite(cp) && cp > 0) defaultLimits.maxPredictionsPerDay = cp;
     if (Number.isFinite(cf) && cf > 0) defaultLimits.maxFeedbackPerDay = cf;
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/tenant-templates`, {
+      const res = await apiFetch('/api/v1/admin/tenant-templates', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -288,7 +286,7 @@ export default function TenantTemplatesPage() {
       setCreating(false);
     }
   }, [
-    apiBaseUrl,
+    getApiBaseUrl(),
     createName,
     createDescription,
     createMethodology,
@@ -310,7 +308,7 @@ export default function TenantTemplatesPage() {
 
   const handleApply = useCallback(
     async (templateId: string) => {
-      if (!apiBaseUrl) return;
+      if (!getApiBaseUrl()) return;
       const tenantIds = parseTenantIdsInput(applyTenantIdsInput);
       if (tenantIds.length === 0) {
         setApplyError('Enter at least one tenant ID (one per line or comma-separated).');
@@ -321,7 +319,7 @@ export default function TenantTemplatesPage() {
       setApplyResult(null);
       try {
         const res = await fetch(
-          `${apiBaseUrl}/api/v1/admin/tenant-templates/${encodeURIComponent(templateId)}/apply`,
+          `${getApiBaseUrl()}/api/v1/admin/tenant-templates/${encodeURIComponent(templateId)}/apply`,
           {
             method: 'POST',
             credentials: 'include',
@@ -345,7 +343,7 @@ export default function TenantTemplatesPage() {
         setApplyLoading(false);
       }
     },
-    [apiBaseUrl, applyTenantIdsInput]
+    [getApiBaseUrl(), applyTenantIdsInput]
   );
 
   const openApply = useCallback((templateId: string) => {
@@ -361,13 +359,13 @@ export default function TenantTemplatesPage() {
     setTenantListForPicker([]);
     setTenantPickerError(null);
     setSelectedTenantIdsForPicker([]);
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setTenantPickerError('API URL not set');
       return;
     }
     setTenantPickerLoading(true);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/tenants`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/admin/tenants');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       const items = Array.isArray(json?.items) ? json.items : [];
@@ -383,11 +381,11 @@ export default function TenantTemplatesPage() {
     } finally {
       setTenantPickerLoading(false);
     }
-  }, [apiBaseUrl]);
+  }, []);
 
   const fetchOne = useCallback(async (templateId: string): Promise<TenantTemplateRow | null> => {
-    if (!apiBaseUrl) return null;
-    const res = await fetch(`${apiBaseUrl}/api/v1/admin/tenant-templates/${encodeURIComponent(templateId)}`, { credentials: 'include' });
+    if (!getApiBaseUrl()) return null;
+    const res = await apiFetch('/api/v1/admin/tenant-templates/${encodeURIComponent(templateId)}');
     if (!res.ok) return null;
     return res.json();
   }, []);
@@ -425,7 +423,7 @@ export default function TenantTemplatesPage() {
   );
 
   const handleUpdateSubmit = useCallback(async () => {
-    if (!apiBaseUrl || !editId) return;
+    if (!getApiBaseUrl() || !editId) return;
     setEditSaving(true);
     setEditError(null);
     const defaultLimits: DefaultLimits = {};
@@ -438,7 +436,7 @@ export default function TenantTemplatesPage() {
     if (Number.isFinite(ep) && ep > 0) defaultLimits.maxPredictionsPerDay = ep;
     if (Number.isFinite(ef) && ef > 0) defaultLimits.maxFeedbackPerDay = ef;
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/admin/tenant-templates/${encodeURIComponent(editId)}`, {
+      const res = await apiFetch(`/api/v1/admin/tenant-templates/${encodeURIComponent(editId)}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -476,7 +474,7 @@ export default function TenantTemplatesPage() {
       setEditSaving(false);
     }
   }, [
-    apiBaseUrl,
+    getApiBaseUrl(),
     editId,
     editName,
     editDescription,
@@ -499,10 +497,10 @@ export default function TenantTemplatesPage() {
 
   const handleDelete = useCallback(
     async (templateId: string) => {
-      if (!apiBaseUrl) return;
+      if (!getApiBaseUrl()) return;
       if (!window.confirm('Delete this tenant template? This cannot be undone.')) return;
       try {
-        const res = await fetch(`${apiBaseUrl}/api/v1/admin/tenant-templates/${encodeURIComponent(templateId)}`, {
+        const res = await apiFetch(`/api/v1/admin/tenant-templates/${encodeURIComponent(templateId)}`, {
           method: 'DELETE',
           credentials: 'include',
         });
@@ -523,7 +521,7 @@ export default function TenantTemplatesPage() {
       setError(GENERIC_ERROR_MESSAGE);
       }
     },
-    [apiBaseUrl, fetchTemplates, applyTemplateId]
+    [getApiBaseUrl(), fetchTemplates, applyTemplateId]
   );
 
   return (
@@ -546,7 +544,7 @@ export default function TenantTemplatesPage() {
         Create and apply tenant templates (methodology, feedback config, limits). Applying overwrites the tenant’s feedback config with the template’s.
       </p>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20 mb-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
           <Link href="/admin/tenants/list" className="text-sm font-medium text-blue-600 hover:underline mt-2 inline-block">
@@ -555,7 +553,7 @@ export default function TenantTemplatesPage() {
         </div>
       )}
 
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <>
           <div className="mb-4 flex gap-4">
             <Button type="button" size="sm" onClick={fetchTemplates} aria-label="Refresh template list">

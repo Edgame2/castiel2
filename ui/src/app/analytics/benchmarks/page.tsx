@@ -12,9 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { BenchmarkComparison } from '@/components/analytics/BenchmarkComparison';
 import { ClusterVisualization } from '@/components/analytics/ClusterVisualization';
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBase = typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_API_BASE_URL || '') : '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type IndustryBenchmark = {
   metrics?: { avgWinRate?: number; avgDealSize?: number; avgCycleTime?: number; avgRiskScore?: number };
@@ -66,24 +64,22 @@ export default function IndustryBenchmarksPage() {
     setLoadingBenchmarks(true);
     setErrorBenchmarks(null);
     setNotFoundBenchmarks(false);
-    const url = `${apiBase.replace(/\/$/, '')}/api/v1/industries/${encodeURIComponent(industryId.trim())}/benchmarks${period.trim() ? `?period=${encodeURIComponent(period.trim())}` : ''}`;
+    const path = `/api/v1/industries/${encodeURIComponent(industryId.trim())}/benchmarks${period.trim() ? `?period=${encodeURIComponent(period.trim())}` : ''}`;
     try {
-      const res = await fetch(url, { credentials: 'include' });
+      const res = await apiFetch(path);
       if (res.status === 404) {
         setBenchmark(null);
         setNotFoundBenchmarks(true);
         return;
       }
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setErrorBenchmarks((body?.error?.message as string) || `HTTP ${res.status}`);
+        setErrorBenchmarks(GENERIC_ERROR_MESSAGE);
         setBenchmark(null);
         return;
       }
       const data = (await res.json()) as IndustryBenchmark;
       setBenchmark(data);
-    } catch (e) {
-      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+    } catch {
       setErrorBenchmarks(GENERIC_ERROR_MESSAGE);
       setBenchmark(null);
     } finally {
@@ -100,24 +96,21 @@ export default function IndustryBenchmarksPage() {
     }
     setLoadingComparison(true);
     setErrorComparison(null);
-    const url = `${apiBase.replace(/\/$/, '')}/api/v1/opportunities/${encodeURIComponent(id)}/benchmark-comparison`;
     try {
-      const res = await fetch(url, { credentials: 'include' });
+      const res = await apiFetch(`/api/v1/opportunities/${encodeURIComponent(id)}/benchmark-comparison`);
       if (res.status === 404) {
         setComparison(null);
-        setErrorComparison('Opportunity or benchmark not found');
+        setErrorComparison(GENERIC_ERROR_MESSAGE);
         return;
       }
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setErrorComparison((body?.error?.message as string) || `HTTP ${res.status}`);
+        setErrorComparison(GENERIC_ERROR_MESSAGE);
         setComparison(null);
         return;
       }
       const data = (await res.json()) as BenchmarkComparisonResult;
       setComparison(data);
-    } catch (e) {
-      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
+    } catch {
       setErrorComparison(GENERIC_ERROR_MESSAGE);
       setComparison(null);
     } finally {
@@ -229,7 +222,7 @@ export default function IndustryBenchmarksPage() {
       )}
 
       <div className="mt-6">
-        <ClusterVisualization title="Risk clusters" apiBaseUrl={apiBase} />
+        <ClusterVisualization title="Risk clusters" apiBaseUrl={getApiBaseUrl() ?? ''} />
       </div>
 
       {comparison && !loadingComparison && (

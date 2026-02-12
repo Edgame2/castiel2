@@ -14,8 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 type CategoryType = 'risk' | 'recommendation' | 'both';
 
@@ -100,16 +99,16 @@ export default function ActionCatalogCategoriesPage() {
   );
 
   const fetchCategories = useCallback(async () => {
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/categories`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/action-catalog/categories');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setCategories(Array.isArray(json) ? json : []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setCategories([]);
     } finally {
       setLoading(false);
@@ -212,7 +211,7 @@ export default function ActionCatalogCategoriesPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     setFormSaving(true);
     setFormError(null);
     try {
@@ -224,7 +223,7 @@ export default function ActionCatalogCategoriesPage() {
         description: createForm.description.trim() || undefined,
         order: createForm.order,
       };
-      const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/categories`, {
+      const res = await apiFetch('/api/v1/action-catalog/categories', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -235,7 +234,7 @@ export default function ActionCatalogCategoriesPage() {
       closeModal();
       await fetchCategories();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }
@@ -243,7 +242,7 @@ export default function ActionCatalogCategoriesPage() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl || !editCategory) return;
+    if (!getApiBaseUrl() || !editCategory) return;
     setFormSaving(true);
     setFormError(null);
     try {
@@ -255,11 +254,10 @@ export default function ActionCatalogCategoriesPage() {
         description: editForm.description.trim() || undefined,
         order: editForm.order,
       };
-      const res = await fetch(
-        `${apiBaseUrl}/api/v1/action-catalog/categories/${encodeURIComponent(editCategory.id)}`,
+      const res = await apiFetch(
+        `/api/v1/action-catalog/categories/${encodeURIComponent(editCategory.id)}`,
         {
           method: 'PUT',
-          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         }
@@ -269,31 +267,28 @@ export default function ActionCatalogCategoriesPage() {
       closeModal();
       await fetchCategories();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!apiBaseUrl || !editCategory) return;
+    if (!getApiBaseUrl() || !editCategory) return;
     setFormSaving(true);
     setFormError(null);
     try {
-      const url = new URL(
-        `${apiBaseUrl}/api/v1/action-catalog/categories/${encodeURIComponent(editCategory.id)}`
-      );
-      if (deleteReassignTo) url.searchParams.set('reassignTo', deleteReassignTo);
-      const res = await fetch(url.toString(), {
+      let path = `/api/v1/action-catalog/categories/${encodeURIComponent(editCategory.id)}`;
+      if (deleteReassignTo) path += `?reassignTo=${encodeURIComponent(deleteReassignTo)}`;
+      const res = await apiFetch(path, {
         method: 'DELETE',
-        credentials: 'include',
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
       closeModal();
       await fetchCategories();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }
@@ -301,7 +296,7 @@ export default function ActionCatalogCategoriesPage() {
 
   const handleMerge = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiBaseUrl) return;
+    if (!getApiBaseUrl()) return;
     if (!mergeSourceId.trim() || !mergeTargetId.trim()) {
       setFormError('Select both source and target category.');
       return;
@@ -313,7 +308,7 @@ export default function ActionCatalogCategoriesPage() {
     setFormSaving(true);
     setFormError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/categories/merge`, {
+      const res = await apiFetch('/api/v1/action-catalog/categories/merge', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -324,7 +319,7 @@ export default function ActionCatalogCategoriesPage() {
       closeModal();
       await fetchCategories();
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : String(e));
+      setFormError(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }
@@ -332,10 +327,10 @@ export default function ActionCatalogCategoriesPage() {
 
   const handleReorder = useCallback(
     async (newOrder: string[]) => {
-      if (!apiBaseUrl || newOrder.length === 0) return;
+      if (!getApiBaseUrl() || newOrder.length === 0) return;
       setReorderLoading('_');
       try {
-        const res = await fetch(`${apiBaseUrl}/api/v1/action-catalog/categories/reorder`, {
+        const res = await apiFetch('/api/v1/action-catalog/categories/reorder', {
           method: 'PUT',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -345,7 +340,7 @@ export default function ActionCatalogCategoriesPage() {
         if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
         await fetchCategories();
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(GENERIC_ERROR_MESSAGE);
       } finally {
         setReorderLoading(null);
       }
@@ -459,13 +454,13 @@ export default function ActionCatalogCategoriesPage() {
         </Link>
       </nav>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
       )}
 
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <div className="mb-4 flex flex-wrap gap-4 items-center">
           <Button asChild size="sm">
             <Link href="/admin/action-catalog/categories/new" aria-label="Create category (page)">New category</Link>
@@ -532,7 +527,7 @@ export default function ActionCatalogCategoriesPage() {
         </div>
       )}
 
-      {!loading && apiBaseUrl && !error && (
+      {!loading && getApiBaseUrl() && !error && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <h2 className="text-lg font-semibold">Categories</h2>

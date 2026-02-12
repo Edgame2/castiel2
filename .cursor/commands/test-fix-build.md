@@ -1,8 +1,8 @@
-Goal: Get the codebase tested and error-free by creating tests, running them, fixing failures, rebuilding if needed, and re-running tests until everything passes. Scope is either the user’s selection (file/folder/container) or “current area”; when the user says “UI” or scope is containers/ui, follow the UI section below.
+Goal: Get the codebase tested and error-free by creating tests, running them, fixing failures, rebuilding if needed, and re-running tests until everything passes. Scope is either the user’s selection (file/folder/container) or “current area”; when the user says “UI” or scope is ui, follow the UI section below.
 
 Conventions (all scopes)
 - Use config and env for ports/URLs; no hardcoded values.
-- Tests: Vitest; follow existing patterns in containers/<name>/tests/ (or UI patterns in containers/ui).
+- Tests: Vitest; follow existing patterns in containers/<name>/tests/ (or UI patterns in ui).
 
 Steps
 
@@ -10,12 +10,12 @@ Steps
 - For the scope the user specifies (file, module, container, or “current area”), add or extend tests.
 - Prefer the project’s existing test setup (e.g. Vitest in containers; see setup-container-tests skill).
 - Put tests next to the code or in the service’s tests/ layout.
-- **UI (containers/ui):** Use Vitest with @testing-library/react. Place tests next to components (e.g. *.test.tsx) or in __tests__/. Mock API via apiFetch or MSW when testing code that calls the backend; use NEXT_PUBLIC_API_BASE_URL / getApiBaseUrl() in app code, never hardcoded URLs.
+- **UI (ui):** Use Vitest with @testing-library/react. Place tests next to components (e.g. *.test.tsx) or in __tests__/. Mock API via apiFetch or MSW when testing code that calls the backend; use NEXT_PUBLIC_API_BASE_URL / getApiBaseUrl() in app code, never hardcoded URLs.
 
 2. Run tests
 - From repo root or the relevant container: pnpm test (or pnpm run test in that package).
 - If the project uses Vitest per container, run tests in the affected container(s).
-- **UI:** From containers/ui run: pnpm run test:unit (or pnpm test). For coverage: pnpm run test:coverage.
+- **UI:** From ui run: pnpm run test:unit (or pnpm test). For coverage: pnpm run test:coverage.
 - Record which test suites/files were run and whether they passed or failed.
 
 3. Fix issues
@@ -24,7 +24,7 @@ Steps
 
 4. Rebuild
 - If fixes touch code that’s built (e.g. TypeScript): run the build for the affected scope (e.g. pnpm build in that package, or docker compose build --no-cache <service> for containers).
-- **UI:** From containers/ui run: pnpm build (Next.js build).
+- **UI:** From ui run: pnpm build (Next.js build).
 - If the project uses containers-health.md, follow the same pattern as in docker-build.md: only rebuild services you changed and update the health list.
 
 5. Run tests again

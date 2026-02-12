@@ -9,8 +9,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 interface ReportDef {
   id: string;
@@ -44,7 +43,7 @@ function AnalyticsReportsContent() {
   const [saving, setSaving] = useState(false);
 
   const fetchConfig = useCallback(async () => {
-    if (!apiBaseUrl) {
+    if (!getApiBaseUrl()) {
       setConfig(DEFAULT_ANALYTICS);
       setLoading(false);
       return;
@@ -52,7 +51,7 @@ function AnalyticsReportsContent() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/system/analytics`, { credentials: 'include' });
+      const res = await apiFetch('/api/v1/system/analytics');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setConfig({
@@ -61,7 +60,7 @@ function AnalyticsReportsContent() {
         exportConfig: data.exportConfig ?? {},
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
       setConfig(DEFAULT_ANALYTICS);
     } finally {
       setLoading(false);
@@ -78,10 +77,10 @@ function AnalyticsReportsContent() {
   }, []);
 
   const handleSave = async (nextReports: ReportDef[]) => {
-    if (!apiBaseUrl || !config) return;
+    if (!getApiBaseUrl() || !config) return;
     setSaving(true);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/system/analytics`, {
+      const res = await apiFetch('/api/v1/system/analytics', {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -91,7 +90,7 @@ function AnalyticsReportsContent() {
       const data = await res.json();
       setConfig({ ...config, reports: data.reports ?? [] });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(GENERIC_ERROR_MESSAGE);
     } finally {
       setSaving(false);
     }

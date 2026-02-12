@@ -17,9 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import { GENERIC_ERROR_MESSAGE } from '@/lib/api';
-
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+import { GENERIC_ERROR_MESSAGE, apiFetch, getApiBaseUrl } from '@/lib/api';
 
 type FeaturePurpose = 'risk-scoring' | 'win-probability' | 'lstm' | 'anomaly' | 'forecasting';
 
@@ -61,14 +59,14 @@ export default function FeatureEngineeringQualityPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchQuality = useCallback(async () => {
-    if (!apiBaseUrl || !purpose) return;
+    if (!getApiBaseUrl() || !purpose) return;
     setLoading(true);
     setError(null);
     try {
       const [qualityRes, statsRes, rulesRes] = await Promise.all([
-        fetch(`${apiBaseUrl}/api/v1/ml/features/quality?purpose=${encodeURIComponent(purpose)}`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/v1/ml/features/statistics?purpose=${encodeURIComponent(purpose)}`, { credentials: 'include' }),
-        fetch(`${apiBaseUrl}/api/v1/ml/features/quality-rules`, { credentials: 'include' }),
+        apiFetch(`/api/v1/ml/features/quality?purpose=${encodeURIComponent(purpose)}`),
+        apiFetch(`/api/v1/ml/features/statistics?purpose=${encodeURIComponent(purpose)}`),
+        apiFetch('/api/v1/ml/features/quality-rules'),
       ]);
       if (!qualityRes.ok) throw new Error(`Quality: ${qualityRes.status}`);
       if (!statsRes.ok) throw new Error(`Statistics: ${statsRes.status}`);
@@ -90,15 +88,15 @@ export default function FeatureEngineeringQualityPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiBaseUrl, purpose]);
+  }, [purpose]);
 
   useEffect(() => {
-    if (apiBaseUrl && purpose) fetchQuality();
-    else if (!apiBaseUrl) {
+    if (getApiBaseUrl() && purpose) fetchQuality();
+    else if (!getApiBaseUrl()) {
       setError('NEXT_PUBLIC_API_BASE_URL is not set');
       setLoading(false);
     }
-  }, [apiBaseUrl, purpose, fetchQuality]);
+  }, [purpose, fetchQuality]);
 
   useEffect(() => {
     document.title = 'Quality | Admin | Castiel';
@@ -139,13 +137,13 @@ export default function FeatureEngineeringQualityPage() {
         Quality dashboard (missing rate, outlier rate, drift) and quality rules per feature. §5.3.
       </p>
 
-      {!apiBaseUrl && (
+      {!getApiBaseUrl() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20 mb-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>
       )}
 
-      {apiBaseUrl && (
+      {getApiBaseUrl() && (
         <div className="mb-4 flex items-center gap-4">
           <Label className="text-sm">Purpose</Label>
           <Select value={purpose} onValueChange={(v) => setPurpose(v as FeaturePurpose)}>
@@ -177,7 +175,7 @@ export default function FeatureEngineeringQualityPage() {
         </div>
       )}
 
-      {!loading && !error && apiBaseUrl && (
+      {!loading && !error && getApiBaseUrl() && (
         <>
           <div className="rounded-lg border bg-white dark:bg-gray-900 overflow-hidden mb-6">
             <h2 className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-900 dark:text-gray-100">Quality alerts</h2>

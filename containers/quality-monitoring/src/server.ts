@@ -3,6 +3,7 @@
  * Per ModuleImplementationGuide Section 3
  */
 
+import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
 import { initializeDatabase, connectDatabase } from '@coder/shared';
@@ -198,7 +199,10 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   log.error('Unhandled promise rejection', reason as Error, { service: 'quality_monitoring', promise: promise.toString() });
 });
 
-start().catch((error) => {
-  console.error('Fatal error starting server:', error);
-  process.exit(1);
-});
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  start().catch((error) => {
+    console.error('Fatal error starting server:', error);
+    process.exit(1);
+  });
+}

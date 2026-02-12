@@ -1,7 +1,7 @@
-Goal: Make every page and shared component under containers/ui use shadcn primitives from @/components/ui/ instead of raw HTML form controls and ad‑hoc styled elements. Preserve behavior and layout; unify styling via shadcn only.
+Goal: Make every page and shared component under ui use shadcn primitives from @/components/ui/ instead of raw HTML form controls and ad‑hoc styled elements. Preserve behavior and layout; unify styling via shadcn only.
 Scope:
-All files under containers/ui/src/app/ (pages, layouts).
-All files under containers/ui/src/components/ except containers/ui/src/components/ui/ (do not change the shadcn primitives themselves).
+All files under ui/src/app/ (pages, layouts).
+All files under ui/src/components/ except ui/src/components/ui/ (do not change the shadcn primitives themselves).
 Replacements (mandatory):
 Every <button> → <Button> from @/components/ui/button. Use variant and size (e.g. default, destructive, outline, ghost, link) instead of custom Tailwind for look. Keep type, disabled, onClick, etc.
 Every <input> (text, email, password, etc.) → <Input> from @/components/ui/input. Keep type, value, onChange, placeholder, disabled, id, etc. Remove duplicate border/background classes that Input already provides.
@@ -15,9 +15,9 @@ Add the correct imports from @/components/ui/<component> in each file. Use only 
 Prefer shadcn variant/size over custom className for buttons and form controls. Only add className when needed for layout (e.g. className="w-full") or rare overrides.
 Preserve all existing behavior: form state, validation, submit handlers, links (use Button asChild with Next.js Link where a button is actually a link), and ARIA/ids for labels.
 If a shadcn primitive is missing (e.g. Dialog, Tabs), add it with npx shadcn@latest add <component> first, then use it instead of custom modals/tabs.
-Do not change containers/ui/src/components/ui/* or components.json unless adding a new shadcn component.
+Do not change ui/src/components/ui/* or components.json unless adding a new shadcn component.
 Process:
-List all .tsx files under containers/ui/src/app and containers/ui/src/components (excluding components/ui).
+List all .tsx files under ui/src/app and ui/src/components (excluding components/ui).
 For each file, replace the elements listed above with the corresponding shadcn components, update imports, and remove redundant Tailwind that duplicates shadcn styles.
 After edits, ensure no remaining raw <button>, <input>, <select>, <textarea>, or form <label> in those directories (except inside components/ui).
 Optionally add or enable an ESLint rule that forbids raw <button>, <input>, <select>, <textarea> in src/app and src/components (excluding src/components/ui) so future code stays on shadcn.

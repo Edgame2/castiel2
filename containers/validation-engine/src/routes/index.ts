@@ -66,6 +66,14 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           201: {
             type: 'object',
             description: 'Validation rule created successfully',
+            properties: {
+              id: { type: 'string' },
+              tenantId: { type: 'string' },
+              name: { type: 'string' },
+              type: { type: 'string' },
+              severity: { type: 'string' },
+            },
+            additionalProperties: true,
           },
         },
       },
@@ -288,6 +296,13 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           201: {
             type: 'object',
             description: 'Validation run started',
+            properties: {
+              id: { type: 'string' },
+              tenantId: { type: 'string' },
+              status: { type: 'string' },
+              target: { type: 'object' },
+            },
+            additionalProperties: true,
           },
         },
       },

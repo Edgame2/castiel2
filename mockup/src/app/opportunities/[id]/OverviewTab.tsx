@@ -1,11 +1,12 @@
 "use client";
 
+import type React from "react";
 import type { Opportunity } from "@/data/mock";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 
-function formatCurrency(n: number) {
+function formatCurrency(n: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -15,12 +16,16 @@ function formatCurrency(n: number) {
 }
 
 function riskVariant(risk: number): "success" | "warning" | "destructive" {
-  if (risk < 0.33) return "success";
-  if (risk < 0.66) return "warning";
+  if (risk < 0.33) {
+    return "success";
+  }
+  if (risk < 0.66) {
+    return "warning";
+  }
   return "destructive";
 }
 
-export function OverviewTab({ opportunity }: { opportunity: Opportunity }) {
+export function OverviewTab({ opportunity }: { opportunity: Opportunity }): React.ReactElement {
   const opp = opportunity;
   return (
     <Card>

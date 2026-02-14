@@ -35,11 +35,11 @@ Log ingest, batch, search, aggregate, my-activity; retention and export. See [co
 ### Dependencies
 
 - **Downstream:** Cosmos DB; Azure Data Lake (optional).
-- **Upstream:** All services send audit events or call logging APIs; gateway proxies `/api/logging/*`.
+- **Upstream:** All services send audit events or call logging APIs; gateway client path: `/api/v1/logs`, `/api/v1/export`, `/api/v1/config` (per API_RULES).
 
 ### Cosmos DB containers
 
-- `audit_logs`, `audit_retention_policies`, `audit_alert_rules`, `audit_hash_checkpoints`, `audit_configurations`, `audit_exports` (partition key: tenantId/organizationId per schema).
+- `audit_logs`, `audit_retention_policies`, `audit_alert_rules`, `audit_hash_checkpoints`, `audit_configurations`, `audit_exports` (partition key: tenantId).
 
 ---
 
@@ -62,7 +62,7 @@ Log ingest, batch, search, aggregate, my-activity; retention and export. See [co
 
 ## 4. Security / tenant isolation
 
-- **X-Tenant-ID:** Required on ingest; all queries and storage are tenant/organization-scoped; partition key tenantId (or org) for audit_* containers.
+- **X-Tenant-ID:** Required on ingest; all queries and storage are tenant-scoped; partition key tenantId for audit_* containers.
 
 ---
 

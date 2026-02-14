@@ -13,7 +13,7 @@ import { getConfig } from '../config';
 /** Shape of a notification row when using Prisma-style API (findMany returns this[]) */
 interface NotificationRow {
   id: string;
-  organizationId?: string | null;
+  tenantId?: string | null;
   eventType?: string | null;
   eventCategory?: string | null;
   sourceModule?: string | null;
@@ -119,7 +119,7 @@ export class ScheduledNotificationJob {
         });
 
         const input: any = {
-          organizationId: notification.organizationId,
+          tenantId: notification.tenantId,
           eventType: notification.eventType,
           eventCategory: notification.eventCategory,
           sourceModule: notification.sourceModule,

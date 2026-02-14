@@ -128,7 +128,7 @@ describe('auth middleware', () => {
 
   it('authenticates successfully when session is NOT in user-management DB (auth owns sessions)', async () => {
     const token = jwt.sign(
-      { userId: 'user-1', email: 'u@test.com', sessionId: 'sess-from-auth', organizationId: 'org-1' },
+      { userId: 'user-1', email: 'u@test.com', sessionId: 'sess-from-auth', tenantId: 'tenant-1' },
       JWT_SECRET,
       { expiresIn: '1h' }
     );
@@ -155,7 +155,7 @@ describe('auth middleware', () => {
       })
     );
     expect((request as any).sessionId).toBe('sess-from-auth');
-    expect((request as any).organizationId).toBe('org-1');
+    expect((request as any).tenantId).toBe('tenant-1');
   });
 
   it('authenticates successfully when session IS in user-management DB and valid', async () => {
@@ -175,7 +175,7 @@ describe('auth middleware', () => {
     mockDb.session.findUnique.mockResolvedValue({
       id: 'sess-1',
       userId: 'user-1',
-      organizationId: 'org-1',
+      tenantId: 'tenant-1',
       revokedAt: null,
       expiresAt: future,
     });
@@ -185,7 +185,7 @@ describe('auth middleware', () => {
 
     expect(reply.code).not.toHaveBeenCalled();
     expect((request as any).user.id).toBe('user-1');
-    expect((request as any).organizationId).toBe('org-1');
+    expect((request as any).tenantId).toBe('tenant-1');
   });
 
   it('returns 401 when session is in DB but revoked', async () => {
@@ -204,7 +204,7 @@ describe('auth middleware', () => {
     mockDb.session.findUnique.mockResolvedValue({
       id: 'sess-1',
       userId: 'user-1',
-      organizationId: 'org-1',
+      tenantId: 'tenant-1',
       revokedAt: new Date(),
       expiresAt: new Date(Date.now() + 86400 * 1000),
     });
@@ -232,7 +232,7 @@ describe('auth middleware', () => {
     mockDb.session.findUnique.mockResolvedValue({
       id: 'sess-1',
       userId: 'user-1',
-      organizationId: 'org-1',
+      tenantId: 'tenant-1',
       revokedAt: null,
       expiresAt: new Date(Date.now() - 1000),
     });
@@ -261,7 +261,7 @@ describe('auth middleware', () => {
     mockDb.session.findUnique.mockResolvedValue({
       id: 'sess-1',
       userId: 'other-user',
-      organizationId: 'org-1',
+      tenantId: 'tenant-1',
       revokedAt: null,
       expiresAt: future,
     });
@@ -275,7 +275,7 @@ describe('auth middleware', () => {
 
   it('authenticates when token has no sessionId (no session lookup)', async () => {
     const token = jwt.sign(
-      { userId: 'user-1', email: 'u@test.com', organizationId: 'org-1' },
+      { userId: 'user-1', email: 'u@test.com', tenantId: 'tenant-1' },
       JWT_SECRET,
       { expiresIn: '1h' }
     );
@@ -292,7 +292,7 @@ describe('auth middleware', () => {
 
     expect(reply.code).not.toHaveBeenCalled();
     expect((request as any).user.id).toBe('user-1');
-    expect((request as any).organizationId).toBe('org-1');
+    expect((request as any).tenantId).toBe('tenant-1');
     expect(mockDb.session.findUnique).not.toHaveBeenCalled();
   });
 });

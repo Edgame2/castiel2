@@ -90,7 +90,6 @@ export class TemplateService {
       version: 1,
       status: TemplateStatus.DRAFT,
       isDefault: true,
-      organizationId: input.organizationId,
       tags: input.tags || [],
       metadata: {
         ...input.metadata,
@@ -244,7 +243,6 @@ export class TemplateService {
       type?: TemplateType;
       category?: string;
       status?: TemplateStatus;
-      organizationId?: string;
       limit?: number;
       continuationToken?: string;
     }
@@ -270,15 +268,6 @@ export class TemplateService {
     if (filters?.status) {
       query += ' AND c.status = @status';
       parameters.push({ name: '@status', value: filters.status });
-    }
-
-    if (filters?.organizationId !== undefined) {
-      if (filters.organizationId) {
-        query += ' AND c.organizationId = @organizationId';
-        parameters.push({ name: '@organizationId', value: filters.organizationId });
-      } else {
-        query += ' AND (c.organizationId = null OR c.organizationId = undefined)';
-      }
     }
 
     query += ' ORDER BY c.name ASC';

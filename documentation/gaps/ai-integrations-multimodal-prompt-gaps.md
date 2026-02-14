@@ -45,7 +45,7 @@
 | getAgent(id) | No tenantId; lookup by id only — risk of cross-tenant if agents are tenant-scoped |
 | executeAgent | Documented stub: returns pending execution only; JSDoc and README state persistence/execution logic deferred |
 
-**Detail:** `AgentService.getAgent(id)` does not scope by tenant or organization. `executeAgent` is documented as out-of-scope for actual run; no TODO in code.
+**Detail:** `AgentService.getAgent(id)` does not scope by tenant. `executeAgent` is documented as out-of-scope for actual run; no TODO in code.
 
 ---
 

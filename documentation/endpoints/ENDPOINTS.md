@@ -15,9 +15,11 @@
 | **Stub** | Placeholder or scaffolding only; backend not wired or minimal logic |
 | **Missing** | Not implemented; in OpenAPI/spec but no route, or route exists but not wired to gateway |
 
+Paths `/health`, `/ready`, `/metrics` in tables are **service-relative** (not client path); when called via gateway the client path is `/api/v1/<service-path>` where applicable.
+
 ---
 
-## 1. Auth Service (`/api/auth` → pathRewrite `/api/v1/auth`)
+## 1. Auth Service — Client path: `/api/v1/auth`
 
 | Method | Path | Status | Notes |
 |--------|------|--------|-------|
@@ -45,15 +47,24 @@
 | POST | /api/v1/auth/api-keys | Partial | Feature flag |
 | DELETE | /api/v1/auth/api-keys/:id | Partial | Feature flag |
 | GET | /api/v1/auth/health | Fully | Health check |
-| GET | /api/v1/auth/organizations/:orgId/sso/config | Fully | SSO config |
+| GET | /api/v1/auth/tenants/:tenantId/sso/config | Fully | SSO config (tenant-scoped; preferred) |
+| PUT | /api/v1/auth/tenants/:tenantId/sso/config | Fully | Update SSO config (tenant-scoped; preferred) |
+| POST | /api/v1/auth/tenants/:tenantId/sso/config | Fully | Configure SSO (tenant-scoped; preferred) |
+| POST | /api/v1/auth/tenants/:tenantId/sso/test | Fully | Test SSO connection (tenant-scoped; preferred) |
+| POST | /api/v1/auth/tenants/:tenantId/sso/disable | Fully | Disable SSO (tenant-scoped; preferred) |
+| GET | /api/v1/auth/tenants/:tenantId/sso/credentials | Fully | Get SSO credentials (service-to-service; preferred) |
+| POST | /api/v1/auth/tenants/:tenantId/sso/certificate/rotate | Fully | Rotate SSO certificate (tenant-scoped; preferred) |
+| GET/PUT/POST | /api/v1/auth/organizations/:orgId/sso/* | Deprecated | Use /api/v1/auth/tenants/:tenantId/sso/* instead; removal in 2 versions |
 
 ---
 
-## 2. User Management
+## 2. User Management — Client path: `/api/v1/users`, `/api/v1/tenants`, etc.
+
+Note: All user-management resources are tenant-scoped. Client path uses `tenantId`; there is no organization entity. Service liveness/readiness (`/health`, `/ready`) are service-relative.
 
 | Method | Path | Status | Notes |
 |--------|------|--------|-------|
-| GET | /api/v1/users | Fully | List users |
+| GET | /api/v1/users | Fully | List users (query tenantId) |
 | GET | /api/v1/users/me | Fully | Current profile |
 | PUT | /api/v1/users/me | Fully | Update profile |
 | GET | /api/v1/users/:id | Fully | Get user by id |
@@ -66,45 +77,32 @@
 | DELETE | /api/v1/users/me/sessions/:sessionId | Fully | Revoke session |
 | POST | /api/v1/users/me/sessions/revoke-all-others | Fully | Revoke others |
 | POST | /api/v1/invitations/:token/accept | Fully | Accept invitation (public) |
-| GET | /api/v1/organizations | Fully | List organizations |
-| POST | /api/v1/organizations | Fully | Create organization |
-| GET | /api/v1/organizations/:orgId | Fully | Get organization |
-| PUT | /api/v1/organizations/:orgId | Fully | Update organization |
-| DELETE | /api/v1/organizations/:orgId | Fully | Deactivate org |
-| GET | /api/v1/organizations/:orgId/members | Fully | List members |
-| GET | /api/v1/organizations/:orgId/member-count | Fully | Member count |
-| GET | /api/v1/organizations/:orgId/member-limit | Fully | Member limit |
-| GET | /api/v1/organizations/:orgId/roles | Fully | List roles |
-| POST | /api/v1/organizations/:orgId/roles | Fully | Create role |
-| GET | /api/v1/organizations/:orgId/roles/:roleId | Fully | Get role |
-| PUT | /api/v1/organizations/:orgId/roles/:roleId | Fully | Update role |
-| DELETE | /api/v1/organizations/:orgId/roles/:roleId | Fully | Delete role |
-| GET | /api/v1/organizations/:orgId/roles/:roleId/permissions | Fully | Role permissions |
-| GET | /api/v1/organizations/:orgId/permissions | Fully | List permissions |
-| POST | /api/v1/organizations/:orgId/invitations | Fully | Create invitation |
-| GET | /api/v1/organizations/:orgId/invitations | Fully | List invitations |
-| POST | /api/v1/organizations/:orgId/invitations/:invitationId/resend | Fully | Resend invitation |
-| DELETE | /api/v1/organizations/:orgId/invitations/:invitationId | Fully | Cancel invitation |
-| POST | /api/v1/organizations/:orgId/invitations/bulk | Fully | Bulk invite |
-| GET | /api/v1/organizations/:orgId/api-keys | Fully | List API keys |
-| POST | /api/v1/organizations/:orgId/api-keys | Fully | Create API key |
-| DELETE | /api/v1/organizations/:orgId/api-keys/:keyId | Fully | Revoke API key |
-| POST | /api/v1/organizations/:orgId/api-keys/:keyId/rotate | Fully | Rotate API key |
-| GET | /api/v1/organizations/:orgId/settings | Fully | Org settings |
-| PUT | /api/v1/organizations/:orgId/settings | Fully | Update org settings |
-| GET | /api/v1/organizations/:orgId/security-settings | Fully | Security settings |
-| PUT | /api/v1/organizations/:orgId/security-settings | Fully | Update security settings |
-| GET | /api/v1/admin/organizations | Fully | Admin list orgs |
-| GET | /api/v1/admin/organizations/:orgId | Fully | Admin get org |
-| GET | /api/v1/teams | Fully | List teams |
-| POST | /api/v1/teams | Fully | Create team |
-| GET | /api/v1/teams/:teamId | Fully | Get team |
-| PUT | /api/v1/teams/:teamId | Fully | Update team |
-| DELETE | /api/v1/teams/:teamId | Fully | Delete team |
-| POST | /api/v1/teams/:teamId/members | Fully | Add team member |
-| DELETE | /api/v1/teams/:teamId/members/:userId | Fully | Remove team member |
-| GET | /health | Fully | Liveness |
-| GET | /ready | Fully | Readiness |
+| GET | /api/v1/tenants/:tenantId/teams | Fully | List teams |
+| POST | /api/v1/tenants/:tenantId/teams | Fully | Create team |
+| GET | /api/v1/tenants/:tenantId/teams/:teamId | Fully | Get team |
+| PUT | /api/v1/tenants/:tenantId/teams/:teamId | Fully | Update team |
+| DELETE | /api/v1/tenants/:tenantId/teams/:teamId | Fully | Delete team |
+| POST | /api/v1/tenants/:tenantId/teams/:teamId/members | Fully | Add team member |
+| DELETE | /api/v1/tenants/:tenantId/teams/:teamId/members/:userId | Fully | Remove team member |
+| GET | /api/v1/tenants/:tenantId/roles | Fully | List roles |
+| POST | /api/v1/tenants/:tenantId/roles | Fully | Create role |
+| GET | /api/v1/tenants/:tenantId/roles/:roleId | Fully | Get role |
+| PUT | /api/v1/tenants/:tenantId/roles/:roleId | Fully | Update role |
+| DELETE | /api/v1/tenants/:tenantId/roles/:roleId | Fully | Delete role |
+| GET | /api/v1/tenants/:tenantId/roles/:roleId/permissions | Fully | Role permissions |
+| GET | /api/v1/tenants/:tenantId/permissions | Fully | List permissions |
+| POST | /api/v1/tenants/:tenantId/invitations | Fully | Create invitation |
+| GET | /api/v1/tenants/:tenantId/invitations | Fully | List invitations |
+| POST | /api/v1/tenants/:tenantId/invitations/:invitationId/resend | Fully | Resend invitation |
+| DELETE | /api/v1/tenants/:tenantId/invitations/:invitationId | Fully | Cancel invitation |
+| GET | /api/v1/tenants/:tenantId/api-keys | Stub | List API keys (backend TBD) |
+| POST | /api/v1/tenants/:tenantId/api-keys | Stub | Create API key (backend TBD) |
+| DELETE | /api/v1/tenants/:tenantId/api-keys/:keyId | Stub | Revoke API key (backend TBD) |
+| POST | /api/v1/tenants/:tenantId/api-keys/:keyId/rotate | Stub | Rotate API key (backend TBD) |
+| GET | /api/v1/admin/tenants | Stub | Admin list tenants (recommendations; returns empty) |
+| GET | /api/v1/admin/tenants/:tenantId | Stub | Admin get tenant (recommendations; 404 for now) |
+| GET | /health | Fully | Service-relative; not used as client path |
+| GET | /ready | Fully | Service-relative; not used as client path |
 | GET | /api/v1/users/health | Fully | Users health |
 
 ---
@@ -137,7 +135,7 @@
 | GET | /api/v1/admin/tenant-templates | Fully | List templates |
 | GET | /health | Fully | Liveness |
 | GET | /ready | Fully | Readiness |
-| GET | /metrics | Fully | Prometheus metrics |
+| GET | /metrics | Fully | Service-relative; not used as client path |
 
 ---
 
@@ -358,7 +356,7 @@
 | POST | /api/v1/verification/checkpoint/:id/verify | Partial | Verify checkpoint |
 | GET | /health | Fully | Liveness |
 | GET | /ready | Fully | Readiness |
-| GET | /metrics | Fully | Prometheus metrics |
+| GET | /metrics | Fully | Service-relative; not used as client path |
 
 ---
 
@@ -385,7 +383,7 @@
 | GET | /api/v1/admin/monitoring/performance | Partial | Performance |
 | GET | /health | Fully | Liveness |
 | GET | /ready | Fully | Readiness |
-| GET | /metrics | Fully | Prometheus metrics |
+| GET | /metrics | Fully | Service-relative; not used as client path |
 
 ---
 
@@ -561,7 +559,7 @@
 | GET | /api/v1/ml/models/:id/card | Fully | Internal |
 | GET | /health | Fully | Liveness |
 | GET | /ready | Fully | Readiness |
-| GET | /metrics | Fully | Prometheus metrics |
+| GET | /metrics | Fully | Service-relative; not used as client path |
 
 ---
 
@@ -620,74 +618,71 @@
 
 ---
 
-## 16. Secret Management (prefix /api/secrets)
+## 16. Secret Management — Client path: `/api/v1/secrets`, `/api/v1/vaults`
+
+Note: Gateway may use pathRewrite so backend receives `/api/secrets`, `/api/vaults` if the service keeps that prefix. Service `/health` and `/ready` are service-relative; not client paths.
 
 | Method | Path | Status | Notes |
 |--------|------|--------|-------|
-| POST | /api/secrets | Fully | Create secret |
-| GET | /api/secrets | Fully | List secrets |
-| GET | /api/secrets/:id | Fully | Get secret |
-| GET | /api/secrets/:id/value | Fully | Get secret value |
-| PUT | /api/secrets/:id | Fully | Update secret |
-| PUT | /api/secrets/:id/value | Fully | Update value |
-| DELETE | /api/secrets/:id | Fully | Delete secret |
-| POST | /api/secrets/:id/restore | Fully | Restore secret |
-| DELETE | /api/secrets/:id/permanent | Fully | Permanent delete |
-| POST | /api/secrets/:id/rotate | Fully | Rotate secret |
-| GET | /api/secrets/:id/versions | Fully | List versions |
-| GET | /api/secrets/:id/versions/:version | Fully | Get version |
-| POST | /api/secrets/:id/rollback | Fully | Rollback |
-| GET | /api/secrets/:id/access | Fully | Get access |
-| POST | /api/secrets/:id/access | Fully | Grant access |
-| DELETE | /api/secrets/:id/access/:grantId | Fully | Revoke access |
-| POST | /api/secrets/resolve | Fully | Resolve secret |
-| POST | /api/secrets/resolve/config | Fully | Resolve config |
-| POST | /api/secrets/sso | Fully | SSO create |
-| GET | /api/secrets/sso/:secretId | Fully | SSO get |
-| PUT | /api/secrets/sso/:secretId | Fully | SSO update |
-| DELETE | /api/secrets/sso/:secretId | Fully | SSO delete |
-| POST | /api/secrets/sso/:secretId/rotate | Fully | SSO rotate |
-| GET | /api/secrets/sso/:secretId/expiration | Fully | SSO expiration |
-| GET | /api/secrets/audit | Fully | Audit list |
-| GET | /api/secrets/audit/:id | Fully | Audit get |
-| GET | /api/secrets/audit/compliance/report | Fully | Compliance report |
-| POST | /api/secrets/import/env | Fully | Import env |
-| POST | /api/secrets/import/json | Fully | Import JSON |
-| GET | /api/secrets/export | Fully | Export |
-| POST | /api/secrets/migrate | Fully | Migrate |
-| GET | /api/vaults | Fully | List vaults |
-| POST | /api/vaults | Fully | Create vault |
-| GET | /api/vaults/:id | Fully | Get vault |
-| PUT | /api/vaults/:id | Fully | Update vault |
-| DELETE | /api/vaults/:id | Fully | Delete vault |
-| POST | /api/vaults/:id/health | Fully | Vault health |
-| POST | /api/vaults/:id/default | Fully | Set default vault |
-| GET | /health | Fully | Liveness |
-| GET | /ready | Fully | Readiness |
+| POST | /api/v1/secrets | Fully | Create secret |
+| GET | /api/v1/secrets | Fully | List secrets |
+| GET | /api/v1/secrets/:id | Fully | Get secret |
+| GET | /api/v1/secrets/:id/value | Fully | Get secret value |
+| PUT | /api/v1/secrets/:id | Fully | Update secret |
+| PUT | /api/v1/secrets/:id/value | Fully | Update value |
+| DELETE | /api/v1/secrets/:id | Fully | Delete secret |
+| POST | /api/v1/secrets/:id/restore | Fully | Restore secret |
+| DELETE | /api/v1/secrets/:id/permanent | Fully | Permanent delete |
+| POST | /api/v1/secrets/:id/rotate | Fully | Rotate secret |
+| GET | /api/v1/secrets/:id/versions | Fully | List versions |
+| GET | /api/v1/secrets/:id/versions/:version | Fully | Get version |
+| POST | /api/v1/secrets/:id/rollback | Fully | Rollback |
+| GET | /api/v1/secrets/:id/access | Fully | Get access |
+| POST | /api/v1/secrets/:id/access | Fully | Grant access |
+| DELETE | /api/v1/secrets/:id/access/:grantId | Fully | Revoke access |
+| POST | /api/v1/secrets/resolve | Fully | Resolve secret |
+| POST | /api/v1/secrets/resolve/config | Fully | Resolve config |
+| POST | /api/v1/secrets/sso | Fully | SSO create |
+| GET | /api/v1/secrets/sso/:secretId | Fully | SSO get |
+| PUT | /api/v1/secrets/sso/:secretId | Fully | SSO update |
+| DELETE | /api/v1/secrets/sso/:secretId | Fully | SSO delete |
+| POST | /api/v1/secrets/sso/:secretId/rotate | Fully | SSO rotate |
+| GET | /api/v1/secrets/sso/:secretId/expiration | Fully | SSO expiration |
+| GET | /api/v1/secrets/audit | Fully | Audit list |
+| GET | /api/v1/secrets/audit/:id | Fully | Audit get |
+| GET | /api/v1/secrets/audit/compliance/report | Fully | Compliance report |
+| POST | /api/v1/secrets/import/env | Fully | Import env |
+| POST | /api/v1/secrets/import/json | Fully | Import JSON |
+| GET | /api/v1/secrets/export | Fully | Export |
+| POST | /api/v1/secrets/migrate | Fully | Migrate |
+| GET | /api/v1/vaults | Fully | List vaults |
+| POST | /api/v1/vaults | Fully | Create vault |
+| GET | /api/v1/vaults/:id | Fully | Get vault |
+| PUT | /api/v1/vaults/:id | Fully | Update vault |
+| DELETE | /api/v1/vaults/:id | Fully | Delete vault |
+| POST | /api/v1/vaults/:id/health | Fully | Vault health |
+| POST | /api/v1/vaults/:id/default | Fully | Set default vault |
 
 ---
 
-## 17. Notification Manager
+## 17. Notification Manager — Client path: `/api/v1/notifications`, `/api/v1/preferences`, `/api/v1/templates`
 
 | Method | Path | Status | Notes |
 |--------|------|--------|-------|
-| GET | /notifications | Fully | List notifications |
-| PUT | /notifications/:id/read | Fully | Mark read |
-| PUT | /notifications/read-all | Fully | Mark all read |
-| DELETE | /notifications/:id | Fully | Delete notification |
-| GET | /preferences | Fully | Get preferences |
-| GET | /preferences/:scope/:scopeId | Fully | Get scope preferences |
-| PUT | /preferences/:scope/:scopeId | Fully | Update preferences |
-| DELETE | /preferences/:scope/:scopeId | Fully | Delete preferences |
-| GET | /preferences/list/all | Fully | List all preferences |
-| GET | /templates | Fully | List templates |
-| GET | /templates/:id | Fully | Get template |
-| POST | /templates | Fully | Create template |
-| PUT | /templates/:id | Fully | Update template |
-| DELETE | /templates/:id | Fully | Delete template |
-| GET | /health | Fully | Liveness |
-| GET | /ready | Fully | Readiness |
-| GET | /metrics | Fully | Prometheus metrics |
+| GET | /api/v1/notifications | Fully | List notifications |
+| PUT | /api/v1/notifications/:id/read | Fully | Mark read |
+| PUT | /api/v1/notifications/read-all | Fully | Mark all read |
+| DELETE | /api/v1/notifications/:id | Fully | Delete notification |
+| GET | /api/v1/preferences | Fully | Get preferences |
+| GET | /api/v1/preferences/:scope/:scopeId | Fully | Get scope preferences |
+| PUT | /api/v1/preferences/:scope/:scopeId | Fully | Update preferences |
+| DELETE | /api/v1/preferences/:scope/:scopeId | Fully | Delete preferences |
+| GET | /api/v1/preferences/list/all | Fully | List all preferences |
+| GET | /api/v1/templates | Fully | List templates |
+| GET | /api/v1/templates/:id | Fully | Get template |
+| POST | /api/v1/templates | Fully | Create template |
+| PUT | /api/v1/templates/:id | Fully | Update template |
+| DELETE | /api/v1/templates/:id | Fully | Delete template |
 
 ---
 
@@ -760,18 +755,18 @@
 | context-service | POST | /context/assemble | Fully | /api/v1/contexts when configured |
 | context-service | POST | /context/dependencies/tree | Fully | /api/v1/contexts when configured |
 | context-service | POST | /context/call-graphs | Fully | /api/v1/contexts when configured |
-| ai-service | POST | /completions | Fully | /api/ai when ai_service.url set (stripPrefix) |
-| ai-service | GET | /models | Fully | /api/ai when configured |
-| ai-service | GET | /models/:id | Fully | /api/ai when configured |
-| ai-service | GET | /agents | Fully | /api/ai when configured |
-| ai-service | GET | /agents/:id | Fully | /api/ai when configured |
-| ai-service | POST | /agents/:id/execute | Fully | /api/ai when configured |
-| embeddings | POST | / | Fully | /api/embeddings when embeddings.url set (stripPrefix) |
-| embeddings | POST | /batch | Fully | /api/embeddings when configured |
-| embeddings | GET | /:id | Fully | /api/embeddings when configured |
-| embeddings | POST | /search | Fully | /api/embeddings when configured |
-| embeddings | DELETE | /:id | Fully | /api/embeddings when configured |
-| embeddings | DELETE | /project/:projectId | Fully | /api/embeddings when configured |
+| ai-service | POST | /api/v1/ai/completions | Fully | When ai_service.url set; backend may use stripPrefix |
+| ai-service | GET | /api/v1/ai/models | Fully | When configured |
+| ai-service | GET | /api/v1/ai/models/:id | Fully | When configured |
+| ai-service | GET | /api/v1/ai/agents | Fully | When configured |
+| ai-service | GET | /api/v1/ai/agents/:id | Fully | When configured |
+| ai-service | POST | /api/v1/ai/agents/:id/execute | Fully | When configured |
+| embeddings | POST | /api/v1/embeddings | Fully | When embeddings.url set; backend may use stripPrefix |
+| embeddings | POST | /api/v1/embeddings/batch | Fully | When configured |
+| embeddings | GET | /api/v1/embeddings/:id | Fully | When configured |
+| embeddings | POST | /api/v1/embeddings/search | Fully | When configured |
+| embeddings | DELETE | /api/v1/embeddings/:id | Fully | When configured |
+| embeddings | DELETE | /api/v1/embeddings/project/:projectId | Fully | When configured |
 | prompt-service | * | /prompts/analytics | Partial | /api/v1/prompts when configured |
 | utility-services | GET | /api/v1/utility/jobs/:jobId | Fully | /api/v1/utility when utility_services.url set |
 | utility-services | POST | /api/v1/utility/import | Fully | /api/v1/utility when configured |
@@ -794,6 +789,7 @@
 
 ## References
 
+- [API_RULES.md](./API_RULES.md) — Path convention: client path = gateway path = `/api/v1/...` (Gateway, UI, ENDPOINTS.md)
 - [containers/api-gateway/src/routes/index.ts](../../containers/api-gateway/src/routes/index.ts) — Gateway route table
 - [documentation/FEATURE_IMPLEMENTATION_STATUS.md](../FEATURE_IMPLEMENTATION_STATUS.md) — Feature status
 - [.cursor/commands/endpoints.md](../../.cursor/commands/endpoints.md) — Auth flow audit

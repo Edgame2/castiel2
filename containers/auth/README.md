@@ -4,7 +4,7 @@ User authentication and session management service for Castiel.
 
 ## Features
 
-- **Multi-Provider Authentication**: Email/password, Google OAuth, GitHub OAuth, SAML/SSO
+- **Multi-Provider Authentication**: Email/password, Google OAuth, GitHub OAuth, SAML/SSO. SSO config is **tenant-scoped**: use `/api/v1/auth/tenants/:tenantId/sso/*` (config, test, disable, credentials, certificate/rotate). Organization paths `/api/v1/auth/organizations/:orgId/sso/*` are deprecated (removal in 2 versions).
 - **JWT Token Management**: Secure token generation, validation, and refresh
 - **Session Management**: Multi-device session tracking and revocation
 - **Password Security**: Bcrypt hashing, password history, strength validation

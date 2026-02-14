@@ -92,28 +92,21 @@ graph TB
 
 The gateway maps routes to microservices:
 
+Client path is always `/api/v1/...` per [API_RULES.md](../endpoints/API_RULES.md). Gateway route prefixes (examples):
+
 ```typescript
-const ROUTE_MAPPINGS = {
-  '/api/ai': 'ai-service',
-  '/api/planning': 'planning',
-  '/api/execution': 'execution-service',
-  '/api/mcp': 'mcp-server',
-  '/api/knowledge': 'knowledge-base',
-  '/api/dashboard': 'dashboard',
-  '/api/calendar': 'calendar',
-  '/api/messaging': 'messaging',
-  '/api/logging': 'logging',
-  '/api/learning': 'learning-development',
-  '/api/collaboration': 'collaboration',
-  '/api/quality': 'quality',
-  '/api/resource': 'resource-management',
-  '/api/workflow': 'workflow',
-  '/api/observability': 'observability',
-  '/api/notifications': 'notification-manager',
-  '/api/prompts': 'prompt-management',
-  '/api/secrets': 'secret-management',
-  '/api/usage': 'usage-tracking',
-  '/api/embeddings': 'embeddings'
+// Client path = gateway path = /api/v1/<service-path>
+const ROUTE_PREFIXES = {
+  '/api/v1/auth': 'auth',
+  '/api/v1/users': 'user-management',
+  '/api/v1/dashboards': 'dashboard',
+  '/api/v1/logs': 'logging',
+  '/api/v1/notifications': 'notification-manager',
+  '/api/v1/secrets': 'secret-management',
+  '/api/v1/prompts': 'prompt-service',
+  '/api/v1/conversations': 'ai-conversation',
+  '/api/v1/embeddings': 'embeddings'
+  // ... plus risk-analytics, recommendations, integration-manager, etc. as configured
 };
 ```
 
@@ -208,7 +201,7 @@ graph TB
 ### Cosmos DB Structure
 
 - **Containers**: One container per module (e.g., `usage`, `ai`, `secret`, `embeddings`)
-- **Partition Keys**: Typically `organizationId` or `userId` for multi-tenant isolation
+- **Partition Keys**: Typically `tenantId` or `userId` for multi-tenant isolation
 - **Document Types**: Use `type` field within containers to differentiate document types
 - **Vector Search**: Built-in vector search support for embeddings
 
@@ -273,7 +266,7 @@ graph TB
 2. **RBAC Middleware**
    - Role-based access control
    - Permission checking
-   - Organization/team context
+   - Tenant/team context
    - Project-level permissions
 
 3. **Validation Middleware**
@@ -284,7 +277,7 @@ graph TB
 
 4. **Rate Limiting**
    - Per-user rate limits
-   - Per-organization limits
+   - Per-tenant limits
    - IP-based limiting
    - Token bucket algorithm
 
@@ -365,7 +358,7 @@ The Routes module provides API route definitions and handlers for all backend en
 ### Key Features
 
 - RESTful API routes
-- Route organization
+- Route structure
 - Handler registration
 - Middleware integration
 

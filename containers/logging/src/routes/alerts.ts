@@ -8,7 +8,6 @@ import { z } from 'zod';
 import { log } from '../utils/logger';
 
 const createAlertSchema = z.object({
-  organizationId: z.string().optional(),
   name: z.string().min(1),
   description: z.string().optional(),
   enabled: z.boolean().optional(),
@@ -65,10 +64,10 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const body = createAlertSchema.parse(request.body);
 
-      const rule = await alertService.createRule({ ...body, organizationId: body.organizationId ?? tenantId }, user.id);
+      const rule = await alertService.createRule({ ...body, tenantId }, user.id);
 
       reply.code(201).send(rule);
     } catch (error: any) {
@@ -105,7 +104,7 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const { id } = request.params as { id: string };
 
       const rule = await alertService.getRule(id, tenantId);
@@ -130,9 +129,6 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
       security: [{ bearerAuth: [] }],
       querystring: {
         type: 'object',
-        properties: {
-          organizationId: { type: 'string' },
-        },
       },
       response: {
         200: {
@@ -144,10 +140,9 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
-      const query = request.query as { organizationId?: string };
+      const tenantId = user.tenantId;
 
-      const rules = await alertService.listRules(query.organizationId ?? tenantId);
+      const rules = await alertService.listRules(tenantId);
 
       reply.send({ items: rules, total: rules.length });
     } catch (error: any) {
@@ -194,7 +189,7 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const { id } = request.params as { id: string };
       const body = updateAlertSchema.parse(request.body);
 
@@ -234,7 +229,7 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const { id } = request.params as { id: string };
 
       await alertService.deleteRule(id, tenantId);
@@ -270,7 +265,7 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const { id } = request.params as { id: string };
 
       const triggered = await alertService.evaluateRule(id, tenantId);

@@ -10,7 +10,7 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
     try {
       const user = (request as any).user;
       const dashboards = await dashboardService.listDashboards({
-        organizationId: user.organizationId,
+        tenantId: user.tenantId,
       });
       reply.send(dashboards);
     } catch (error: any) {
@@ -25,7 +25,7 @@ export async function dashboardRoutes(fastify: FastifyInstance) {
       const dashboard = await dashboardService.createDashboard({
         name: sanitizeString(body.name),
         config: body.config,
-        organizationId: user.organizationId,
+        tenantId: user.tenantId,
       });
       reply.code(201).send(dashboard);
     } catch (error: any) {

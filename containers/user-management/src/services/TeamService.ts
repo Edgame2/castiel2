@@ -16,7 +16,7 @@ type TeamDb = {
     update: (args: unknown) => Promise<unknown>;
     delete: (args: unknown) => Promise<unknown>;
   };
-  organizationMembership: { findFirst: (args: unknown) => Promise<unknown> };
+  membership: { findFirst: (args: unknown) => Promise<unknown> };
   teamMember: {
     findUnique: (args: unknown) => Promise<unknown>;
     create: (args: unknown) => Promise<unknown>;
@@ -32,7 +32,7 @@ function getDb(): TeamDb {
 export interface TeamResult {
   id: string;
   name: string;
-  organizationId?: string;
+  tenantId?: string;
   parentTeamId?: string | null;
   createdById?: string;
   [key: string]: unknown;
@@ -42,7 +42,7 @@ export interface TeamResult {
  * Create a team
  */
 export async function createTeam(
-  organizationId: string,
+  tenantId: string,
   userId: string,
   name: string,
   description?: string,
@@ -63,29 +63,29 @@ export async function createTeam(
   if (parentTeamId) {
     const parentTeam = (await db.team.findUnique({
       where: { id: parentTeamId },
-      select: { id: true, organizationId: true },
-    })) as { id: string; organizationId: string } | null;
+      select: { id: true, tenantId: true },
+    })) as { id: string; tenantId: string } | null;
     
     if (!parentTeam) {
       throw new Error('Parent team not found');
     }
     
-    if (parentTeam.organizationId !== organizationId) {
-      throw new Error('Parent team must belong to the same organization');
+    if (parentTeam.tenantId !== tenantId) {
+      throw new Error('Parent team must belong to the same tenant');
     }
   }
   
-  // Check if user is a member of the organization
-  const membership = (await db.organizationMembership.findFirst({
+  // Check if user is a member of the tenant
+  const membership = (await db.membership.findFirst({
     where: {
       userId,
-      organizationId,
+      tenantId,
       status: 'active',
     },
   })) as { id: string } | null;
   
   if (!membership) {
-    throw new Error('You must be a member of the organization to create teams');
+    throw new Error('You must be a member of the tenant to create teams');
   }
   
   // Create team and automatically add creator as member
@@ -94,7 +94,7 @@ export async function createTeam(
       name: name.trim(),
       description: description?.trim() || null,
       parentTeamId: parentTeamId || null,
-      organizationId,
+      tenantId,
       createdById: userId,
       members: {
         create: {
@@ -158,9 +158,9 @@ export async function getTeam(teamId: string, userId?: string): Promise<TeamResu
 }
 
 /**
- * List teams for a user in an organization
+ * List teams for a user in a tenant
  */
-export async function listUserTeams(userId: string, organizationId?: string) {
+export async function listUserTeams(userId: string, tenantId?: string) {
   const db = getDb();
   
   const where: Record<string, unknown> = {
@@ -171,8 +171,8 @@ export async function listUserTeams(userId: string, organizationId?: string) {
     },
   };
   
-  if (organizationId) {
-    where.organizationId = organizationId;
+  if (tenantId) {
+    where.tenantId = tenantId;
   }
   
   const teams = await db.team.findMany({
@@ -216,7 +216,7 @@ export async function updateTeam(
         where: { userId },
       },
     },
-  })) as { id: string; organizationId: string; createdById: string; members: Array<{ userId: string }> } | null;
+  })) as { id: string; tenantId: string; createdById: string; members: Array<{ userId: string }> } | null;
   
   if (!team) {
     throw new Error('Team not found');
@@ -252,15 +252,15 @@ export async function updateTeam(
       // Validate parent team exists
       const parentTeam = (await db.team.findUnique({
         where: { id: updates.parentTeamId },
-        select: { id: true, organizationId: true },
-      })) as { id: string; organizationId: string } | null;
+        select: { id: true, tenantId: true },
+      })) as { id: string; tenantId: string } | null;
       
       if (!parentTeam) {
         throw new Error('Parent team not found');
       }
       
-      if (parentTeam.organizationId !== team.organizationId) {
-        throw new Error('Parent team must belong to the same organization');
+      if (parentTeam.tenantId !== team.tenantId) {
+        throw new Error('Parent team must belong to the same tenant');
       }
       
       // Prevent circular references

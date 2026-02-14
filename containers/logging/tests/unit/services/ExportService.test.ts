@@ -20,17 +20,15 @@ vi.mock('../../../src/utils/logger', () => ({
 
 describe('ExportService', () => {
   let exportService: ExportService;
-  let mockPrisma: any;
+  let mockCosmosExports: any;
   let mockStorage: IStorageProvider;
 
   beforeEach(() => {
-    mockPrisma = {
-      audit_exports: {
-        create: vi.fn(),
-        findUnique: vi.fn(),
-        findMany: vi.fn(),
-        update: vi.fn(),
-      },
+    mockCosmosExports = {
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
     };
 
     mockStorage = {
@@ -47,7 +45,7 @@ describe('ExportService', () => {
       deleteOlderThan: vi.fn(),
     } as any;
 
-    exportService = new ExportService(mockPrisma, mockStorage);
+    exportService = new ExportService(mockStorage, mockCosmosExports);
   });
 
   describe('createExport', () => {
@@ -62,7 +60,7 @@ describe('ExportService', () => {
 
       const mockExport = {
         id: 'export-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         format: 'CSV',
         filters: input.filters,
         status: 'PENDING',
@@ -71,7 +69,7 @@ describe('ExportService', () => {
         createdAt: new Date(),
       };
 
-      vi.mocked(mockPrisma.audit_exports.create).mockResolvedValue(mockExport);
+      vi.mocked(mockCosmosExports.create).mockResolvedValue(mockExport);
 
       const result = await exportService.createExport('org-1', input, 'user-1');
 
@@ -87,7 +85,7 @@ describe('ExportService', () => {
 
       const mockExport = {
         id: 'export-2',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         format: 'JSON',
         filters: {},
         status: 'PENDING',
@@ -96,7 +94,7 @@ describe('ExportService', () => {
         createdAt: new Date(),
       };
 
-      vi.mocked(mockPrisma.audit_exports.create).mockResolvedValue(mockExport);
+      vi.mocked(mockCosmosExports.create).mockResolvedValue(mockExport);
 
       const result = await exportService.createExport('org-1', input, 'user-1');
 
@@ -108,7 +106,7 @@ describe('ExportService', () => {
     it('should retrieve export by ID', async () => {
       const mockExport = {
         id: 'export-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         format: 'CSV',
         filters: {},
         status: 'COMPLETED',
@@ -119,7 +117,7 @@ describe('ExportService', () => {
         completedAt: new Date(),
       };
 
-      vi.mocked(mockPrisma.audit_exports.findUnique).mockResolvedValue(mockExport);
+      vi.mocked(mockCosmosExports.findUnique).mockResolvedValue(mockExport);
 
       const result = await exportService.getExport('export-1');
 
@@ -128,7 +126,7 @@ describe('ExportService', () => {
     });
 
     it('should return null if export not found', async () => {
-      vi.mocked(mockPrisma.audit_exports.findUnique).mockResolvedValue(null);
+      vi.mocked(mockCosmosExports.findUnique).mockResolvedValue(null);
 
       const result = await exportService.getExport('non-existent');
 
@@ -137,11 +135,11 @@ describe('ExportService', () => {
   });
 
   describe('listExports', () => {
-    it('should list exports for organization', async () => {
+    it('should list exports for tenant', async () => {
       const mockExports = [
         {
           id: 'export-1',
-          organizationId: 'org-1',
+          tenantId: 'org-1',
           format: 'CSV',
           filters: {},
           status: 'COMPLETED',
@@ -151,7 +149,7 @@ describe('ExportService', () => {
         },
       ];
 
-      vi.mocked(mockPrisma.audit_exports.findMany).mockResolvedValue(mockExports);
+      vi.mocked(mockCosmosExports.findMany).mockResolvedValue(mockExports);
 
       const result = await exportService.listExports('org-1');
 

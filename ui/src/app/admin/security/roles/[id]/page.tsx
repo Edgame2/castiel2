@@ -23,7 +23,7 @@ interface PermissionRow {
 
 interface RoleData {
   id: string;
-  organizationId: string | null;
+  tenantId: string | null;
   name: string;
   description: string | null;
   isSystemRole: boolean;
@@ -46,7 +46,7 @@ function RoleDetailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = typeof params?.id === 'string' ? params.id : '';
-  const orgId = searchParams?.get('orgId') ?? '';
+  const tenantId = searchParams?.get('tenantId') ?? '';
 
   const [role, setRole] = useState<RoleData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -71,15 +71,15 @@ function RoleDetailContent() {
   }, []);
 
   const fetchRole = useCallback(async () => {
-    if (!getApiBaseUrl() || !orgId.trim() || !id.trim()) return;
+    if (!getApiBaseUrl() || !tenantId.trim() || !id.trim()) return;
     setLoading(true);
     setError(null);
     setRole(null);
-    const encodedOrg = encodeURIComponent(orgId.trim());
+    const encodedOrg = encodeURIComponent(tenantId.trim());
     const encodedRoleId = encodeURIComponent(id.trim());
     try {
       const res = await apiFetch(
-        `/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`
+        `/api/v1/tenants/${encodedOrg}/roles/${encodedRoleId}`
       );
       if (!res.ok) {
         if (res.status === 404) throw new Error('Role not found');
@@ -94,17 +94,17 @@ function RoleDetailContent() {
     } finally {
       setLoading(false);
     }
-  }, [orgId, id]);
+  }, [tenantId, id]);
 
   const deleteRole = useCallback(async () => {
-    if (!getApiBaseUrl() || !orgId.trim() || !id.trim()) return;
+    if (!getApiBaseUrl() || !tenantId.trim() || !id.trim()) return;
     setDeleting(true);
     setDeleteError(null);
-    const encodedOrg = encodeURIComponent(orgId.trim());
+    const encodedOrg = encodeURIComponent(tenantId.trim());
     const encodedRoleId = encodeURIComponent(id.trim());
     try {
       const res = await apiFetch(
-        `/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`,
+        `/api/v1/tenants/${encodedOrg}/roles/${encodedRoleId}`,
         { method: 'DELETE' }
       );
       if (!res.ok) {
@@ -112,7 +112,7 @@ function RoleDetailContent() {
         const msg = typeof body?.error === 'string' ? body.error : `HTTP ${res.status}`;
         throw new Error(msg);
       }
-      const backUrl = `/admin/security/roles?orgId=${encodeURIComponent(orgId)}`;
+      const backUrl = `/admin/security/roles?tenantId=${encodeURIComponent(tenantId)}`;
       router.push(backUrl);
     } catch (e) {
       if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
@@ -120,10 +120,10 @@ function RoleDetailContent() {
     } finally {
       setDeleting(false);
     }
-  }, [orgId, id, router]);
+  }, [tenantId, id, router]);
 
   const updateRole = useCallback(async () => {
-    if (!getApiBaseUrl() || !orgId.trim() || !id.trim()) return;
+    if (!getApiBaseUrl() || !tenantId.trim() || !id.trim()) return;
     const name = editName.trim();
     if (!name) {
       setSaveError('Name is required');
@@ -131,11 +131,11 @@ function RoleDetailContent() {
     }
     setSaving(true);
     setSaveError(null);
-    const encodedOrg = encodeURIComponent(orgId.trim());
+    const encodedOrg = encodeURIComponent(tenantId.trim());
     const encodedRoleId = encodeURIComponent(id.trim());
     try {
       const res = await apiFetch(
-        `/api/v1/organizations/${encodedOrg}/roles/${encodedRoleId}`,
+        `/api/v1/tenants/${encodedOrg}/roles/${encodedRoleId}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -160,13 +160,13 @@ function RoleDetailContent() {
     } finally {
       setSaving(false);
     }
-  }, [orgId, id, editName, editDescription, editPermissionIds]);
+  }, [tenantId, id, editName, editDescription, editPermissionIds]);
 
   useEffect(() => {
-    if (orgId.trim() && id.trim()) fetchRole();
-  }, [orgId, id, fetchRole]);
+    if (tenantId.trim() && id.trim()) fetchRole();
+  }, [tenantId, id, fetchRole]);
 
-  const backToRolesUrl = orgId ? `/admin/security/roles?orgId=${encodeURIComponent(orgId)}` : '/admin/security/roles';
+  const backToRolesUrl = tenantId ? `/admin/security/roles?tenantId=${encodeURIComponent(tenantId)}` : '/admin/security/roles';
   const apiBaseUrl = getApiBaseUrl();
 
   return (
@@ -220,13 +220,13 @@ function RoleDetailContent() {
       </nav>
       <h1 className="text-2xl font-bold mb-2">Role: {role?.name ?? (id || '—')}</h1>
       <p className="text-muted-foreground mb-6">
-        Organization: {orgId || '—'}. Loaded from user-management.
+        Tenant: {tenantId || '—'}. Loaded from user-management.
       </p>
 
-      {(!orgId.trim() || !id.trim()) && (
+      {(!tenantId.trim() || !id.trim()) && (
         <div className="rounded-lg border bg-amber-50 dark:bg-amber-900/20 p-6 mb-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">
-            Open this page from the Roles list (View) with an organization ID in the query. Missing orgId or role id.
+            Open this page from the Roles list (View) with a tenant ID in the query. Missing tenantId or role id.
           </p>
           <Link href="/admin/security/roles" className="text-sm font-medium text-blue-600 hover:underline mt-2 inline-block">
             Back to Roles
@@ -234,7 +234,7 @@ function RoleDetailContent() {
         </div>
       )}
 
-      {apiBaseUrl && orgId.trim() && id.trim() && (
+      {apiBaseUrl && tenantId.trim() && id.trim() && (
         <>
           {!loading && !role && !error && (
             <div className="rounded-lg border bg-white dark:bg-gray-900 p-4 mb-4">
@@ -334,10 +334,10 @@ function RoleDetailContent() {
                             onClick={async () => {
                               setSaveError(null);
                               setPermissionsLoading(true);
-                              const encodedOrg = encodeURIComponent(orgId.trim());
+                              const encodedOrg = encodeURIComponent(tenantId.trim());
                               try {
                                 const res = await apiFetch(
-                                  `/api/v1/organizations/${encodedOrg}/permissions`
+                                  `/api/v1/tenants/${encodedOrg}/permissions`
                                 );
                                 if (!res.ok) throw new Error(`Permissions: HTTP ${res.status}`);
                                 const json: { data?: PermissionRow[] } = await res.json();
@@ -417,7 +417,7 @@ function RoleDetailContent() {
         </>
       )}
 
-      {!apiBaseUrl && orgId.trim() && id.trim() && (
+      {!apiBaseUrl && tenantId.trim() && id.trim() && (
         <div className="rounded-lg border p-6 bg-amber-50 dark:bg-amber-900/20 mb-4">
           <p className="text-sm text-amber-800 dark:text-amber-200">Set NEXT_PUBLIC_API_BASE_URL to the API gateway URL.</p>
         </div>

@@ -4,14 +4,13 @@
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaClient } from '.prisma/logging-client';
 import { log } from '../utils/logger';
 
 export interface AuthenticatedUser {
   id: string;
   email: string;
   name?: string;
-  organizationId?: string;
+  tenantId?: string;
 }
 
 /**
@@ -30,30 +29,21 @@ export async function authenticateRequest(
       return;
     }
 
-    // Verify JWT token
-    let decoded: { userId: string; email: string; organizationId?: string };
+    // Verify JWT token (tenant-only; gateway sets tenantId in token)
+    let decoded: { userId: string; email: string; tenantId?: string };
     try {
-      decoded = (request.server as any).jwt.verify(token) as { userId: string; email: string; organizationId?: string };
+      decoded = (request.server as any).jwt.verify(token) as { userId: string; email: string; tenantId?: string };
     } catch (verifyError: any) {
       log.error('Token verification failed', verifyError);
       reply.code(401).send({ error: 'Invalid or expired token' });
       return;
     }
-    
-    // Get Prisma client from app (attached in server.ts)
-    const prisma = (request.server as any).prisma as PrismaClient;
-    
-    // Note: Logging service doesn't have a user table - user data comes from JWT
-    // In a production system, you might want to call user-management service to verify user
-    // For now, we trust the JWT token (already verified above)
-    // If Prisma is not available, we still proceed with JWT data
-    
-    // Attach user to request from JWT (trusted after verification)
+
     (request as any).user = {
       id: decoded.userId,
       email: decoded.email,
-      name: undefined, // Not available in JWT, would need to call user-management service
-      organizationId: decoded.organizationId,
+      name: undefined,
+      tenantId: decoded.tenantId,
     } as AuthenticatedUser;
   } catch (error: any) {
     log.error('Unexpected authentication error', error);

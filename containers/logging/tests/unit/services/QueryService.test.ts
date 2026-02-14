@@ -14,15 +14,15 @@ describe('QueryService', () => {
   
   const defaultContext: QueryContext = {
     userId: 'user-1',
-    organizationId: 'org-1',
-    canAccessCrossOrg: false,
+    tenantId: 'org-1',
+    canAccessCrossTenant: false,
     ownActivityOnly: false,
   };
   
   const superAdminContext: QueryContext = {
     userId: 'admin-1',
-    organizationId: 'org-1',
-    canAccessCrossOrg: true,
+    tenantId: 'org-1',
+    canAccessCrossTenant: true,
     ownActivityOnly: false,
   };
 
@@ -45,7 +45,7 @@ describe('QueryService', () => {
   });
 
   describe('search', () => {
-    it('should perform a search query with organization isolation', async () => {
+    it('should perform a search query with tenant isolation', async () => {
       const params: LogSearchParams = {
         query: 'login',
         limit: 50,
@@ -63,10 +63,9 @@ describe('QueryService', () => {
       const result = await queryService.search(params, defaultContext);
 
       expect(result).toBeDefined();
-      // Should have added organizationId from context
       expect(mockStorage.search).toHaveBeenCalledWith(
         expect.objectContaining({
-          organizationId: 'org-1',
+          tenantId: 'org-1',
         })
       );
     });
@@ -91,17 +90,17 @@ describe('QueryService', () => {
 
       expect(mockStorage.search).toHaveBeenCalledWith(
         expect.objectContaining({
-          organizationId: 'org-1',
+          tenantId: 'org-1',
           category: LogCategory.SECURITY,
           severity: LogSeverity.WARN,
         })
       );
     });
     
-    it('should allow cross-org access for super admin', async () => {
+    it('should allow cross-tenant access for super admin', async () => {
       const params: LogSearchParams = {
         query: 'login',
-        organizationId: 'other-org', // Explicitly querying another org
+        tenantId: 'other-org',
       };
 
       const mockResults = {
@@ -114,17 +113,16 @@ describe('QueryService', () => {
 
       await queryService.search(params, superAdminContext);
 
-      // Super admin should be able to query other orgs
       expect(mockStorage.search).toHaveBeenCalledWith(
         expect.objectContaining({
-          organizationId: 'other-org',
+          tenantId: 'other-org',
         })
       );
     });
   });
 
   describe('aggregate', () => {
-    it('should aggregate logs by field with organization isolation', async () => {
+    it('should aggregate logs by field with tenant isolation', async () => {
       const params = {
         field: 'category' as const,
       };
@@ -145,7 +143,7 @@ describe('QueryService', () => {
       expect(result.buckets).toHaveLength(2);
       expect(mockStorage.aggregate).toHaveBeenCalledWith(
         expect.objectContaining({
-          organizationId: 'org-1',
+          tenantId: 'org-1',
         })
       );
     });
@@ -172,7 +170,7 @@ describe('QueryService', () => {
   });
 
   describe('count', () => {
-    it('should count logs with organization isolation', async () => {
+    it('should count logs with tenant isolation', async () => {
       vi.mocked(mockStorage.count).mockResolvedValue(100);
 
       const result = await queryService.count({}, defaultContext);
@@ -180,7 +178,7 @@ describe('QueryService', () => {
       expect(result).toBe(100);
       expect(mockStorage.count).toHaveBeenCalledWith(
         expect.objectContaining({
-          organizationId: 'org-1',
+          tenantId: 'org-1',
         })
       );
     });
@@ -190,7 +188,7 @@ describe('QueryService', () => {
     it('should get a log by ID with access control', async () => {
       const mockLog = {
         id: 'log-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         action: 'user.login',
       };
 
@@ -202,10 +200,10 @@ describe('QueryService', () => {
       expect(result?.id).toBe('log-1');
     });
 
-    it('should return null for log from different organization', async () => {
+    it('should return null for log from different tenant', async () => {
       const mockLog = {
         id: 'log-1',
-        organizationId: 'other-org', // Different org
+        tenantId: 'other-org',
         action: 'user.login',
       };
 
@@ -213,14 +211,13 @@ describe('QueryService', () => {
 
       const result = await queryService.getById('log-1', defaultContext);
 
-      // Should not return log from different org
       expect(result).toBeNull();
     });
 
     it('should allow super admin to access any log', async () => {
       const mockLog = {
         id: 'log-1',
-        organizationId: 'other-org',
+        tenantId: 'other-org',
         action: 'user.login',
       };
 

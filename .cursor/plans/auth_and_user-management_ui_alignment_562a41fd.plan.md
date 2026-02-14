@@ -7,7 +7,7 @@ isProject: false
 
 # Auth and User-Management UI / Gateway / Service Alignment
 
-**Status:** §1 Done (middleware allows `/api` in ui/middleware.ts). §5 Done (admin security pages use `/api/v1/organizations/...`; users, roles, roles/[id], api-keys verified). §3 In use (getApiBaseUrl/apiFetch in admin security). §2 Rewrites: next.config has empty rewrites; API calls use gateway URL via NEXT_PUBLIC_API_BASE_URL.
+**Status:** §1 Done (middleware allows `/api`). §2 Done (next.config rewrites: when NEXT_PUBLIC_API_BASE_URL set, `/api/users/:path*` → gateway). §3 In use (getApiBaseUrl/apiFetch). §5 Done (admin security use `/api/v1/organizations/...`). §7 Done (README documents auth/user-management require gateway URL; production public URL note).
 
 ---
 

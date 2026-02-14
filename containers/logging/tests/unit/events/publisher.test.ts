@@ -65,7 +65,7 @@ describe('Event Publisher', () => {
       await publishAlertTriggered({
         ruleId: 'rule-1',
         ruleName: 'Test Rule',
-        organizationId: 'org-1',
+        tenantId: 'tenant-1',
         triggeredAt: new Date(),
         matchCount: 5,
         conditions: { action: 'failed.login' },

@@ -41,7 +41,7 @@
 
 ## Section 7 (this session)
 - Audited data-fetching pages: recommendations, conversations, settings/integrations, recommendations/[id], admin/security/users, dashboard cards (RecommendedTodayCard, etc.) already have loading and empty states.
-- Admin Security Users: added explicit loading block (“Loading member summary…”) when loading && orgId; added empty state when members.length === 0 (“No members in this organization.”).
+- Admin Security Users: added explicit loading block (“Loading member summary…”) when loading && tenantId; added empty state when members.length === 0 (“No members for this tenant.”).
 
 ## Section 8 (this session)
 - Login: added visible required indicator (*) for Email and Password (already had Label+id and required).
@@ -95,3 +95,33 @@ Work completed to align the UI with `documentation/ui/requirements.md` and `docu
 - **Access levels:** Added `documentation/ui/access-levels.md` (Tenant Admin vs Super Admin, how access is enforced); `pages.md` references it.
 - **Types:** Removed `any` in field-mappings (FieldMappingTestResult); fixed variable shadowing (response `data` → `json`) and login schema type in auth forms.
 - **Verification:** `npm run typecheck` in `ui` passes. Build compiles and generates static pages (114/114).
+
+---
+
+## Container test verification (session)
+
+Full test suites run and passed (no regressions):
+
+| Container           | Tests |
+|--------------------|-------|
+| api-gateway        | 47    |
+| auth               | 168   |
+| user-management    | 66    |
+| logging            | 157   |
+| risk-analytics     | 17    |
+| prompt-service     | 31    |
+| validation-engine  | 33    |
+| security-scanning  | 24    |
+| recommendations    | 37    |
+| reasoning-engine   | 7 (integration) |
+| workflow-orchestrator | 6 (integration) |
+| data-enrichment    | 5 (integration) |
+| forecasting        | 7 (integration) |
+| quality-monitoring | 4 (integration) |
+| pattern-recognition| 11 (integration) |
+| llm-service        | 7 (integration) |
+| learning-service   | 7 (integration) |
+| integration-processors | 136 |
+| adaptive-learning      | 73  |
+
+Additional fixes this session: risk-analytics integration tests aligned with `POST /api/v1/risk/evaluations`; body validation and 400 test added; Auth api-keys and Risk Analytics methodology marked verified in Implement All Endpoints plan; ML service endpoints schema `security: [{ bearerAuth: [] }]` added; recommendations integration tests fixed (PolicyResolver mock in setup.ts); adaptive-learning learning-paths integration test fixed (correct paths `/api/v1/adaptive-learning/paths`, mock buildApp returning minimal app so tests run without RABBITMQ). UI typecheck and build verified.

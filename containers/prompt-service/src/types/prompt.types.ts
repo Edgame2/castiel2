@@ -193,7 +193,6 @@ export interface CreatePromptTemplateInput {
   category?: string;
   content: string;
   variables?: PromptVariable[];
-  organizationId?: string;
   tags?: string[];
   metadata?: Record<string, any>;
 }
@@ -219,7 +218,6 @@ export interface RenderPromptInput {
   tenantId: string;
   slug: string;
   variables: Record<string, any>;
-  organizationId?: string;
   version?: number; // Specific version, or latest if not specified
 }
 

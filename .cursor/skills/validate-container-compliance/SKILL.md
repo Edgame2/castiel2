@@ -30,11 +30,14 @@ Reference: .cursorrules (Core Principles), ModuleImplementationGuide.md Section 
 
 ### 2. Tenant Isolation
 
+Use **tenantId only**; there is no organization. Do not use `organizationId` in routes, types, API schemas, or database queries.
+
 Verify:
-- ✅ All database queries include `tenantId` in partition key
+- ✅ All database queries include `tenantId` in partition key (no `organizationId` in WHERE or documents)
 - ✅ Routes use `authenticateRequest()` and `tenantEnforcementMiddleware()` in preHandler
-- ✅ Routes access tenantId via `request.user!.tenantId`
+- ✅ Routes access tenantId via `request.user!.tenantId` (not `organizationId`)
 - ✅ Service-to-service calls include `X-Tenant-ID` header
+- ❌ No `organizationId` in request/response types, query params, or event payloads
 
 **Database Query Pattern:**
 ```typescript
@@ -77,7 +80,7 @@ Reference: ModuleImplementationGuide.md Section 9.1
 ### 4a. Events: RabbitMQ Only and tenantId
 
 - ✅ No Azure Service Bus, Event Grid, or other message brokers; **RabbitMQ only** for events and job triggers
-- ✅ Events and `createBaseEvent` use **tenantId** for tenant context (prefer over organizationId)
+- ✅ Events and `createBaseEvent` use **tenantId** only for tenant context (no organization)
 - ✅ Batch job triggers: `workflow.job.trigger`; workers consume from a queue (e.g. `bi_batch_jobs`)
 
 Reference: .cursorrules (Platform Conventions), ModuleImplementationGuide.md §9.1, §9.6
@@ -212,6 +215,9 @@ grep -r "port.*[0-9]\{4\}" src/ --exclude-dir=node_modules
 # Check database queries for tenantId
 grep -r "SELECT.*FROM.*WHERE" src/ --exclude-dir=node_modules | grep -v tenantId
 
+# Flag organizationId (tenant-only: use tenantId only)
+grep -rn "organizationId" src/ --exclude-dir=node_modules
+
 # Check event naming
 grep -r "publish\|emit" src/ --exclude-dir=node_modules
 ```
@@ -219,7 +225,7 @@ grep -r "publish\|emit" src/ --exclude-dir=node_modules
 ## Quick Validation
 
 1. **No hardcoded values**: All config from YAML/env vars
-2. **Tenant isolation**: All queries include tenantId; events use tenantId
+2. **Tenant isolation**: All queries include tenantId; events use tenantId; no organizationId (tenant-only)
 3. **Required files**: All Section 3.2 files present
 4. **Directory structure**: Matches Section 3.1
 5. **Error handling**: Uses AppError

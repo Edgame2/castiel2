@@ -28,9 +28,8 @@ containers:
     partitionKey: /tenantId
   - id: auth_mfa_secrets
     partitionKey: /tenantId
+  # user-management: tenant-scoped only; no organization container
   - id: user_users
-    partitionKey: /tenantId
-  - id: user_organizations
     partitionKey: /tenantId
   - id: user_teams
     partitionKey: /tenantId

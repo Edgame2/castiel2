@@ -5,7 +5,7 @@
  */
 
 import { getDatabaseClient } from '@coder/shared';
-import { NotificationInput, NotificationChannel } from '../types/notification';
+import { NotificationInput, NotificationChannel, EventCategory } from '../types/notification';
 import { NotificationEngine } from './NotificationEngine';
 import { getConfig } from '../config/index.js';
 
@@ -19,7 +19,7 @@ export interface EscalationLevel {
 
 export interface EscalationChain {
   id: string;
-  organizationId: string;
+  tenantId: string;
   name: string;
   levels: EscalationLevel[];
   enabled: boolean;
@@ -84,7 +84,7 @@ export class EscalationManager {
    * Escalate notification to a specific level
    */
   private async escalateToLevel(
-    notification: any,
+    notification: { id: string; tenantId?: string; organizationId?: string; [k: string]: unknown },
     levelConfig: EscalationLevel,
     level: number
   ): Promise<void> {
@@ -96,25 +96,26 @@ export class EscalationManager {
       },
     });
 
-    // Create escalated notification
+    // Create escalated notification (notification from DB has [k: string]: unknown)
+    const n = notification as Record<string, unknown>;
     const escalatedInput: NotificationInput = {
-      organizationId: notification.organizationId,
-      eventType: `${notification.eventType}.escalated`,
-      eventCategory: notification.eventCategory as any,
-      sourceModule: notification.sourceModule,
-      sourceResourceId: notification.sourceResourceId,
-      sourceResourceType: notification.sourceResourceType,
-      recipientId: notification.recipientId, // Can be overridden by levelConfig
-      recipientEmail: notification.recipientEmail,
-      recipientPhone: notification.recipientPhone,
-      title: levelConfig.message || notification.title,
-      body: levelConfig.message || notification.body,
-      bodyHtml: notification.bodyHtml,
+      tenantId: (notification.tenantId ?? (notification as { organizationId?: string }).organizationId) ?? '',
+      eventType: `${String(n.eventType ?? '')}.escalated`,
+      eventCategory: (n.eventCategory as EventCategory | undefined) ?? 'SYSTEM_ADMIN',
+      sourceModule: String(n.sourceModule ?? ''),
+      sourceResourceId: n.sourceResourceId != null ? String(n.sourceResourceId) : undefined,
+      sourceResourceType: n.sourceResourceType != null ? String(n.sourceResourceType) : undefined,
+      recipientId: String(n.recipientId ?? ''),
+      recipientEmail: n.recipientEmail != null ? String(n.recipientEmail) : undefined,
+      recipientPhone: n.recipientPhone != null ? String(n.recipientPhone) : undefined,
+      title: levelConfig.message ?? String(n.title ?? ''),
+      body: levelConfig.message ?? String(n.body ?? ''),
+      bodyHtml: n.bodyHtml != null ? String(n.bodyHtml) : undefined,
       criticality: 'HIGH', // Escalations are always high priority
       channelsRequested: levelConfig.channels,
-      teamId: notification.teamId,
-      projectId: notification.projectId,
-      escalationChainId: notification.escalationChainId,
+      teamId: n.teamId != null ? String(n.teamId) : undefined,
+      projectId: n.projectId != null ? String(n.projectId) : undefined,
+      escalationChainId: n.escalationChainId != null ? String(n.escalationChainId) : undefined,
       deduplicationKey: `${notification.id}-escalation-${level}`,
     };
 
@@ -146,7 +147,7 @@ export class EscalationManager {
 
     return {
       id: chain.id,
-      organizationId: chain.organizationId,
+      tenantId: (chain as { tenantId?: string }).tenantId ?? (chain as { organizationId?: string }).organizationId,
       name: chain.name,
       levels: chain.levels as any as EscalationLevel[],
       enabled: chain.enabled,
@@ -157,14 +158,14 @@ export class EscalationManager {
    * Create escalation chain
    */
   async createEscalationChain(
-    organizationId: string,
+    tenantId: string,
     name: string,
     levels: EscalationLevel[],
     description?: string
   ): Promise<EscalationChain> {
     const chain = await this.db.notification_escalation_chains.create({
       data: {
-        organizationId,
+        tenantId,
         name,
         description: description || null,
         levels: levels as any,
@@ -174,7 +175,7 @@ export class EscalationManager {
 
     return {
       id: chain.id,
-      organizationId: chain.organizationId,
+      tenantId: (chain as { tenantId?: string }).tenantId ?? (chain as { organizationId?: string }).organizationId,
       name: chain.name,
       levels: chain.levels as any as EscalationLevel[],
       enabled: chain.enabled,

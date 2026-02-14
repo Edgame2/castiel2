@@ -20,7 +20,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
       const query = request.query as any;
       
       const templates = await templateService.listTemplates({
-        organizationId: query.organizationId || user.organizationId,
+        tenantId: query.tenantId || user.tenantId,
         eventType: query.eventType,
         channel: query.channel as NotificationChannel | undefined,
         locale: query.locale,
@@ -56,7 +56,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
       const body = request.body as any;
       
       const template = await templateService.createTemplate({
-        organizationId: body.organizationId || user.organizationId,
+        tenantId: body.tenantId || user.tenantId,
         name: body.name,
         eventType: body.eventType,
         channel: body.channel,

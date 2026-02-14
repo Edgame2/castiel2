@@ -49,7 +49,7 @@ describe('LocalBuffer', () => {
     it('should add a log to buffer', async () => {
       const log: AuditLog = {
         id: 'log-1',
-        organizationId: 'org-1',
+        tenantId: 'tenant-1',
         timestamp: new Date(),
         receivedAt: new Date(),
         action: 'user.login',
@@ -79,7 +79,7 @@ describe('LocalBuffer', () => {
     it('should flush when buffer is full', async () => {
       const log: AuditLog = {
         id: 'log-1',
-        organizationId: 'org-1',
+        tenantId: 'tenant-1',
         timestamp: new Date(),
         receivedAt: new Date(),
         action: 'user.login',
@@ -120,7 +120,7 @@ describe('LocalBuffer', () => {
     it('should add multiple logs to buffer', async () => {
       const logs: AuditLog[] = Array(5).fill(null).map((_, i) => ({
         id: `log-${i}`,
-        organizationId: 'org-1',
+        tenantId: 'tenant-1',
         timestamp: new Date(),
         receivedAt: new Date(),
         action: 'user.login',
@@ -152,7 +152,7 @@ describe('LocalBuffer', () => {
     it('should flush buffer to disk', async () => {
       const log: AuditLog = {
         id: 'log-1',
-        organizationId: 'org-1',
+        tenantId: 'tenant-1',
         timestamp: new Date(),
         receivedAt: new Date(),
         action: 'user.login',
@@ -196,7 +196,7 @@ describe('LocalBuffer', () => {
     it('should load logs from disk buffer', async () => {
       const logContent = JSON.stringify({
         id: 'log-1',
-        organizationId: 'org-1',
+        tenantId: 'tenant-1',
         action: 'user.login',
       });
 
@@ -241,7 +241,7 @@ describe('LocalBuffer', () => {
     it('should return current buffer size', async () => {
       const log: AuditLog = {
         id: 'log-1',
-        organizationId: 'org-1',
+        tenantId: 'tenant-1',
         timestamp: new Date(),
         receivedAt: new Date(),
         action: 'user.login',

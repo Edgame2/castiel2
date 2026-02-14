@@ -62,7 +62,7 @@ The AI Service module publishes the following events to the `coder.events` excha
     "tenantId": {
       "type": "string",
       "format": "uuid",
-      "description": "Tenant ID (organizationId)"
+      "description": "Tenant ID"
     },
     "source": {
       "type": "object",
@@ -75,7 +75,7 @@ The AI Service module publishes the following events to the `coder.events` excha
     },
     "data": {
       "type": "object",
-      "required": ["requestId", "model", "organizationId", "userId"],
+      "required": ["requestId", "model", "tenantId", "userId"],
       "properties": {
         "requestId": {
           "type": "string",
@@ -85,10 +85,10 @@ The AI Service module publishes the following events to the `coder.events` excha
           "type": "string",
           "description": "AI model used (e.g., gpt-4, claude-3)"
         },
-        "organizationId": {
+        "tenantId": {
           "type": "string",
           "format": "uuid",
-          "description": "Organization ID"
+          "description": "Tenant ID"
         },
         "userId": {
           "type": "string",
@@ -116,7 +116,7 @@ The AI Service module publishes the following events to the `coder.events` excha
   "data": {
     "requestId": "req_1234567890",
     "model": "gpt-4",
-    "organizationId": "123e4567-e89b-12d3-a456-426614174000",
+    "tenantId": "123e4567-e89b-12d3-a456-426614174000",
     "userId": "456e7890-e89b-12d3-a456-426614174002"
   }
 }
@@ -176,7 +176,7 @@ The AI Service module publishes the following events to the `coder.events` excha
     },
     "data": {
       "type": "object",
-      "required": ["requestId", "model", "tokensUsed", "durationMs", "organizationId"],
+      "required": ["requestId", "model", "tokensUsed", "durationMs", "tenantId"],
       "properties": {
         "requestId": {
           "type": "string"
@@ -192,7 +192,7 @@ The AI Service module publishes the following events to the `coder.events` excha
           "type": "integer",
           "description": "Request duration in milliseconds"
         },
-        "organizationId": {
+        "tenantId": {
           "type": "string",
           "format": "uuid"
         }
@@ -219,7 +219,7 @@ The AI Service module publishes the following events to the `coder.events` excha
     "model": "gpt-4",
     "tokensUsed": 150,
     "durationMs": 2500,
-    "organizationId": "123e4567-e89b-12d3-a456-426614174000"
+    "tenantId": "123e4567-e89b-12d3-a456-426614174000"
   }
 }
 ```
@@ -279,7 +279,7 @@ The AI Service module publishes the following events to the `coder.events` excha
     },
     "data": {
       "type": "object",
-      "required": ["requestId", "model", "error", "durationMs", "organizationId"],
+      "required": ["requestId", "model", "error", "durationMs", "tenantId"],
       "properties": {
         "requestId": {
           "type": "string"
@@ -295,7 +295,7 @@ The AI Service module publishes the following events to the `coder.events` excha
           "type": "integer",
           "description": "Request duration in milliseconds before failure"
         },
-        "organizationId": {
+        "tenantId": {
           "type": "string",
           "format": "uuid"
         }
@@ -322,7 +322,7 @@ The AI Service module publishes the following events to the `coder.events` excha
     "model": "gpt-4",
     "error": "Rate limit exceeded",
     "durationMs": 1000,
-    "organizationId": "123e4567-e89b-12d3-a456-426614174000"
+    "tenantId": "123e4567-e89b-12d3-a456-426614174000"
   }
 }
 ```

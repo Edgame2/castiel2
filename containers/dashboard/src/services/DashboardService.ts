@@ -48,19 +48,19 @@ export class DashboardService {
     });
   }
 
-  async createDashboard(input: { name: string; config?: any; organizationId?: string }) {
+  async createDashboard(input: { name: string; config?: any; tenantId?: string }) {
     return await this.db.dashboard_dashboards.create({
       data: {
         name: input.name,
         config: input.config,
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
       },
     });
   }
 
-  async listDashboards(input: { organizationId?: string }) {
+  async listDashboards(input: { tenantId?: string }) {
     const where: any = {};
-    if (input.organizationId) where.organizationId = input.organizationId;
+    if (input.tenantId) where.tenantId = input.tenantId;
     return await this.db.dashboard_dashboards.findMany({ where });
   }
 

@@ -31,43 +31,23 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
       preHandler: [
         authenticateRequest,
         async (request: FastifyRequest, reply: FastifyReply) => {
-          // Get organizationId from body or user's active organization membership
+          // Get tenantId from body or request context (tenant-only)
           const body = request.body as any;
           const userId = (request as any).user?.id;
-          
+
           if (!userId) {
             reply.code(401).send({ error: 'Not authenticated' });
             return;
           }
 
-          let organizationId = body?.organizationId;
-          
-          // If not in body, get from user's active organization membership
-          if (!organizationId) {
-            const db = getDatabaseClient() as unknown as {
-              organizationMembership: { findFirst: (args: unknown) => Promise<{ organizationId: string } | null> };
-            };
-            const membership = await db.organizationMembership.findFirst({
-              where: {
-                userId,
-                status: 'active',
-              },
-              orderBy: { joinedAt: 'desc' },
-              select: { organizationId: true },
-            });
-            
-            if (membership) {
-              organizationId = membership.organizationId;
-            }
-          }
+          const tenantId = body?.tenantId ?? (request as any).tenantId;
 
-          if (!organizationId) {
-            reply.code(400).send({ error: 'Organization context required. Please select an organization or provide organizationId in request.' });
+          if (!tenantId) {
+            reply.code(400).send({ error: 'Tenant context required. Provide tenantId in body or use a session with tenant context.' });
             return;
           }
 
-          // Set organizationId on request for permission check
-          (request as any).organizationId = organizationId;
+          (request as any).tenantId = tenantId;
         },
         requirePermission('teams.team.create'),
       ],
@@ -78,7 +58,7 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
           name: string;
           description?: string;
           parentTeamId?: string;
-          organizationId?: string;
+          tenantId?: string;
         };
       }>,
       reply: FastifyReply
@@ -91,7 +71,7 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
         }
 
         const { name, description, parentTeamId } = request.body;
-        const organizationId = (request as any).organizationId as string;
+        const tenantId = (request as any).tenantId as string;
 
         if (!name || name.trim().length === 0) {
           reply.code(400).send({ error: 'Team name is required' });
@@ -99,7 +79,7 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
         }
 
         const team = await teamService.createTeam(
-          organizationId,
+          tenantId,
           requestUser.id,
           name,
           description,
@@ -109,9 +89,9 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
         // Publish team.created event (logging service will consume it)
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('team.created', requestUser.id, organizationId, undefined, {
+          ...createBaseEvent('team.created', requestUser.id, tenantId, undefined, {
             teamId: team.id,
-            organizationId,
+            tenantId,
             name: team.name,
             parentTeamId: team.parentTeamId || undefined,
             createdBy: requestUser.id,
@@ -156,7 +136,7 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
     (async (
       request: FastifyRequest<{
         Querystring: {
-          organizationId?: string;
+          tenantId?: string;
         };
       }>,
       reply: FastifyReply
@@ -168,9 +148,8 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
           return;
         }
 
-        const { organizationId } = request.query;
-
-        const teams = await teamService.listUserTeams(requestUser.id, organizationId);
+        const tenantId = (request.query as { tenantId?: string }).tenantId ?? (request as any).tenantId ?? (request.headers['x-tenant-id'] as string);
+        const teams = await teamService.listUserTeams(requestUser.id, tenantId);
 
         return { data: teams };
       } catch (error: any) {
@@ -276,9 +255,9 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
         // Publish team.updated event (logging service will consume it)
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('team.updated', requestUser.id, team.organizationId || undefined, undefined, {
+          ...createBaseEvent('team.updated', requestUser.id, team.tenantId ?? undefined, undefined, {
             teamId: team.id,
-            organizationId: team.organizationId || undefined,
+            tenantId: team.tenantId ?? undefined,
             changes: updates,
           }),
           timestamp: new Date().toISOString(),
@@ -352,9 +331,9 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
         // Publish team.deleted event (logging service will consume it)
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('team.deleted', requestUser.id, team.organizationId || undefined, undefined, {
+          ...createBaseEvent('team.deleted', requestUser.id, team.tenantId ?? undefined, undefined, {
             teamId: team.id,
-            organizationId: team.organizationId || undefined,
+            tenantId: team.tenantId ?? undefined,
             name: team.name,
             deletedBy: requestUser.id,
           }),
@@ -423,7 +402,7 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
           return;
         }
 
-        // Get team for organizationId
+        // Get team for tenantId
         const team = await teamService.getTeam(teamId);
         if (!team) {
           reply.code(404).send({ error: 'Team not found' });
@@ -435,9 +414,9 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
         // Publish team.member_added event (logging service will consume it)
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('team.member_added', requestUser.id, team.organizationId || undefined, undefined, {
+          ...createBaseEvent('team.member_added', requestUser.id, team.tenantId ?? undefined, undefined, {
             teamId: team.id,
-            organizationId: team.organizationId || undefined,
+            tenantId: team.tenantId ?? undefined,
             userId,
             role,
             addedBy: requestUser.id,
@@ -498,7 +477,7 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
 
         const { teamId, userId } = request.params;
 
-        // Get team for organizationId
+        // Get team for tenantId
         const team = await teamService.getTeam(teamId);
         if (!team) {
           reply.code(404).send({ error: 'Team not found' });
@@ -510,9 +489,9 @@ export async function setupTeamRoutes(fastify: FastifyInstance): Promise<void> {
         // Publish team.member_removed event (logging service will consume it)
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('team.member_removed', requestUser.id, team.organizationId || undefined, undefined, {
+          ...createBaseEvent('team.member_removed', requestUser.id, team.tenantId ?? undefined, undefined, {
             teamId: team.id,
-            organizationId: team.organizationId || undefined,
+            tenantId: team.tenantId ?? undefined,
             userId,
             removedBy: requestUser.id,
           }),

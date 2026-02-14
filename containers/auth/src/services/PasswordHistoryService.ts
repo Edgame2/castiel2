@@ -180,7 +180,7 @@ export async function setPassword(
     throw new Error('User not found');
   }
   
-  // 2. Validate new password (basic validation; org policy uses organizationId from user context when available)
+  // 2. Validate new password (basic validation; policy uses tenantId from user context when available)
   const { validatePassword: validatePasswordBasic } = await import('../utils/passwordUtils');
   const basicValidation = await validatePasswordBasic(newPassword, {
     email: userInfo?.email || user.email,
@@ -237,7 +237,7 @@ export async function changePasswordWithHistory(
   userId: string,
   oldPassword: string,
   newPassword: string,
-  userInfo?: { email?: string; firstName?: string; lastName?: string; organizationId?: string | null }
+  userInfo?: { email?: string; firstName?: string; lastName?: string; tenantId?: string | null }
 ): Promise<void> {
   const db = getDatabaseClient() as any;
   
@@ -268,12 +268,12 @@ export async function changePasswordWithHistory(
     throw new Error('Current password is incorrect');
   }
   
-  // 2. Validate new password against organization policy
+  // 2. Validate new password against tenant policy
   const { validatePassword: validatePasswordPolicy } = await import('./PasswordPolicyService');
   const policyValidation = await validatePasswordPolicy(
     newPassword,
     userId,
-    userInfo?.organizationId || null
+    userInfo?.tenantId || null
   );
   
   if (!policyValidation.valid) {

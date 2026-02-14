@@ -9,7 +9,6 @@ import { log } from '../utils/logger';
 import { LogCategory, LogSeverity } from '../types';
 
 const createPolicySchema = z.object({
-  organizationId: z.string().optional(),
   category: z.nativeEnum(LogCategory).optional(),
   severity: z.nativeEnum(LogSeverity).optional(),
   retentionDays: z.number().int().positive(),
@@ -46,7 +45,6 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
       body: {
         type: 'object',
         properties: {
-          organizationId: { type: 'string' },
           category: { type: 'string' },
           severity: { type: 'string' },
           retentionDays: { type: 'number' },
@@ -70,10 +68,10 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const body = createPolicySchema.parse(request.body);
 
-      const policy = await retentionService.createPolicy({ ...body, organizationId: body.organizationId ?? tenantId }, user.id);
+      const policy = await retentionService.createPolicy({ ...body, tenantId }, user.id);
 
       reply.code(201).send(policy);
     } catch (error: any) {
@@ -110,7 +108,7 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const { id } = request.params as { id: string };
 
       const policies = await retentionService.listPolicies(tenantId);
@@ -136,9 +134,6 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
       security: [{ bearerAuth: [] }],
       querystring: {
         type: 'object',
-        properties: {
-          organizationId: { type: 'string' },
-        },
       },
       response: {
         200: {
@@ -150,10 +145,9 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
-      const query = request.query as { organizationId?: string };
+      const tenantId = user.tenantId;
 
-      const policies = await retentionService.listPolicies(query.organizationId ?? tenantId);
+      const policies = await retentionService.listPolicies(tenantId);
 
       reply.send({ items: policies, total: policies.length });
     } catch (error: any) {
@@ -199,7 +193,7 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const { id } = request.params as { id: string };
       const body = updatePolicySchema.parse(request.body);
 
@@ -239,7 +233,7 @@ export async function registerPolicyRoutes(app: FastifyInstance): Promise<void> 
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const { id } = request.params as { id: string };
 
       await retentionService.deletePolicy(id, tenantId);

@@ -5,7 +5,7 @@
 
 export enum ConfigurationScope {
   GLOBAL = 'global', // Platform-wide (Super Admin)
-  ORGANIZATION = 'organization', // Organization-level
+  ORGANIZATION = 'organization', // Tenant-level (legacy name; scope is per tenantId)
   TEAM = 'team', // Team-level
   PROJECT = 'project', // Project-level
   ENVIRONMENT = 'environment', // Environment-specific
@@ -30,7 +30,7 @@ export interface ConfigurationSetting {
   value: any; // Configuration value (can be string, number, boolean, object, array)
   valueType: ConfigurationValueType;
   scope: ConfigurationScope;
-  organizationId?: string;
+  organizationId?: string; // Legacy: may exist on existing Cosmos documents
   teamId?: string;
   projectId?: string;
   environmentId?: string;
@@ -71,7 +71,7 @@ export interface ConfigurationGroup {
   category: string; // Category for grouping
   settings: string[]; // Array of configuration setting IDs
   scope: ConfigurationScope;
-  organizationId?: string;
+  organizationId?: string; // Legacy
   teamId?: string;
   projectId?: string;
   environmentId?: string;
@@ -95,7 +95,6 @@ export interface CreateConfigurationSettingInput {
   value: any;
   valueType?: ConfigurationValueType;
   scope: ConfigurationScope;
-  organizationId?: string;
   teamId?: string;
   projectId?: string;
   environmentId?: string;
@@ -143,7 +142,6 @@ export interface BulkUpdateConfigurationSettingsInput {
     key: string;
     value: any;
     scope?: ConfigurationScope;
-    organizationId?: string;
     teamId?: string;
     projectId?: string;
     environmentId?: string;
@@ -157,7 +155,6 @@ export interface GetConfigurationValueInput {
   tenantId: string;
   key: string;
   scope?: ConfigurationScope;
-  organizationId?: string;
   teamId?: string;
   projectId?: string;
   environmentId?: string;

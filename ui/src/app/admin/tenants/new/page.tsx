@@ -1,5 +1,5 @@
 /**
- * Admin: Create tenant (organization) — POST /api/v1/organizations (gateway → user_management).
+ * Admin: Create tenant — POST /api/v1/admin/tenants (gateway → recommendations).
  * Body: name, slug?, description?.
  */
 
@@ -30,7 +30,7 @@ export default function AdminTenantsNewPage() {
     if (!getApiBaseUrl() || !n || submitting) return;
     setError(null);
     setSubmitting(true);
-    apiFetch('/api/v1/organizations', {
+    apiFetch('/api/v1/admin/tenants', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

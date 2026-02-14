@@ -178,7 +178,7 @@ export class LoggingService {
       metadata: {
         ...options?.metadata,
         userId: user?.id,
-        organizationId: user?.organizationId,
+        tenantId: user?.tenantId,
         ipAddress: request.ip,
         userAgent: request.headers['user-agent'],
       },

@@ -1,7 +1,8 @@
 /**
  * Prisma-like adapter over Cosmos DB for auth service.
- * Maps db.user.findUnique/create, db.session.*, db.organization.*, etc. to Cosmos containers.
- * Container names: user_users, user_organizations, user_roles, user_memberships, auth_sessions, etc.
+ * Maps db.user, db.session, db.tenant, db.membership, db.role to Cosmos containers.
+ * Tenant-only: no organization entity; tenantId is the sole scope.
+ * Container names: user_users, user_organizations (as tenant store), user_roles, user_memberships, auth_sessions, etc.
  */
 
 import { getContainer } from '@coder/shared';
@@ -58,7 +59,7 @@ async function queryMany<T>(
 }
 
 export function createCosmosAuthAdapter(): Record<string, unknown> {
-  return {
+  const adapter = {
     $queryRaw: async () => {
       const { getCosmosClient } = await import('@coder/shared');
       const client = getCosmosClient();
@@ -174,7 +175,8 @@ export function createCosmosAuthAdapter(): Record<string, unknown> {
       },
     },
 
-    organization: {
+    /** Tenant (replaces organization). Scope is tenantId only. */
+    tenant: {
       async findUnique(args: { where: { id: string } }): Promise<Record<string, unknown> | null> {
         return queryOne(getOrgs(), {
           query: 'SELECT * FROM c WHERE c.id = @id',
@@ -193,28 +195,33 @@ export function createCosmosAuthAdapter(): Record<string, unknown> {
     },
 
     role: {
-      async findFirst(args: { where: { organizationId: string; name: string; isSystemRole?: boolean } }): Promise<Record<string, unknown> | null> {
+      async findFirst(args: { where: { tenantId?: string; organizationId?: string; name: string; isSystemRole?: boolean } }): Promise<Record<string, unknown> | null> {
+        const where = args.where;
+        const tid = where.tenantId ?? where.organizationId;
+        if (!tid) return null;
         const roles = getRoles();
         return queryOne(roles, {
-          query: 'SELECT * FROM c WHERE c.organizationId = @oid AND c.name = @name AND c.isSystemRole = @sys',
+          query: 'SELECT * FROM c WHERE (c.tenantId = @tid OR c.organizationId = @tid) AND c.name = @name AND c.isSystemRole = @sys',
           parameters: [
-            { name: '@oid', value: args.where.organizationId },
-            { name: '@name', value: args.where.name },
-            { name: '@sys', value: args.where.isSystemRole ?? true },
+            { name: '@tid', value: tid },
+            { name: '@name', value: where.name },
+            { name: '@sys', value: where.isSystemRole ?? true },
           ],
         });
       },
     },
 
-    organizationMembership: {
+    /** Membership by tenantId only (replaces organizationMembership). */
+    membership: {
       async findFirst(args: {
-        where: { userId: string; organizationId?: string; status?: string };
+        where: { userId: string; tenantId?: string; status?: string };
         orderBy?: { joinedAt: string };
         select?: Record<string, boolean>;
         include?: { role?: boolean };
       }): Promise<Record<string, unknown> | null> {
         const where = args?.where;
         if (!where?.userId) return null;
+        const tid = where.tenantId;
         const memberships = getMemberships();
         let query = 'SELECT * FROM c WHERE c.userId = @userId';
         const parameters: SqlParam[] = [{ name: '@userId', value: where.userId }];
@@ -222,9 +229,9 @@ export function createCosmosAuthAdapter(): Record<string, unknown> {
           query += ' AND c.status = @status';
           parameters.push({ name: '@status', value: where.status });
         }
-        if (where.organizationId) {
-          query += ' AND c.organizationId = @orgId';
-          parameters.push({ name: '@orgId', value: where.organizationId });
+        if (tid) {
+          query += ' AND (c.tenantId = @tid OR c.organizationId = @tid)';
+          parameters.push({ name: '@tid', value: tid });
         }
         if (args?.orderBy?.joinedAt === 'asc') {
           query += ' ORDER BY c.joinedAt ASC';
@@ -238,17 +245,18 @@ export function createCosmosAuthAdapter(): Record<string, unknown> {
           });
           if (role) first.role = role;
         }
-        if (first && args?.select?.organizationId) {
-          return { organizationId: first.organizationId };
+        if (first && args?.select?.tenantId) {
+          return { tenantId: first.tenantId ?? first.organizationId };
         }
         return first;
       },
       async create(args: { data: Record<string, unknown> }): Promise<Record<string, unknown>> {
         const id = randomUUID();
-        const orgId = (args.data.organizationId as string) ?? '';
+        const tid = (args.data.tenantId as string) ?? '';
         const doc = {
           id,
-          partitionKey: orgId,
+          partitionKey: tid,
+          tenantId: tid,
           ...args.data,
           joinedAt: (args.data.joinedAt as Date) ?? new Date(),
         };
@@ -299,5 +307,8 @@ export function createCosmosAuthAdapter(): Record<string, unknown> {
         return 0;
       },
     },
-  } as Record<string, unknown>;
+  };
+  (adapter as Record<string, unknown>).organization = adapter.tenant;
+  (adapter as Record<string, unknown>).organizationMembership = adapter.membership;
+  return adapter as Record<string, unknown>;
 }

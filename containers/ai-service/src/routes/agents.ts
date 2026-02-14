@@ -25,7 +25,6 @@ export async function agentRoutes(fastify: FastifyInstance) {
       const agents = await agentService.listAgents({
         tenantId,
         userId: user.id,
-        organizationId: user.organizationId,
         projectId: query.projectId,
         scope: query.scope,
         limit: query.limit ? parseInt(query.limit, 10) : 50,
@@ -71,7 +70,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
       const execution = await agentService.executeAgent({
         agentId: id,
         userId: user.id,
-        organizationId: user.organizationId,
+        tenantId: user.tenantId,
         input: body.input,
         context: body.context,
       });

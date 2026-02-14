@@ -1,7 +1,7 @@
 /**
  * API Key Service
- * Super Admin §10.3 – list, create, revoke, rotate API keys per organization.
- * Stores keys in Cosmos container user_api_keys; partition key tenantId = organizationId.
+ * Super Admin §10.3 – list, create, revoke, rotate API keys per tenant.
+ * Stores keys in Cosmos container user_api_keys; partition key tenantId.
  * Raw key returned only once on create/rotate; stored value is SHA-256 hash.
  */
 
@@ -34,7 +34,6 @@ export interface ApiKeyCreated {
 interface ApiKeyDoc {
   id: string;
   tenantId: string;
-  organizationId: string;
   name: string;
   keyHash: string;
   scope?: string;
@@ -62,16 +61,16 @@ function toSummary(doc: ApiKeyDoc): ApiKeySummary {
 }
 
 /**
- * List API keys for an organization (no raw keys).
+ * List API keys for a tenant (no raw keys).
  */
-export async function listApiKeys(organizationId: string): Promise<ApiKeySummary[]> {
+export async function listApiKeys(tenantId: string): Promise<ApiKeySummary[]> {
   const container = getApiKeysContainer();
-  const queryOptions = { partitionKey: organizationId };
+  const queryOptions = { partitionKey: tenantId };
   const { resources } = await container.items
     .query(
       {
-        query: 'SELECT * FROM c WHERE c.organizationId = @oid ORDER BY c.createdAt DESC',
-        parameters: [{ name: '@oid', value: organizationId }],
+        query: 'SELECT * FROM c WHERE c.tenantId = @tid ORDER BY c.createdAt DESC',
+        parameters: [{ name: '@tid', value: tenantId }],
       },
       queryOptions as Parameters<typeof container.items.query>[1]
     )
@@ -83,7 +82,7 @@ export async function listApiKeys(organizationId: string): Promise<ApiKeySummary
  * Create an API key. Returns raw key only once; store it securely.
  */
 export async function createApiKey(
-  organizationId: string,
+  tenantId: string,
   input: { name: string; scope?: string; expiresAt?: string },
   createdBy: string
 ): Promise<ApiKeyCreated> {
@@ -94,8 +93,7 @@ export async function createApiKey(
   const id = `${ID_PREFIX}${now.replace(/\D/g, '').slice(-14)}_${randomBytes(4).toString('hex')}`;
   const doc: ApiKeyDoc = {
     id,
-    tenantId: organizationId,
-    organizationId,
+    tenantId,
     name: input.name.trim(),
     keyHash,
     scope: input.scope?.trim() || undefined,
@@ -103,8 +101,8 @@ export async function createApiKey(
     createdBy,
     createdAt: now,
   };
-  await container.items.create(doc, { partitionKey: organizationId } as Parameters<typeof container.items.create>[1]);
-  log.info('API key created', { service: 'user-management', organizationId, keyId: id, createdBy });
+  await container.items.create(doc, { partitionKey: tenantId } as Parameters<typeof container.items.create>[1]);
+  log.info('API key created', { service: 'user-management', tenantId, keyId: id, createdBy });
   return {
     id: doc.id,
     name: doc.name,
@@ -118,12 +116,12 @@ export async function createApiKey(
 /**
  * Revoke (delete) an API key.
  */
-export async function revokeApiKey(organizationId: string, keyId: string): Promise<void> {
+export async function revokeApiKey(tenantId: string, keyId: string): Promise<void> {
   const container = getApiKeysContainer();
   const id = keyId.startsWith(ID_PREFIX) ? keyId : `${ID_PREFIX}${keyId}`;
   try {
-    await container.item(id, organizationId).delete();
-    log.info('API key revoked', { service: 'user-management', organizationId, keyId: id });
+    await container.item(id, tenantId).delete();
+    log.info('API key revoked', { service: 'user-management', tenantId, keyId: id });
   } catch (err: unknown) {
     const code = (err as { code?: number })?.code;
     if (code === 404) throw new Error('API key not found');
@@ -135,13 +133,13 @@ export async function revokeApiKey(organizationId: string, keyId: string): Promi
  * Rotate an API key: replace with new secret, return raw key once.
  */
 export async function rotateApiKey(
-  organizationId: string,
+  tenantId: string,
   keyId: string,
   rotatedBy: string
 ): Promise<{ key: string; expiresAt?: string; createdAt: string }> {
   const container = getApiKeysContainer();
   const id = keyId.startsWith(ID_PREFIX) ? keyId : `${ID_PREFIX}${keyId}`;
-  const { resource: existing } = await container.item(id, organizationId).read();
+  const { resource: existing } = await container.item(id, tenantId).read();
   if (!existing) throw new Error('API key not found');
   const doc = existing as ApiKeyDoc;
   const rawKey = randomBytes(32).toString('hex');
@@ -153,7 +151,7 @@ export async function rotateApiKey(
     lastUsedAt: undefined,
     createdAt: now,
   };
-  await container.item(id, organizationId).replace(updated);
-  log.info('API key rotated', { service: 'user-management', organizationId, keyId: id, rotatedBy });
+  await container.item(id, tenantId).replace(updated);
+  log.info('API key rotated', { service: 'user-management', tenantId, keyId: id, rotatedBy });
   return { key: rawKey, expiresAt: doc.expiresAt, createdAt: now };
 }

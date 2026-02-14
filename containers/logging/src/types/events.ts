@@ -4,7 +4,7 @@
  */
 
 /**
- * Base domain event structure
+ * Base domain event structure. Tenant-only: use tenantId for scope.
  */
 export interface DomainEvent<T = unknown> {
   id: string;
@@ -12,7 +12,7 @@ export interface DomainEvent<T = unknown> {
   source: string;
   timestamp: Date | string;
   correlationId?: string;
-  organizationId?: string;
+  tenantId?: string;
   userId?: string;
   data: T;
 }

@@ -4,6 +4,8 @@
   "description": "Castiel - Root Package",
   "private": true,
   "scripts": {
+    "check:api-rules": "node scripts/check-api-rules.mjs",
+    "check:tenant-in-query": "node scripts/check-tenant-in-query.mjs",
     "lint:all": "pnpm -r --filter './containers/*' lint",
     "lint:fix": "pnpm -r --filter './containers/*' lint --fix",
     "type-check:all": "pnpm -r --filter './containers/*' exec tsc --noEmit",

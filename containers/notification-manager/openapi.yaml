@@ -13,7 +13,7 @@ info:
     ## Features
     - **Multi-Channel**: Email, SMS, Push, In-App, Webhook notifications
     - **Templates**: Reusable notification templates with variable substitution
-    - **Preferences**: User and organization-level notification preferences
+    - **Preferences**: User and tenant-level notification preferences
     - **Delivery Tracking**: Track notification delivery status and history
     - **Escalation**: Escalation chains for critical notifications
     - **Batching**: Batch notifications for efficiency

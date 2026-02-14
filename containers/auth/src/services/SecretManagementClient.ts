@@ -31,7 +31,7 @@ export interface SSOCredentials {
  * Create SSO Secret Request
  */
 export interface CreateSSOSecretRequest {
-  organizationId: string;
+  tenantId: string;
   provider: 'azure_ad' | 'okta';
   credentials: SSOCredentials;
 }
@@ -41,7 +41,7 @@ export interface CreateSSOSecretRequest {
  */
 export interface CreateSSOSecretResponse {
   secretId: string;
-  organizationId: string;
+  tenantId: string;
   provider: string;
   createdAt: string;
 }
@@ -51,7 +51,7 @@ export interface CreateSSOSecretResponse {
  */
 export interface GetSSOSecretResponse {
   secretId: string;
-  organizationId: string;
+  tenantId: string;
   provider: string;
   credentials: SSOCredentials;
   createdAt: string;
@@ -123,17 +123,17 @@ export class SecretManagementClient {
   }
 
   /**
-   * Get service authentication headers
+   * Get service authentication headers (tenant-scoped)
    */
-  private getAuthHeaders(organizationId?: string): Record<string, string> {
+  private getAuthHeaders(tenantId?: string): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'X-Service-Token': this.serviceToken,
       'X-Requesting-Service': this.requestingService,
     };
 
-    if (organizationId) {
-      headers['X-Organization-Id'] = organizationId;
+    if (tenantId) {
+      headers['X-Tenant-Id'] = tenantId;
     }
 
     return headers;
@@ -147,11 +147,11 @@ export class SecretManagementClient {
       return await this.serviceClient.post<CreateSSOSecretResponse>(
         '/api/secrets/sso',
         request,
-        { headers: this.getAuthHeaders(request.organizationId) }
+        { headers: this.getAuthHeaders(request.tenantId) }
       );
     } catch (error: any) {
       log.error('Failed to create SSO secret', error, {
-        organizationId: request.organizationId,
+        tenantId: request.tenantId,
         provider: request.provider,
         service: 'auth',
       });
@@ -162,16 +162,16 @@ export class SecretManagementClient {
   /**
    * Get SSO secret
    */
-  async getSSOSecret(secretId: string, organizationId: string): Promise<GetSSOSecretResponse> {
+  async getSSOSecret(secretId: string, tenantId: string): Promise<GetSSOSecretResponse> {
     try {
       return await this.serviceClient.get<GetSSOSecretResponse>(
         `/api/secrets/sso/${secretId}`,
-        { headers: this.getAuthHeaders(organizationId) }
+        { headers: this.getAuthHeaders(tenantId) }
       );
     } catch (error: any) {
       log.error('Failed to get SSO secret', error, {
         secretId,
-        organizationId,
+        tenantId,
         service: 'auth',
       });
       throw error;
@@ -183,7 +183,7 @@ export class SecretManagementClient {
    */
   async updateSSOSecret(
     secretId: string,
-    organizationId: string,
+    tenantId: string,
     request: UpdateSSOSecretRequest
   ): Promise<void> {
     try {
@@ -191,12 +191,12 @@ export class SecretManagementClient {
         method: 'PUT',
         url: `/api/secrets/sso/${secretId}`,
         data: request,
-        headers: this.getAuthHeaders(organizationId),
+        headers: this.getAuthHeaders(tenantId),
       });
     } catch (error: any) {
       log.error('Failed to update SSO secret', error, {
         secretId,
-        organizationId,
+        tenantId,
         service: 'auth',
       });
       throw error;
@@ -206,16 +206,16 @@ export class SecretManagementClient {
   /**
    * Delete SSO secret
    */
-  async deleteSSOSecret(secretId: string, organizationId: string): Promise<void> {
+  async deleteSSOSecret(secretId: string, tenantId: string): Promise<void> {
     try {
       await this.serviceClient.delete(
         `/api/secrets/sso/${secretId}`,
-        { headers: this.getAuthHeaders(organizationId) }
+        { headers: this.getAuthHeaders(tenantId) }
       );
     } catch (error: any) {
       log.error('Failed to delete SSO secret', error, {
         secretId,
-        organizationId,
+        tenantId,
         service: 'auth',
       });
       throw error;
@@ -228,18 +228,18 @@ export class SecretManagementClient {
   async rotateSSOCertificate(
     secretId: string,
     request: RotateSSOCertificateRequest,
-    organizationId: string
+    tenantId: string
   ): Promise<RotateSSOCertificateResponse> {
     try {
       return await this.serviceClient.post<RotateSSOCertificateResponse>(
         `/api/secrets/sso/${secretId}/rotate`,
         request,
-        { headers: this.getAuthHeaders(organizationId) }
+        { headers: this.getAuthHeaders(tenantId) }
       );
     } catch (error: any) {
       log.error('Failed to rotate SSO certificate', error, {
         secretId,
-        organizationId,
+        tenantId,
         service: 'auth',
       });
       throw error;
@@ -251,16 +251,16 @@ export class SecretManagementClient {
    */
   async getCertificateExpiration(
     secretId: string,
-    organizationId?: string
+    tenantId?: string
   ): Promise<CertificateExpirationResponse | null> {
     try {
       return await this.serviceClient.request<CertificateExpirationResponse>({
         method: 'GET',
         url: `/api/secrets/sso/${secretId}/expiration`,
-        headers: this.getAuthHeaders(organizationId),
+        headers: this.getAuthHeaders(tenantId),
       });
     } catch (error: any) {
-      log.warn('Failed to get certificate expiration', { error, secretId, organizationId, service: 'auth' });
+      log.warn('Failed to get certificate expiration', { error, secretId, tenantId, service: 'auth' });
       return null;
     }
   }

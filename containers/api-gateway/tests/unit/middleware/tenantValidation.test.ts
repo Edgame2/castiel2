@@ -7,72 +7,72 @@ import Fastify from 'fastify';
 import { tenantValidationMiddleware, isPublicAuthPath } from '../../../src/middleware/tenantValidation';
 
 describe('isPublicAuthPath', () => {
-  it('returns true for /api/auth/login', () => {
-    expect(isPublicAuthPath('/api/auth/login')).toBe(true);
+  it('returns true for /api/v1/auth/login', () => {
+    expect(isPublicAuthPath('/api/v1/auth/login')).toBe(true);
   });
 
-  it('returns true for /api/auth/register', () => {
-    expect(isPublicAuthPath('/api/auth/register')).toBe(true);
+  it('returns true for /api/v1/auth/register', () => {
+    expect(isPublicAuthPath('/api/v1/auth/register')).toBe(true);
   });
 
-  it('returns true for /api/auth/google/callback', () => {
-    expect(isPublicAuthPath('/api/auth/google/callback')).toBe(true);
+  it('returns true for /api/v1/auth/google/callback', () => {
+    expect(isPublicAuthPath('/api/v1/auth/google/callback')).toBe(true);
   });
 
-  it('returns true for /api/auth/oauth/github/callback', () => {
-    expect(isPublicAuthPath('/api/auth/oauth/github/callback')).toBe(true);
+  it('returns true for /api/v1/auth/oauth/github/callback', () => {
+    expect(isPublicAuthPath('/api/v1/auth/oauth/github/callback')).toBe(true);
   });
 
-  it('returns true for /api/auth/forgot-password', () => {
-    expect(isPublicAuthPath('/api/auth/forgot-password')).toBe(true);
+  it('returns true for /api/v1/auth/forgot-password', () => {
+    expect(isPublicAuthPath('/api/v1/auth/forgot-password')).toBe(true);
   });
 
-  it('returns true for /api/auth/reset-password', () => {
-    expect(isPublicAuthPath('/api/auth/reset-password')).toBe(true);
+  it('returns true for /api/v1/auth/reset-password', () => {
+    expect(isPublicAuthPath('/api/v1/auth/reset-password')).toBe(true);
   });
 
-  it('returns true for /api/auth/sso/saml/initiate', () => {
-    expect(isPublicAuthPath('/api/auth/sso/saml/initiate')).toBe(true);
+  it('returns true for /api/v1/auth/sso/saml/initiate', () => {
+    expect(isPublicAuthPath('/api/v1/auth/sso/saml/initiate')).toBe(true);
   });
 
-  it('returns true for /api/auth/sso/saml/callback', () => {
-    expect(isPublicAuthPath('/api/auth/sso/saml/callback')).toBe(true);
+  it('returns true for /api/v1/auth/sso/saml/callback', () => {
+    expect(isPublicAuthPath('/api/v1/auth/sso/saml/callback')).toBe(true);
   });
 
-  it('returns true for /api/auth/verify-email', () => {
-    expect(isPublicAuthPath('/api/auth/verify-email')).toBe(true);
+  it('returns true for /api/v1/auth/verify-email', () => {
+    expect(isPublicAuthPath('/api/v1/auth/verify-email')).toBe(true);
   });
 
-  it('returns true for /api/auth/verify-email with query', () => {
-    expect(isPublicAuthPath('/api/auth/verify-email?token=abc')).toBe(true);
+  it('returns true for /api/v1/auth/verify-email with query', () => {
+    expect(isPublicAuthPath('/api/v1/auth/verify-email?token=abc')).toBe(true);
   });
 
-  it('returns true for /api/auth/health', () => {
-    expect(isPublicAuthPath('/api/auth/health')).toBe(true);
+  it('returns true for /api/v1/auth/health', () => {
+    expect(isPublicAuthPath('/api/v1/auth/health')).toBe(true);
   });
 
-  it('returns true for /api/auth/refresh', () => {
-    expect(isPublicAuthPath('/api/auth/refresh')).toBe(true);
+  it('returns true for /api/v1/auth/refresh', () => {
+    expect(isPublicAuthPath('/api/v1/auth/refresh')).toBe(true);
   });
 
-  it('returns true for /api/auth/logout', () => {
-    expect(isPublicAuthPath('/api/auth/logout')).toBe(true);
+  it('returns true for /api/v1/auth/logout', () => {
+    expect(isPublicAuthPath('/api/v1/auth/logout')).toBe(true);
   });
 
-  it('returns true for /api/auth/google (OAuth initiate)', () => {
-    expect(isPublicAuthPath('/api/auth/google')).toBe(true);
+  it('returns true for /api/v1/auth/google (OAuth initiate)', () => {
+    expect(isPublicAuthPath('/api/v1/auth/google')).toBe(true);
   });
 
-  it('returns true for /api/auth/oauth/github (OAuth initiate)', () => {
-    expect(isPublicAuthPath('/api/auth/oauth/github')).toBe(true);
+  it('returns true for /api/v1/auth/oauth/github (OAuth initiate)', () => {
+    expect(isPublicAuthPath('/api/v1/auth/oauth/github')).toBe(true);
   });
 
-  it('returns false for /api/users/me', () => {
-    expect(isPublicAuthPath('/api/users/me')).toBe(false);
+  it('returns false for /api/v1/users/me', () => {
+    expect(isPublicAuthPath('/api/v1/users/me')).toBe(false);
   });
 
-  it('returns false for /api/auth/me', () => {
-    expect(isPublicAuthPath('/api/auth/me')).toBe(false);
+  it('returns false for /api/v1/auth/me', () => {
+    expect(isPublicAuthPath('/api/v1/auth/me')).toBe(false);
   });
 });
 
@@ -100,13 +100,13 @@ describe('tenantValidationMiddleware', () => {
     expect(res.statusCode).toBe(200);
   });
 
-  it('skips validation for public auth path /api/auth/login', async () => {
+  it('skips validation for public auth path /api/v1/auth/login', async () => {
     const app = Fastify();
     (app as any).jwt = { verify: vi.fn() };
     app.addHook('preHandler', tenantValidationMiddleware);
-    app.post('/api/auth/login', async (_request, reply) => reply.send({ ok: true }));
+    app.post('/api/v1/auth/login', async (_request, reply) => reply.send({ ok: true }));
 
-    const res = await app.inject({ method: 'POST', url: '/api/auth/login', payload: {} });
+    const res = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: {} });
     expect(res.statusCode).toBe(200);
     expect((app as any).jwt.verify).not.toHaveBeenCalled();
   });
@@ -115,9 +115,9 @@ describe('tenantValidationMiddleware', () => {
     const app = Fastify();
     (app as any).jwt = { verify: vi.fn() };
     app.addHook('preHandler', tenantValidationMiddleware);
-    app.get('/api/users/me', async (_request, reply) => reply.send({}));
+    app.get('/api/v1/users/me', async (_request, reply) => reply.send({}));
 
-    const res = await app.inject({ method: 'GET', url: '/api/users/me' });
+    const res = await app.inject({ method: 'GET', url: '/api/v1/users/me' });
     expect(res.statusCode).toBe(401);
     const body = JSON.parse(res.body);
     expect(body.error).toMatch(/authorization/i);
@@ -127,14 +127,14 @@ describe('tenantValidationMiddleware', () => {
     const app = Fastify();
     (app as any).jwt = { verify: vi.fn(() => ({ tenantId: validTenantId })) };
     app.addHook('preHandler', tenantValidationMiddleware);
-    app.get('/api/users/me', async (request: any, reply) => {
+    app.get('/api/v1/users/me', async (request: any, reply) => {
       const tenantId = request.headers['x-tenant-id'];
       return reply.send({ tenantId });
     });
 
     const res = await app.inject({
       method: 'GET',
-      url: '/api/users/me',
+      url: '/api/v1/users/me',
       headers: { cookie: 'accessToken=fake-token; other=value' },
     });
     expect(res.statusCode).toBe(200);
@@ -147,14 +147,14 @@ describe('tenantValidationMiddleware', () => {
     const app = Fastify();
     (app as any).jwt = { verify: vi.fn(() => ({ tenantId: validTenantId })) };
     app.addHook('preHandler', tenantValidationMiddleware);
-    app.get('/api/users/me', async (request: any, reply) => {
+    app.get('/api/v1/users/me', async (request: any, reply) => {
       const tenantId = request.headers['x-tenant-id'];
       return reply.send({ tenantId });
     });
 
     const res = await app.inject({
       method: 'GET',
-      url: '/api/users/me',
+      url: '/api/v1/users/me',
       headers: { authorization: 'Bearer fake-token' },
     });
     expect(res.statusCode).toBe(200);
@@ -162,34 +162,31 @@ describe('tenantValidationMiddleware', () => {
     expect(body.tenantId).toBe(validTenantId);
   });
 
-  it('accepts organizationId when tenantId missing', async () => {
-    const app = Fastify();
-    (app as any).jwt = { verify: vi.fn(() => ({ organizationId: validTenantId })) };
-    app.addHook('preHandler', tenantValidationMiddleware);
-    app.get('/api/users/me', async (request: any, reply) => {
-      const tenantId = request.headers['x-tenant-id'];
-      return reply.send({ tenantId });
-    });
-
-    const res = await app.inject({
-      method: 'GET',
-      url: '/api/users/me',
-      headers: { authorization: 'Bearer fake-token' },
-    });
-    expect(res.statusCode).toBe(200);
-    const body = JSON.parse(res.body);
-    expect(body.tenantId).toBe(validTenantId);
-  });
-
-  it('returns 400 when token has no tenantId or organizationId', async () => {
+  it('returns 400 when token has no tenantId', async () => {
     const app = Fastify();
     (app as any).jwt = { verify: vi.fn(() => ({})) };
     app.addHook('preHandler', tenantValidationMiddleware);
-    app.get('/api/users/me', async (_request, reply) => reply.send({}));
+    app.get('/api/v1/users/me', async (_request, reply) => reply.send({}));
 
     const res = await app.inject({
       method: 'GET',
-      url: '/api/users/me',
+      url: '/api/v1/users/me',
+      headers: { authorization: 'Bearer fake-token' },
+    });
+    expect(res.statusCode).toBe(400);
+    const body = JSON.parse(res.body);
+    expect(body.error).toMatch(/tenantId|tenant/i);
+  });
+
+  it('returns 400 when token has no tenantId (empty payload)', async () => {
+    const app = Fastify();
+    (app as any).jwt = { verify: vi.fn(() => ({})) };
+    app.addHook('preHandler', tenantValidationMiddleware);
+    app.get('/api/v1/users/me', async (_request, reply) => reply.send({}));
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/v1/users/me',
       headers: { authorization: 'Bearer fake-token' },
     });
     expect(res.statusCode).toBe(400);
@@ -201,11 +198,11 @@ describe('tenantValidationMiddleware', () => {
     const app = Fastify();
     (app as any).jwt = { verify: vi.fn(() => ({ tenantId: 'not-a-uuid' })) };
     app.addHook('preHandler', tenantValidationMiddleware);
-    app.get('/api/users/me', async (_request, reply) => reply.send({}));
+    app.get('/api/v1/users/me', async (_request, reply) => reply.send({}));
 
     const res = await app.inject({
       method: 'GET',
-      url: '/api/users/me',
+      url: '/api/v1/users/me',
       headers: { authorization: 'Bearer fake-token' },
     });
     expect(res.statusCode).toBe(400);
@@ -217,11 +214,11 @@ describe('tenantValidationMiddleware', () => {
     const app = Fastify();
     (app as any).jwt = { verify: vi.fn(() => { throw new Error('invalid'); }) };
     app.addHook('preHandler', tenantValidationMiddleware);
-    app.get('/api/users/me', async (_request, reply) => reply.send({}));
+    app.get('/api/v1/users/me', async (_request, reply) => reply.send({}));
 
     const res = await app.inject({
       method: 'GET',
-      url: '/api/users/me',
+      url: '/api/v1/users/me',
       headers: { authorization: 'Bearer bad-token' },
     });
     expect(res.statusCode).toBe(401);

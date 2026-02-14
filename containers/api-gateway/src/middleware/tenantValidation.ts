@@ -15,21 +15,21 @@ function parseAccessTokenFromCookie(cookieHeader: string | undefined): string | 
   return match ? decodeURIComponent(match[1].trim()) : undefined;
 }
 
-/** Path prefixes that do not require a Bearer token (public auth/invitation endpoints) */
+/** Path prefixes that do not require a Bearer token (public auth/invitation endpoints). Client path = /api/v1/... per API_RULES. */
 const PUBLIC_AUTH_PATH_PREFIXES = [
-  '/api/auth/login',
-  '/api/auth/register',
-  '/api/auth/refresh',
-  '/api/auth/logout',
-  '/api/auth/google',
-  '/api/auth/oauth/github',
-  '/api/auth/forgot-password',
-  '/api/auth/reset-password',
-  '/api/auth/sso/saml/initiate',
-  '/api/auth/sso/saml/callback',
-  '/api/auth/verify-email',
-  '/api/auth/health',
-  '/api/invitations',
+  '/api/v1/auth/login',
+  '/api/v1/auth/register',
+  '/api/v1/auth/refresh',
+  '/api/v1/auth/logout',
+  '/api/v1/auth/google',
+  '/api/v1/auth/oauth/github',
+  '/api/v1/auth/forgot-password',
+  '/api/v1/auth/reset-password',
+  '/api/v1/auth/sso/saml/initiate',
+  '/api/v1/auth/sso/saml/callback',
+  '/api/v1/auth/verify-email',
+  '/api/v1/auth/health',
+  '/api/v1/invitations',
 ];
 
 /**
@@ -86,8 +86,7 @@ export async function tenantValidationMiddleware(
           request.headers.authorization = `Bearer ${token}`;
         }
 
-        const raw = decoded.tenantId ?? decoded.organizationId;
-        const tenantId = typeof raw === 'string' ? raw : undefined;
+        const tenantId = typeof decoded.tenantId === 'string' ? decoded.tenantId : undefined;
 
         if (!tenantId) {
           reply.code(400).send({ error: 'Missing tenantId in token' });
@@ -109,9 +108,10 @@ export async function tenantValidationMiddleware(
         return;
       }
     } else {
-      // User already verified, extract tenantId
-      const raw = (user as Record<string, unknown>).tenantId ?? (user as Record<string, unknown>).organizationId;
-      const tenantId = typeof raw === 'string' ? raw : undefined;
+      // User already verified, extract tenantId (tenant-only; no organizationId)
+      const tenantId = typeof (user as Record<string, unknown>).tenantId === 'string'
+        ? (user as Record<string, unknown>).tenantId as string
+        : undefined;
 
       if (!tenantId) {
         reply.code(400).send({ error: 'Missing tenantId in token' });

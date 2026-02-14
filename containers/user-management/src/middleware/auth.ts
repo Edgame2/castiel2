@@ -54,11 +54,11 @@ export async function authenticateRequest(
 
     log.debug('Token found in request', { route: request.url, tokenLength: token.length, service: 'user-management' });
 
-    // Verify JWT token
-    let decoded: { userId: string; email: string; sessionId?: string; organizationId?: string };
+    // Verify JWT token (tenant-only; no organizationId)
+    let decoded: { userId: string; email: string; sessionId?: string; tenantId?: string };
     try {
       const config = getConfig();
-      decoded = jwt.verify(token, config.jwt.secret) as { userId: string; email: string; sessionId?: string; organizationId?: string };
+      decoded = jwt.verify(token, config.jwt.secret) as { userId: string; email: string; sessionId?: string; tenantId?: string };
       log.debug('Token verified successfully', { route: request.url, userId: decoded.userId, email: decoded.email, service: 'user-management' });
     } catch (verifyError: any) {
       log.error('Token verification failed', verifyError, { route: request.url, method: request.method, service: 'user-management' });
@@ -67,7 +67,7 @@ export async function authenticateRequest(
     }
     
     // Get user from database with session information (Prisma client - see server for DB wiring)
-    const db = getDatabaseClient() as unknown as { user: { findUnique: (args: unknown) => Promise<{ id: string; email: string; name: string | null; isActive: boolean; isEmailVerified: boolean } | null> }; session: { findUnique: (args: unknown) => Promise<{ id: string; userId: string; organizationId: string; revokedAt: Date | null; expiresAt: Date } | null> } };
+    const db = getDatabaseClient() as unknown as { user: { findUnique: (args: unknown) => Promise<{ id: string; email: string; name: string | null; isActive: boolean; isEmailVerified: boolean } | null> }; session: { findUnique: (args: unknown) => Promise<{ id: string; userId: string; tenantId: string; revokedAt: Date | null; expiresAt: Date } | null> } };
     const user = await db.user.findUnique({
       where: { id: decoded.userId },
       select: { 
@@ -92,19 +92,17 @@ export async function authenticateRequest(
       return;
     }
 
-    // Extract session ID and organization ID from token
+    // Extract session ID and tenantId from token (tenant-only)
     const sessionId = decoded.sessionId;
-    let organizationId = decoded.organizationId;
-    
-    // If session ID is in token, optionally validate against our DB when we have session data (e.g. shared DB).
-    // If session is not in our DB (auth owns sessions in another DB), trust the JWT and use token claims.
+    let tenantId = decoded.tenantId;
+
     if (sessionId) {
       const session = await db.session.findUnique({
         where: { id: sessionId },
         select: {
           id: true,
           userId: true,
-          organizationId: true,
+          tenantId: true,
           revokedAt: true,
           expiresAt: true,
         },
@@ -126,38 +124,35 @@ export async function authenticateRequest(
           reply.code(401).send({ error: 'Session has expired' });
           return;
         }
-        if (!organizationId) {
-          organizationId = session.organizationId || undefined;
+        if (!tenantId) {
+          tenantId = (session as { tenantId?: string }).tenantId;
         }
       } else {
-        // Session not in our DB (e.g. auth service owns sessions); trust JWT and use token claims
         log.debug('Session not in user-management DB, using token claims', { sessionId, userId: user.id, service: 'user-management' });
       }
     }
 
-    log.debug('User authenticated successfully', { 
-      route: request.url, 
-      userId: user.id, 
+    log.debug('User authenticated successfully', {
+      route: request.url,
+      userId: user.id,
       email: user.email,
       sessionId,
-      organizationId,
+      tenantId,
       service: 'user-management',
     });
 
-    // Attach user and context to request
     (request as any).user = {
       id: user.id,
       email: user.email,
       name: user.name || undefined,
       sessionId,
     } as AuthenticatedUser & { sessionId?: string };
-    
-    // Attach session and organization context
+
     if (sessionId) {
       (request as any).sessionId = sessionId;
     }
-    if (organizationId) {
-      (request as any).organizationId = organizationId;
+    if (tenantId) {
+      (request as any).tenantId = tenantId;
     }
   } catch (error: any) {
     log.error('Unexpected authentication error', error, { route: request.url, method: request.method, service: 'user-management' });

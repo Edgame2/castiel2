@@ -11,6 +11,8 @@ Transforms database queries to include tenantId in partition keys for tenant iso
 
 **ALL database queries MUST include tenantId in the partition key.**
 
+Use **tenantId only**; there is no organization. Do not use or filter by `organizationId` in queries—partition key and WHERE clauses use `tenantId` only.
+
 Reference: .cursorrules (Security Requirements), ModuleImplementationGuide.md Section 8
 
 ## Query Patterns
@@ -245,17 +247,20 @@ class ResourceService {
 
 ## Common Mistakes
 
-1. **Forgetting tenantId in WHERE clause**
+1. **Using organizationId in queries**
+   - Use `tenantId` only; there is no organization. Do not add `organizationId` to WHERE or documents.
+
+2. **Forgetting tenantId in WHERE clause**
    - Always start queries with `WHERE c.tenantId = @tenantId`
 
-2. **Hardcoding container names**
+3. **Hardcoding container names**
    - Use `config.cosmos_db.containers.main`
 
-3. **String concatenation in queries**
+4. **String concatenation in queries**
    - Always use parameterized queries
 
-4. **Missing tenantId in service methods**
+5. **Missing tenantId in service methods**
    - tenantId should be first parameter
 
-5. **Cache keys without tenantId**
+6. **Cache keys without tenantId**
    - Cache keys must include tenantId: `resource:${tenantId}:${id}`

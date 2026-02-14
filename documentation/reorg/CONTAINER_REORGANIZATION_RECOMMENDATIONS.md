@@ -42,7 +42,7 @@ This document provides **recommendations** for consolidating and cleaning up Cas
 | ml-service | ML predictions: risk, win probability, LSTM, anomaly, forecast. | Keep | — |
 | forecasting | Decomposition, consensus, risk-adjusted and ML forecast. | Keep | — |
 | recommendations | Mitigation ranking, remediation workflows. | Keep | — |
-| dashboard | Dashboard CRUD, widgets, organization-scoped. | Keep or merge | Optionally absorb dashboard-analytics. |
+| dashboard | Dashboard CRUD, widgets, tenant-scoped. | Keep or merge | Optionally absorb dashboard-analytics. |
 | dashboard-analytics | Executive/manager/board dashboards, risk heatmap, prioritized opportunities. | Optional merge into dashboard | Keep separate if scaling analytics independently. |
 | workflow-orchestrator | Batch job scheduler (workflow.job.trigger), HITL, workflows. | Keep | — |
 | shard-manager | Shards, types, relationships (c_opportunity, c_account, etc.). | Keep | — |

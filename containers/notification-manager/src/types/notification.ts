@@ -47,13 +47,13 @@ export type DeliveryStatus =
 
 export type PreferenceScope = 
   | 'GLOBAL'
-  | 'ORGANIZATION'
+  | 'TENANT'
   | 'TEAM'
   | 'PROJECT'
   | 'USER';
 
 export interface NotificationInput {
-  organizationId: string;
+  tenantId: string;
   eventType: string;
   eventCategory: EventCategory;
   sourceModule: string;

@@ -39,7 +39,7 @@ Publishes to RabbitMQ (e.g. auth lifecycle, password reset, verification); notif
 ### Dependencies
 
 - **Downstream:** user-management (user context), logging (audit), notification-manager (emails), secret-management.
-- **Upstream:** api-gateway proxies `/api/auth/*` to auth.
+- **Upstream:** api-gateway proxies `/api/v1/auth` to auth (client path = `/api/v1/auth/*` per API_RULES).
 
 ### Cosmos DB containers
 

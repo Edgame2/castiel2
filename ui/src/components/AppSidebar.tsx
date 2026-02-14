@@ -71,7 +71,7 @@ export function AppSidebar() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await apiFetch("/api/users/me");
+        const res = await apiFetch("/api/v1/users/me");
         if (!res.ok || cancelled) return;
         const json = await res.json();
         const data = json?.data ?? json;

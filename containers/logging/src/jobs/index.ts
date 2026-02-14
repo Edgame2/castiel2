@@ -1,9 +1,5 @@
 /**
- * Background Jobs Exports
- * Per ModuleImplementationGuide Section 8: Database Standards
+ * Background Jobs Exports (Cosmos-only; AlertJob only).
  */
 
-export * from './RetentionJob';
-export * from './ArchiveJob';
 export * from './AlertJob';
-export * from './PartitionJob';

@@ -4,7 +4,7 @@
  * API endpoints for managing user profiles, sessions, and account operations.
  *
  * Endpoints:
- * - GET /api/v1/users - List users (tenant/org-scoped; requires organization context)
+ * - GET /api/v1/users - List users (tenant-scoped; requires tenant context)
  * - GET /api/v1/users/:id - Get user profile by id (tenant-scoped + RBAC)
  * - PUT /api/v1/users/me - Update current user profile
  * - PUT /api/v1/users/:id - Admin update user profile (tenant-scoped + RBAC; use /me for self)
@@ -20,55 +20,54 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authenticateRequest } from '../middleware/auth';
 import * as userService from '../services/UserService';
-import * as organizationService from '../services/OrganizationService';
 import { getDatabaseClient } from '@coder/shared';
 import { log } from '../utils/logger';
 import { publishEventSafely, extractEventMetadata, createBaseEvent } from '../events/publishers/UserManagementEventPublisher';
 import { UserManagementEvent } from '../types/events';
 
-/** Check if requester can access target user (self, same org, or Super Admin). Throws if no access. */
+/** Check if requester can access target user (self, same tenant, or Super Admin). Throws if no access. */
 async function ensureCanAccessUser(
   requesterId: string,
   targetUserId: string,
-  organizationId: string | undefined
+  tenantId: string | undefined
 ): Promise<void> {
   if (requesterId === targetUserId) return;
   const db = getDatabaseClient() as unknown as {
-    organizationMembership: { findMany: (args: unknown) => Promise<Array<{ userId: string; organizationId: string }>>; findFirst: (args: unknown) => Promise<{ role: { isSuperAdmin: boolean } } | null> };
+    membership: { findMany: (args: unknown) => Promise<Array<{ userId: string; tenantId: string }>>; findFirst: (args: unknown) => Promise<{ role: { isSuperAdmin: boolean } } | null> };
   };
-  const memberships = await db.organizationMembership.findMany({
+  const memberships = await db.membership.findMany({
     where: { userId: requesterId, status: 'active' },
     include: { role: true },
   }) as Array<{ role?: { isSuperAdmin?: boolean } }>;
   const isSuperAdmin = memberships.some((m) => m.role?.isSuperAdmin);
   if (isSuperAdmin) return;
-  if (organizationId) {
-    const targetInOrg = await db.organizationMembership.findFirst({
-      where: { userId: targetUserId, organizationId, status: 'active' },
+  if (tenantId) {
+    const targetInTenant = await db.membership.findFirst({
+      where: { userId: targetUserId, tenantId, status: 'active' },
     });
-    if (targetInOrg) return;
+    if (targetInTenant) return;
   }
-  throw new Error('Permission denied. You can only view users in your organization.');
+  throw new Error('Permission denied. You can only view users in your tenant.');
 }
 
 export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
-  // List users (tenant/org-scoped; requires organization context)
+  // List users (tenant-scoped; requires tenant context)
   fastify.get(
     '/api/v1/users',
     { preHandler: authenticateRequest },
-    (async (request: FastifyRequest<{ Querystring: { organizationId?: string } }>, reply: FastifyReply) => {
+    (async (request: FastifyRequest<{ Querystring: { tenantId?: string } }>, reply: FastifyReply) => {
       try {
         const requestUser = (request as any).user;
         if (!requestUser?.id) {
           reply.code(401).send({ error: 'Not authenticated' });
           return;
         }
-        const organizationId = request.query?.organizationId ?? (request as any).organizationId;
-        if (!organizationId) {
-          reply.code(400).send({ error: 'Organization context required. Provide organizationId in query or use a session with organization context.' });
+        const tenantId = request.query?.tenantId ?? (request as any).tenantId;
+        if (!tenantId) {
+          reply.code(400).send({ error: 'Tenant context required. Provide tenantId in query or use a session with tenant context.' });
           return;
         }
-        const members = await organizationService.getOrganizationMembers(organizationId, requestUser.id);
+        const members = await userService.getTenantMembers(tenantId, requestUser.id);
         const users = members.map((m) => ({
           id: m.userId,
           email: m.email,
@@ -138,7 +137,7 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
           return;
         }
         const { id } = request.params;
-        await ensureCanAccessUser(requestUser.id, id, (request as any).organizationId);
+        await ensureCanAccessUser(requestUser.id, id, (request as any).tenantId);
         const profile = await userService.getUserProfile(id);
         return { data: profile };
       } catch (error: any) {
@@ -214,10 +213,10 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
         const profile = await userService.updateUserProfile(requestUser.id, updates);
 
         // Publish user.profile_updated event (consumed by logging service for audit logging)
-        const organizationId = (request as any).organizationId;
+        const tenantId = (request as any).tenantId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('user.profile_updated', requestUser.id, organizationId, undefined, {
+          ...createBaseEvent('user.profile_updated', requestUser.id, tenantId, undefined, {
             userId: requestUser.id,
             changes: updates,
           }),
@@ -286,17 +285,17 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
           reply.code(400).send({ error: 'Use PUT /api/v1/users/me to update your own profile' });
           return;
         }
-        await ensureCanAccessUser(requestUser.id, id, (request as any).organizationId);
+        await ensureCanAccessUser(requestUser.id, id, (request as any).tenantId);
         const updates = request.body;
         if (Object.keys(updates).length === 0) {
           reply.code(400).send({ error: 'At least one field must be provided for update' });
           return;
         }
         const profile = await userService.updateUserProfile(id, updates);
-        const organizationId = (request as any).organizationId;
+        const tenantId = (request as any).tenantId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('user.profile_updated', id, organizationId, undefined, {
+          ...createBaseEvent('user.profile_updated', id, tenantId, undefined, {
             userId: id,
             changes: updates,
             updatedBy: requestUser.id,
@@ -379,10 +378,10 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
         await userService.revokeUserSession(requestUser.id, sessionId);
 
         // Publish user.session_revoked event (consumed by logging service for audit logging)
-        const organizationId = (request as any).organizationId;
+        const tenantId = (request as any).tenantId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('user.session_revoked', requestUser.id, organizationId, undefined, {
+          ...createBaseEvent('user.session_revoked', requestUser.id, tenantId, undefined, {
             userId: requestUser.id,
             sessionId,
             reason: 'user_initiated',
@@ -452,11 +451,11 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
 
         // Publish user.session_revoked event (consumed by logging service for audit logging)
         if (revokedCount > 0) {
-          const organizationId = (request as any).organizationId;
+          const tenantId = (request as any).tenantId;
           const metadata = extractEventMetadata(request);
           // Note: This event type might need to be added to the event types
           await publishEventSafely({
-            ...createBaseEvent('user.session_revoked', requestUser.id, organizationId, undefined, {
+            ...createBaseEvent('user.session_revoked', requestUser.id, tenantId, undefined, {
               userId: requestUser.id,
               count: revokedCount,
               reason: 'user_initiated',
@@ -479,8 +478,7 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
   }) as any
   );
 
-  // List user organizations is available at GET /api/v1/organizations
-  // GET /api/v1/users/me/organizations
+  // Tenant context is from JWT/session (tenantId).
 
   // Deactivate own account
   fastify.post(
@@ -497,10 +495,10 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
         await userService.deactivateUser(requestUser.id, requestUser.id);
 
         // Publish user.deactivated event
-        const organizationId = (request as any).organizationId;
+        const tenantId = (request as any).tenantId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('user.deactivated', requestUser.id, organizationId, undefined, {
+          ...createBaseEvent('user.deactivated', requestUser.id, tenantId, undefined, {
             userId: requestUser.id,
             deactivatedBy: requestUser.id,
             reason: 'self',
@@ -564,10 +562,10 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
         await userService.deactivateUser(userId, requestUser.id);
 
         // Publish user.deactivated event (consumed by logging service for audit logging)
-        const organizationId = (request as any).organizationId;
+        const tenantId = (request as any).tenantId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('user.deactivated', userId, organizationId, undefined, {
+          ...createBaseEvent('user.deactivated', userId, tenantId, undefined, {
             userId,
             deactivatedBy: requestUser.id,
             reason: 'admin',
@@ -631,10 +629,10 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
         await userService.reactivateUser(userId, requestUser.id);
 
         // Publish user.reactivated event (consumed by logging service for audit logging)
-        const organizationId = (request as any).organizationId;
+        const tenantId = (request as any).tenantId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('user.reactivated', userId, organizationId, undefined, {
+          ...createBaseEvent('user.reactivated', userId, tenantId, undefined, {
             userId,
             reactivatedBy: requestUser.id,
           }),
@@ -697,10 +695,10 @@ export async function setupUserRoutes(fastify: FastifyInstance): Promise<void> {
         await userService.deleteUser(userId, requestUser.id);
 
         // Publish user.deleted event (consumed by logging service for audit logging)
-        const organizationId = (request as any).organizationId;
+        const tenantId = (request as any).tenantId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('user.deleted', userId, organizationId, undefined, {
+          ...createBaseEvent('user.deleted', userId, tenantId, undefined, {
             userId,
             deletedBy: requestUser.id,
           }),

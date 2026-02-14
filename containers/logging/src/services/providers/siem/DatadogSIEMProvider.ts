@@ -137,7 +137,7 @@ export class DatadogSIEMProvider implements ISIEMProvider {
     return {
       timestamp: logEntry.timestamp.toISOString(),
       id: logEntry.id,
-      organizationId: logEntry.organizationId,
+      tenantId: logEntry.tenantId,
       userId: logEntry.userId,
       sessionId: logEntry.sessionId,
       ipAddress: logEntry.ipAddress,

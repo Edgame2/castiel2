@@ -33,7 +33,7 @@ export interface Template {
   version: number; // Version number
   status: TemplateStatus;
   isDefault: boolean; // Whether this is the default version
-  organizationId?: string; // Organization-specific override
+  organizationId?: string; // Legacy: may exist on existing Cosmos documents
   tags?: string[];
   metadata?: Record<string, any>;
   createdAt: Date;
@@ -149,7 +149,6 @@ export interface CreateTemplateInput {
   category?: string;
   content: string;
   variables?: TemplateVariable[];
-  organizationId?: string;
   tags?: string[];
   metadata?: Record<string, any>;
   // Type-specific fields
@@ -189,7 +188,6 @@ export interface RenderTemplateInput {
   tenantId: string;
   templateId: string;
   variables: Record<string, any>;
-  organizationId?: string;
   version?: number; // Specific version, or latest if not specified
 }
 

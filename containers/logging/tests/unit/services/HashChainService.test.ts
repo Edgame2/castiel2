@@ -17,7 +17,7 @@ function createValidLogChain(orgId: string, count: number): AuditLog[] {
   for (let i = 0; i < count; i++) {
     const baseLog = {
       id: `log-${i + 1}`,
-      organizationId: orgId,
+      tenantId: orgId,
       timestamp: new Date(`2025-01-0${i + 1}`),
       receivedAt: new Date(`2025-01-0${i + 1}`),
       action: 'user.login',
@@ -54,7 +54,7 @@ function createValidLogChain(orgId: string, count: number): AuditLog[] {
 describe('HashChainService', () => {
   let hashChainService: HashChainService;
   let mockStorage: IStorageProvider;
-  let mockPrisma: any;
+  let mockCosmosCheckpoints: any;
 
   beforeEach(() => {
     mockStorage = {
@@ -69,16 +69,13 @@ describe('HashChainService', () => {
       aggregate: vi.fn(),
     } as any;
 
-    mockPrisma = {
-      audit_hash_checkpoints: {
-        create: vi.fn().mockResolvedValue({ id: 'checkpoint-1' }),
-        findMany: vi.fn().mockResolvedValue([]),
-        findUnique: vi.fn(),
-        findFirst: vi.fn(),
-      },
+    mockCosmosCheckpoints = {
+      create: vi.fn().mockResolvedValue({ id: 'checkpoint-1' }),
+      findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn(),
     };
 
-    hashChainService = new HashChainService(mockPrisma, mockStorage);
+    hashChainService = new HashChainService(mockStorage, mockCosmosCheckpoints);
   });
 
   describe('verifyChain', () => {
@@ -128,7 +125,7 @@ describe('HashChainService', () => {
       expect(result.failedLogs).toContain('log-2');
     });
 
-    it('should filter by organization when specified', async () => {
+    it('should filter by tenant when specified', async () => {
       const org1Logs = createValidLogChain('org-1', 2);
       const org2Logs = createValidLogChain('org-2', 1);
       const allLogs = [...org1Logs, ...org2Logs];
@@ -153,30 +150,29 @@ describe('HashChainService', () => {
       );
 
       expect(checkpointId).toBe('checkpoint-1');
-      expect(mockPrisma.audit_hash_checkpoints.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+      expect(mockCosmosCheckpoints.create).toHaveBeenCalledWith(
+        expect.objectContaining({
           lastLogId: 'log-100',
           lastHash: 'abc123',
-          logCount: BigInt(100),
           verifiedBy: 'user-1',
-          organizationId: 'org-1',
-        }),
-      });
+          tenantId: 'org-1',
+        })
+      );
     });
   });
 
   describe('getCheckpoints', () => {
     it('should return checkpoints for tenant', async () => {
       const mockCheckpoints = [
-        { id: 'cp-1', organizationId: 'org-1', checkpointTimestamp: new Date(), lastLogId: 'log-1', lastHash: 'hash1', logCount: BigInt(10) },
+        { id: 'cp-1', tenantId: 'org-1', checkpointTimestamp: new Date(), lastLogId: 'log-1', lastHash: 'hash1', logCount: BigInt(10) },
       ];
-      mockPrisma.audit_hash_checkpoints.findMany.mockResolvedValue(mockCheckpoints);
+      mockCosmosCheckpoints.findMany.mockResolvedValue(mockCheckpoints);
 
       const checkpoints = await hashChainService.getCheckpoints('org-1', 5);
 
       expect(checkpoints).toHaveLength(1);
-      expect(mockPrisma.audit_hash_checkpoints.findMany).toHaveBeenCalledWith({
-        where: { organizationId: 'org-1' },
+      expect(mockCosmosCheckpoints.findMany).toHaveBeenCalledWith({
+        where: { tenantId: 'org-1' },
         orderBy: { checkpointTimestamp: 'desc' },
         take: 5,
       });
@@ -187,13 +183,13 @@ describe('HashChainService', () => {
     it('should verify when checkpoint belongs to tenant', async () => {
       const mockCheckpoint = {
         id: 'cp-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         checkpointTimestamp: new Date(Date.now() - 60000),
         lastLogId: 'log-1',
         lastHash: 'hash1',
         logCount: BigInt(10),
       };
-      mockPrisma.audit_hash_checkpoints.findUnique.mockResolvedValue(mockCheckpoint);
+      mockCosmosCheckpoints.findUnique.mockResolvedValue(mockCheckpoint);
       vi.mocked(mockStorage.getLogsInRange).mockResolvedValue([]);
 
       const result = await hashChainService.verifySinceCheckpoint('cp-1', 'org-1');
@@ -205,13 +201,13 @@ describe('HashChainService', () => {
     it('should throw when checkpoint belongs to another tenant', async () => {
       const mockCheckpoint = {
         id: 'cp-1',
-        organizationId: 'other-org',
+        tenantId: 'other-org',
         checkpointTimestamp: new Date(),
         lastLogId: 'log-1',
         lastHash: 'hash1',
         logCount: BigInt(10),
       };
-      mockPrisma.audit_hash_checkpoints.findUnique.mockResolvedValue(mockCheckpoint);
+      mockCosmosCheckpoints.findUnique.mockResolvedValue(mockCheckpoint);
 
       await expect(hashChainService.verifySinceCheckpoint('cp-1', 'org-1')).rejects.toThrow(
         'Checkpoint not found'

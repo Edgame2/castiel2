@@ -51,14 +51,14 @@ export class IncomingWebhookHandler {
   ): NotificationInput | null {
     // Extract recipient from webhook config or payload
     const recipientId = payload.data?.userId || webhookConfig.defaultRecipientId;
-    const organizationId = webhookConfig.organizationId;
+    const tenantId = webhookConfig.tenantId;
 
-    if (!recipientId || !organizationId) {
+    if (!recipientId || !tenantId) {
       return null;
     }
 
     return {
-      organizationId,
+      tenantId,
       eventType: payload.type || 'webhook.received',
       eventCategory: this.mapEventCategory(payload.type),
       sourceModule: payload.source || 'webhook',

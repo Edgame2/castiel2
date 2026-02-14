@@ -50,7 +50,6 @@ export async function registerRoutes(app: FastifyInstance, _config: any): Promis
                 },
               },
             },
-            organizationId: { type: 'string', format: 'uuid' },
             tags: { type: 'array', items: { type: 'string' } },
             metadata: { type: 'object' },
             subject: { type: 'string' },
@@ -222,7 +221,6 @@ export async function registerRoutes(app: FastifyInstance, _config: any): Promis
       type?: string;
       category?: string;
       status?: string;
-      organizationId?: string;
       limit?: number;
       continuationToken?: string;
     };
@@ -239,7 +237,6 @@ export async function registerRoutes(app: FastifyInstance, _config: any): Promis
             type: { type: 'string', enum: ['context', 'email', 'document', 'code', 'report'] },
             category: { type: 'string' },
             status: { type: 'string', enum: ['draft', 'active', 'archived', 'deprecated'] },
-            organizationId: { type: 'string', format: 'uuid' },
             limit: { type: 'number', minimum: 1, maximum: 1000, default: 100 },
             continuationToken: { type: 'string' },
           },
@@ -262,7 +259,6 @@ export async function registerRoutes(app: FastifyInstance, _config: any): Promis
         type: request.query.type as any,
         category: request.query.category,
         status: request.query.status as any,
-        organizationId: request.query.organizationId,
         limit: request.query.limit,
         continuationToken: request.query.continuationToken,
       });
@@ -292,7 +288,6 @@ export async function registerRoutes(app: FastifyInstance, _config: any): Promis
           required: ['variables'],
           properties: {
             variables: { type: 'object', additionalProperties: true },
-            organizationId: { type: 'string', format: 'uuid' },
             version: { type: 'number' },
           },
         },
@@ -313,7 +308,8 @@ export async function registerRoutes(app: FastifyInstance, _config: any): Promis
       const input: RenderTemplateInput = {
         tenantId,
         templateId: request.params.id,
-        ...request.body,
+        variables: request.body.variables,
+        version: request.body.version,
       };
 
       const rendered = await templateService.render(input);

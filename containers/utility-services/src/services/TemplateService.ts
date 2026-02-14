@@ -9,7 +9,7 @@ import { NotFoundError } from '@coder/shared';
 import { NotificationChannel } from '../types/notification';
 
 export interface CreateTemplateInput {
-  organizationId?: string;
+  tenantId?: string;
   name: string;
   eventType: string;
   channel: NotificationChannel;
@@ -55,8 +55,8 @@ export class TemplateService {
     // Check for duplicate
     const existing = await this.db.notification_templates.findUnique({
       where: {
-        organizationId_name_channel_locale: {
-          organizationId: input.organizationId || null,
+        tenantId_name_channel_locale: {
+          tenantId: input.tenantId || null,
           name: input.name,
           channel: input.channel,
           locale: input.locale || 'en',
@@ -70,7 +70,7 @@ export class TemplateService {
 
     return await this.db.notification_templates.create({
       data: {
-        organizationId: input.organizationId || null,
+        tenantId: input.tenantId || null,
         name: input.name,
         eventType: input.eventType,
         channel: input.channel,
@@ -119,7 +119,7 @@ export class TemplateService {
    * List templates
    */
   async listTemplates(filters: {
-    organizationId?: string;
+    tenantId?: string;
     eventType?: string;
     channel?: NotificationChannel;
     locale?: string;
@@ -127,8 +127,8 @@ export class TemplateService {
   }): Promise<any[]> {
     const where: any = {};
     
-    if (filters.organizationId !== undefined) {
-      where.organizationId = filters.organizationId || null;
+    if (filters.tenantId !== undefined) {
+      where.tenantId = filters.tenantId || null;
     }
     if (filters.eventType) {
       where.eventType = filters.eventType;
@@ -146,7 +146,7 @@ export class TemplateService {
     return await this.db.notification_templates.findMany({
       where,
       orderBy: [
-        { organizationId: 'asc' }, // Organization-specific first
+        { tenantId: 'asc' }, // Tenant-specific first
         { name: 'asc' },
       ],
     });

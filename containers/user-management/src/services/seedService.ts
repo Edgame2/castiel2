@@ -1,7 +1,7 @@
 /**
  * Seed Service
  * 
- * Manages seeding of system permissions and organization roles.
+ * Manages seeding of system permissions and tenant roles.
  * Per ModuleImplementationGuide Section 6
  */
 
@@ -10,7 +10,6 @@ import { randomUUID } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { log } from '../utils/logger';
 
-const USER_ORGANIZATIONS = 'user_organizations';
 const USER_USERS = 'user_users';
 const USER_ROLES = 'user_roles';
 const USER_MEMBERSHIPS = 'user_memberships';
@@ -35,13 +34,6 @@ interface PermissionDefinition {
  * All system permissions
  */
 const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
-  // Organizations
-  { code: 'organizations.organization.view', module: 'organizations', resource: 'organization', action: 'view', scope: null, displayName: 'View Organization', description: 'View organization details' },
-  { code: 'organizations.organization.create', module: 'organizations', resource: 'organization', action: 'create', scope: null, displayName: 'Create Organization', description: 'Create new organizations' },
-  { code: 'organizations.organization.update', module: 'organizations', resource: 'organization', action: 'update', scope: null, displayName: 'Update Organization', description: 'Edit organization details' },
-  { code: 'organizations.organization.delete', module: 'organizations', resource: 'organization', action: 'delete', scope: null, displayName: 'Delete Organization', description: 'Delete organizations' },
-  { code: 'organizations.organization.manage_members', module: 'organizations', resource: 'organization', action: 'manage_members', scope: null, displayName: 'Manage Organization Members', description: 'Add, remove, and manage organization members' },
-  
   // Teams
   { code: 'teams.team.view', module: 'teams', resource: 'team', action: 'view', scope: null, displayName: 'View Teams', description: 'View teams' },
   { code: 'teams.team.create', module: 'teams', resource: 'team', action: 'create', scope: null, displayName: 'Create Team', description: 'Create new teams' },
@@ -57,8 +49,12 @@ const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
   
   // Users
   { code: 'users.user.view', module: 'users', resource: 'user', action: 'view', scope: null, displayName: 'View Users', description: 'View user profiles' },
-  { code: 'users.user.invite', module: 'users', resource: 'user', action: 'invite', scope: null, displayName: 'Invite User', description: 'Invite users to the organization' },
+  { code: 'users.user.invite', module: 'users', resource: 'user', action: 'invite', scope: null, displayName: 'Invite User', description: 'Invite users to the tenant' },
   { code: 'users.user.manage', module: 'users', resource: 'user', action: 'manage', scope: null, displayName: 'Manage Users', description: 'Full user management (suspend, reactivate, remove)' },
+
+  // SSO (tenant-scoped; auth service enforces)
+  { code: 'tenants.sso.manage', module: 'tenants', resource: 'sso', action: 'manage', scope: null, displayName: 'Manage SSO', description: 'Configure and manage tenant SSO (SAML, etc.)' },
+  { code: 'organizations.sso.manage', module: 'organizations', resource: 'sso', action: 'manage', scope: null, displayName: 'Manage SSO (deprecated)', description: 'Deprecated: use tenants.sso.manage. For org-scoped SSO routes until removal.' },
 ];
 
 /**
@@ -67,9 +63,6 @@ const SYSTEM_PERMISSIONS: PermissionDefinition[] = [
 const ROLE_PERMISSIONS: Record<string, string[]> = {
   'Super Admin': [], // Super Admin bypasses all permission checks (isSuperAdmin=true)
   'Admin': [
-    'organizations.organization.view',
-    'organizations.organization.update',
-    'organizations.organization.manage_members',
     'teams.team.create',
     'teams.team.read',
     'teams.team.update',
@@ -82,14 +75,14 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'users.user.invite',
     'users.user.view',
     'users.user.manage',
+    'tenants.sso.manage',
+    'organizations.sso.manage', // deprecated; keep for backward compat until org SSO routes removed
   ],
   'Member': [
-    'organizations.organization.view',
     'teams.team.view',
     'users.user.view',
   ],
   'Viewer': [
-    'organizations.organization.view',
     'teams.team.view',
     'users.user.view',
   ],
@@ -134,26 +127,16 @@ export async function seedSystemPermissions(): Promise<void> {
 }
 
 /**
- * Seed system roles for an organization
+ * Seed system roles for a tenant
  */
-export async function seedOrganizationRoles(organizationId: string): Promise<void> {
+export async function seedTenantRoles(tenantId: string): Promise<void> {
   const db = getDatabaseClient() as unknown as {
-    organization: { findUnique: (args: unknown) => Promise<{ name: string } | null> };
     permission: { findMany: (args: unknown) => Promise<{ id: string; code: string }[]> };
     role: { upsert: (args: unknown) => Promise<{ id: string; name: string }> };
     rolePermission: { deleteMany: (args: unknown) => Promise<unknown>; createMany: (args: unknown) => Promise<unknown> };
   };
-  
-  // Verify organization exists
-  const organization = await db.organization.findUnique({
-    where: { id: organizationId },
-  });
-  
-  if (!organization) {
-    throw new Error(`Organization ${organizationId} not found`);
-  }
-  
-  log.info('Seeding roles for organization', { organizationId, organizationName: organization.name, service: 'user-management' });
+
+  log.info('Seeding roles for tenant', { tenantId, service: 'user-management' });
   
   // Ensure system permissions are seeded first
   await seedSystemPermissions();
@@ -182,8 +165,8 @@ export async function seedOrganizationRoles(organizationId: string): Promise<voi
     
     const role = await db.role.upsert({
       where: {
-        organizationId_name: {
-          organizationId,
+        tenantId_name: {
+          tenantId,
           name: roleName,
         },
       },
@@ -193,7 +176,7 @@ export async function seedOrganizationRoles(organizationId: string): Promise<voi
         isSuperAdmin,
       },
       create: {
-        organizationId,
+        tenantId,
         name: roleName,
         description: getRoleDescription(roleName),
         isSystemRole: true,
@@ -242,7 +225,7 @@ export async function seedOrganizationRoles(organizationId: string): Promise<voi
     }
   }
   
-  log.info('Seeded system roles for organization', { organizationId, roleCount: Object.keys(roles).length, service: 'user-management' });
+  log.info('Seeded system roles for tenant', { tenantId, roleCount: Object.keys(roles).length, service: 'user-management' });
 }
 
 /**
@@ -251,7 +234,7 @@ export async function seedOrganizationRoles(organizationId: string): Promise<voi
 function getRoleDescription(roleName: string): string {
   const descriptions: Record<string, string> = {
     'Super Admin': 'Super Administrator with full access to all features and bypasses all permission checks',
-    'Admin': 'Administrator with full access to manage users, roles, projects, and organization settings',
+    'Admin': 'Administrator with full access to manage users, roles, projects, and tenant settings',
     'Member': 'Standard member with access to create and manage projects and tasks',
     'Viewer': 'Read-only access to view projects, tasks, and teams',
   };
@@ -262,11 +245,11 @@ function getRoleDescription(roleName: string): string {
 /**
  * Seed Revimize tenant and promote user to Super Admin.
  * Runs when SEED_SUPER_ADMIN_EMAIL is set. Uses Cosmos getContainer for reliability.
- * - Ensures organization "Revimize" (slug: revimize) exists
- * - Ensures Super Admin role exists for that org
+ * - Uses SEED_DEFAULT_TENANT_ID or a new UUID as default tenant
+ * - Ensures Super Admin role exists for that tenant
  * - Finds user by email, or creates user if SEED_SUPER_ADMIN_PASSWORD is set
- * - Sets isEmailVerified: true, tenantId to Revimize org id
- * - Creates organizationMembership with Super Admin role
+ * - Sets isEmailVerified: true, tenantId to default tenant id
+ * - Creates tenant membership with Super Admin role
  */
 export async function seedRevimizeSuperAdmin(): Promise<void> {
   const email = process.env.SEED_SUPER_ADMIN_EMAIL?.trim();
@@ -276,38 +259,19 @@ export async function seedRevimizeSuperAdmin(): Promise<void> {
     return;
   }
 
+  const defaultTenantId = process.env.SEED_DEFAULT_TENANT_ID?.trim() || randomUUID();
+
   try {
-    const orgs = getContainer(USER_ORGANIZATIONS);
     const users = getContainer(USER_USERS);
     const roles = getContainer(USER_ROLES);
     const memberships = getContainer(USER_MEMBERSHIPS);
 
-    // 1. Find or create Revimize organization (partitionKey = organizationId per architecture)
-    const { resources: existingOrgs } = await orgs.items
-      .query({ query: 'SELECT * FROM c WHERE c.slug = @slug', parameters: [{ name: '@slug', value: REVIMIZE_SLUG }] })
-      .fetchAll();
-    let orgId: string;
-    if (existingOrgs.length > 0) {
-      orgId = (existingOrgs[0] as { id: string }).id;
-      log.info('Revimize organization already exists', { orgId, service: 'user-management' });
-    } else {
-      orgId = randomUUID();
-      await orgs.items.create({
-        id: orgId,
-        tenantId: orgId,
-        partitionKey: orgId,
-        name: REVIMIZE_NAME,
-        slug: REVIMIZE_SLUG,
-      } as Record<string, unknown>);
-      log.info('Created Revimize organization', { orgId, service: 'user-management' });
-    }
-
-    // 2. Ensure Super Admin role exists for Revimize org (direct Cosmos; roles partitionKey = tenantId = orgId)
+    // 1. Ensure Super Admin role exists for default tenant (roles partitionKey = tenantId)
     const { resources: roleListExisting } = await roles.items
       .query({
-        query: 'SELECT * FROM c WHERE c.organizationId = @orgId AND c.name = @name',
+        query: 'SELECT * FROM c WHERE c.tenantId = @tid AND c.name = @name',
         parameters: [
-          { name: '@orgId', value: orgId },
+          { name: '@tid', value: defaultTenantId },
           { name: '@name', value: SUPER_ADMIN_ROLE_NAME },
         ],
       })
@@ -319,15 +283,14 @@ export async function seedRevimizeSuperAdmin(): Promise<void> {
       superAdminRoleId = randomUUID();
       await roles.items.create({
         id: superAdminRoleId,
-        tenantId: orgId,
-        partitionKey: orgId,
-        organizationId: orgId,
+        tenantId: defaultTenantId,
+        partitionKey: defaultTenantId,
         name: SUPER_ADMIN_ROLE_NAME,
         description: getRoleDescription(SUPER_ADMIN_ROLE_NAME),
         isSystemRole: true,
         isSuperAdmin: true,
       } as Record<string, unknown>);
-      log.info('Created Super Admin role for Revimize', { orgId, roleId: superAdminRoleId, service: 'user-management' });
+      log.info('Created Super Admin role for default tenant', { tenantId: defaultTenantId, roleId: superAdminRoleId, service: 'user-management' });
     }
 
     // 3. Find or create user by email (cross-partition)
@@ -345,8 +308,8 @@ export async function seedRevimizeSuperAdmin(): Promise<void> {
       const passwordHash = await bcrypt.hash(password, 12);
       const userDoc = {
         id: userId,
-        tenantId: orgId,
-        partitionKey: orgId,
+        tenantId: defaultTenantId,
+        partitionKey: defaultTenantId,
         email,
         username: `${username}-${Date.now().toString(36)}`,
         name: email.split('@')[0],
@@ -361,52 +324,50 @@ export async function seedRevimizeSuperAdmin(): Promise<void> {
       } as Record<string, unknown>;
       await users.items.create(userDoc);
       user = userDoc as Record<string, unknown> & { id: string; tenantId: string };
-      log.info('Created user for Revimize super admin', { userId, email, orgId, service: 'user-management' });
+      log.info('Created user for Revimize super admin', { userId, email, tenantId: defaultTenantId, service: 'user-management' });
     }
     const userId = user.id;
-    const currentPartition = (user.tenantId ?? user.partitionKey ?? 'default') as string;    // 4. Update user: isEmailVerified true, tenantId = orgId (Cosmos: partition key must match target partition)
-    if (currentPartition === orgId) {
-      const updatedSamePartition = { ...user, isEmailVerified: true, tenantId: orgId, updatedAt: new Date() };
+    const currentPartition = (user.tenantId ?? user.partitionKey ?? 'default') as string;
+    // 4. Update user: isEmailVerified true, tenantId = defaultTenantId (Cosmos: partition key must match target partition)
+    if (currentPartition === defaultTenantId) {
+      const updatedSamePartition = { ...user, isEmailVerified: true, tenantId: defaultTenantId, updatedAt: new Date() };
       await users.item(userId, currentPartition).replace(updatedSamePartition as Record<string, unknown>);
-      log.info('Updated user: isEmailVerified and tenantId (same partition)', { userId, email, orgId, service: 'user-management' });
+      log.info('Updated user: isEmailVerified and tenantId (same partition)', { userId, email, tenantId: defaultTenantId, service: 'user-management' });
     } else {
-      // Update in place so replace succeeds (partition key must match)
       const updatedInPlace = { ...user, isEmailVerified: true, tenantId: currentPartition, updatedAt: new Date() };
       await users.item(userId, currentPartition).replace(updatedInPlace as Record<string, unknown>);
-      // Create in Revimize partition and remove from old partition so there is a single canonical copy
-      const userInNewPartition = { ...user, id: userId, tenantId: orgId, isEmailVerified: true, updatedAt: new Date() };
+      const userInNewPartition = { ...user, id: userId, tenantId: defaultTenantId, isEmailVerified: true, updatedAt: new Date() };
       await users.items.create(userInNewPartition as Record<string, unknown>);
       await users.item(userId, currentPartition).delete();
-      log.info('Updated user: isEmailVerified, migrated to Revimize partition', { userId, email, orgId, service: 'user-management' });
+      log.info('Updated user: isEmailVerified, migrated to default tenant partition', { userId, email, tenantId: defaultTenantId, service: 'user-management' });
     }
 
-    // 5. Create membership if not exists (partitionKey = organizationId)
+    // 5. Create membership if not exists (partitionKey = tenantId)
     const { resources: existingMemberships } = await memberships.items
       .query({
-        query: 'SELECT * FROM c WHERE c.userId = @userId AND c.organizationId = @orgId',
+        query: 'SELECT * FROM c WHERE c.userId = @userId AND c.tenantId = @tid',
         parameters: [
           { name: '@userId', value: userId },
-          { name: '@orgId', value: orgId },
+          { name: '@tid', value: defaultTenantId },
         ],
       })
       .fetchAll();
     if (existingMemberships.length > 0) {
-      log.info('User already has membership in Revimize', { userId, orgId, service: 'user-management' });
+      log.info('User already has membership in default tenant', { userId, tenantId: defaultTenantId, service: 'user-management' });
       return;
     }
     await memberships.items.create(
       {
         id: randomUUID(),
-        tenantId: orgId,
-        partitionKey: orgId,
+        tenantId: defaultTenantId,
+        partitionKey: defaultTenantId,
         userId,
-        organizationId: orgId,
         roleId: superAdminRoleId,
         status: 'active',
         joinedAt: new Date(),
       } as Record<string, unknown>
     );
-    log.info('Seeded Revimize super admin: membership created', { userId, email, orgId, service: 'user-management' });
+    log.info('Seeded Revimize super admin: membership created', { userId, email, tenantId: defaultTenantId, service: 'user-management' });
   } catch (err) {
     log.error('Seed Revimize super admin failed', { error: err, email, service: 'user-management' });
     throw err;

@@ -86,9 +86,13 @@ const nextConfig: NextConfig = {
     ]
   },
 
-  // API calls go directly to the gateway via NEXT_PUBLIC_API_BASE_URL (no proxy).
+  // When NEXT_PUBLIC_API_BASE_URL is set, same-origin /api/users/* can be rewritten to the gateway (Auth plan §2).
   async rewrites() {
-    return { beforeFiles: [], afterFiles: [], fallback: [] };
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
+    const fallback = apiBase
+      ? [{ source: "/api/users/:path*", destination: `${apiBase}/api/users/:path*` }]
+      : [];
+    return { beforeFiles: [], afterFiles: [], fallback };
   },
 };
 

@@ -5,10 +5,10 @@ Enterprise-grade audit logging service for Castiel.
 ## Features
 
 - **Audit Trail**: Comprehensive logging of user actions, data access, security events
-- **Multi-tenancy**: Organization-isolated logs with Super Admin cross-org access
+- **Multi-tenancy**: Tenant-isolated logs with Super Admin cross-tenant access
 - **Tamper Evidence**: SHA-256 hash chain for log integrity verification
 - **Compliance**: SOC2, GDPR, PCI-DSS compliant
-- **Configurable Retention**: Per-organization, per-category retention policies
+- **Configurable Retention**: Per-tenant, per-category retention policies
 - **Data Redaction**: Automatic redaction of sensitive data
 - **Pluggable Storage**: PostgreSQL (default), Elasticsearch (future)
 
@@ -41,7 +41,7 @@ The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers)
 - `audit_retention_policies` - Retention policy configurations
 - `audit_alert_rules` - Alert rule definitions
 - `audit_hash_checkpoints` - Hash chain checkpoints
-- `audit_configurations` - Organization-specific configurations
+- `audit_configurations` - Tenant-specific configurations
 - `audit_exports` - Export job records
 
 See [architecture.md](./docs/architecture.md) for container structure and partition key details.

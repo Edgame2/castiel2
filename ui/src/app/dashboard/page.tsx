@@ -14,7 +14,7 @@ export default function DashboardPage() {
   useEffect(() => {
     document.title = 'Dashboard | Castiel';
     if (!getApiBaseUrl()) return;
-    apiFetch('/api/dashboard/api/v1/dashboards/manager/prioritized')
+    apiFetch('/api/v1/dashboards/manager/prioritized')
       .then((r) => r.ok ? r.json() : null)
       .then((data: { opportunities?: unknown[] } | null) => {
         if (data && Array.isArray(data.opportunities)) setPrioritizedCount(data.opportunities.length);

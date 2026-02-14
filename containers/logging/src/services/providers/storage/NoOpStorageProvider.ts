@@ -21,7 +21,7 @@ export class NoOpStorageProvider implements IStorageProvider {
     return logs;
   }
 
-  async getById(_id: string, _organizationId?: string): Promise<AuditLog | null> {
+  async getById(_id: string, _tenantId?: string): Promise<AuditLog | null> {
     return null;
   }
 
@@ -33,7 +33,7 @@ export class NoOpStorageProvider implements IStorageProvider {
     return { field: params.field, buckets: [] };
   }
 
-  async getLastLog(_organizationId?: string): Promise<AuditLog | null> {
+  async getLastLog(_tenantId?: string): Promise<AuditLog | null> {
     return null;
   }
 
@@ -49,7 +49,7 @@ export class NoOpStorageProvider implements IStorageProvider {
     return 0;
   }
 
-  async deleteOlderThan(_date: Date, _organizationId?: string): Promise<number> {
+  async deleteOlderThan(_date: Date, _tenantId?: string): Promise<number> {
     return 0;
   }
 

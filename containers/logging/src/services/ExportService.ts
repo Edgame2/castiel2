@@ -1,12 +1,10 @@
 /**
  * Export Service
- * Handles CSV/JSON export of audit logs
- * Per ModuleImplementationGuide Section 7: API Standards
+ * Handles CSV/JSON export of audit logs (Cosmos DB only).
  */
 
-import { PrismaClient } from '.prisma/logging-client';
 import { promises as fs } from 'fs';
-import { join, dirname } from 'path';
+import { join } from 'path';
 import { createWriteStream } from 'fs';
 import { IStorageProvider } from './providers/storage/IStorageProvider';
 import { LogSearchParams } from '../types/log.types';
@@ -14,16 +12,21 @@ import { ExportFormat, ExportJob, CreateExportInput } from '../types/policy.type
 import { log } from '../utils/logger';
 import { randomUUID } from 'crypto';
 import { getConfig } from '../config';
+import type { CosmosExportsRepository } from '../data/cosmos/exports';
 
 export class ExportService {
-  private prisma: PrismaClient | null;
   private storage: IStorageProvider;
+  private cosmosExports: CosmosExportsRepository;
   private exportDir: string;
   private batchSize = 5000;
 
-  constructor(prisma: PrismaClient | null, storage: IStorageProvider, exportDir?: string) {
-    this.prisma = prisma;
+  constructor(
+    storage: IStorageProvider,
+    cosmosExports: CosmosExportsRepository,
+    exportDir?: string
+  ) {
     this.storage = storage;
+    this.cosmosExports = cosmosExports;
     this.exportDir = exportDir || '/tmp/audit-exports';
   }
 
@@ -31,96 +34,63 @@ export class ExportService {
    * Create an export job
    */
   async createExport(
-    organizationId: string,
+    tenantId: string,
     input: CreateExportInput,
     requestedBy: string
   ): Promise<ExportJob> {
-    if (!this.prisma) throw new Error('Export jobs not available when using Cosmos DB');
-    const exportJob = await this.prisma.audit_exports.create({
-      data: {
-        id: randomUUID(),
-        organizationId,
-        format: input.format as any,
-        filters: input.filters || {},
-        status: 'PENDING',
-        progress: 0,
-        requestedBy,
-      },
+    const row = await this.cosmosExports.create({
+      tenantId,
+      format: input.format,
+      filters: input.filters ?? {},
+      status: 'PENDING',
+      progress: 0,
+      requestedBy,
     });
-
-    // Start processing asynchronously
-    this.processExport(exportJob.id).catch(error => {
-      log.error('Export processing failed', error, { exportId: exportJob.id });
+    this.processExport(row.id).catch(error => {
+      log.error('Export processing failed', error, { exportId: row.id });
     });
-
-    return this.mapToExportJob(exportJob);
+    return this.mapToExportJob(row);
   }
 
   /**
    * Get export job status
    */
-  async getExport(exportId: string, organizationId?: string): Promise<ExportJob | null> {
-    if (!this.prisma) return null;
-    const where: { id: string; organizationId?: string } = { id: exportId };
-    if (organizationId) {
-      where.organizationId = organizationId;
-    }
-    const exportJob = await this.prisma.audit_exports.findUnique({
-      where,
-    });
-
-    if (!exportJob) {
-      return null;
-    }
-
-    return this.mapToExportJob(exportJob);
+  async getExport(exportId: string, tenantId?: string): Promise<ExportJob | null> {
+    const row = await this.cosmosExports.findUnique({ where: { id: exportId } });
+    if (!row) return null;
+    if (tenantId !== undefined && row.tenantId !== tenantId) return null;
+    return this.mapToExportJob(row);
   }
 
   /**
    * List export jobs
    */
-  async listExports(organizationId?: string, limit: number = 50): Promise<ExportJob[]> {
-    if (!this.prisma) return [];
-    const where: Record<string, unknown> = {};
-    if (organizationId) {
-      where.organizationId = organizationId;
-    }
-    const exports = await this.prisma.audit_exports.findMany({
-      where,
+  async listExports(tenantId?: string, limit: number = 50): Promise<ExportJob[]> {
+    const rows = await this.cosmosExports.findMany({
+      where: tenantId !== undefined ? { tenantId } : undefined,
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
-
-    return exports.map(e => this.mapToExportJob(e));
+    return rows.map(e => this.mapToExportJob(e));
   }
 
   /**
    * Process export job with progress tracking
    */
   private async processExport(exportId: string): Promise<void> {
-    if (!this.prisma) throw new Error('Export service: Prisma not configured');
+    const exportJob = await this.getExport(exportId);
+    if (!exportJob) throw new Error('Export job not found');
     try {
-      // Update status to PROCESSING
-      await this.prisma.audit_exports.update({
-        where: { id: exportId },
-        data: { status: 'PROCESSING', progress: 0 },
+      await this.cosmosExports.update(exportId, exportJob.tenantId, {
+        status: 'PROCESSING',
+        progress: 0,
       });
 
-      const exportJob = await this.prisma.audit_exports.findUnique({
-        where: { id: exportId },
-      });
-
-      if (!exportJob) {
-        throw new Error('Export job not found');
-      }
-
-      // Ensure export directory exists
       await fs.mkdir(this.exportDir, { recursive: true });
 
-      // Build search params from filters
-      const filters = exportJob.filters as Record<string, unknown> || {};
+      const filters = (exportJob.filters || {}) as Record<string, unknown>;
       const baseSearchParams: LogSearchParams = {
-        organizationId: exportJob.organizationId,
+        tenantId: exportJob.tenantId,
         startDate: filters.startDate ? new Date(filters.startDate as string) : undefined,
         endDate: filters.endDate ? new Date(filters.endDate as string) : undefined,
         category: filters.category as any,
@@ -129,16 +99,13 @@ export class ExportService {
         userId: filters.userId as string | undefined,
       };
 
-      // Get total count for progress tracking
       const totalCount = await this.storage.count(baseSearchParams);
-      
       log.info('Starting export', { exportId, totalCount, format: exportJob.format });
 
-      // Prepare file
       const fileExtension = exportJob.format === 'CSV' ? 'csv' : 'json';
       const fileName = `${exportId}.${fileExtension}`;
       const filePath = join(this.exportDir, fileName);
-      
+
       let processedCount = 0;
       let fileSizeBytes = BigInt(0);
 
@@ -146,32 +113,27 @@ export class ExportService {
         fileSizeBytes = await this.exportToCSV(filePath, baseSearchParams, totalCount, async (progress) => {
           processedCount = progress;
           const percent = totalCount > 0 ? Math.floor((progress / totalCount) * 100) : 0;
-          await this.updateProgress(exportId, percent);
+          await this.updateProgress(exportId, exportJob.tenantId, percent);
         });
       } else {
         fileSizeBytes = await this.exportToJSON(filePath, baseSearchParams, totalCount, async (progress) => {
           processedCount = progress;
           const percent = totalCount > 0 ? Math.floor((progress / totalCount) * 100) : 0;
-          await this.updateProgress(exportId, percent);
+          await this.updateProgress(exportId, exportJob.tenantId, percent);
         });
       }
 
-      // Set expiration (7 days from now)
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7);
 
-      // Update export job with results
-      await this.prisma.audit_exports.update({
-        where: { id: exportId },
-        data: {
-          status: 'COMPLETED',
-          progress: 100,
-          totalRecords: processedCount,
-          fileUrl: filePath,
-          fileSizeBytes,
-          expiresAt,
-          completedAt: new Date(),
-        },
+      await this.cosmosExports.update(exportId, exportJob.tenantId, {
+        status: 'COMPLETED',
+        progress: 100,
+        totalRecords: processedCount,
+        fileUrl: filePath,
+        fileSizeBytes: Number(fileSizeBytes),
+        expiresAt,
+        completedAt: new Date(),
       });
 
       log.info('Export completed', {
@@ -183,15 +145,11 @@ export class ExportService {
       });
     } catch (error) {
       log.error('Export processing failed', error, { exportId });
-
-      await this.prisma.audit_exports.update({
-        where: { id: exportId },
-        data: {
-          status: 'FAILED',
-          errorMessage: error instanceof Error ? error.message : String(error),
-        },
-      });
-
+      const errMsg = error instanceof Error ? error.message : String(error);
+      const job = await this.getExport(exportId);
+      if (job) {
+        await this.cosmosExports.update(exportId, job.tenantId, { status: 'FAILED', errorMessage: errMsg });
+      }
       throw error;
     }
   }
@@ -199,15 +157,10 @@ export class ExportService {
   /**
    * Update export progress
    */
-  private async updateProgress(exportId: string, progress: number): Promise<void> {
-    if (!this.prisma) return;
+  private async updateProgress(exportId: string, tenantId: string, progress: number): Promise<void> {
     try {
-      await this.prisma.audit_exports.update({
-        where: { id: exportId },
-        data: { progress },
-      });
+      await this.cosmosExports.update(exportId, tenantId, { progress });
     } catch (error) {
-      // Non-critical, just log
       log.debug('Failed to update export progress', { exportId, progress });
     }
   }
@@ -227,7 +180,7 @@ export class ExportService {
     const headers = [
       'ID',
       'Timestamp',
-      'Organization ID',
+      'Tenant ID',
       'User ID',
       'Session ID',
       'IP Address',
@@ -259,7 +212,7 @@ export class ExportService {
         const row = [
           logEntry.id,
           logEntry.timestamp.toISOString(),
-          logEntry.organizationId,
+          logEntry.tenantId,
           logEntry.userId || '',
           logEntry.sessionId || '',
           logEntry.ipAddress || '',
@@ -358,8 +311,8 @@ export class ExportService {
   /**
    * Get export file path for download
    */
-  async getExportFilePath(exportId: string, organizationId?: string): Promise<string | null> {
-    const exportJob = await this.getExport(exportId, organizationId);
+  async getExportFilePath(exportId: string, tenantId?: string): Promise<string | null> {
+    const exportJob = await this.getExport(exportId, tenantId);
     
     if (!exportJob) {
       return null;
@@ -379,31 +332,14 @@ export class ExportService {
   /**
    * Cancel an export job
    */
-  async cancelExport(exportId: string, organizationId?: string): Promise<boolean> {
-    if (!this.prisma) return false;
-    const where: any = { id: exportId };
-    if (organizationId) {
-      where.organizationId = organizationId;
-    }
-
-    const exportJob = await this.prisma.audit_exports.findUnique({ where });
-    
-    if (!exportJob) {
-      return false;
-    }
-
-    if (exportJob.status === 'COMPLETED' || exportJob.status === 'FAILED') {
-      return false;
-    }
-
-    await this.prisma.audit_exports.update({
-      where: { id: exportId },
-      data: { 
-        status: 'FAILED',
-        errorMessage: 'Export cancelled by user',
-      },
+  async cancelExport(exportId: string, tenantId?: string): Promise<boolean> {
+    const exportJob = await this.getExport(exportId, tenantId);
+    if (!exportJob) return false;
+    if (exportJob.status === 'COMPLETED' || exportJob.status === 'FAILED') return false;
+    await this.cosmosExports.update(exportId, exportJob.tenantId, {
+      status: 'FAILED',
+      errorMessage: 'Export cancelled by user',
     });
-
     return true;
   }
 
@@ -411,41 +347,25 @@ export class ExportService {
    * Clean up expired exports
    */
   async cleanupExpiredExports(): Promise<number> {
-    if (!this.prisma) return 0;
     const now = new Date();
-
-    // Find expired exports
-    const expired = await this.prisma.audit_exports.findMany({
-      where: {
-        expiresAt: { lt: now },
-        status: 'COMPLETED',
-      },
-    });
+    const rows = await this.cosmosExports.findExpired(now);
+    const expired = rows.map(r => ({ id: r.id, tenantId: r.tenantId, fileUrl: r.fileUrl }));
 
     let deletedCount = 0;
-
     for (const exportJob of expired) {
       try {
-        // Delete file if exists
         if (exportJob.fileUrl) {
           await fs.unlink(exportJob.fileUrl).catch(() => {});
         }
-
-        // Delete record
-        await this.prisma.audit_exports.delete({
-          where: { id: exportJob.id },
-        });
-
+        await this.cosmosExports.delete(exportJob.id, exportJob.tenantId);
         deletedCount++;
       } catch (error) {
         log.error('Failed to cleanup export', error, { exportId: exportJob.id });
       }
     }
-
     if (deletedCount > 0) {
       log.info('Cleaned up expired exports', { deletedCount });
     }
-
     return deletedCount;
   }
 
@@ -461,7 +381,7 @@ export class ExportService {
     const headers = [
       'ID',
       'Timestamp',
-      'Organization ID',
+      'Tenant ID',
       'User ID',
       'Action',
       'Category',
@@ -475,7 +395,7 @@ export class ExportService {
     const rows = logs.map(log => [
       log.id,
       log.timestamp.toISOString(),
-      log.organizationId,
+      log.tenantId,
       log.userId || '',
       log.action,
       log.category,
@@ -502,19 +422,25 @@ export class ExportService {
   }
 
   /**
-   * Map Prisma model to ExportJob type
+   * Map Prisma model or Cosmos row to ExportJob type
    */
   private mapToExportJob(exportJob: any): ExportJob {
+    const fileSizeBytes =
+      exportJob.fileSizeBytes != null
+        ? typeof exportJob.fileSizeBytes === 'bigint'
+          ? exportJob.fileSizeBytes
+          : BigInt(exportJob.fileSizeBytes)
+        : null;
     return {
       id: exportJob.id,
-      organizationId: exportJob.organizationId,
+      tenantId: exportJob.tenantId,
       format: exportJob.format as ExportFormat,
-      filters: exportJob.filters as Record<string, unknown>,
+      filters: (exportJob.filters ?? {}) as Record<string, unknown>,
       status: exportJob.status as any,
       progress: exportJob.progress,
       totalRecords: exportJob.totalRecords,
       fileUrl: exportJob.fileUrl,
-      fileSizeBytes: exportJob.fileSizeBytes,
+      fileSizeBytes,
       expiresAt: exportJob.expiresAt,
       errorMessage: exportJob.errorMessage,
       requestedBy: exportJob.requestedBy,

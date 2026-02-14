@@ -11,7 +11,7 @@ import { NotificationPreferences, PreferenceScope } from '../types/notification'
 export interface CreatePreferenceInput {
   scope: PreferenceScope;
   scopeId?: string;
-  organizationId: string;
+  tenantId: string;
   channels?: any;
   categories?: any;
   quietHoursStart?: string;
@@ -36,14 +36,14 @@ export class PreferenceService {
   async getEffectivePreferences(
     scope: PreferenceScope,
     scopeId: string,
-    organizationId: string
+    tenantId: string
   ): Promise<NotificationPreferences> {
     const preference = await this.db.notification_preferences.findUnique({
       where: {
-        scope_scopeId_organizationId: {
+        scope_scopeId_tenantId: {
           scope,
           scopeId: scope === 'GLOBAL' ? null : scopeId,
-          organizationId,
+          tenantId,
         },
       },
     });
@@ -86,16 +86,16 @@ export class PreferenceService {
   async upsertPreference(input: CreatePreferenceInput): Promise<any> {
     return await this.db.notification_preferences.upsert({
       where: {
-        scope_scopeId_organizationId: {
+        scope_scopeId_tenantId: {
           scope: input.scope,
           scopeId: input.scopeId || null,
-          organizationId: input.organizationId,
+          tenantId: input.tenantId,
         },
       },
       create: {
         scope: input.scope,
         scopeId: input.scopeId || null,
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         channels: input.channels || {},
         categories: input.categories || {},
         quietHoursStart: input.quietHoursStart || null,
@@ -147,13 +147,13 @@ export class PreferenceService {
   }
 
   /**
-   * List preferences for an organization
+   * List preferences for a tenant
    */
   async listPreferences(
-    organizationId: string,
+    tenantId: string,
     scope?: PreferenceScope
   ): Promise<any[]> {
-    const where: any = { organizationId };
+    const where: any = { tenantId };
     if (scope) {
       where.scope = scope;
     }

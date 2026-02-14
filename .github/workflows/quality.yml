@@ -7,6 +7,24 @@ on:
     branches: [main, develop]
 
 jobs:
+  api-rules:
+    name: API Rules (client path = /api/v1/...)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Check API rules
+        run: node scripts/check-api-rules.mjs
+
+  tenant-in-query:
+    name: Tenant in query (auth, user-management, logging)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Check tenant-in-query
+        run: node scripts/check-tenant-in-query.mjs
+
   quality:
     name: Quality Checks
     runs-on: ubuntu-latest

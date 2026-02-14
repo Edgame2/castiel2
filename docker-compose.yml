@@ -45,6 +45,7 @@ services:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3001
       - JWT_SECRET=${JWT_SECRET}
+      - FRONTEND_URL=${FRONTEND_URL:-}
       - AUTH_URL=http://auth:3021
       - USER_MANAGEMENT_URL=http://user-management:3022
       - SECRET_MANAGEMENT_URL=http://secret-management:3003
@@ -67,6 +68,8 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3021
+      - BASE_URL=${BASE_URL:-}
+      - MAIN_APP_URL=${MAIN_APP_URL:-}
       - DATABASE_URL=${DATABASE_URL:-postgresql://localhost:5432/auth_placeholder}
       - COSMOS_DB_ENDPOINT=${COSMOS_DB_ENDPOINT:-https://optional.documents.azure.com:443/}
       - COSMOS_DB_KEY=${COSMOS_DB_KEY:-optional}

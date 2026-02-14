@@ -1,61 +1,40 @@
 /**
  * Configuration Service
- * Manages organization-specific audit configuration.
- * Supports Prisma (Postgres) or CosmosConfigurationRepository (Cosmos DB).
+ * Manages organization-specific audit configuration (Cosmos DB only).
  */
 
-import { PrismaClient } from '.prisma/logging-client';
 import { OrganizationConfig, UpdateOrganizationConfigInput } from '../types';
 import { getConfig } from '../config';
 import { log } from '../utils/logger';
 import type { CosmosConfigurationRepository } from '../data/cosmos/configuration';
 
 export class ConfigurationService {
-  private prisma: PrismaClient | null;
-  private cosmosConfig: CosmosConfigurationRepository | null;
+  private cosmosConfig: CosmosConfigurationRepository;
   private cache: Map<string, { config: OrganizationConfig | null; cachedAt: number }> = new Map();
   private cacheTtlMs = 60000;
 
-  constructor(prisma: PrismaClient | null, cosmosConfig?: CosmosConfigurationRepository) {
-    this.prisma = prisma;
-    this.cosmosConfig = cosmosConfig ?? null;
+  constructor(cosmosConfig: CosmosConfigurationRepository) {
+    this.cosmosConfig = cosmosConfig;
   }
   
   /**
    * Get organization configuration (with caching)
    */
-  async getOrganizationConfig(organizationId: string): Promise<OrganizationConfig | null> {
-    // Check cache first
-    const cached = this.cache.get(organizationId);
+  async getOrganizationConfig(tenantId: string): Promise<OrganizationConfig | null> {
+    const cached = this.cache.get(tenantId);
     if (cached && Date.now() - cached.cachedAt < this.cacheTtlMs) {
       return cached.config;
     }
-    
     try {
-      let config: OrganizationConfig | null = null;
-      if (this.cosmosConfig) {
-        config = await this.cosmosConfig.findFirst({ where: { organizationId } });
-        if (!config) {
-          config = await this.cosmosConfig.findFirst({ where: { organizationId: null } });
-        }
-      } else if (this.prisma) {
-        let configRow = await this.prisma.audit_configurations.findFirst({
-          where: { organizationId },
-        });
-        if (!configRow) {
-          configRow = await this.prisma.audit_configurations.findFirst({
-            where: { organizationId: null },
-          });
-        }
-        config = configRow ? this.mapToConfig(configRow) : null;
+      let config = await this.cosmosConfig.findFirst({ where: { tenantId } });
+      if (!config) {
+        config = await this.cosmosConfig.findFirst({ where: { tenantId: null } });
       }
-      
-      // Cache the result
-      this.cache.set(organizationId, { config, cachedAt: Date.now() });
+      this.cache.set(tenantId, { config, cachedAt: Date.now() });
       
       return config;
     } catch (error) {
-      log.error('Failed to get organization config', error, { organizationId });
+      log.error('Failed to get organization config', error, { tenantId });
       return null;
     }
   }
@@ -65,16 +44,7 @@ export class ConfigurationService {
    */
   async getGlobalConfig(): Promise<OrganizationConfig | null> {
     try {
-      if (this.cosmosConfig) {
-        return await this.cosmosConfig.findFirst({ where: { organizationId: null } });
-      }
-      if (this.prisma) {
-        const configRow = await this.prisma.audit_configurations.findFirst({
-          where: { organizationId: null },
-        });
-        return configRow ? this.mapToConfig(configRow) : null;
-      }
-      return null;
+      return await this.cosmosConfig.findFirst({ where: { tenantId: null } });
     } catch (error) {
       log.error('Failed to get global config', error);
       return null;
@@ -85,13 +55,13 @@ export class ConfigurationService {
    * Create or update organization configuration
    */
   async upsertOrganizationConfig(
-    organizationId: string | undefined,
+    tenantId: string | undefined,
     input: UpdateOrganizationConfigInput
   ): Promise<OrganizationConfig> {
     const appConfig = getConfig();
     
     const data = {
-      organizationId: organizationId ?? null,
+      tenantId: tenantId ?? null,
       captureIpAddress: input.captureIpAddress ?? appConfig.defaults.capture.ip_address,
       captureUserAgent: input.captureUserAgent ?? appConfig.defaults.capture.user_agent,
       captureGeolocation: input.captureGeolocation ?? appConfig.defaults.capture.geolocation,
@@ -101,51 +71,19 @@ export class ConfigurationService {
       alertsEnabled: input.alertsEnabled ?? appConfig.defaults.alerts.enabled,
     };
     
-    if (this.cosmosConfig) {
-      const result = await this.cosmosConfig.upsert(organizationId, data);
-      if (organizationId) this.cache.delete(organizationId);
-      log.info('Organization config updated', { organizationId });
-      return result;
-    }
-    if (!this.prisma) throw new Error('No configuration data source');
-    const existing = await this.prisma.audit_configurations.findFirst({
-      where: { organizationId: organizationId ?? null },
-    });
-    let result;
-    if (existing) {
-      result = await this.prisma.audit_configurations.update({
-        where: { id: existing.id },
-        data,
-      });
-    } else {
-      result = await this.prisma.audit_configurations.create({
-        data,
-      });
-    }
-    
-    // Invalidate cache
-    if (organizationId) {
-      this.cache.delete(organizationId);
-    }
-    
-    log.info('Organization config updated', { organizationId });
-    
-    return this.mapToConfig(result);
+    const result = await this.cosmosConfig.upsert(tenantId, data);
+    if (tenantId) this.cache.delete(tenantId);
+    log.info('Organization config updated', { tenantId });
+    return result;
   }
   
   /**
    * Delete organization configuration (falls back to global)
    */
-  async deleteOrganizationConfig(organizationId: string): Promise<void> {
-    if (this.cosmosConfig) {
-      await this.cosmosConfig.delete({ where: { organizationId } });
-    } else if (this.prisma) {
-      await this.prisma.audit_configurations.delete({
-        where: { organizationId },
-      });
-    }
-    this.cache.delete(organizationId);
-    log.info('Organization config deleted', { organizationId });
+  async deleteOrganizationConfig(tenantId: string): Promise<void> {
+    await this.cosmosConfig.delete({ where: { tenantId } });
+    this.cache.delete(tenantId);
+    log.info('Organization config deleted', { tenantId });
   }
   
   /**
@@ -153,24 +91,5 @@ export class ConfigurationService {
    */
   clearCache(): void {
     this.cache.clear();
-  }
-  
-  /**
-   * Map database row to OrganizationConfig
-   */
-  private mapToConfig(row: any): OrganizationConfig {
-    return {
-      id: row.id,
-      organizationId: row.organizationId ?? undefined,
-      captureIpAddress: row.captureIpAddress,
-      captureUserAgent: row.captureUserAgent,
-      captureGeolocation: row.captureGeolocation,
-      redactSensitiveData: row.redactSensitiveData,
-      redactionPatterns: row.redactionPatterns as string[],
-      hashChainEnabled: row.hashChainEnabled,
-      alertsEnabled: row.alertsEnabled,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-    };
   }
 }

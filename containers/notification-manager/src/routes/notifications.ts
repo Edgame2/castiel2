@@ -16,7 +16,7 @@ export async function notificationRoutes(fastify: FastifyInstance) {
       
       const notifications = await notificationService.getNotifications({
         userId: query.userId || user.id,
-        organizationId: query.organizationId || user.organizationId,
+        tenantId: query.tenantId || user.tenantId,
         read: query.read === 'true' ? true : query.read === 'false' ? false : undefined,
         limit: query.limit ? parseInt(query.limit, 10) : 50,
         offset: query.offset ? parseInt(query.offset, 10) : 0,
@@ -49,7 +49,7 @@ export async function notificationRoutes(fastify: FastifyInstance) {
       
       await notificationService.markAllAsRead({
         userId: user.id,
-        organizationId: query.organizationId || user.organizationId,
+        tenantId: query.tenantId || user.tenantId,
       });
       reply.send({ success: true });
     } catch (error: any) {

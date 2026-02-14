@@ -18,7 +18,7 @@ From `config/default.yaml`: server.port (3001 internal; host 3015 in docker-comp
 
 ### API
 
-Notification send, templates, delivery tracking, quiet hours, webhooks. See [containers/notification-manager/openapi.yaml](../../containers/notification-manager/openapi.yaml). Gateway routes /api/notifications/*.
+Notification send, templates, delivery tracking, quiet hours, webhooks. See [containers/notification-manager/openapi.yaml](../../containers/notification-manager/openapi.yaml). Gateway client path: `/api/v1/notifications`, `/api/v1/preferences`, `/api/v1/templates` (per API_RULES).
 
 ### Events
 

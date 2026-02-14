@@ -7,6 +7,8 @@ description: Scaffolds new container modules following ModuleImplementationGuide
 
 Scaffolds new container modules following the standard structure from ModuleImplementationGuide.md Section 3.1.
 
+**Tenant-only:** Use `tenantId` only; there is no organization. All routes, services, database queries, and events in the new module must use `tenantId` (e.g. `request.user!.tenantId`). Do not add `organizationId` to types, schemas, or APIs.
+
 ## Quick Start
 
 When creating a new container module:

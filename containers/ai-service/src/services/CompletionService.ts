@@ -7,7 +7,7 @@ export interface CompletionRequest {
   temperature?: number;
   maxTokens?: number;
   stream?: boolean;
-  organizationId?: string;
+  tenantId?: string;
   userId?: string;
 }
 

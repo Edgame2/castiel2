@@ -16,17 +16,9 @@ export async function registerRoutes(
   proxyService: ProxyService,
   config: ReturnType<typeof loadConfig>
 ): Promise<void> {
-  // Register route mappings from config
-  const routeMappings = [
-    { path: '/api/auth', service: 'auth', serviceUrl: config.services.auth.url, stripPrefix: true, pathRewrite: '/api/v1/auth' },
-    { path: '/api/users', service: 'user_management', serviceUrl: config.services.user_management.url, pathRewrite: '/api/v1/users' },
-    { path: '/api/secrets', service: 'secret_management', serviceUrl: config.services.secret_management.url, stripPrefix: true },
-    { path: '/api/logging', service: 'logging', serviceUrl: config.services.logging.url, stripPrefix: true },
-    { path: '/api/notifications', service: 'notification', serviceUrl: config.services.notification.url, stripPrefix: true },
-    { path: '/api/ai', service: 'ai_service', serviceUrl: config.services.ai_service.url, stripPrefix: true },
-    { path: '/api/embeddings', service: 'embeddings', serviceUrl: config.services.embeddings.url, stripPrefix: true },
-    { path: '/api/dashboard', service: 'dashboard', serviceUrl: config.services.dashboard.url, stripPrefix: true },
-  ];
+  // Client path = gateway path = /api/v1/<service-path> per documentation/endpoints/API_RULES.md.
+  // All route path values MUST use /api/v1/... prefix; use pathRewrite only when backend expects a different path.
+  const routeMappings: Array<{ path: string; service: string; serviceUrl: string; stripPrefix?: boolean; pathRewrite?: string }> = [];
 
   if (config.services.ml_service?.url) {
     routeMappings.push({ path: '/api/v1/ml', service: 'ml_service', serviceUrl: config.services.ml_service.url, stripPrefix: false });
@@ -36,9 +28,7 @@ export async function registerRoutes(
     routeMappings.push({ path: '/api/v1/risk-catalog', service: 'risk_catalog', serviceUrl: config.services.risk_catalog.url, stripPrefix: false });
   }
   if (config.services.user_management?.url) {
-    routeMappings.push({ path: '/api/v1/admin/organizations', service: 'user_management', serviceUrl: config.services.user_management.url, stripPrefix: false });
-    routeMappings.push({ path: '/api/v1/organizations', service: 'user_management', serviceUrl: config.services.user_management.url, stripPrefix: false });
-    routeMappings.push({ path: '/api/invitations', service: 'user_management', serviceUrl: config.services.user_management.url, pathRewrite: '/api/v1/invitations' });
+    routeMappings.push({ path: '/api/v1/tenants', service: 'user_management', serviceUrl: config.services.user_management.url, stripPrefix: false });
   }
   if (config.services.recommendations?.url) {
     routeMappings.push({ path: '/api/v1/remediation-workflows', service: 'recommendations', serviceUrl: config.services.recommendations.url, stripPrefix: false });
@@ -69,9 +59,6 @@ export async function registerRoutes(
     routeMappings.push({ path: '/api/v1/adaptive-learning', service: 'adaptive_learning', serviceUrl: config.services.adaptive_learning.url, stripPrefix: false });
   }
   // AI: conversations, prompts, multimodal (register before broader /api/v1 so path matching is correct)
-  if (config.services.ai_conversation?.url) {
-    routeMappings.push({ path: '/api/conversations', service: 'ai_conversation', serviceUrl: config.services.ai_conversation.url, pathRewrite: '/api/v1/conversations' });
-  }
   if (config.services.prompt_service?.url) {
     routeMappings.push({ path: '/api/v1/prompts', service: 'prompt_service', serviceUrl: config.services.prompt_service.url, stripPrefix: false });
   }
@@ -129,6 +116,35 @@ export async function registerRoutes(
   }
   if (config.services.signal_intelligence?.url) {
     routeMappings.push({ path: '/api/v1/signals', service: 'signal_intelligence', serviceUrl: config.services.signal_intelligence.url, stripPrefix: false });
+  }
+  // Client path = /api/v1/... (API_RULES). Register /api/v1/* routes before catch-all /api/v1.
+  if (config.services.auth?.url) {
+    routeMappings.push({ path: '/api/v1/auth', service: 'auth', serviceUrl: config.services.auth.url, stripPrefix: false });
+  }
+  if (config.services.user_management?.url) {
+    routeMappings.push({ path: '/api/v1/users', service: 'user_management', serviceUrl: config.services.user_management.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/teams', service: 'user_management', serviceUrl: config.services.user_management.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/invitations', service: 'user_management', serviceUrl: config.services.user_management.url, stripPrefix: false });
+  }
+  if (config.services.notification?.url) {
+    routeMappings.push({ path: '/api/v1/notifications', service: 'notification', serviceUrl: config.services.notification.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/preferences', service: 'notification', serviceUrl: config.services.notification.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/templates', service: 'notification', serviceUrl: config.services.notification.url, stripPrefix: false });
+  }
+  if (config.services.dashboard?.url) {
+    routeMappings.push({ path: '/api/v1/dashboards', service: 'dashboard', serviceUrl: config.services.dashboard.url, stripPrefix: false });
+  }
+  if (config.services.ai_conversation?.url) {
+    routeMappings.push({ path: '/api/v1/conversations', service: 'ai_conversation', serviceUrl: config.services.ai_conversation.url, stripPrefix: false });
+  }
+  if (config.services.secret_management?.url) {
+    routeMappings.push({ path: '/api/v1/secrets', service: 'secret_management', serviceUrl: config.services.secret_management.url, pathRewrite: '/api/secrets' });
+    routeMappings.push({ path: '/api/v1/vaults', service: 'secret_management', serviceUrl: config.services.secret_management.url, pathRewrite: '/api/vaults' });
+  }
+  if (config.services.logging?.url) {
+    routeMappings.push({ path: '/api/v1/logs', service: 'logging', serviceUrl: config.services.logging.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/export', service: 'logging', serviceUrl: config.services.logging.url, stripPrefix: false });
+    routeMappings.push({ path: '/api/v1/config', service: 'logging', serviceUrl: config.services.logging.url, stripPrefix: false });
   }
   if (config.services.risk_analytics?.url) {
     routeMappings.push({ path: '/api/v1', service: 'risk_analytics', serviceUrl: config.services.risk_analytics.url, stripPrefix: false });

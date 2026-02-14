@@ -10,7 +10,7 @@ import { log } from '../utils/logger';
 
 export interface LoggingEvent {
   type: string;
-  organizationId?: string;
+  tenantId?: string;
   userId?: string;
   data: Record<string, unknown>;
   timestamp: Date;
@@ -36,24 +36,20 @@ function getPublisher(): EventPublisher {
 export async function publishEvent(
   eventType: string,
   data: Record<string, unknown>,
-  organizationId?: string,
+  tenantId?: string,
   userId?: string
 ): Promise<void> {
   const config = getConfig();
-  
   if (!config.rabbitmq.url) {
     log.debug('RabbitMQ not configured, skipping event publish', { eventType });
     return;
   }
-
   try {
-    // Use shared event publisher: publish(eventType, tenantId, data)
     const pub = getPublisher();
-    await pub.publish(eventType, organizationId ?? '', data);
-
-    log.debug('Event published', { eventType, organizationId });
+    await pub.publish(eventType, tenantId ?? '', data);
+    log.debug('Event published', { eventType, tenantId });
   } catch (error) {
-    log.error('Failed to publish event', error, { eventType, organizationId });
+    log.error('Failed to publish event', error, { eventType, tenantId });
     // Don't throw - event publishing failures shouldn't break the flow
   }
 }
@@ -64,7 +60,7 @@ export async function publishEvent(
 export interface AlertTriggeredPayload {
   ruleId: string;
   ruleName: string;
-  organizationId?: string;
+  tenantId?: string;
   triggeredAt: Date;
   matchCount: number;
   conditions: Record<string, unknown>;
@@ -84,20 +80,20 @@ export async function publishAlertTriggered(
     matchCount: payload.matchCount,
     conditions: payload.conditions,
     notificationChannels: payload.notificationChannels,
-  }, payload.organizationId);
+  }, payload.tenantId);
 }
 
 /**
  * Publish hash chain verification failed event
  */
 export async function publishVerificationFailed(
-  organizationId: string,
+  tenantId: string,
   failedLogIds: string[],
   verifiedBy: string
 ): Promise<void> {
   await publishEvent('verification.failed', {
     failedLogIds,
     count: failedLogIds.length,
-  }, organizationId, verifiedBy);
+  }, tenantId, verifiedBy);
 }
 

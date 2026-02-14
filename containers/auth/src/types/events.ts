@@ -15,7 +15,7 @@ export interface BaseEvent {
   version: string;
   source: string;
   correlationId?: string;
-  organizationId?: string;
+  tenantId?: string;
   userId?: string;
   data: any;
 }
@@ -31,7 +31,7 @@ export interface UserRegisteredEvent extends BaseEvent {
     firstName?: string;
     lastName?: string;
     provider: 'password' | 'google' | 'github' | 'azure_ad' | 'okta';
-    organizationId?: string;
+    tenantId?: string;
   };
 }
 
@@ -41,7 +41,7 @@ export interface AuthLoginSuccessEvent extends BaseEvent {
     userId: string;
     sessionId: string;
     provider: 'password' | 'google' | 'github' | 'azure_ad' | 'okta';
-    organizationId?: string;
+    tenantId?: string;
     deviceName?: string;
     deviceType?: string;
     country?: string;
@@ -160,12 +160,12 @@ export interface SessionsBulkRevokedEvent extends BaseEvent {
 }
 
 /**
- * Organization SSO Events
+ * Tenant SSO Events
  */
-export interface OrganizationSSOConfiguredEvent extends BaseEvent {
-  type: 'auth.organization.sso_configured';
+export interface TenantSSOConfiguredEvent extends BaseEvent {
+  type: 'auth.tenant.sso_configured';
   data: {
-    organizationId: string;
+    tenantId: string;
     provider: 'azure_ad' | 'okta';
     enabled: boolean;
     enforce: boolean;
@@ -173,10 +173,10 @@ export interface OrganizationSSOConfiguredEvent extends BaseEvent {
   };
 }
 
-export interface OrganizationSSODisabledEvent extends BaseEvent {
-  type: 'auth.organization.sso_disabled';
+export interface TenantSSODisabledEvent extends BaseEvent {
+  type: 'auth.tenant.sso_disabled';
   data: {
-    organizationId: string;
+    tenantId: string;
     provider: 'azure_ad' | 'okta';
     disabledBy: string;
   };
@@ -200,6 +200,6 @@ export type AuthEvent =
   | UserProviderUnlinkedEvent
   | SessionRevokedEvent
   | SessionsBulkRevokedEvent
-  | OrganizationSSOConfiguredEvent
-  | OrganizationSSODisabledEvent;
+  | TenantSSOConfiguredEvent
+  | TenantSSODisabledEvent;
 

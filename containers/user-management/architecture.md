@@ -2,13 +2,12 @@
 
 ## Overview
 
-The User Management module provides user profiles, organizations, teams, roles, and permissions management for the Castiel system. This module has been migrated from PostgreSQL to Azure Cosmos DB NoSQL to align with the system's database architecture.
+The User Management module provides user profiles, teams, roles, and permissions management for the Castiel system. All users and data are scoped by tenant (tenantId). There is no separate organization concept.
 
 ## Database Architecture
 
-### Cosmos DB NoSQL Migration
+### Cosmos DB NoSQL
 
-**Previous State**: PostgreSQL with Prisma ORM  
 **Current State**: Azure Cosmos DB NoSQL (shared database, prefixed containers)
 
 ### Container Structure
@@ -18,25 +17,23 @@ The User Management module uses the following Cosmos DB containers in the shared
 | Container Name | Partition Key | Description | Unique Keys | TTL |
 |----------------|---------------|-------------|-------------|-----|
 | `user_users` | `/partitionKey` | User accounts and profiles | `['/email']` | - |
-| `user_organizations` | `/partitionKey` | Organization definitions and settings | - | - |
-| `user_teams` | `/organizationId` | Team definitions and membership | - | - |
+| `user_teams` | `/tenantId` | Team definitions and membership | - | - |
 | `user_roles` | `/tenantId` | User roles and permissions | `['/tenantId', '/name']` | - |
 | `user_role_idp_mappings` | `/tenantId` | Role to Identity Provider group mappings | - | - |
 | `user_tenant_invitations` | `/tenantId` | Invitations to join tenants | - | 7 days |
 | `user_tenant_join_requests` | `/tenantId` | Requests to join tenants | - | - |
-| `user_organization_memberships` | `/organizationId` | Organization membership records | `['/organizationId', '/userId']` | - |
+| `user_memberships` | `/tenantId` | Tenant membership records | `['/tenantId', '/userId']` | - |
 | `user_team_memberships` | `/teamId` | Team membership records | `['/teamId', '/userId']` | - |
 | `user_external_ids` | `/userId` | External user ID mappings from integrations | - | - |
 
-**Note**: The `users` container is shared with Authentication module for user accounts. User Management module manages profiles, organizations, teams, and memberships.
+**Note**: The `users` container is shared with Authentication module for user accounts. User Management module manages profiles, teams, and memberships.
 
 ### Partition Key Strategy
 
-- **Users**: Partitioned by `/partitionKey` (same as `tenantId` for tenant isolation)
-- **Organizations**: Partitioned by `/partitionKey` (same as `organizationId`)
-- **Teams**: Partitioned by `/organizationId` for efficient org-scoped queries
+- **Users**: Partitioned by `/partitionKey` (tenant isolation)
+- **Teams**: Partitioned by `/tenantId` for tenant-scoped queries
 - **Roles**: Partitioned by `/tenantId` for tenant isolation
-- **Memberships**: Partitioned by parent entity (`/organizationId` or `/teamId`) for efficient queries
+- **Memberships**: Partitioned by `/tenantId` or `/teamId` for efficient queries
 
 ### Indexing Strategy
 
@@ -46,7 +43,7 @@ The User Management module uses the following Cosmos DB containers in the shared
 {
   "compositeIndexes": [
     [
-      { "path": "/organizationId", "order": "ascending" },
+      { "path": "/tenantId", "order": "ascending" },
       { "path": "/createdAt", "order": "descending" }
     ],
     [
@@ -54,7 +51,7 @@ The User Management module uses the following Cosmos DB containers in the shared
       { "path": "/name", "order": "ascending" }
     ],
     [
-      { "path": "/organizationId", "order": "ascending" },
+      { "path": "/tenantId", "order": "ascending" },
       { "path": "/userId", "order": "ascending" }
     ],
     [
@@ -74,30 +71,20 @@ The User Management module uses the following Cosmos DB containers in the shared
    - User preferences and settings
    - External user ID mapping
 
-2. **OrganizationService** - Organization management
-   - Organization CRUD operations
-   - Organization settings
-   - Member management
-
-3. **TeamService** - Team management
+2. **TeamService** - Team management (tenant-scoped)
    - Team CRUD operations
    - Team membership
    - Team hierarchy
 
-4. **RoleService** - RBAC management
+3. **RoleService** - RBAC management
    - Role CRUD operations
    - Permission management
    - Role assignments
 
-5. **InvitationService** - User invitations
+4. **InvitationService** - User invitations (tenant-scoped)
    - Invitation creation and management
    - Invitation acceptance flow
    - Expiration handling
-
-6. **MembershipService** - Membership management
-   - Organization membership
-   - Team membership
-   - Membership history
 
 ### Data Flow
 
@@ -106,7 +93,7 @@ User Request
     ↓
 Authorization Middleware (RBAC)
     ↓
-Service Layer (User/Org/Team/Role)
+Service Layer (User/Team/Role)
     ↓
 Cosmos DB Repository
     ↓
@@ -123,7 +110,6 @@ Response
 - **Queue**: `user_management_service`
 - **Routing Patterns**: 
   - `user.*` - User-related events
-  - `organization.*` - Organization events
   - `team.*` - Team events
   - `role.*` - Role events
   - `invitation.*` - Invitation events
@@ -147,50 +133,47 @@ See [logs-events.md](./docs/logs-events.md) and [notifications-events.md](./docs
 
 ### RBAC (Role-Based Access Control)
 
-- **Roles**: Defined per tenant/organization
+- **Roles**: Defined per tenant
 - **Permissions**: Granular permission system
 - **Role Assignments**: User-role mappings stored in membership records
 - **Permission Checks**: Middleware validates permissions on all operations
 
 ### Data Isolation
 
-- **Tenant Isolation**: All queries filtered by `tenantId` or `organizationId`
+- **Tenant Isolation**: All queries filtered by `tenantId`
 - **Partition Key**: Ensures data isolation at Cosmos DB level
-- **Multi-tenancy**: Support for users belonging to multiple organizations
+- **Multi-tenancy**: Tenant-scoped data only; isolation via partition keys
 
 ## Migration from PostgreSQL
 
 ### Schema Changes
 
 **Before (PostgreSQL)**:
-- Tables: `users`, `organizations`, `teams`, `roles`, `memberships`, etc.
+- Tables: `users`, `teams`, `roles`, `memberships`, etc.
 - Relational structure with foreign keys
 - Prisma ORM for data access
 
 **After (Cosmos DB NoSQL)**:
-- Containers: `user_users`, `user_organizations`, `user_teams`, etc.
-- Document-based structure
+- Containers: `user_users`, `user_teams`, `user_roles`, etc.
+- Document-based structure; all scoped by `tenantId`
 - Direct Cosmos DB SDK usage
 - Prefixed container names for module isolation
 
 ### Data Migration Notes
 
 - **Users**: Migrate all user profiles (shared with Auth module)
-- **Organizations**: Migrate all organizations with settings
-- **Teams**: Migrate all teams with hierarchy
-- **Roles**: Migrate all roles and permissions
-- **Memberships**: Migrate all organization and team memberships
+- **Teams**: Migrate all teams with hierarchy (partition by tenantId)
+- **Roles**: Migrate all roles and permissions (partition by tenantId)
+- **Memberships**: Migrate tenant and team memberships
 - **Invitations**: Migrate active invitations only (expired invitations can be recreated)
 
 ### Query Pattern Changes
 
-**PostgreSQL** (relational):
+**PostgreSQL** (relational, legacy):
 ```sql
-SELECT u.*, o.name as org_name 
-FROM users u 
-JOIN organization_memberships om ON u.id = om.user_id 
-JOIN organizations o ON om.organization_id = o.id 
-WHERE u.id = $1;
+SELECT u.* FROM users u
+JOIN tenant_memberships tm ON u.id = tm.user_id
+WHERE tm.tenant_id = $1 AND u.id = $2;
 ```
 
 **Cosmos DB** (document):
@@ -215,7 +198,7 @@ const membershipQuery = {
 - **Authentication**: User authentication and session management (via REST API)
 - **Logging**: Audit trail (via RabbitMQ events)
 - **Notification Manager**: Invitation emails and notifications (via RabbitMQ events)
-- **Secret Management**: Organization secrets storage (future)
+- **Secret Management**: Tenant secrets storage (future)
 
 ### Infrastructure
 
@@ -235,7 +218,7 @@ const membershipQuery = {
 
 - **User Profiles**: Cache frequently accessed profiles
 - **Role Permissions**: Cache role-permission mappings
-- **Organization Settings**: Cache organization settings
+- **Tenant config**: Cache tenant-level config where used
 
 ## Scalability
 
@@ -246,7 +229,7 @@ const membershipQuery = {
 ## Monitoring
 
 - **Health Endpoints**: `/health` (liveness), `/ready` (readiness)
-- **Metrics**: User creation rate, organization growth, membership changes
+- **Metrics**: User creation rate, tenant membership changes
 - **Logging**: Structured logging for all user management events
 - **Audit Trail**: All events published to RabbitMQ for logging
 
@@ -254,7 +237,7 @@ const membershipQuery = {
 
 - User activity analytics
 - Advanced permission inheritance
-- Organization templates
+- Tenant templates
 - Bulk user operations
 - User import/export
 

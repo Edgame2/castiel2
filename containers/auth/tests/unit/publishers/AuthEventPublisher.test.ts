@@ -26,14 +26,14 @@ describe('AuthEventPublisher', () => {
 
   describe('createBaseEvent', () => {
     it('should create event with required fields', () => {
-      const event = publisher.createBaseEvent('auth.login', 'user-1', 'org-1', 'corr-1', { ip: '1.2.3.4' });
+      const event = publisher.createBaseEvent('auth.login', 'user-1', 'tenant-1', 'corr-1', { ip: '1.2.3.4' });
       expect(event.id).toBeDefined();
       expect(event.type).toBe('auth.login');
       expect(event.timestamp).toBeDefined();
       expect(event.version).toBe('1.0');
       expect(event.source).toBe('auth-service');
       expect(event.userId).toBe('user-1');
-      expect(event.organizationId).toBe('org-1');
+      expect(event.tenantId).toBe('tenant-1');
       expect(event.correlationId).toBe('corr-1');
       expect(event.data).toEqual({ ip: '1.2.3.4' });
     });

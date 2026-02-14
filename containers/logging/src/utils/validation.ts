@@ -9,7 +9,7 @@ import { LogCategory, LogSeverity } from '../types';
  * Create Log Input Schema
  */
 export const createLogSchema = z.object({
-  organizationId: z.string().optional(),
+  tenantId: z.string().optional(),
   userId: z.string().optional(),
   sessionId: z.string().optional(),
   ipAddress: z.string().optional(),

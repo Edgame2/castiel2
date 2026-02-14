@@ -1,5 +1,5 @@
 /**
- * Accept invitation — token from query (?token=...). POST /api/invitations/:token/accept via gateway.
+ * Accept invitation — token from query (?token=...). POST /api/v1/invitations/:token/accept via gateway.
  * If requiresRegistration, show message and link to register. Otherwise success and link to login.
  */
 
@@ -28,7 +28,7 @@ function AcceptInvitationContent() {
     setResult(null);
     setLoading(true);
     try {
-      const res = await apiFetch(`/api/invitations/${encodeURIComponent(tokenFromUrl)}/accept`, {
+      const res = await apiFetch(`/api/v1/invitations/${encodeURIComponent(tokenFromUrl)}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -72,7 +72,7 @@ function AcceptInvitationContent() {
         {result.requiresRegistration ? (
           <>
             <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
-              Create an account to join the organization. After registering, you can sign in.
+              Create an account to join the tenant. After registering, you can sign in.
             </p>
             <Link href="/register" className="inline-block text-sm font-medium text-blue-600 hover:text-blue-700 underline">
               Create account
@@ -105,7 +105,7 @@ function AcceptInvitationContent() {
         </div>
       )}
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-        You have been invited to join an organization. Accept to continue.
+        You have been invited to join the tenant. Accept to continue.
       </p>
       <Button type="button" onClick={handleAccept} disabled={loading} className="w-full">
         {loading ? 'Accepting…' : 'Accept invitation'}

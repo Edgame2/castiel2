@@ -29,12 +29,13 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     // Apply authentication to all v1 routes
     v1.addHook('preHandler', authenticateRequest);
     // Apply tenant enforcement (X-Tenant-ID required)
-    v1.addHook('preHandler', tenantEnforcementMiddleware());
+    v1.addHook('preHandler', tenantEnforcementMiddleware() as (request: unknown, reply: unknown) => Promise<void>);
     // Ensure user.tenantId for routes (tenantEnforcementMiddleware sets tenantContext)
     v1.addHook('preHandler', async (request) => {
-      const ctx = (request as { tenantContext?: { tenantId: string } }).tenantContext;
-      if (ctx && (request as { user?: { tenantId?: string; organizationId?: string } }).user) {
-        (request as { user: { tenantId?: string } }).user.tenantId = ctx.tenantId;
+      const req = request as unknown as { tenantContext?: { tenantId: string }; user?: { tenantId?: string } };
+      const ctx = req.tenantContext;
+      if (ctx && req.user) {
+        req.user.tenantId = ctx.tenantId;
       }
     });
     

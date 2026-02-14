@@ -16,6 +16,7 @@ import { getDatabaseClient } from '@coder/shared';
 type UserDb = {
   user: {
     findUnique: (args: unknown) => Promise<unknown>;
+    findMany: (args: unknown) => Promise<unknown[]>;
     update: (args: unknown) => Promise<unknown>;
     delete: (args: unknown) => Promise<unknown>;
     create: (args: unknown) => Promise<unknown>;
@@ -26,8 +27,9 @@ type UserDb = {
     update: (args: unknown) => Promise<unknown>;
     updateMany: (args: unknown) => Promise<unknown>;
   };
-  organizationMembership: {
+  membership: {
     findMany: (args: unknown) => Promise<unknown[]>;
+    findFirst: (args: unknown) => Promise<unknown>;
   };
 };
 
@@ -46,7 +48,7 @@ type UserDeletedRow = { id: string; deletedAt: Date | null };
 /** Result shape from session findMany/findUnique */
 type SessionRow = {
   id: string;
-  organizationId: string | null;
+  tenantId: string | null;
   deviceName: string | null;
   deviceType: string | null;
   deviceFingerprint: string | null;
@@ -62,10 +64,10 @@ type SessionRow = {
 };
 /** Result shape from session findUnique with userId */
 type SessionUserIdRow = { userId: string };
-/** Result shape from organizationMembership findMany with role */
+/** Result shape from tenant membership findMany with role */
 type MembershipWithRole = { role: { isSuperAdmin: boolean } };
 
-// Session and organization data: prefer auth-service API when integrated (see architecture).
+// Session and tenant data: prefer auth-service API when integrated (see architecture).
 
 /**
  * User profile data
@@ -96,7 +98,7 @@ export interface UserProfile {
  */
 export interface UserSession {
   id: string;
-  organizationId: string | null;
+  tenantId: string | null;
   deviceInfo: string | null;
   ipAddress: string | null;
   userAgent: string | null;
@@ -384,7 +386,7 @@ export async function listUserSessions(userId: string, currentSessionId?: string
     },
     select: {
       id: true,
-      organizationId: true,
+      tenantId: true,
       deviceName: true,
       deviceType: true,
       deviceFingerprint: true,
@@ -405,7 +407,7 @@ export async function listUserSessions(userId: string, currentSessionId?: string
   
   return sessions.map((s: SessionRow) => ({
     id: s.id,
-    organizationId: s.organizationId,
+    tenantId: s.tenantId,
     deviceName: s.deviceName,
     deviceType: s.deviceType,
     deviceFingerprint: s.deviceFingerprint,
@@ -481,6 +483,45 @@ export async function revokeAllOtherSessions(
 }
 
 /**
+ * List tenant members (tenant-scoped; requester must be a member of the tenant).
+ *
+ * @param tenantId - Tenant ID (scope)
+ * @param requestingUserId - User ID of the requester (must be member of tenant)
+ * @returns Promise resolving to array of member summaries
+ */
+export async function getTenantMembers(
+  tenantId: string,
+  requestingUserId: string
+): Promise<Array<{ userId: string; email: string | null; name: string | null; roleName: string; status: string; joinedAt: Date }>> {
+  const db = getDb();
+  const requesterMembership = await db.membership.findFirst({
+    where: { userId: requestingUserId, tenantId, status: 'active' },
+  });
+  if (!requesterMembership) {
+    throw new Error('You are not a member of this tenant');
+  }
+  const memberships = (await db.membership.findMany({
+    where: { tenantId, status: 'active' },
+    include: { role: { select: { id: true, name: true } } },
+    orderBy: { joinedAt: 'asc' },
+  })) as Array<{ userId: string; role?: { name?: string }; status: string; joinedAt: Date }>;
+  const userIds = [...new Set(memberships.map((m) => m.userId))];
+  const users = (await db.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, email: true, name: true },
+  })) as Array<{ id: string; email: string | null; name: string | null }>;
+  const userMap = new Map(users.map((u) => [u.id, u]));
+  return memberships.map((m) => ({
+    userId: m.userId,
+    email: userMap.get(m.userId)?.email ?? null,
+    name: userMap.get(m.userId)?.name ?? null,
+    roleName: m.role?.name ?? '',
+    status: m.status,
+    joinedAt: m.joinedAt,
+  }));
+}
+
+/**
  * Deactivate user account
  * 
  * @param userId - User ID to deactivate
@@ -493,11 +534,11 @@ export async function deactivateUser(
   deactivatedBy: string
 ): Promise<void> {
   const db = getDb();
-  // Check if deactivator is Super Admin in at least one organization
+  // Check if deactivator is Super Admin in at least one tenant
   // For now, allow self-deactivation or Super Admin deactivation
   if (userId !== deactivatedBy) {
-    // Check if deactivator is Super Admin in any organization
-    const memberships = (await db.organizationMembership.findMany({
+    // Check if deactivator is Super Admin in any tenant
+    const memberships = (await db.membership.findMany({
       where: {
         userId: deactivatedBy,
         status: 'active',
@@ -558,7 +599,7 @@ export async function reactivateUser(
 ): Promise<void> {
   const db = getDb();
   // Check if reactivator is Super Admin
-  const memberships = (await db.organizationMembership.findMany({
+  const memberships = (await db.membership.findMany({
     where: {
       userId: reactivatedBy,
       status: 'active',
@@ -609,7 +650,7 @@ export async function deleteUser(
 ): Promise<void> {
   const db = getDb();
   // Check if deleter is Super Admin
-  const memberships = (await db.organizationMembership.findMany({
+  const memberships = (await db.membership.findMany({
     where: {
       userId: deletedBy,
       status: 'active',

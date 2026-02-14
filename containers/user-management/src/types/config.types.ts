@@ -47,24 +47,18 @@ export interface UserManagementConfig {
   };
   features?: {
     user_profiles?: boolean;
-    organizations?: boolean;
     teams?: boolean;
     rbac?: boolean;
     invitations?: boolean;
     user_analytics?: boolean;
   };
-  organization?: {
-    max_members?: number;
-    allow_public_orgs?: boolean;
-    default_role?: string;
-  };
   team?: {
     max_members?: number;
-    max_teams_per_org?: number;
+    max_teams_per_tenant?: number;
   };
   invitation?: {
     expiration_days?: number;
-    max_pending_per_org?: number;
+    max_pending_per_tenant?: number;
   };
 }
 

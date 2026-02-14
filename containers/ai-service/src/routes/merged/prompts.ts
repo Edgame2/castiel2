@@ -55,7 +55,6 @@ export async function registerPromptsRoutes(app: FastifyInstance, config: any): 
                 },
               },
             },
-            organizationId: { type: 'string', format: 'uuid' },
             tags: { type: 'array', items: { type: 'string' } },
             metadata: { type: 'object' },
           },
@@ -119,7 +118,7 @@ export async function registerPromptsRoutes(app: FastifyInstance, config: any): 
    * Get prompt template by slug
    * GET /api/v1/prompts/slug/:slug
    */
-  app.get<{ Params: { slug: string }; Querystring: { organizationId?: string } }>(
+  app.get<{ Params: { slug: string } }>(
     '/api/v1/prompts/slug/:slug',
     {
       preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
@@ -132,12 +131,6 @@ export async function registerPromptsRoutes(app: FastifyInstance, config: any): 
             slug: { type: 'string' },
           },
         },
-        querystring: {
-          type: 'object',
-          properties: {
-            organizationId: { type: 'string', format: 'uuid' },
-          },
-        },
         response: {
           200: {
             type: 'object',
@@ -148,7 +141,7 @@ export async function registerPromptsRoutes(app: FastifyInstance, config: any): 
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
-      const prompt = await promptService.getBySlug(tenantId, request.params.slug, request.query.organizationId);
+      const prompt = await promptService.getBySlug(tenantId, request.params.slug);
       reply.send(prompt);
     }
   );
@@ -240,7 +233,6 @@ export async function registerPromptsRoutes(app: FastifyInstance, config: any): 
     Querystring: {
       category?: string;
       status?: string;
-      organizationId?: string;
       limit?: number;
       continuationToken?: string;
     };
@@ -256,7 +248,6 @@ export async function registerPromptsRoutes(app: FastifyInstance, config: any): 
           properties: {
             category: { type: 'string' },
             status: { type: 'string', enum: ['draft', 'active', 'archived', 'deprecated'] },
-            organizationId: { type: 'string', format: 'uuid' },
             limit: { type: 'number', minimum: 1, maximum: 1000, default: 100 },
             continuationToken: { type: 'string' },
           },
@@ -278,7 +269,6 @@ export async function registerPromptsRoutes(app: FastifyInstance, config: any): 
       const result = await promptService.list(tenantId, {
         category: request.query.category,
         status: request.query.status as any,
-        organizationId: request.query.organizationId,
         limit: request.query.limit,
         continuationToken: request.query.continuationToken,
       });
@@ -303,7 +293,6 @@ export async function registerPromptsRoutes(app: FastifyInstance, config: any): 
           properties: {
             slug: { type: 'string' },
             variables: { type: 'object', additionalProperties: true },
-            organizationId: { type: 'string', format: 'uuid' },
             version: { type: 'number' },
           },
         },
@@ -322,8 +311,10 @@ export async function registerPromptsRoutes(app: FastifyInstance, config: any): 
       const tenantId = request.user!.tenantId;
 
       const input: RenderPromptInput = {
-        ...request.body,
+        slug: request.body.slug,
+        variables: request.body.variables,
         tenantId,
+        version: request.body.version,
       };
 
       const rendered = await promptService.render(input);

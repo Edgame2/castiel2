@@ -10,7 +10,7 @@ import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
 export default function AdminSecurityApiKeyNewPage() {
   const router = useRouter();
-  const [orgId, setOrgId] = useState('');
+  const [tenantId, setTenantId] = useState('');
   const [name, setName] = useState('');
   const [scope, setScope] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
@@ -20,12 +20,12 @@ export default function AdminSecurityApiKeyNewPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const o = orgId.trim();
+    const t = tenantId.trim();
     const n = name.trim();
-    if (!getApiBaseUrl() || !o || !n || submitting) return;
+    if (!getApiBaseUrl() || !t || !n || submitting) return;
     setError(null);
     setSubmitting(true);
-    apiFetch(`/api/v1/organizations/${encodeURIComponent(o)}/api-keys`, {
+    apiFetch(`/api/v1/tenants/${encodeURIComponent(t)}/api-keys`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: n, scope: scope.trim() || undefined, expiresAt: expiresAt.trim() || undefined }),
@@ -36,7 +36,7 @@ export default function AdminSecurityApiKeyNewPage() {
       })
       .then((data: { key?: string }) => {
         setCreated(data);
-        if (!data?.key) router.push(`/admin/security/api-keys?orgId=${encodeURIComponent(o)}`);
+        if (!data?.key) router.push(`/admin/security/api-keys?tenantId=${encodeURIComponent(t)}`);
       })
       .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setSubmitting(false));
@@ -65,8 +65,8 @@ export default function AdminSecurityApiKeyNewPage() {
         {!created?.key && (
           <form onSubmit={handleSubmit} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
             <div>
-              <Label htmlFor="orgId" className="block mb-1">Organization ID</Label>
-              <Input id="orgId" type="text" value={orgId} onChange={(e) => setOrgId(e.target.value)} className="w-full" required />
+              <Label htmlFor="tenantId" className="block mb-1">Tenant ID</Label>
+              <Input id="tenantId" type="text" value={tenantId} onChange={(e) => setTenantId(e.target.value)} className="w-full" required />
             </div>
             <div>
               <Label htmlFor="name" className="block mb-1">Key name</Label>
@@ -81,7 +81,7 @@ export default function AdminSecurityApiKeyNewPage() {
               <Input id="expiresAt" type="text" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} placeholder="e.g. 2026-12-31" className="w-full" />
             </div>
             <div className="flex gap-2">
-              <Button type="submit" disabled={submitting || !orgId.trim() || !name.trim()}>
+              <Button type="submit" disabled={submitting || !tenantId.trim() || !name.trim()}>
                 {submitting ? 'Creating…' : 'Create API key'}
               </Button>
               <Button variant="outline" asChild>

@@ -2794,7 +2794,6 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
             category: { type: 'string' },
             content: { type: 'string', minLength: 1 },
             variables: { type: 'array' },
-            organizationId: { type: 'string', format: 'uuid' },
             tags: { type: 'array', items: { type: 'string' } },
             metadata: { type: 'object' },
             subject: { type: 'string' },
@@ -2895,7 +2894,6 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       type?: string;
       category?: string;
       status?: string;
-      organizationId?: string;
       limit?: number;
       continuationToken?: string;
     };
@@ -2914,7 +2912,6 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         type: request.query.type as any,
         category: request.query.category,
         status: request.query.status as any,
-        organizationId: request.query.organizationId,
         limit: request.query.limit,
         continuationToken: request.query.continuationToken,
       });
@@ -2938,7 +2935,6 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           required: ['variables'],
           properties: {
             variables: { type: 'object', additionalProperties: true },
-            organizationId: { type: 'string', format: 'uuid' },
             version: { type: 'number' },
           },
         },
@@ -2946,14 +2942,16 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     },
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
+      const body = request.body as { variables: Record<string, unknown>; version?: number };
 
-      const input = {
+      const input: RenderTemplateInput = {
         tenantId,
         templateId: request.params.id,
-        ...(request.body as Record<string, unknown>),
+        variables: body.variables,
+        version: body.version,
       };
 
-      const rendered = await templateService.render(input as RenderTemplateInput);
+      const rendered = await templateService.render(input);
       reply.send({ rendered });
     }
   );

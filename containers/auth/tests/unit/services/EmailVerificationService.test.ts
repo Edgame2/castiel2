@@ -23,10 +23,10 @@ vi.mock('../../../src/utils/redis', () => ({
 // Mock event publisher
 vi.mock('../../../src/events/publishers/AuthEventPublisher', () => ({
   publishEventSafely: vi.fn(),
-  createBaseEvent: vi.fn((type, userId, organizationId, metadata, data) => ({
+  createBaseEvent: vi.fn((type, userId, tenantId, metadata, data) => ({
     type,
     userId,
-    organizationId,
+    tenantId,
     metadata,
     data,
     timestamp: new Date().toISOString(),

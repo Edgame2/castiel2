@@ -86,13 +86,7 @@
       "properties": {
         "provider": { 
           "type": "string", 
-          "enum": ["postgres", "elasticsearch", "cosmos"] 
-        },
-        "postgres": {
-          "type": "object",
-          "properties": {
-            "partition_by": { "type": "string", "enum": ["month", "week", "day"] }
-          }
+          "enum": ["cosmos"] 
         }
       }
     },

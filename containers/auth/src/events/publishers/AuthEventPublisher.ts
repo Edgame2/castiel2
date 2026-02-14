@@ -79,7 +79,7 @@ function getPublisher(): EventPublisher | null {
 export function createBaseEvent(
   type: string,
   userId?: string,
-  organizationId?: string,
+  tenantId?: string,
   correlationId?: string,
   data?: any
 ): BaseEvent {
@@ -90,7 +90,7 @@ export function createBaseEvent(
     version: '1.0',
     source: 'auth-service',
     correlationId,
-    organizationId,
+    tenantId,
     userId,
     data: data || {},
   };
@@ -110,13 +110,13 @@ export async function publishEvent(event: AuthEvent, routingKey?: string): Promi
   }
 
   try {
-    const tenantId = event.organizationId ?? event.userId ?? '';
+    const tenantId = (event as { tenantId?: string }).tenantId ?? event.userId ?? '';
     await pub.publish(event.type, tenantId, event.data);
     log.debug('Auth event published', { type: event.type, service: 'auth' });
   } catch (error) {
     log.error('Failed to publish auth event', error as Error, {
       eventType: event.type,
-      organizationId: event.organizationId,
+      tenantId: (event as { tenantId?: string }).tenantId,
       userId: event.userId,
       service: 'auth',
     });

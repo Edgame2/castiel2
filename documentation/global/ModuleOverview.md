@@ -17,7 +17,7 @@ Core modules provide foundational functionality that all applications need. They
 | Module | Port | Purpose |
 |--------|------|---------|
 | **Authentication** | 3021 | User authentication, session management, OAuth/SSO |
-| **User Management** | 3022 | User profiles, organizations, teams, RBAC |
+| **User Management** | 3022 | User profiles, tenants, teams, RBAC |
 | **Secret Management** | 3003 | Secure credential storage, encryption, rotation |
 | **Logging** | 3014 | Audit logs, compliance logging, action tracking |
 | **Notification** | 3001 | Multi-channel notifications (email, push, in-app) |
@@ -104,20 +104,20 @@ The following modules provide specialized functionality that may be used in spec
 **Does NOT include**: User profile management, authorization/permissions
 
 #### User Management
-**Responsibility**: User data and organizational structure
+**Responsibility**: User data and tenant structure
 
 - User profiles and preferences
 - User session management (list, revoke)
 - User account lifecycle (deactivate, reactivate, delete)
-- Organization and team management
+- Tenant and team management
 - Role and permission definitions (RBAC)
-- Organization membership
+- Tenant membership
 - User settings and configurations
 
 **Service**: `containers/user-management/`  
 **Port**: 3022  
 **API Base**: `/api/v1/users`  
-**Database**: Cosmos DB NoSQL (containers: `user_users`, `user_organizations`, `user_teams`, etc.)  
+**Database**: Cosmos DB NoSQL (containers: `user_users`, `user_teams`, etc.; partition key tenantId)  
 **Does NOT include**: Authentication logic, session creation (handled by auth service)
 
 #### Secret Management

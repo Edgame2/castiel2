@@ -1,6 +1,6 @@
 /**
  * Super Admin: API keys (W11 §10.3)
- * GET list, POST create, DELETE revoke, POST rotate via /api/v1/organizations/:orgId/api-keys (user_management).
+ * GET list, POST create, DELETE revoke, POST rotate via /api/v1/tenants/:tenantId/api-keys (user_management).
  */
 
 'use client';
@@ -48,7 +48,7 @@ interface RotatedKey {
 }
 
 export default function SecurityApiKeysPage() {
-  const [orgId, setOrgId] = useState('');
+  const [tenantId, setTenantId] = useState('');
   const [items, setItems] = useState<ApiKeyRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,12 +91,12 @@ export default function SecurityApiKeysPage() {
 
   const fetchKeys = useCallback(async () => {
     const base = getApiBaseUrl().replace(/\/$/, '') || '';
-    if (!base || !orgId.trim()) return;
+    if (!base || !tenantId.trim()) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(
-        base ? `${base}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys` : `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys`,
+        base ? `${base}/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/api-keys` : `/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/api-keys`,
         { credentials: 'include' }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -109,11 +109,11 @@ export default function SecurityApiKeysPage() {
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [tenantId]);
 
   const handleCreate = useCallback(async () => {
     const base = getApiBaseUrl().replace(/\/$/, '') || '';
-    if (!base || !orgId.trim() || !createName.trim()) {
+    if (!base || !tenantId.trim() || !createName.trim()) {
       setCreateError('Name is required');
       return;
     }
@@ -122,7 +122,7 @@ export default function SecurityApiKeysPage() {
     setCreatedKey(null);
     try {
       const res = await fetch(
-        base ? `${base}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys` : `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys`,
+        base ? `${base}/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/api-keys` : `/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/api-keys`,
         {
           method: 'POST',
           credentials: 'include',
@@ -150,18 +150,18 @@ export default function SecurityApiKeysPage() {
     } finally {
       setCreating(false);
     }
-  }, [orgId, createName, createScope, createExpiresAt, fetchKeys]);
+  }, [tenantId, createName, createScope, createExpiresAt, fetchKeys]);
 
   const handleRevoke = useCallback(
     async (keyId: string) => {
       const base = getApiBaseUrl().replace(/\/$/, '') || '';
-      if (!base || !orgId.trim() || !keyId) return;
+      if (!base || !tenantId.trim() || !keyId) return;
       if (!confirm('Revoke this API key? It will stop working immediately.')) return;
       setRevokingId(keyId);
       setError(null);
       try {
         const res = await fetch(
-          base ? `${base}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys/${encodeURIComponent(keyId)}` : `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys/${encodeURIComponent(keyId)}`,
+          base ? `${base}/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/api-keys/${encodeURIComponent(keyId)}` : `/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/api-keys/${encodeURIComponent(keyId)}`,
           { method: 'DELETE', credentials: 'include' }
         );
         if (!res.ok) {
@@ -176,20 +176,20 @@ export default function SecurityApiKeysPage() {
         setRevokingId(null);
       }
     },
-    [orgId, fetchKeys]
+    [tenantId, fetchKeys]
   );
 
   const handleRotate = useCallback(
     async (keyId: string) => {
       const base = getApiBaseUrl().replace(/\/$/, '') || '';
-      if (!base || !orgId.trim() || !keyId) return;
+      if (!base || !tenantId.trim() || !keyId) return;
       if (!confirm('Rotate this API key? A new key will be generated; the old one will stop working.')) return;
       setRotateKeyId(keyId);
       setRotatedKey(null);
       setRotateError(null);
       try {
         const res = await fetch(
-          base ? `${base}/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys/${encodeURIComponent(keyId)}/rotate` : `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/api-keys/${encodeURIComponent(keyId)}/rotate`,
+          base ? `${base}/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/api-keys/${encodeURIComponent(keyId)}/rotate` : `/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/api-keys/${encodeURIComponent(keyId)}/rotate`,
           { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' } }
         );
         if (!res.ok) {
@@ -207,7 +207,7 @@ export default function SecurityApiKeysPage() {
         setRotateKeyId(null);
       }
     },
-    [orgId, fetchKeys]
+    [tenantId, fetchKeys]
   );
 
   const apiBaseUrl = getApiBaseUrl();
@@ -223,7 +223,7 @@ export default function SecurityApiKeysPage() {
       </div>
       <h1 className="text-2xl font-bold mb-2">API Keys</h1>
       <p className="text-muted-foreground mb-4">
-        Create and manage API keys (scope, expiration). Load keys for an organization, then create, revoke, or rotate (§10.3).
+        Create and manage API keys (scope, expiration). Load keys for a tenant, then create, revoke, or rotate (§10.3).
       </p>
       <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
         <Link href="/admin/security" className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">Overview</Link>
@@ -245,18 +245,18 @@ export default function SecurityApiKeysPage() {
       {apiBaseUrl && (
         <>
           <div className="mb-4 flex gap-4 items-center flex-wrap">
-            <Label className="text-sm">Organization ID</Label>
+            <Label className="text-sm">Tenant ID</Label>
             <Input
               type="text"
-              value={orgId}
-              onChange={(e) => setOrgId(e.target.value)}
-              placeholder="e.g. org_123"
+              value={tenantId}
+              onChange={(e) => setTenantId(e.target.value)}
+              placeholder="e.g. tenant_123"
               className="w-48 text-sm"
             />
-            <Button type="button" onClick={fetchKeys} disabled={loading || !orgId.trim()}>
+            <Button type="button" onClick={fetchKeys} disabled={loading || !tenantId.trim()}>
               {loading ? 'Loading…' : 'Load keys'}
             </Button>
-            <Button type="button" variant="outline" onClick={fetchKeys} disabled={loading || !orgId.trim()} title="Refetch API keys for current organization">
+            <Button type="button" variant="outline" onClick={fetchKeys} disabled={loading || !tenantId.trim()} title="Refetch API keys for current tenant">
               Refresh
             </Button>
             <Button
@@ -270,7 +270,7 @@ export default function SecurityApiKeysPage() {
                 setCreateScope('');
                 setCreateExpiresAt('');
               }}
-              disabled={!orgId.trim()}
+              disabled={!tenantId.trim()}
             >
               Create API key
             </Button>
@@ -279,7 +279,7 @@ export default function SecurityApiKeysPage() {
             </Link>
           </div>
 
-          {showCreate && orgId.trim() && (
+          {showCreate && tenantId.trim() && (
             <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-6">
               <h2 className="text-lg font-semibold mb-3">Create API key</h2>
               {createdKey ? (
@@ -381,12 +381,12 @@ export default function SecurityApiKeysPage() {
             </div>
           )}
 
-          {!loading && orgId.trim() && !error && (
+          {!loading && tenantId.trim() && !error && (
             <div className="rounded-lg border bg-white dark:bg-gray-900 p-6">
               {items.length === 0 ? (
                 <>
                   <h2 className="text-lg font-semibold mb-3">API keys</h2>
-                  <p className="text-sm text-gray-500">No API keys for this organization. Use &quot;Create API key&quot; to add one.</p>
+                  <p className="text-sm text-gray-500">No API keys for this tenant. Use &quot;Create API key&quot; to add one.</p>
                 </>
               ) : (
                 <>

@@ -13,6 +13,22 @@ const mockClients = vi.hoisted(() => ({
   shardManager: { post: vi.fn() },
 }));
 
+const mockLoadConfig = vi.hoisted(() =>
+  vi.fn(() => ({
+    services: {
+      ai_service: { url: 'http://ai-service:3000' },
+      context_service: { url: 'http://context-service:3000' },
+      embeddings: { url: 'http://embeddings:3000' },
+      shard_manager: { url: '' },
+    },
+    database: {
+      containers: {
+        web_search_results: 'web_search_results',
+      },
+    },
+  }))
+);
+
 vi.mock('uuid', () => ({ v4: vi.fn(() => 'test-uuid') }));
 vi.mock('@coder/shared/database', () => ({
   getContainer: vi.fn(),
@@ -26,20 +42,6 @@ vi.mock('@coder/shared', () => ({
     return { post: vi.fn() };
   }),
   generateServiceToken: vi.fn(() => 'mock-token'),
-}));
-
-const mockLoadConfig = vi.fn(() => ({
-  services: {
-    ai_service: { url: 'http://ai-service:3000' },
-    context_service: { url: 'http://context-service:3000' },
-    embeddings: { url: 'http://embeddings:3000' },
-    shard_manager: { url: '' },
-  },
-  database: {
-    containers: {
-      web_search_results: 'web_search_results',
-    },
-  },
 }));
 
 vi.mock('../../../src/config', () => ({

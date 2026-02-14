@@ -54,11 +54,16 @@ describe('SessionService', () => {
         create: vi.fn(),
         count: vi.fn(),
         findFirst: vi.fn(),
+        findUnique: vi.fn(),
+        update: vi.fn(),
       },
       user: {
         findUnique: vi.fn(),
       },
       organizationMembership: {
+        findFirst: vi.fn(),
+      },
+      membership: {
         findFirst: vi.fn(),
       },
       organization: {
@@ -100,18 +105,17 @@ describe('SessionService', () => {
       const mockSession = {
         id: 'session-123',
         userId,
-        organizationId,
+        tenantId: organizationId,
         deviceFingerprint: 'fingerprint-123',
         ipAddress,
         userAgent,
         expiresAt: new Date(Date.now() + 604800000), // 7 days
       };
       
-      // Mock organization membership check with role
-      mockDb.organizationMembership.findFirst.mockResolvedValue({
+      mockDb.membership.findFirst.mockResolvedValue({
         id: 'membership-123',
         userId,
-        organizationId,
+        tenantId: organizationId,
         roleId: 'role-123',
         role: {
           id: 'role-123',
@@ -119,18 +123,8 @@ describe('SessionService', () => {
         },
       });
       
-      // Mock organization lookup
-      mockDb.organization.findUnique.mockResolvedValue({
-        id: organizationId,
-        maxSessionsPerUser: 10,
-      });
-      
-      // Mock session count (no active sessions)
       mockDb.session.count.mockResolvedValue(0);
-      
-      // Mock session findFirst (for oldest session lookup - not needed here)
       mockDb.session.findFirst.mockResolvedValue(null);
-      
       mockDb.session.create.mockResolvedValue(mockSession);
 
       const result = await createSession(
@@ -167,11 +161,10 @@ describe('SessionService', () => {
         expiresAt: new Date(Date.now() + 2592000000), // 30 days
       };
       
-      // Mock organization membership check with role
-      mockDb.organizationMembership.findFirst.mockResolvedValue({
+      mockDb.membership.findFirst.mockResolvedValue({
         id: 'membership-123',
         userId,
-        organizationId,
+        tenantId: organizationId,
         roleId: 'role-123',
         role: {
           id: 'role-123',
@@ -179,18 +172,8 @@ describe('SessionService', () => {
         },
       });
       
-      // Mock organization lookup
-      mockDb.organization.findUnique.mockResolvedValue({
-        id: organizationId,
-        maxSessionsPerUser: 10,
-      });
-      
-      // Mock session count (no active sessions)
       mockDb.session.count.mockResolvedValue(0);
-      
-      // Mock session findFirst (for oldest session lookup - not needed here)
       mockDb.session.findFirst.mockResolvedValue(null);
-      
       mockDb.session.create.mockResolvedValue(mockSession);
 
       const result = await createSession(

@@ -27,7 +27,7 @@ export interface SendEmailOptions {
   text?: string;
   from?: string;
   userId?: string;
-  organizationId?: string;
+  tenantId?: string;
 }
 
 export interface EmailTemplateData {

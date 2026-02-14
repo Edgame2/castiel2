@@ -9,7 +9,7 @@ import { NotFoundError } from '@coder/shared';
 import { EscalationLevel } from './EscalationManager';
 
 export interface CreateEscalationChainInput {
-  organizationId: string;
+  tenantId: string;
   name: string;
   description?: string;
   levels: EscalationLevel[];
@@ -44,8 +44,8 @@ export class EscalationChainService {
   /**
    * List escalation chains
    */
-  async listEscalationChains(organizationId: string, enabled?: boolean): Promise<any[]> {
-    const where: any = { organizationId };
+  async listEscalationChains(tenantId: string, enabled?: boolean): Promise<any[]> {
+    const where: any = { tenantId };
     if (enabled !== undefined) {
       where.enabled = enabled;
     }
@@ -62,7 +62,7 @@ export class EscalationChainService {
   async createEscalationChain(input: CreateEscalationChainInput): Promise<any> {
     return await this.db.notification_escalation_chains.create({
       data: {
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         name: input.name,
         description: input.description || null,
         levels: input.levels as any,

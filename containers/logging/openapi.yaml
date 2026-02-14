@@ -11,7 +11,7 @@ info:
     ```
     
     ## Features
-    - **Multi-tenant**: Organization-isolated logs with Super Admin cross-org access
+    - **Multi-tenant**: Tenant-isolated logs with Super Admin cross-tenant access
     - **Tamper Evidence**: Hash chain verification for audit integrity
     - **Retention Policies**: Configurable per log type, category, and severity
     - **Export**: CSV/JSON export for auditors
@@ -36,7 +36,7 @@ tags:
   - name: Policies
     description: Retention policy management
   - name: Configuration
-    description: Organization configuration
+    description: Tenant audit configuration
   - name: Alerts
     description: Alert rule management
   - name: Verification
@@ -57,7 +57,7 @@ components:
       type: object
       required:
         - id
-        - organizationId
+        - tenantId
         - timestamp
         - action
         - category
@@ -69,10 +69,10 @@ components:
           type: string
           format: cuid
           description: Unique log entry ID
-        organizationId:
+        tenantId:
           type: string
           format: uuid
-          description: Organization ID
+          description: Tenant ID
         timestamp:
           type: string
           format: date-time
@@ -189,13 +189,13 @@ components:
       type: object
       required:
         - id
-        - organizationId
+        - tenantId
         - retentionDays
       properties:
         id:
           type: string
           format: cuid
-        organizationId:
+        tenantId:
           type: string
           format: uuid
         category:
@@ -245,7 +245,7 @@ components:
       type: object
       required:
         - id
-        - organizationId
+        - tenantId
         - name
         - type
         - enabled
@@ -253,7 +253,7 @@ components:
         id:
           type: string
           format: cuid
-        organizationId:
+        tenantId:
           type: string
           format: uuid
         name:
@@ -326,14 +326,14 @@ components:
       type: object
       required:
         - id
-        - organizationId
+        - tenantId
         - status
         - format
       properties:
         id:
           type: string
           format: cuid
-        organizationId:
+        tenantId:
           type: string
           format: uuid
         status:
@@ -433,14 +433,14 @@ components:
       type: object
       required:
         - id
-        - organizationId
+        - tenantId
         - logId
         - hash
       properties:
         id:
           type: string
           format: cuid
-        organizationId:
+        tenantId:
           type: string
           format: uuid
         logId:
@@ -453,13 +453,14 @@ components:
         createdBy:
           type: string
 
-    # Organization Configuration
+    # Tenant audit configuration (schema name kept for compatibility)
     OrganizationConfig:
       type: object
       properties:
-        organizationId:
+        tenantId:
           type: string
           format: uuid
+          description: Tenant ID (undefined for global config)
         capture:
           type: object
           properties:
@@ -1090,11 +1091,11 @@ paths:
   # Configuration Endpoints
   /configuration:
     get:
-      summary: Get organization configuration
+      summary: Get tenant configuration
       tags: [Configuration]
       responses:
         '200':
-          description: Organization configuration
+          description: Tenant audit configuration
           content:
             application/json:
               schema:
@@ -1104,7 +1105,7 @@ paths:
                     $ref: '#/components/schemas/OrganizationConfig'
 
     put:
-      summary: Update organization configuration
+      summary: Update tenant configuration
       tags: [Configuration]
       requestBody:
         required: true
@@ -1124,7 +1125,7 @@ paths:
                     $ref: '#/components/schemas/OrganizationConfig'
 
     delete:
-      summary: Reset organization configuration to defaults
+      summary: Reset tenant configuration to defaults
       tags: [Configuration]
       responses:
         '204':

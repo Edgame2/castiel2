@@ -14,7 +14,7 @@ This document defines who can access what in the Castiel UI. For the full route 
 ## Tenant Admin vs Super Admin
 
 - **Tenant Admin**  
-  - **Scope:** Single tenant (organization).  
+  - **Scope:** Single tenant.  
   - **Can do:** Manage users, roles, invitations, API keys, audit log, and tenant-facing config (e.g. integrations, competitors) for **that tenant only**.  
   - **Cannot do:** Create/delete tenants, change system-wide config, access other tenants’ data, or manage platform catalogs (e.g. shard types, integration catalog) in a platform-wide way.
 

@@ -381,7 +381,6 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
             value: { type: ['string', 'number', 'boolean', 'object', 'array'] },
             valueType: { type: 'string', enum: ['string', 'number', 'boolean', 'json', 'array', 'object'] },
             scope: { type: 'string', enum: ['global', 'organization', 'team', 'project', 'environment'] },
-            organizationId: { type: 'string', format: 'uuid' },
             teamId: { type: 'string', format: 'uuid' },
             projectId: { type: 'string', format: 'uuid' },
             environmentId: { type: 'string', format: 'uuid' },
@@ -467,7 +466,6 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
     Params: { key: string };
     Querystring: {
       scope?: string;
-      organizationId?: string;
       teamId?: string;
       projectId?: string;
       environmentId?: string;
@@ -489,7 +487,6 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           type: 'object',
           properties: {
             scope: { type: 'string', enum: ['global', 'organization', 'team', 'project', 'environment'] },
-            organizationId: { type: 'string', format: 'uuid' },
             teamId: { type: 'string', format: 'uuid' },
             projectId: { type: 'string', format: 'uuid' },
             environmentId: { type: 'string', format: 'uuid' },
@@ -514,7 +511,6 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
         tenantId,
         key: request.params.key,
         scope: request.query.scope as any,
-        organizationId: request.query.organizationId,
         teamId: request.query.teamId,
         projectId: request.query.projectId,
         environmentId: request.query.environmentId,
@@ -625,7 +621,6 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
   app.get<{
     Querystring: {
       scope?: string;
-      organizationId?: string;
       teamId?: string;
       projectId?: string;
       environmentId?: string;
@@ -644,7 +639,6 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
           type: 'object',
           properties: {
             scope: { type: 'string', enum: ['global', 'organization', 'team', 'project', 'environment'] },
-            organizationId: { type: 'string', format: 'uuid' },
             teamId: { type: 'string', format: 'uuid' },
             projectId: { type: 'string', format: 'uuid' },
             environmentId: { type: 'string', format: 'uuid' },
@@ -669,7 +663,6 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
       const tenantId = request.user!.tenantId;
       const result = await configurationService.list(tenantId, {
         scope: request.query.scope as any,
-        organizationId: request.query.organizationId,
         teamId: request.query.teamId,
         projectId: request.query.projectId,
         environmentId: request.query.environmentId,
@@ -705,7 +698,6 @@ export async function registerRoutes(app: FastifyInstance, config: any): Promise
                   key: { type: 'string', minLength: 1 },
                   value: { type: ['string', 'number', 'boolean', 'object', 'array'] },
                   scope: { type: 'string', enum: ['global', 'organization', 'team', 'project', 'environment'] },
-                  organizationId: { type: 'string', format: 'uuid' },
                   teamId: { type: 'string', format: 'uuid' },
                   projectId: { type: 'string', format: 'uuid' },
                   environmentId: { type: 'string', format: 'uuid' },

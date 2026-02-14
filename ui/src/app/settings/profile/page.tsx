@@ -1,5 +1,5 @@
 /**
- * Current user profile — GET /api/users/me, PUT /api/users/me via gateway.
+ * Current user profile — GET /api/v1/users/me, PUT /api/v1/users/me via gateway.
  * Edit name, firstName, lastName; requires authenticated session (Bearer or cookie per gateway).
  */
 
@@ -42,7 +42,7 @@ export default function ProfilePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch('/api/users/me');
+      const res = await apiFetch('/api/v1/users/me');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error as string) || `HTTP ${res.status}`);
@@ -73,7 +73,7 @@ export default function ProfilePage() {
     setError(null);
     setSaving(true);
     try {
-      const res = await apiFetch('/api/users/me', {
+      const res = await apiFetch('/api/v1/users/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

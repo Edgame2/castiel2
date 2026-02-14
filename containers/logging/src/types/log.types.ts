@@ -20,7 +20,7 @@ export enum LogSeverity {
 
 export interface AuditLog {
   id: string;
-  organizationId: string;
+  tenantId: string;
   
   // Timestamp
   timestamp: Date;
@@ -58,7 +58,7 @@ export interface AuditLog {
 }
 
 export interface CreateLogInput {
-  organizationId?: string; // Optional - can be derived from auth
+  tenantId?: string; // Optional - can be derived from auth
   
   // Actor (optional - can be derived from auth)
   userId?: string;
@@ -90,7 +90,7 @@ export interface BatchLogInput {
 }
 
 export interface LogSearchParams {
-  organizationId?: string;
+  tenantId?: string;
   
   // Text search
   query?: string;
@@ -134,7 +134,7 @@ export interface LogAggregation {
 }
 
 export interface LogAggregationParams {
-  organizationId?: string;
+  tenantId?: string;
   field: 'category' | 'severity' | 'action' | 'source' | 'resourceType';
   startDate?: Date;
   endDate?: Date;

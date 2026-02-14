@@ -493,7 +493,7 @@ For permission-based routes (e.g. Super Admin):
 
 ```typescript
 // auth container uses requirePermission
-preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')],
+preHandler: [authenticateRequest, requirePermission('tenants.sso.manage', 'tenant')],
 
 // Other containers: use checkPermission or ensureCanAccessUser (or equivalent)
 preHandler: [authenticateRequest(), tenantEnforcementMiddleware(), ensureCanAccessUser(request.params.id)],

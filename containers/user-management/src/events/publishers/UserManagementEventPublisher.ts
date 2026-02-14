@@ -49,7 +49,7 @@ export { closeConnection };
 export function createBaseEvent(
   type: UserManagementEvent['type'],
   userId?: string,
-  organizationId?: string,
+  tenantId?: string,
   correlationId?: string,
   data?: Record<string, unknown>
 ): Partial<UserManagementEvent> {
@@ -57,7 +57,7 @@ export function createBaseEvent(
     type,
     timestamp: new Date().toISOString(),
     userId,
-    organizationId,
+    tenantId,
     actorId: userId || 'system',
     data: (data ?? {}) as UserManagementEvent['data'],
     metadata: {
@@ -98,7 +98,7 @@ export async function publishEventSafely(event: UserManagementEvent): Promise<vo
     log.debug('Event publisher not initialized, skipping event', { type: event.type, service: 'user-management' });
     return;
   }
-  const tenantId = event.organizationId ?? 'global';
+  const tenantId = (event as { tenantId?: string }).tenantId ?? 'global';
   try {
     await publisher.publish(event.type, tenantId, event.data ?? {});
     log.debug('Event published', { type: event.type, userId: event.userId, service: 'user-management' });

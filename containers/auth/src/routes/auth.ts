@@ -13,7 +13,7 @@ import { optionalAuth, authenticateRequest } from '../middleware/auth';
 import { hashPassword, verifyPassword, validatePassword as validatePasswordUtils } from '../utils/passwordUtils';
 import { recordLoginAttempt as recordLoginAttemptLegacy, isAccountLocked } from '../services/LoginAttemptService';
 import { recordLoginAttempt as recordLoginHistory } from '../services/LoginHistoryService';
-import { createSession, switchSessionOrganization, generateDeviceFingerprint } from '../services/SessionService';
+import { createSession, switchSessionTenant, generateDeviceFingerprint } from '../services/SessionService';
 import { getGeolocationFromIp } from '../utils/geolocationUtils';
 import { changePasswordWithHistory, setPassword } from '../services/PasswordHistoryService';
 import { requestPasswordReset, resetPasswordWithToken } from '../services/PasswordResetService';
@@ -28,7 +28,7 @@ import type { AuthConfig } from '../types/config.types';
 import { getLoggingService } from '../services/LoggingService';
 import { getAccountService } from '../services/AccountService';
 import { generateSAMLRequest, processSAMLResponse } from '../services/SAMLHandler';
-import { getSSOConfigurationService, type SSOProvider } from '../services/SSOConfigurationService';
+import { getSSOConfigurationService, type SSOProvider, type SSOCredentials } from '../services/SSOConfigurationService';
 import { requirePermission } from '../middleware/rbac';
 import { logAuditAction } from '../middleware/auditLogging';
 import { randomUUID } from 'crypto';
@@ -262,7 +262,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         // Publish auth.login.success event
         const session = await db.session.findUnique({
           where: { id: sessionId },
-          select: { deviceName: true, deviceType: true, country: true, city: true, organizationId: true },
+          select: { deviceName: true, deviceType: true, country: true, city: true, tenantId: true },
         });
         const metadata = extractEventMetadata(request);
         if (session) {
@@ -271,12 +271,13 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           metadata.country = session.country || undefined;
           metadata.city = session.city || undefined;
         }
+        const sessionTenantId = (session as { tenantId?: string }).tenantId;
         await publishEventSafely({
-          ...createBaseEvent('auth.login.success', user.id, session?.organizationId || undefined, undefined, {
+          ...createBaseEvent('auth.login.success', user.id, sessionTenantId || undefined, undefined, {
             userId: user.id,
             sessionId,
             provider: 'google',
-            organizationId: session?.organizationId || undefined,
+            tenantId: sessionTenantId,
             deviceName: session?.deviceName,
             deviceType: session?.deviceType,
             country: session?.country,
@@ -285,7 +286,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         } as AuthEvent);
         // Also publish user.logged_in for backward compatibility
         await publishEventSafely({
-          ...createBaseEvent('auth.user.logged_in', user.id, session?.organizationId || undefined, undefined, {
+          ...createBaseEvent('auth.user.logged_in', user.id, sessionTenantId || undefined, undefined, {
             userId: user.id,
             sessionId,
             provider: 'google',
@@ -568,7 +569,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         // Publish auth.login.success event
         const session = await db.session.findUnique({
           where: { id: sessionId },
-          select: { deviceName: true, deviceType: true, country: true, city: true, organizationId: true },
+          select: { deviceName: true, deviceType: true, country: true, city: true, tenantId: true },
         });
         const metadata = extractEventMetadata(request);
         if (session) {
@@ -577,12 +578,13 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           metadata.country = session.country || undefined;
           metadata.city = session.city || undefined;
         }
+        const sessionTenantId = (session as { tenantId?: string }).tenantId;
         await publishEventSafely({
-          ...createBaseEvent('auth.login.success', user.id, session?.organizationId || undefined, undefined, {
+          ...createBaseEvent('auth.login.success', user.id, sessionTenantId || undefined, undefined, {
             userId: user.id,
             sessionId,
             provider: 'github',
-            organizationId: session?.organizationId || undefined,
+            tenantId: sessionTenantId,
             deviceName: session?.deviceName,
             deviceType: session?.deviceType,
             country: session?.country,
@@ -591,7 +593,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         } as AuthEvent);
         // Also publish user.logged_in for backward compatibility
         await publishEventSafely({
-          ...createBaseEvent('auth.user.logged_in', user.id, session?.organizationId || undefined, undefined, {
+          ...createBaseEvent('auth.user.logged_in', user.id, sessionTenantId || undefined, undefined, {
             userId: user.id,
             sessionId,
             provider: 'github',
@@ -870,8 +872,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
       }
       try {
         const requestUser = (request as any).user;
-        const organizationId = (request as any).organizationId;
-        const xTenantId = (request.headers['x-tenant-id'] as string)?.trim();
+        const tenantId = (request as any).tenantId ?? (request.headers['x-tenant-id'] as string)?.trim() ?? '';
         if (!requestUser?.id) {
           reply.code(401).send({ error: 'Not authenticated' });
           return;
@@ -882,7 +883,6 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           reply.code(400).send({ error: 'name is required' });
           return;
         }
-        const tenantId = (request as any).tenantContext?.tenantId ?? organizationId ?? xTenantId ?? '';
         const { ApiKeyService } = await import('../services/ApiKeyService');
         const result = await new ApiKeyService().create(
           requestUser.id,
@@ -1073,7 +1073,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
     try {
       const userId = (request as any).user?.id;
       const sessionId = (request as any).sessionId;
-      const organizationId = (request as any).organizationId;
+      const tenantId = (request as any).tenantId;
 
       if (sessionId) {
         try {
@@ -1098,7 +1098,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
               resourceId: userId,
               metadata: {
                 sessionId: sessionId || undefined,
-                organizationId,
+                tenantId: tenantId || undefined,
               },
             }
           );
@@ -1108,7 +1108,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
 
         try {
           await publishEventSafely({
-            ...createBaseEvent('auth.user.logged_out', userId, organizationId, request.id, {
+            ...createBaseEvent('auth.user.logged_out', userId, tenantId, request.id, {
               userId,
               sessionId: sessionId || undefined,
               reason: 'user_initiated',
@@ -1138,13 +1138,12 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           firstName?: string;
           lastName?: string;
           name?: string;
-          organizationId?: string;
         };
       }>,
       reply: FastifyReply
     ) => {
       try {
-        const { email, password, firstName, lastName, name, organizationId } = request.body;
+        const { email, password, firstName, lastName, name } = request.body;
 
         // Validate input
         if (!email || !password) {
@@ -1224,68 +1223,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const accountService = getAccountService();
         await accountService.createUserAccount(user.id, username, displayName);
 
-        // If organizationId provided, create membership
-        let defaultOrgId = organizationId;
-        if (organizationId) {
-          // Verify organization exists
-          const org = await db.organization.findUnique({
-            where: { id: organizationId },
-          });
-
-          if (!org) {
-            reply.code(404).send({ error: 'Organization not found' });
-            return;
-          }
-
-          // Get default "Member" role for organization
-          const memberRole = await db.role.findFirst({
-            where: {
-              organizationId,
-              name: 'Member',
-              isSystemRole: true,
-            },
-          });
-
-          if (memberRole) {
-            await db.organizationMembership.create({
-              data: {
-                userId: user.id,
-                organizationId,
-                roleId: memberRole.id,
-                status: 'active',
-                joinedAt: new Date(),
-              },
-            });
-          }
-        } else {
-          // Create membership in default organization
-          const defaultOrg = await db.organization.findFirst({
-            where: { slug: 'default-org' },
-          });
-
-          if (defaultOrg) {
-            defaultOrgId = defaultOrg.id;
-            const memberRole = await db.role.findFirst({
-              where: {
-                organizationId: defaultOrg.id,
-                name: 'Member',
-                isSystemRole: true,
-              },
-            });
-
-            if (memberRole) {
-              await db.organizationMembership.create({
-                data: {
-                  userId: user.id,
-                  organizationId: defaultOrg.id,
-                  roleId: memberRole.id,
-                  status: 'active',
-                  joinedAt: new Date(),
-                },
-              });
-            }
-          }
-        }
+        // Tenant membership is via invitation only (accept-invitation flow in user-management).
 
         // Create session
         const forwardedFor = request.headers['x-forwarded-for'];
@@ -1297,7 +1235,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
 
         const { accessToken, refreshToken, sessionId } = await createSession(
           user.id,
-          defaultOrgId ?? null,
+          null, // tenantId from invitation when user accepts invite
           false,
           ipAddress,
           userAgent,
@@ -1339,7 +1277,6 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
             metadata: {
               email,
               username,
-              organizationId: defaultOrgId || undefined,
             },
           }
         );
@@ -1347,13 +1284,12 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         // Publish user.registered event
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('auth.user.registered', user.id, defaultOrgId || undefined, undefined, {
+          ...createBaseEvent('auth.user.registered', user.id, undefined, undefined, {
             userId: user.id,
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
             provider: 'password',
-            organizationId: defaultOrgId || undefined,
           }),
         } as AuthEvent);
 
@@ -1388,13 +1324,13 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           email: string;
           password: string;
           rememberMe?: boolean;
-          organizationId?: string;
+          tenantId?: string;
         };
       }>,
       reply: FastifyReply
     ) => {
       try {
-        const { email, password, rememberMe = false, organizationId } = request.body;
+        const { email, password, rememberMe = false } = request.body;
 
         // Validate input
         if (!email || !password) {
@@ -1537,40 +1473,38 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           return;
         }
 
-        // Determine organization context
-        let activeOrgId = organizationId || null;
+        // Determine tenant context (tenantId from body or first membership)
+        const bodyTenantId = (request.body as { tenantId?: string }).tenantId;
+        let activeTenantId = bodyTenantId || null;
 
-        if (!activeOrgId) {
-          // Get user's first active organization
-          const membership = await db.organizationMembership.findFirst({
+        if (!activeTenantId) {
+          const membership = await db.membership.findFirst({
             where: {
               userId: user.id,
               status: 'active',
             },
             orderBy: { joinedAt: 'asc' },
-            select: { organizationId: true },
+            select: { tenantId: true },
           });
-
-          if (membership) {
-            activeOrgId = membership.organizationId;
+          const m = membership as { tenantId?: string } | null;
+          if (m?.tenantId) {
+            activeTenantId = m.tenantId;
           }
         } else {
-          // Verify user is member of requested organization
-          const membership = await db.organizationMembership.findFirst({
+          const membership = await db.membership.findFirst({
             where: {
               userId: user.id,
-              organizationId: activeOrgId,
+              tenantId: activeTenantId,
               status: 'active',
             },
           });
 
           if (!membership) {
-            reply.code(403).send({ error: 'User is not a member of this organization' });
+            reply.code(403).send({ error: 'User is not a member of this tenant' });
             return;
           }
         }
 
-        // If MFA enabled and user has TOTP enrolled, require MFA step before creating session
         if (routeConfig.features?.multi_factor_auth) {
           const enrolled = await mfaService.isEnrolled(user.id);
           if (enrolled) {
@@ -1578,7 +1512,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
             const mfaPendingPayload = JSON.stringify({
               userId: user.id,
               rememberMe,
-              organizationId: activeOrgId,
+              tenantId: activeTenantId,
             });
             await redis.setex(`mfa_pending:${mfaSessionId}`, 300, mfaPendingPayload);
             reply.code(202).send({ requiresMfa: true, mfaSessionId });
@@ -1586,10 +1520,9 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           }
         }
 
-        // Create session
         const { accessToken, refreshToken, sessionId } = await createSession(
           user.id,
-          activeOrgId,
+          activeTenantId,
           rememberMe,
           ipAddress,
           userAgent,
@@ -1637,52 +1570,48 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
             resourceId: user.id,
             metadata: {
               email,
-              organizationId: activeOrgId,
+              tenantId: activeTenantId,
               sessionId,
               provider: 'password',
             },
           }
         );
 
-        // Publish auth.login.success and user.logged_in events
         const session = await db.session.findUnique({
           where: { id: sessionId },
           select: { deviceName: true, deviceType: true, country: true, city: true },
         });
         const metadata = extractEventMetadata(request);
         if (session) {
-          metadata.deviceName = session.deviceName || undefined;
-          metadata.deviceType = session.deviceType || undefined;
-          metadata.country = session.country || undefined;
-          metadata.city = session.city || undefined;
+          metadata.deviceName = (session as any).deviceName || undefined;
+          metadata.deviceType = (session as any).deviceType || undefined;
+          metadata.country = (session as any).country || undefined;
+          metadata.city = (session as any).city || undefined;
         }
-        // Publish auth.login.success event
         await publishEventSafely({
-          ...createBaseEvent('auth.login.success', user.id, activeOrgId || undefined, undefined, {
+          ...createBaseEvent('auth.login.success', user.id, activeTenantId || undefined, undefined, {
             userId: user.id,
             sessionId,
             provider: 'password',
-            organizationId: activeOrgId || undefined,
-            deviceName: session?.deviceName,
-            deviceType: session?.deviceType,
-            country: session?.country,
-            city: session?.city,
+            tenantId: activeTenantId || undefined,
+            deviceName: (session as any)?.deviceName,
+            deviceType: (session as any)?.deviceType,
+            country: (session as any)?.country,
+            city: (session as any)?.city,
           }),
         } as AuthEvent);
-        // Also publish user.logged_in event for backward compatibility
         await publishEventSafely({
-          ...createBaseEvent('auth.user.logged_in', user.id, activeOrgId || undefined, undefined, {
+          ...createBaseEvent('auth.user.logged_in', user.id, activeTenantId || undefined, undefined, {
             userId: user.id,
             sessionId,
             provider: 'password',
-            deviceName: session?.deviceName,
-            deviceType: session?.deviceType,
-            country: session?.country,
-            city: session?.city,
+            deviceName: (session as any)?.deviceName,
+            deviceType: (session as any)?.deviceType,
+            country: (session as any)?.country,
+            city: (session as any)?.city,
           }),
         } as AuthEvent);
 
-        // Re-fetch user so response has latest isEmailVerified (e.g. after seed or verify-email)
         const freshUser = await db.user.findUnique({
           where: { id: user.id },
           select: { id: true, email: true, name: true, firstName: true, lastName: true, isEmailVerified: true },
@@ -1701,7 +1630,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           accessToken,
           refreshToken,
           sessionId,
-          organizationId: activeOrgId,
+          tenantId: activeTenantId,
         };
       } catch (error: any) {
         log.error('Login error', error, { route: '/api/v1/auth/login', service: 'auth' });
@@ -1738,7 +1667,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           reply.code(401).send({ error: 'MFA session expired or invalid. Please sign in again.' });
           return;
         }
-        let payload: { userId: string; rememberMe: boolean; organizationId: string | null };
+        let payload: { userId: string; rememberMe: boolean; tenantId?: string | null };
         try {
           payload = JSON.parse(raw);
         } catch {
@@ -1746,7 +1675,8 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           reply.code(401).send({ error: 'Invalid MFA session. Please sign in again.' });
           return;
         }
-        const { userId, rememberMe, organizationId: activeOrgId } = payload;
+        const activeTenantId = payload.tenantId ?? null;
+        const { userId, rememberMe } = payload;
         const trimmedCode = code.trim();
         const totpValid = await mfaService.verify(userId, trimmedCode);
         const backupValid = !totpValid && (await mfaService.verifyBackupCode(userId, trimmedCode));
@@ -1765,7 +1695,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
 
         const { accessToken, refreshToken, sessionId } = await createSession(
           userId,
-          activeOrgId,
+          activeTenantId,
           rememberMe,
           ipAddress,
           userAgent,
@@ -1798,15 +1728,15 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           await db.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
           const metadata = extractEventMetadata(request);
           await publishEventSafely({
-            ...createBaseEvent('auth.login.success', userId, activeOrgId || undefined, undefined, {
+            ...createBaseEvent('auth.login.success', userId, activeTenantId || undefined, undefined, {
               userId,
               sessionId,
               provider: 'password',
-              organizationId: activeOrgId || undefined,
+              tenantId: activeTenantId || undefined,
             }),
           } as AuthEvent);
           await publishEventSafely({
-            ...createBaseEvent('auth.user.logged_in', userId, activeOrgId || undefined, undefined, {
+            ...createBaseEvent('auth.user.logged_in', userId, activeTenantId || undefined, undefined, {
               userId,
               sessionId,
               provider: 'password',
@@ -1826,7 +1756,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           accessToken,
           refreshToken,
           sessionId,
-          organizationId: activeOrgId,
+          tenantId: activeTenantId,
         };
       } catch (err: unknown) {
         log.error('Complete MFA login error', err, { route: '/api/v1/auth/login/complete-mfa', service: 'auth' });
@@ -1879,7 +1809,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           return;
         }
 
-        const organizationId = (request as any).organizationId;
+        const tenantId = (request as any).tenantId;
 
         // Change password with history validation
         await changePasswordWithHistory(
@@ -1890,11 +1820,10 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
             email: user.email,
             firstName: user.firstName || undefined,
             lastName: user.lastName || undefined,
-            organizationId: organizationId || null,
+            tenantId: tenantId || null,
           }
         );
 
-        // Log password change
         const loggingService = getLoggingService();
         await loggingService.logFromRequest(
           request,
@@ -1907,15 +1836,14 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
             resourceId: requestUser.id,
             metadata: {
               email: user.email,
-              organizationId: organizationId || undefined,
+              tenantId: tenantId || undefined,
             },
           }
         );
 
-        // Publish user.password_changed event
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('auth.user.password_changed', requestUser.id, organizationId, undefined, {
+          ...createBaseEvent('auth.user.password_changed', requestUser.id, tenantId, undefined, {
             userId: requestUser.id,
             initiatedBy: 'user',
           }),
@@ -2190,10 +2118,10 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         );
 
         // Publish user.provider_linked event (triggers confirmation notification)
-        const organizationId = (request as any).organizationId;
+        const tenantId = (request as any).tenantId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('auth.user.provider_linked', requestUser.id, organizationId, request.id, {
+          ...createBaseEvent('auth.user.provider_linked', requestUser.id, tenantId, request.id, {
             userId: requestUser.id,
             provider: 'google',
             providerUserId: '', // Will be set by linkGoogleProvider
@@ -2281,10 +2209,10 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         );
 
         // Publish user.provider_unlinked event (triggers security notification)
-        const organizationId = (request as any).organizationId;
+        const tenantId = (request as any).tenantId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('auth.user.provider_unlinked', requestUser.id, organizationId, request.id, {
+          ...createBaseEvent('auth.user.provider_unlinked', requestUser.id, tenantId, request.id, {
             userId: requestUser.id,
             provider,
           }),
@@ -2322,12 +2250,12 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
 
   // Switch organization
   fastify.post(
-    '/api/v1/auth/switch-organization',
+    '/api/v1/auth/switch-tenant',
     { preHandler: authenticateRequest },
     (async (
       request: FastifyRequest<{
         Body: {
-          organizationId: string;
+          tenantId: string;
         };
       }>,
       reply: FastifyReply
@@ -2339,10 +2267,10 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           return;
         }
 
-        const { organizationId } = request.body;
+        const { tenantId } = request.body;
 
-        if (!organizationId || typeof organizationId !== 'string') {
-          reply.code(400).send({ error: 'Organization ID is required' });
+        if (!tenantId || typeof tenantId !== 'string') {
+          reply.code(400).send({ error: 'Tenant ID is required' });
           return;
         }
 
@@ -2353,21 +2281,21 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           return;
         }
 
-        // Switch organization in session
-        const updatedSession = await switchSessionOrganization(sessionId, organizationId);
+        // Switch tenant in session
+        const updatedSession = await switchSessionTenant(sessionId, tenantId);
 
         if (!updatedSession) {
-          reply.code(403).send({ error: 'You are not a member of this organization' });
+          reply.code(403).send({ error: 'You are not a member of this tenant' });
           return;
         }
 
         return {
           success: true,
-          organizationId: updatedSession.organizationId,
+          tenantId: updatedSession.tenantId,
         };
       } catch (error: any) {
-        const body = request.body as { organizationId?: string };
-        log.error('Switch organization error', error, { route: '/api/v1/auth/switch-organization', userId: (request as any).user?.id, organizationId: body?.organizationId, service: 'auth' });
+        const body = request.body as { tenantId?: string };
+        log.error('Switch tenant error', error, { route: '/api/v1/auth/switch-tenant', userId: (request as any).user?.id, tenantId: body?.tenantId, service: 'auth' });
 
         if (error.message.includes('not a member')) {
           reply.code(403).send({ error: error.message });
@@ -2375,7 +2303,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         }
 
         reply.code(500).send({
-          error: 'Failed to switch organization',
+          error: 'Failed to switch tenant',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
         });
       }
@@ -2462,10 +2390,10 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         );
 
         // Publish user.email_verified event (triggers confirmation notification)
-        const organizationId = (request as any).organizationId;
+        const tenantId = (request as any).tenantId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('auth.user.email_verified', requestUser.id, organizationId, request.id, {
+          ...createBaseEvent('auth.user.email_verified', requestUser.id, tenantId, request.id, {
             userId: requestUser.id,
             email: (request as any).user?.email,
           }),
@@ -2516,14 +2444,16 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
   // SSO SAML ROUTES
   // SAML handlers have been migrated from server/src/auth/SAMLHandler.ts
   
-  // Initiate SAML SSO flow
+  // Initiate SAML SSO flow (tenantId preferred; organizationId deprecated alias)
   fastify.post(
     '/api/v1/auth/sso/saml/initiate',
     { preHandler: authenticateRequest },
     (async (
       request: FastifyRequest<{
         Body: {
-          organizationId: string;
+          tenantId?: string;
+          /** @deprecated Use tenantId. Removal in 2 versions. */
+          organizationId?: string;
         };
       }>,
       reply: FastifyReply
@@ -2535,16 +2465,19 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           return;
         }
 
-        const { organizationId } = request.body;
+        const tenantId = request.body.tenantId ?? request.body.organizationId;
 
-        if (!organizationId || typeof organizationId !== 'string') {
-          reply.code(400).send({ error: 'Organization ID is required' });
+        if (!tenantId || typeof tenantId !== 'string') {
+          reply.code(400).send({ error: 'Tenant ID is required (tenantId)' });
           return;
         }
 
-        // Generate SAML request
-        const samlResult = await generateSAMLRequest(organizationId, undefined);
-        
+        if (request.body.organizationId) {
+          log.warn('Deprecated: use body.tenantId instead of organizationId for SAML initiate', { url: request.url, service: 'auth' });
+        }
+
+        const samlResult = await generateSAMLRequest(tenantId, undefined);
+
         reply.send({
           data: {
             samlRequest: samlResult.samlRequest,
@@ -2556,7 +2489,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         log.error('SAML SSO initiation error', error, {
           route: '/api/v1/auth/sso/saml/initiate',
           userId: (request as any).user?.id,
-          organizationId: request.body?.organizationId,
+          tenantId: request.body?.tenantId ?? request.body?.organizationId,
           service: 'auth',
         });
 
@@ -2672,8 +2605,221 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
 
   // SSO CONFIGURATION ROUTES
   // ============================================================================
+  // Tenant-scoped SSO (preferred; MASTER_RULES §11 tenantId only). Organization paths below are deprecated.
 
-  // Get SSO configuration (non-sensitive data only)
+  // Get SSO configuration — tenant path (preferred)
+  fastify.get(
+    '/api/v1/auth/tenants/:tenantId/sso/config',
+    { preHandler: [authenticateRequest, requirePermission('tenants.sso.manage', 'tenant')] },
+    (async (
+      request: FastifyRequest<{
+        Params: { tenantId: string };
+        Querystring: { provider?: SSOProvider };
+      }>,
+      reply: FastifyReply
+    ) => {
+      try {
+        const requestUser = (request as any).user;
+        if (!requestUser?.id) {
+          reply.code(401).send({ error: 'Not authenticated' });
+          return;
+        }
+        const tenantId = request.params.tenantId;
+        const { provider } = request.query;
+        const db = getDatabaseClient() as any;
+        const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { id: true } });
+        if (!tenant) {
+          reply.code(404).send({ error: 'Tenant not found' });
+          return;
+        }
+        const ssoService = getSSOConfigurationService();
+        const ssoConfig = await ssoService.getSSOConfiguration(tenantId, provider);
+        if (!ssoConfig) {
+          reply.code(404).send({ error: 'SSO not configured for this tenant' });
+          return;
+        }
+        reply.send({ data: ssoConfig });
+      } catch (error: any) {
+        log.error('Get SSO config error', error, { route: '/api/v1/auth/tenants/:tenantId/sso/config', service: 'auth' });
+        reply.code(500).send({
+          error: 'Failed to get SSO configuration',
+          details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        });
+      }
+    }) as any
+  );
+
+  // Tenant SSO: PUT/POST config, test, disable, credentials, certificate/rotate — alias params for shared logic
+  const tenantSsoPreHandler = async (request: FastifyRequest, _reply: FastifyReply) => {
+    (request.params as Record<string, string>).orgId = (request.params as { tenantId?: string }).tenantId ?? '';
+  };
+  interface SsoConfigBody { enabled?: boolean; provider?: string; enforce?: boolean; config?: Record<string, unknown>; credentials?: Record<string, unknown> }
+  // Tenant PUT config (reuses same service flow as org; org handler body uses request.params.orgId)
+  fastify.put('/api/v1/auth/tenants/:tenantId/sso/config', {
+    preHandler: [authenticateRequest, requirePermission('tenants.sso.manage', 'tenant'), tenantSsoPreHandler as any],
+  }, (async (request: FastifyRequest<{ Params: { orgId: string; tenantId: string }; Body: any }>, reply: FastifyReply) => {
+    try {
+      const requestUser = (request as any).user;
+      if (!requestUser?.id) { reply.code(401).send({ error: 'Not authenticated' }); return; }
+      const orgId = request.params.orgId;
+      const body = request.body as SsoConfigBody;
+      const { enabled, provider, enforce, config, credentials } = body;
+      const db = getDatabaseClient() as any;
+      const tenant = await db.tenant.findUnique({ where: { id: orgId }, select: { id: true } });
+      if (!tenant) { reply.code(404).send({ error: 'Tenant not found' }); return; }
+      if (!provider || !['azure_ad', 'okta'].includes(provider)) { reply.code(400).send({ error: 'Invalid SSO provider. Must be azure_ad or okta' }); return; }
+      if (!config) { reply.code(400).send({ error: 'Config is required' }); return; }
+      if (enabled && !config.ssoUrl) { reply.code(400).send({ error: 'SSO URL is required when enabling SSO' }); return; }
+      if (enabled && credentials) {
+        if (provider === 'azure_ad' && (!credentials.clientId || !credentials.clientSecret)) { reply.code(400).send({ error: 'Azure AD requires clientId and clientSecret' }); return; }
+        if (provider === 'okta' && (!credentials.oktaDomain || !credentials.apiToken)) { reply.code(400).send({ error: 'Okta requires oktaDomain and apiToken' }); return; }
+        if (config.ssoUrl && !credentials.certificate) { reply.code(400).send({ error: 'Certificate is required for SAML SSO' }); return; }
+      }
+      const ssoService = getSSOConfigurationService();
+      const providerTyped = provider as SSOProvider;
+      const result = await ssoService.configureSSO({
+        tenantId: orgId,
+        enabled: enabled ?? false,
+        provider: providerTyped,
+        enforce,
+        config: { ...config!, provider: providerTyped },
+        credentials: (credentials ?? {}) as SSOCredentials,
+        createdBy: requestUser.id,
+      });
+      await logAuditAction(request, 'update_sso', 'organization', { resourceId: orgId, userId: requestUser.id, projectId: orgId, afterState: { enabled, provider, enforce, hasCredentials: !!credentials } });
+      if (enabled) await publishEventSafely({ ...createBaseEvent('auth.tenant.sso_configured', requestUser.id, orgId, request.id, { tenantId: orgId, provider: providerTyped, enabled: true, enforce: enforce || false, configuredBy: requestUser.id }), } as AuthEvent);
+      reply.send({ data: result });
+    } catch (error: any) {
+      log.error('Put SSO config error', error, { route: '/api/v1/auth/tenants/:tenantId/sso/config', service: 'auth' });
+      reply.code(500).send({ error: 'Failed to update SSO configuration', details: process.env.NODE_ENV === 'development' ? error.message : undefined });
+    }
+  }) as any);
+  // Tenant POST config
+  fastify.post('/api/v1/auth/tenants/:tenantId/sso/config', {
+    preHandler: [authenticateRequest, requirePermission('tenants.sso.manage', 'tenant'), tenantSsoPreHandler as any],
+  }, (async (request: FastifyRequest<{ Params: { orgId: string }; Body: any }>, reply: FastifyReply) => {
+    try {
+      const requestUser = (request as any).user;
+      if (!requestUser?.id) { reply.code(401).send({ error: 'Not authenticated' }); return; }
+      const orgId = request.params.orgId;
+      const body = request.body as SsoConfigBody;
+      const { enabled, provider, enforce, config, credentials } = body;
+      const db = getDatabaseClient() as any;
+      const tenant = await db.tenant.findUnique({ where: { id: orgId }, select: { id: true } });
+      if (!tenant) { reply.code(404).send({ error: 'Tenant not found' }); return; }
+      if (!provider || !['azure_ad', 'okta'].includes(provider)) { reply.code(400).send({ error: 'Invalid SSO provider' }); return; }
+      if (!config) { reply.code(400).send({ error: 'Config is required' }); return; }
+      if (enabled && !config.ssoUrl) { reply.code(400).send({ error: 'SSO URL is required when enabling SSO' }); return; }
+      if (enabled && credentials) {
+        if (provider === 'azure_ad' && (!credentials.clientId || !credentials.clientSecret)) { reply.code(400).send({ error: 'Azure AD requires clientId and clientSecret' }); return; }
+        if (provider === 'okta' && (!credentials.oktaDomain || !credentials.apiToken)) { reply.code(400).send({ error: 'Okta requires oktaDomain and apiToken' }); return; }
+        if (config.ssoUrl && !credentials.certificate) { reply.code(400).send({ error: 'Certificate is required for SAML SSO' }); return; }
+      }
+      const ssoService = getSSOConfigurationService();
+      const providerTyped = provider as SSOProvider;
+      const result = await ssoService.configureSSO({
+        tenantId: orgId,
+        enabled: enabled ?? false,
+        provider: providerTyped,
+        enforce,
+        config: { ...config!, provider: providerTyped },
+        credentials: (credentials ?? {}) as SSOCredentials,
+        createdBy: requestUser.id,
+      });
+      await logAuditAction(request, 'configure_sso', 'organization', { resourceId: orgId, userId: requestUser.id, projectId: orgId, afterState: { enabled, provider, enforce, hasCredentials: !!credentials } });
+      if (enabled) await publishEventSafely({ ...createBaseEvent('auth.tenant.sso_configured', requestUser.id, orgId, request.id, { tenantId: orgId, provider: providerTyped, enabled: true, enforce: enforce || false, configuredBy: requestUser.id }), } as AuthEvent);
+      reply.send({ data: result });
+    } catch (error: any) {
+      log.error('Post SSO config error', error, { route: '/api/v1/auth/tenants/:tenantId/sso/config', service: 'auth' });
+      reply.code(500).send({ error: 'Failed to configure SSO', details: process.env.NODE_ENV === 'development' ? error.message : undefined });
+    }
+  }) as any);
+  // Tenant test, disable, credentials, certificate/rotate
+  fastify.post('/api/v1/auth/tenants/:tenantId/sso/test', { preHandler: [authenticateRequest, requirePermission('tenants.sso.manage', 'tenant'), tenantSsoPreHandler as any], }, (async (request: FastifyRequest<{ Params: { orgId: string } }>, reply: FastifyReply) => {
+    try {
+      const requestUser = (request as any).user;
+      if (!requestUser?.id) { reply.code(401).send({ error: 'Not authenticated' }); return; }
+      const orgId = request.params.orgId;
+      const db = getDatabaseClient() as any;
+      const tenant = await db.tenant.findUnique({ where: { id: orgId }, select: { id: true } });
+      if (!tenant) { reply.code(404).send({ error: 'Tenant not found' }); return; }
+      const ssoService = getSSOConfigurationService();
+      const ssoConfig = await ssoService.getSSOConfiguration(orgId);
+      if (!ssoConfig?.enabled) { reply.code(400).send({ error: 'SSO is not configured or not enabled' }); return; }
+      const serviceToken = process.env.SERVICE_AUTH_TOKEN || '';
+      try {
+        await ssoService.getSSOCredentials(orgId, serviceToken, 'auth-service');
+        reply.send({ data: { success: true, message: 'SSO connection test successful', provider: ssoConfig.provider } });
+      } catch (e: any) {
+        reply.send({ data: { success: false, message: 'SSO connection test failed', error: e.message, provider: ssoConfig.provider } });
+      }
+    } catch (error: any) {
+      log.error('Test SSO error', error, { route: '/api/v1/auth/tenants/:tenantId/sso/test', service: 'auth' });
+      reply.code(500).send({ error: 'Failed to test SSO connection', details: process.env.NODE_ENV === 'development' ? error.message : undefined });
+    }
+  }) as any);
+  fastify.post('/api/v1/auth/tenants/:tenantId/sso/disable', { preHandler: [authenticateRequest, requirePermission('tenants.sso.manage', 'tenant'), tenantSsoPreHandler as any], }, (async (request: FastifyRequest<{ Params: { orgId: string } }>, reply: FastifyReply) => {
+    try {
+      const requestUser = (request as any).user;
+      if (!requestUser?.id) { reply.code(401).send({ error: 'Not authenticated' }); return; }
+      const orgId = request.params.orgId;
+      const db = getDatabaseClient() as any;
+      const tenant = await db.tenant.findUnique({ where: { id: orgId }, select: { id: true } });
+      if (!tenant) { reply.code(404).send({ error: 'Tenant not found' }); return; }
+      const ssoService = getSSOConfigurationService();
+      const ssoConfig = await db.sSOConfiguration.findFirst({ where: { organizationId: orgId }, select: { provider: true } });
+      await ssoService.disableSSO(orgId, requestUser.id);
+      await logAuditAction(request, 'disable_sso', 'organization', { resourceId: orgId, userId: requestUser.id, projectId: orgId });
+      if (ssoConfig) await publishEventSafely({ ...createBaseEvent('auth.tenant.sso_disabled', requestUser.id, orgId, request.id, { tenantId: orgId, provider: ssoConfig.provider, disabledBy: requestUser.id }), } as AuthEvent);
+      reply.send({ data: { message: 'SSO disabled successfully' } });
+    } catch (error: any) {
+      log.error('Disable SSO error', error, { route: '/api/v1/auth/tenants/:tenantId/sso/disable', service: 'auth' });
+      reply.code(500).send({ error: 'Failed to disable SSO', details: process.env.NODE_ENV === 'development' ? error.message : undefined });
+    }
+  }) as any);
+  fastify.get('/api/v1/auth/tenants/:tenantId/sso/credentials', (async (request: FastifyRequest<{ Params: { tenantId: string } }>, reply: FastifyReply) => {
+    try {
+      (request.params as any).orgId = request.params.tenantId;
+      const serviceToken = request.headers['x-service-token'] as string;
+      const requestingService = request.headers['x-requesting-service'] as string;
+      if (!serviceToken || serviceToken !== process.env.SERVICE_AUTH_TOKEN) { reply.code(401).send({ error: 'Invalid service token' }); return; }
+      if (!requestingService || !['auth-service', 'user-management'].includes(requestingService)) { reply.code(403).send({ error: 'Unauthorized service' }); return; }
+      const orgId = (request.params as any).orgId;
+      const db = getDatabaseClient() as any;
+      const tenant = await db.tenant.findUnique({ where: { id: orgId }, select: { id: true } });
+      if (!tenant) { reply.code(404).send({ error: 'Tenant not found' }); return; }
+      const ssoService = getSSOConfigurationService();
+      const credentials = await ssoService.getSSOCredentials(orgId, serviceToken, requestingService);
+      reply.send({ data: credentials });
+    } catch (error: any) {
+      log.error('Get SSO credentials error', error, { route: '/api/v1/auth/tenants/:tenantId/sso/credentials', service: 'auth' });
+      reply.code(500).send({ error: 'Failed to get SSO credentials', details: process.env.NODE_ENV === 'development' ? error.message : undefined });
+    }
+  }) as any);
+  interface CertificateRotateBody { newCertificate?: string; newPrivateKey?: string; gracePeriodHours?: number }
+  fastify.post('/api/v1/auth/tenants/:tenantId/sso/certificate/rotate', { preHandler: [authenticateRequest, requirePermission('tenants.sso.manage', 'tenant'), tenantSsoPreHandler as any], }, (async (request: FastifyRequest<{ Params: { orgId: string }; Body: any }>, reply: FastifyReply) => {
+    try {
+      const requestUser = (request as any).user;
+      if (!requestUser?.id) { reply.code(401).send({ error: 'Not authenticated' }); return; }
+      const orgId = request.params.orgId;
+      const body = request.body as CertificateRotateBody;
+      const { newCertificate, newPrivateKey, gracePeriodHours } = body;
+      if (!newCertificate || typeof newCertificate !== 'string' || !newCertificate.trim()) { reply.code(400).send({ error: 'newCertificate is required' }); return; }
+      if (!newCertificate.includes('BEGIN CERTIFICATE') && !newCertificate.includes('-----BEGIN')) { reply.code(400).send({ error: 'Invalid certificate format' }); return; }
+      if (gracePeriodHours !== undefined && (typeof gracePeriodHours !== 'number' || gracePeriodHours < 0 || gracePeriodHours > 168)) { reply.code(400).send({ error: 'gracePeriodHours must be 0-168' }); return; }
+      const ssoService = getSSOConfigurationService();
+      const ssoConfig = await ssoService.getSSOConfiguration(orgId);
+      if (!ssoConfig?.secretId) { reply.code(404).send({ error: 'SSO not configured for this tenant' }); return; }
+      const result = await ssoService.rotateCertificate(orgId, ssoConfig.secretId, newCertificate, newPrivateKey, gracePeriodHours);
+      await logAuditAction(request, 'rotate_sso_certificate', 'organization', { resourceId: orgId, userId: requestUser.id, projectId: orgId, metadata: { secretId: ssoConfig.secretId, gracePeriodHours } });
+      reply.send({ data: result });
+    } catch (error: any) {
+      log.error('Rotate SSO certificate error', error, { route: '/api/v1/auth/tenants/:tenantId/sso/certificate/rotate', service: 'auth' });
+      reply.code(500).send({ error: 'Failed to rotate SSO certificate', details: process.env.NODE_ENV === 'development' ? error.message : undefined });
+    }
+  }) as any);
+
+  // Get SSO configuration (non-sensitive data only) — organization path (deprecated)
   fastify.get(
     '/api/v1/auth/organizations/:orgId/sso/config',
     { preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')] },
@@ -2688,6 +2834,8 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
       }>,
       reply: FastifyReply
     ) => {
+      log.warn('Deprecated: use GET /api/v1/auth/tenants/:tenantId/sso/config', { url: request.url, service: 'auth' });
+      reply.header('Deprecation', 'true');
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -2698,15 +2846,15 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const { orgId } = request.params;
         const { provider } = request.query;
 
-        // Validate organization exists
+        // Validate tenant exists
         const db = getDatabaseClient() as any;
-        const organization = await db.organization.findUnique({
+        const tenant = await db.tenant.findUnique({
           where: { id: orgId },
           select: { id: true },
         });
 
-        if (!organization) {
-          reply.code(404).send({ error: 'Organization not found' });
+        if (!tenant) {
+          reply.code(404).send({ error: 'Tenant not found' });
           return;
         }
 
@@ -2714,7 +2862,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const ssoConfig = await ssoService.getSSOConfiguration(orgId, provider);
 
         if (!ssoConfig) {
-          reply.code(404).send({ error: 'SSO not configured for this organization' });
+          reply.code(404).send({ error: 'SSO not configured for this tenant' });
           return;
         }
 
@@ -2729,7 +2877,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
     }) as any
   );
 
-  // Configure SSO (PUT for update)
+  // Configure SSO (PUT for update) — organization path (deprecated)
   fastify.put(
     '/api/v1/auth/organizations/:orgId/sso/config',
     { preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')] },
@@ -2762,6 +2910,8 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
       }>,
       reply: FastifyReply
     ) => {
+      log.warn('Deprecated: use PUT /api/v1/auth/tenants/:tenantId/sso/config', { url: request.url, service: 'auth' });
+      reply.header('Deprecation', 'true');
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -2772,15 +2922,15 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const { orgId } = request.params;
         const { enabled, provider, enforce, config, credentials } = request.body;
 
-        // Validate organization exists
+        // Validate tenant exists
         const db = getDatabaseClient() as any;
-        const organization = await db.organization.findUnique({
+        const tenant = await db.tenant.findUnique({
           where: { id: orgId },
           select: { id: true },
         });
 
-        if (!organization) {
-          reply.code(404).send({ error: 'Organization not found' });
+        if (!tenant) {
+          reply.code(404).send({ error: 'Tenant not found' });
           return;
         }
 
@@ -2824,13 +2974,13 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
 
         const ssoService = getSSOConfigurationService();
         const result = await ssoService.configureSSO({
-          organizationId: orgId,
+          tenantId: orgId,
           enabled,
           provider,
           enforce,
           config: {
             ...config,
-            provider, // Add provider to config
+            provider,
           },
           credentials,
           createdBy: requestUser.id,
@@ -2849,11 +2999,11 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           },
         });
 
-        // Publish organization.sso_configured event
+        // Publish tenant SSO configured event
         if (enabled) {
           await publishEventSafely({
-            ...createBaseEvent('auth.organization.sso_configured', requestUser.id, orgId, request.id, {
-              organizationId: orgId,
+            ...createBaseEvent('auth.tenant.sso_configured', requestUser.id, orgId, request.id, {
+              tenantId: orgId,
               provider,
               enabled: true,
               enforce: enforce || false,
@@ -2873,7 +3023,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
     }) as any
   );
 
-  // Configure SSO (POST for create)
+  // Configure SSO (POST for create) — organization path (deprecated)
   fastify.post(
     '/api/v1/auth/organizations/:orgId/sso/config',
     { preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')] },
@@ -2906,6 +3056,8 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
       }>,
       reply: FastifyReply
     ) => {
+      log.warn('Deprecated: use POST /api/v1/auth/tenants/:tenantId/sso/config', { url: request.url, service: 'auth' });
+      reply.header('Deprecation', 'true');
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -2916,15 +3068,15 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const { orgId } = request.params;
         const { enabled, provider, enforce, config, credentials } = request.body;
 
-        // Validate organization exists
+        // Validate tenant exists
         const db = getDatabaseClient() as any;
-        const organization = await db.organization.findUnique({
+        const tenant = await db.tenant.findUnique({
           where: { id: orgId },
           select: { id: true },
         });
 
-        if (!organization) {
-          reply.code(404).send({ error: 'Organization not found' });
+        if (!tenant) {
+          reply.code(404).send({ error: 'Tenant not found' });
           return;
         }
 
@@ -2968,13 +3120,13 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
 
         const ssoService = getSSOConfigurationService();
         const result = await ssoService.configureSSO({
-          organizationId: orgId,
+          tenantId: orgId,
           enabled,
           provider,
           enforce,
           config: {
             ...config,
-            provider, // Add provider to config
+            provider,
           },
           credentials,
           createdBy: requestUser.id,
@@ -2993,11 +3145,11 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           },
         });
 
-        // Publish organization.sso_configured event
+        // Publish tenant SSO configured event
         if (enabled) {
           await publishEventSafely({
-            ...createBaseEvent('auth.organization.sso_configured', requestUser.id, orgId, request.id, {
-              organizationId: orgId,
+            ...createBaseEvent('auth.tenant.sso_configured', requestUser.id, orgId, request.id, {
+              tenantId: orgId,
               provider,
               enabled: true,
               enforce: enforce || false,
@@ -3017,7 +3169,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
     }) as any
   );
 
-  // Test SSO connection
+  // Test SSO connection — organization path (deprecated)
   fastify.post(
     '/api/v1/auth/organizations/:orgId/sso/test',
     { preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')] },
@@ -3027,6 +3179,8 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
       }>,
       reply: FastifyReply
     ) => {
+      log.warn('Deprecated: use POST /api/v1/auth/tenants/:tenantId/sso/test', { url: request.url, service: 'auth' });
+      reply.header('Deprecation', 'true');
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -3036,15 +3190,15 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
 
         const { orgId } = request.params;
 
-        // Validate organization exists
+        // Validate tenant exists
         const db = getDatabaseClient() as any;
-        const organization = await db.organization.findUnique({
+        const tenant = await db.tenant.findUnique({
           where: { id: orgId },
           select: { id: true },
         });
 
-        if (!organization) {
-          reply.code(404).send({ error: 'Organization not found' });
+        if (!tenant) {
+          reply.code(404).send({ error: 'Tenant not found' });
           return;
         }
 
@@ -3090,7 +3244,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
     }) as any
   );
 
-  // Disable SSO
+  // Disable SSO — organization path (deprecated)
   fastify.post(
     '/api/v1/auth/organizations/:orgId/sso/disable',
     { preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')] },
@@ -3102,6 +3256,8 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
       }>,
       reply: FastifyReply
     ) => {
+      log.warn('Deprecated: use POST /api/v1/auth/tenants/:tenantId/sso/disable', { url: request.url, service: 'auth' });
+      reply.header('Deprecation', 'true');
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -3111,15 +3267,15 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
 
         const { orgId } = request.params;
 
-        // Validate organization exists
+        // Validate tenant exists
         const db = getDatabaseClient() as any;
-        const organization = await db.organization.findUnique({
+        const tenant = await db.tenant.findUnique({
           where: { id: orgId },
           select: { id: true },
         });
 
-        if (!organization) {
-          reply.code(404).send({ error: 'Organization not found' });
+        if (!tenant) {
+          reply.code(404).send({ error: 'Tenant not found' });
           return;
         }
 
@@ -3140,11 +3296,11 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
           projectId: orgId,
         });
 
-        // Publish organization.sso_disabled event
+        // Publish tenant SSO disabled event
         if (ssoConfig) {
           await publishEventSafely({
-            ...createBaseEvent('auth.organization.sso_disabled', requestUser.id, orgId, request.id, {
-              organizationId: orgId,
+            ...createBaseEvent('auth.tenant.sso_disabled', requestUser.id, orgId, request.id, {
+              tenantId: orgId,
               provider: ssoConfig.provider,
               disabledBy: requestUser.id,
             }),
@@ -3162,7 +3318,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
     }) as any
   );
 
-  // Get SSO credentials (service-to-service only)
+  // Get SSO credentials (service-to-service only) — organization path (deprecated)
   fastify.get(
     '/api/v1/auth/organizations/:orgId/sso/credentials',
     (async (
@@ -3173,6 +3329,8 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
       }>,
       reply: FastifyReply
     ) => {
+      log.warn('Deprecated: use GET /api/v1/auth/tenants/:tenantId/sso/credentials', { url: request.url, service: 'auth' });
+      reply.header('Deprecation', 'true');
       try {
         // Verify service-to-service authentication
         const serviceToken = request.headers['x-service-token'] as string;
@@ -3190,15 +3348,15 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
 
         const { orgId } = request.params;
 
-        // Validate organization exists (for service-to-service calls)
+        // Validate tenant exists (for service-to-service calls)
         const db = getDatabaseClient() as any;
-        const organization = await db.organization.findUnique({
+        const tenant = await db.tenant.findUnique({
           where: { id: orgId },
           select: { id: true },
         });
 
-        if (!organization) {
-          reply.code(404).send({ error: 'Organization not found' });
+        if (!tenant) {
+          reply.code(404).send({ error: 'Tenant not found' });
           return;
         }
 
@@ -3220,7 +3378,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
     }) as any
   );
 
-  // Rotate SSO certificate
+  // Rotate SSO certificate — organization path (deprecated)
   fastify.post(
     '/api/v1/auth/organizations/:orgId/sso/certificate/rotate',
     { preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')] },
@@ -3237,6 +3395,8 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
       }>,
       reply: FastifyReply
     ) => {
+      log.warn('Deprecated: use POST /api/v1/auth/tenants/:tenantId/sso/certificate/rotate', { url: request.url, service: 'auth' });
+      reply.header('Deprecation', 'true');
       try {
         const requestUser = (request as any).user;
         if (!requestUser || !requestUser.id) {
@@ -3271,7 +3431,7 @@ export async function setupAuthRoutes(fastify: FastifyInstance, config?: AuthCon
         const ssoConfig = await ssoService.getSSOConfiguration(orgId);
         
         if (!ssoConfig || !ssoConfig.secretId) {
-          reply.code(404).send({ error: 'SSO not configured for this organization' });
+          reply.code(404).send({ error: 'SSO not configured for this tenant' });
           return;
         }
 

@@ -1,5 +1,5 @@
 /**
- * MFA enrollment — calls POST /api/auth/mfa/enroll and POST /api/auth/mfa/verify via gateway.
+ * MFA enrollment — calls POST /api/v1/auth/mfa/enroll and POST /api/v1/auth/mfa/verify via gateway.
  * When FEATURE_MFA is enabled, user can set up TOTP (authenticator app).
  */
 
@@ -27,7 +27,7 @@ export default function MfaEnrollPage() {
     setVerifyError(null);
     setLoading(true);
     try {
-      const res = await apiFetch('/api/auth/mfa/enroll', {
+      const res = await apiFetch('/api/v1/auth/mfa/enroll', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -66,7 +66,7 @@ export default function MfaEnrollPage() {
     setVerifyError(null);
     setLoading(true);
     try {
-      const res = await apiFetch('/api/auth/mfa/verify', {
+      const res = await apiFetch('/api/v1/auth/mfa/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: trimmed }),

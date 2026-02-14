@@ -1,6 +1,6 @@
 /**
  * Super Admin: Audit log (W11 §10.4)
- * GET /api/logging/api/v1/logs (list), POST /api/logging/api/v1/export (create export) via gateway.
+ * GET /api/v1/logs (list), POST /api/v1/export (create export) via gateway.
  */
 
 'use client';
@@ -90,7 +90,7 @@ export default function SecurityAuditPage() {
       if (category) params.set('category', category);
       if (severity) params.set('severity', severity);
       if (resourceType) params.set('resourceType', resourceType);
-      const res = await apiFetch(`/api/logging/api/v1/logs?${params.toString()}`);
+      const res = await apiFetch(`/api/v1/logs?${params.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: LogsResponse = await res.json();
       setItems(Array.isArray(json?.data) ? json.data : []);
@@ -148,7 +148,7 @@ export default function SecurityAuditPage() {
         if (category) body.filters.category = category;
         if (severity) body.filters.severity = severity;
       }
-      const res = await apiFetch('/api/logging/api/v1/export', {
+      const res = await apiFetch('/api/v1/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

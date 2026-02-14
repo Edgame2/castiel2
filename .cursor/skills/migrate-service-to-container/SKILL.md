@@ -7,6 +7,8 @@ description: Guides migration of existing services to containers/ following Modu
 
 Guides migration of existing services to `containers/` following ModuleImplementationGuide.md standards.
 
+**Tenant-only:** Use `tenantId` only; there is no organization. When migrating, replace any `organizationId` (in types, routes, queries, events) with `tenantId`. Do not preserve organizationId in the new container.
+
 ## Pre-Migration Analysis
 
 Before migrating, analyze:
@@ -186,11 +188,11 @@ const service = new MyService(db, cache);
 - [ ] Create module directory structure
 - [ ] Copy service files
 - [ ] Transform imports (use @coder/shared)
-- [ ] Add tenantId to all database queries
+- [ ] Add tenantId to all database queries (replace organizationId with tenantId; no organizationId in new code)
 - [ ] Replace hardcoded URLs with config
-- [ ] Transform routes (add auth, tenant enforcement)
+- [ ] Transform routes (add auth, tenant enforcement; use `request.user!.tenantId` only)
 - [ ] Update error handling (use AppError)
-- [ ] Add event publishing/consuming
+- [ ] Add event publishing/consuming (events use tenantId only, not organizationId)
 
 ### Configuration
 - [ ] Create config/default.yaml

@@ -673,7 +673,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       }
     );
 
-    // ——— Admin: List tenants (Super Admin). Calls user-management GET /api/v1/admin/organizations; maps to TenantSummary. ———
+    // ——— Admin: List tenants (Super Admin §7.1.1). Tenant list to be wired to tenant store when available; stub returns empty array. ———
     fastify.get(
       '/api/v1/admin/tenants',
       {
@@ -714,44 +714,9 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
           },
         },
       },
-      async (request, reply) => {
+      async (_request, reply) => {
         try {
-          const config = loadConfig();
-          const baseUrl = config.services?.user_management?.url;
-          if (!baseUrl) {
-            log.warn('user_management URL not configured; returning empty tenant list', { service: 'recommendations' });
-            return reply.send({ items: [] });
-          }
-          const authHeader = (request.headers as { authorization?: string }).authorization;
-          const res = await fetch(`${baseUrl.replace(/\/$/, '')}/api/v1/admin/organizations`, {
-            headers: authHeader ? { Authorization: authHeader } : {},
-          });
-          if (!res.ok) {
-            if (res.status === 403) {
-              return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(403).send({ error: { code: 'FORBIDDEN', message: 'Super Admin role required' } });
-            }
-            const text = await res.text();
-            log.error('user-management admin/organizations failed', new Error(text), { service: 'recommendations', status: res.status });
-            return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(res.status).send({ error: { code: 'TENANTS_LIST_FAILED', message: text || 'Failed to list organizations' } });
-          }
-          const data = (await res.json()) as { items?: Array<{ id: string; name?: string; slug?: string; description?: string | null; createdAt?: string | null; isActive?: boolean }> };
-          const items = (data.items ?? []).map((org) => ({
-            id: org.id,
-            name: org.name ?? null,
-            industry: (org.slug as string) ?? null,
-            status: (org.isActive === true ? 'active' : org.isActive === false ? 'inactive' : 'active') as 'active' | 'trial' | 'suspended' | 'inactive',
-            createdAt: org.createdAt ?? null,
-            activeUsers: null as number | null,
-            activeOpportunities: null as number | null,
-            predictionsPerDay: null as number | null,
-            feedbackPerDay: null as number | null,
-            methodology: null as string | null,
-            feedbackLimit: null as number | null,
-            customCatalogEntries: null as number | null,
-            avgRecommendationAccuracy: null as number | null,
-            avgActionRate: null as number | null,
-          }));
-          return reply.send({ items });
+          return reply.send({ items: [] });
         } catch (error: unknown) {
           const msg = error instanceof Error ? error.message : String(error);
           log.error('List tenants failed', error as Error, { service: 'recommendations' });
@@ -760,7 +725,7 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       }
     );
 
-    // ——— Admin: Get tenant by id (Super Admin §7.1.2 Overview). Calls user-management GET /api/v1/admin/organizations/:tenantId. ———
+    // ——— Admin: Get tenant by id (Super Admin §7.1.2 Overview). Tenant details to be wired to tenant store when available; stub returns 404.
     fastify.get<{ Params: { tenantId: string } }>(
       '/api/v1/admin/tenants/:tenantId',
       {
@@ -789,38 +754,10 @@ export async function registerRoutes(fastify: FastifyInstance, _config: ReturnTy
       },
       async (request, reply) => {
         try {
-          const { tenantId } = request.params;
-          const config = loadConfig();
-          const baseUrl = config.services?.user_management?.url;
-          if (!baseUrl) {
-            return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(503).send({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Tenant store not configured' } });
-          }
-          const authHeader = (request.headers as { authorization?: string }).authorization;
-          const res = await fetch(`${baseUrl.replace(/\/$/, '')}/api/v1/admin/organizations/${encodeURIComponent(tenantId)}`, {
-            headers: authHeader ? { Authorization: authHeader } : {},
-          });
-          if (res.status === 404) {
-            return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(404).send({ error: { code: 'TENANT_NOT_FOUND', message: 'Tenant not found' } });
-          }
-          if (res.status === 403) {
-            return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(403).send({ error: { code: 'FORBIDDEN', message: 'Super Admin role required' } });
-          }
-          if (!res.ok) {
-            const text = await res.text();
-            log.error('user-management admin/organizations/:id failed', new Error(text), { service: 'recommendations', status: res.status });
-            return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(res.status).send({ error: { code: 'TENANT_GET_FAILED', message: text || 'Failed to get tenant' } });
-          }
-          const org = (await res.json()) as { id: string; name?: string; slug?: string; createdAt?: string | null; isActive?: boolean };
-          const tenant = {
-            id: org.id,
-            name: org.name ?? null,
-            industry: (org.slug as string) ?? null,
-            status: (org.isActive === true ? 'active' : org.isActive === false ? 'inactive' : 'active') as string | null,
-            createdAt: org.createdAt ?? null,
-            activeUsers: null as number | null,
-            activeOpportunities: null as number | null,
-          };
-          return reply.send(tenant);
+          const { tenantId: _tenantId } = request.params;
+          // Tenant store (user-management or auth) to be wired when available; stub returns 404.
+          void _tenantId;
+          return (reply as { status: (code: number) => { send: (body: unknown) => unknown } }).status(404).send({ error: { code: 'TENANT_NOT_FOUND', message: 'Tenant not found' } });
         } catch (error: unknown) {
           const msg = error instanceof Error ? error.message : String(error);
           log.error('Get tenant failed', error as Error, { service: 'recommendations' });

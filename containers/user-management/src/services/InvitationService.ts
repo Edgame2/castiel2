@@ -1,18 +1,16 @@
 /**
  * Invitation Service
- * 
- * Manages organization invitations for users.
+ *
+ * Manages tenant invitations for users.
  * Per ModuleImplementationGuide Section 6
  */
 
 import { randomBytes } from 'crypto';
 import { getDatabaseClient } from '@coder/shared';
-import { isOrganizationAtMemberLimit } from './OrganizationService';
 
 /** Prisma-like DB client shape used by this service (shared returns Cosmos Database) */
 type InvitationDb = {
-  organization: { findUnique: (args: unknown) => Promise<unknown> };
-  organizationMembership: { findFirst: (args: unknown) => Promise<unknown> };
+  membership: { findFirst: (args: unknown) => Promise<unknown> };
   role: { findUnique: (args: unknown) => Promise<unknown> };
   invitation: {
     findUnique: (args: unknown) => Promise<unknown>;
@@ -41,7 +39,7 @@ export interface InvitationFilters {
  */
 export interface InvitationDetails {
   id: string;
-  organizationId: string;
+  tenantId: string;
   email: string;
   roleId: string;
   token: string;
@@ -56,7 +54,7 @@ export interface InvitationDetails {
   invitedUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
-  organization: {
+  tenant: {
     id: string;
     name: string;
     slug: string;
@@ -90,10 +88,10 @@ function generateInvitationToken(): string {
 }
 
 /**
- * Create an invitation
+ * Create an invitation (tenant-scoped).
  */
 export async function createInvitation(
-  organizationId: string,
+  tenantId: string,
   email: string,
   roleId: string,
   invitedBy: string,
@@ -102,7 +100,7 @@ export async function createInvitation(
   metadata?: Record<string, any>
 ): Promise<InvitationDetails> {
   const db = getDb();
-  
+
   // Validate email format (for email-type invitations)
   if (invitationType === 'email') {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -110,28 +108,12 @@ export async function createInvitation(
       throw new Error('Invalid email format');
     }
   }
-  
-  // Get organization
-  const organization = await db.organization.findUnique({
-    where: { id: organizationId },
-    select: { id: true, name: true, slug: true },
-  });
-  
-  if (!organization) {
-    throw new Error('Organization not found');
-  }
-  
-  // Check if organization is at member limit
-  const atLimit = await isOrganizationAtMemberLimit(organizationId);
-  if (atLimit) {
-    throw new Error('Organization has reached its member limit');
-  }
-  
+
   // Check if user is already a member (for email-type invitations)
   if (invitationType === 'email') {
-    const existingMembership = await db.organizationMembership.findFirst({
+    const existingMembership = await db.membership.findFirst({
       where: {
-        organizationId,
+        tenantId,
         user: {
           email: email.toLowerCase(),
         },
@@ -139,53 +121,45 @@ export async function createInvitation(
         deletedAt: null,
       },
     });
-    
+
     if (existingMembership) {
-      throw new Error('User is already a member of this organization');
+      throw new Error('User is already a member of this tenant');
     }
   }
-  
-  // Validate role belongs to organization
+
+  // Validate role belongs to tenant
   const role = (await db.role.findUnique({
     where: { id: roleId },
-    select: { id: true, organizationId: true, name: true },
-  })) as { id: string; organizationId: string; name: string } | null;
-  
+    select: { id: true, tenantId: true, name: true },
+  })) as { id: string; tenantId: string; name: string } | null;
+
   if (!role) {
     throw new Error('Role not found');
   }
-  
-  if (role.organizationId !== organizationId) {
-    throw new Error('Role does not belong to this organization');
+
+  if (role.tenantId !== tenantId) {
+    throw new Error('Role does not belong to this tenant');
   }
-  
-  // Check if inviter has permission (must be owner or Super Admin)
-  const inviterMembership = (await db.organizationMembership.findFirst({
+
+  // Inviter must be an active member of the tenant (route enforces users.user.invite permission)
+  const inviterMembership = (await db.membership.findFirst({
     where: {
       userId: invitedBy,
-      organizationId,
+      tenantId,
       status: 'active',
     },
     include: { role: true },
   })) as { role?: { isSuperAdmin?: boolean } } | null;
-  
-  const organizationData = (await db.organization.findUnique({
-    where: { id: organizationId },
-    select: { ownerUserId: true },
-  })) as { ownerUserId?: string } | null;
-  
-  const isOwner = organizationData?.ownerUserId === invitedBy;
-  const isSuperAdmin = inviterMembership?.role?.isSuperAdmin || false;
-  
-  if (!isOwner && !isSuperAdmin) {
-    throw new Error('Permission denied. Only organization owner or Super Admin can send invitations.');
+
+  if (!inviterMembership) {
+    throw new Error('Permission denied. You must be a member of this tenant to send invitations.');
   }
   
-  // Auto-cancel previous pending invitations for same email/org
+  // Auto-cancel previous pending invitations for same email/tenant
   if (invitationType === 'email') {
     await db.invitation.updateMany({
       where: {
-        organizationId,
+        tenantId,
         email: email.toLowerCase(),
         status: 'pending',
       },
@@ -210,8 +184,8 @@ export async function createInvitation(
   // Create invitation
   const invitation = (await db.invitation.create({
     data: {
-      organizationId,
-      email: invitationType === 'email' ? email.toLowerCase() : '', // Empty for link-based
+      tenantId,
+      email: invitationType === 'email' ? email.toLowerCase() : '',
       roleId,
       token,
       invitedByUserId: invitedBy,
@@ -222,13 +196,6 @@ export async function createInvitation(
       metadata: metadata || null,
     },
     include: {
-      organization: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
-      },
       role: {
         select: {
           id: true,
@@ -243,13 +210,11 @@ export async function createInvitation(
         },
       },
     },
-  })) as InvitationDetails;
-  
-  // Invitation email: notification service consumes invitation.created events when configured.
+  })) as Omit<InvitationDetails, 'tenant'> & { tenantId: string; role: { id: string; name: string }; inviter: { id: string; email: string; name: string | null } };
 
   return {
     id: invitation.id,
-    organizationId: invitation.organizationId,
+    tenantId: invitation.tenantId,
     email: invitation.email,
     roleId: invitation.roleId,
     token: invitation.token,
@@ -264,23 +229,23 @@ export async function createInvitation(
     invitedUserId: invitation.invitedUserId,
     createdAt: invitation.createdAt,
     updatedAt: invitation.updatedAt,
-    organization: invitation.organization,
+    tenant: { id: tenantId, name: 'Tenant', slug: tenantId },
     role: invitation.role,
     inviter: invitation.inviter,
   };
 }
 
 /**
- * List invitations for an organization
+ * List invitations for a tenant
  */
 export async function listInvitations(
-  organizationId: string,
+  tenantId: string,
   filters: InvitationFilters = {}
 ): Promise<InvitationDetails[]> {
   const db = getDb();
   
   const where: Record<string, unknown> = {
-    organizationId,
+    tenantId,
   };
   
   if (filters.status) {
@@ -294,7 +259,7 @@ export async function listInvitations(
   const invitations = (await db.invitation.findMany({
     where,
     include: {
-      organization: {
+      tenant: {
         select: {
           id: true,
           name: true,
@@ -321,25 +286,8 @@ export async function listInvitations(
   })) as InvitationDetails[];
   
   return invitations.map((inv: InvitationDetails) => ({
-    id: inv.id,
-    organizationId: inv.organizationId,
-    email: inv.email,
-    roleId: inv.roleId,
-    token: inv.token,
-    invitedByUserId: inv.invitedByUserId,
-    message: inv.message,
-    status: inv.status,
-    expiresAt: inv.expiresAt,
-    acceptedAt: inv.acceptedAt,
-    resendCount: inv.resendCount,
-    lastResentAt: inv.lastResentAt,
-    cancelledAt: inv.cancelledAt,
-    invitedUserId: inv.invitedUserId,
-    createdAt: inv.createdAt,
-    updatedAt: inv.updatedAt,
-    organization: inv.organization,
-    role: inv.role,
-    inviter: inv.inviter,
+    ...inv,
+    tenant: inv.tenant ?? { id: inv.tenantId, name: 'Tenant', slug: inv.tenantId },
   }));
 }
 
@@ -356,7 +304,7 @@ export async function resendInvitation(
   const invitation = (await db.invitation.findUnique({
     where: { id: invitationId },
     include: {
-      organization: {
+      tenant: {
         select: {
           id: true,
           name: true,
@@ -397,27 +345,24 @@ export async function resendInvitation(
   }
   
   // Check permission
-  const inviterMembership = (await db.organizationMembership.findFirst({
+  const inviterMembership = (await db.membership.findFirst({
     where: {
       userId: invitedBy,
-      organizationId: invitation.organizationId,
+      tenantId: invitation.tenantId,
       status: 'active',
     },
     include: { role: true },
   })) as { role?: { isSuperAdmin?: boolean } } | null;
   
-  const organizationData = (await db.organization.findUnique({
-    where: { id: invitation.organizationId },
-    select: { ownerUserId: true },
-  })) as { ownerUserId?: string } | null;
-  
-  const isOwner = organizationData?.ownerUserId === invitedBy;
   const isSuperAdmin = inviterMembership?.role?.isSuperAdmin || false;
-  
-  if (!isOwner && !isSuperAdmin && invitation.invitedByUserId !== invitedBy) {
-    throw new Error('Permission denied. Only the original inviter, organization owner, or Super Admin can resend invitations.');
+  const isOriginalInviter = invitation.invitedByUserId === invitedBy;
+  if (!isOriginalInviter && !inviterMembership) {
+    throw new Error('Permission denied. You must be a member of this tenant to resend invitations.');
   }
-  
+  if (!isOriginalInviter && !isSuperAdmin) {
+    throw new Error('Permission denied. Only the original inviter or Super Admin can resend invitations.');
+  }
+
   // Update invitation
   const updated = (await db.invitation.update({
     where: { id: invitationId },
@@ -426,7 +371,7 @@ export async function resendInvitation(
       lastResentAt: new Date(),
     },
     include: {
-      organization: {
+      tenant: {
         select: {
           id: true,
           name: true,
@@ -453,7 +398,7 @@ export async function resendInvitation(
 
   return {
     id: updated.id,
-    organizationId: updated.organizationId,
+    tenantId: updated.tenantId,
     email: updated.email,
     roleId: updated.roleId,
     token: updated.token,
@@ -468,7 +413,7 @@ export async function resendInvitation(
     invitedUserId: updated.invitedUserId,
     createdAt: updated.createdAt,
     updatedAt: updated.updatedAt,
-    organization: updated.organization,
+    tenant: updated.tenant,
     role: updated.role,
     inviter: updated.inviter,
   };
@@ -486,7 +431,7 @@ export async function cancelInvitation(
   // Get invitation
   const invitation = (await db.invitation.findUnique({
     where: { id: invitationId },
-  })) as { status: string; organizationId: string; invitedByUserId: string } | null;
+  })) as { status: string; tenantId: string; invitedByUserId: string } | null;
   
   if (!invitation) {
     throw new Error('Invitation not found');
@@ -497,27 +442,24 @@ export async function cancelInvitation(
   }
   
   // Check permission
-  const inviterMembership = (await db.organizationMembership.findFirst({
+  const inviterMembership = (await db.membership.findFirst({
     where: {
       userId: cancelledBy,
-      organizationId: invitation.organizationId,
+      tenantId: invitation.tenantId,
       status: 'active',
     },
     include: { role: true },
   })) as { role?: { isSuperAdmin?: boolean } } | null;
   
-  const organizationData = (await db.organization.findUnique({
-    where: { id: invitation.organizationId },
-    select: { ownerUserId: true },
-  })) as { ownerUserId?: string } | null;
-  
-  const isOwner = organizationData?.ownerUserId === cancelledBy;
   const isSuperAdmin = inviterMembership?.role?.isSuperAdmin || false;
-  
-  if (!isOwner && !isSuperAdmin && invitation.invitedByUserId !== cancelledBy) {
-    throw new Error('Permission denied. Only the original inviter, organization owner, or Super Admin can cancel invitations.');
+  const isOriginalInviter = invitation.invitedByUserId === cancelledBy;
+  if (!isOriginalInviter && !inviterMembership) {
+    throw new Error('Permission denied. You must be a member of this tenant to cancel invitations.');
   }
-  
+  if (!isOriginalInviter && !isSuperAdmin) {
+    throw new Error('Permission denied. Only the original inviter or Super Admin can cancel invitations.');
+  }
+
   // Cancel invitation
   await db.invitation.update({
     where: { id: invitationId },
@@ -540,7 +482,7 @@ export async function getInvitationByToken(token: string): Promise<InvitationDet
       status: 'pending',
     },
     include: {
-      organization: {
+      tenant: {
         select: {
           id: true,
           name: true,
@@ -579,7 +521,7 @@ export async function getInvitationByToken(token: string): Promise<InvitationDet
   
   return {
     id: invitation.id,
-    organizationId: invitation.organizationId,
+    tenantId: invitation.tenantId,
     email: invitation.email,
     roleId: invitation.roleId,
     token: invitation.token,
@@ -594,7 +536,7 @@ export async function getInvitationByToken(token: string): Promise<InvitationDet
     invitedUserId: invitation.invitedUserId,
     createdAt: invitation.createdAt,
     updatedAt: invitation.updatedAt,
-    organization: invitation.organization,
+    tenant: invitation.tenant,
     role: invitation.role,
     inviter: invitation.inviter,
   };

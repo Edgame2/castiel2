@@ -15,7 +15,7 @@ const CATEGORY_MAP: Record<string, LogCategory> = {
   'auth.password': LogCategory.SECURITY,
   'auth.mfa': LogCategory.SECURITY,
   'user.': LogCategory.ACTION,
-  'organization.': LogCategory.ACTION,
+  'tenant.': LogCategory.ACTION,
   'team.': LogCategory.ACTION,
   'role.': LogCategory.ACTION,
   'invitation.': LogCategory.ACTION,
@@ -35,9 +35,9 @@ const SEVERITY_MAP: Record<string, LogSeverity> = {
   'secret.rotated': LogSeverity.INFO,
   'user.deleted': LogSeverity.WARN,
   'user.deactivated': LogSeverity.WARN,
-  'organization.deleted': LogSeverity.WARN,
-  'organization.sso_configured': LogSeverity.INFO,
-  'organization.sso_disabled': LogSeverity.WARN,
+  'tenant.deleted': LogSeverity.WARN,
+  'tenant.sso_configured': LogSeverity.INFO,
+  'tenant.sso_disabled': LogSeverity.WARN,
   'team.deleted': LogSeverity.WARN,
   'role.deleted': LogSeverity.WARN,
   'plan.executed': LogSeverity.INFO,
@@ -91,13 +91,16 @@ function extractResource(event: AuditableEvent): { resourceType?: string; resour
     return {};
   }
   
-  // Organization events
-  if (type.startsWith('organization.')) {
+  // Tenant events (tenant-only; no organization)
+  if (type.startsWith('tenant.')) {
     if ('data' in event && typeof event.data === 'object' && event.data !== null) {
       const data = event.data as any;
-      if (data.organizationId) {
-        return { resourceType: 'organization', resourceId: data.organizationId };
+      if (data.tenantId) {
+        return { resourceType: 'tenant', resourceId: data.tenantId };
       }
+    }
+    if ('tenantId' in event && event.tenantId) {
+      return { resourceType: 'tenant', resourceId: event.tenantId };
     }
     return {};
   }
@@ -209,16 +212,6 @@ function generateMessage(event: AuditableEvent): string {
       return 'User account reactivated';
     case 'user.session_revoked':
       return `User session revoked: ${'data' in event && typeof event.data === 'object' && event.data !== null ? (event.data as any).reason || 'user_initiated' : 'user_initiated'}`;
-    case 'organization.created':
-      return `Organization created: ${'data' in event && typeof event.data === 'object' && event.data !== null ? (event.data as any).name || 'unknown' : 'unknown'}`;
-    case 'organization.updated':
-      return 'Organization updated';
-    case 'organization.deleted':
-      return 'Organization deleted';
-    case 'organization.settings_updated':
-      return 'Organization settings updated';
-    case 'organization.security_settings_updated':
-      return 'Organization security settings updated';
     case 'team.created':
       return `Team created: ${'data' in event && typeof event.data === 'object' && event.data !== null ? (event.data as any).name || 'unknown' : 'unknown'}`;
     case 'team.updated':
@@ -243,10 +236,10 @@ function generateMessage(event: AuditableEvent): string {
       return `Invitation cancelled for ${'data' in event && typeof event.data === 'object' && event.data !== null ? (event.data as any).email || 'unknown' : 'unknown'}`;
     case 'invitation.accepted':
       return 'Invitation accepted';
-    case 'organization.sso_configured':
-      return `SSO configured for organization: ${'data' in event && typeof event.data === 'object' && event.data !== null ? (event.data as any).provider || 'unknown' : 'unknown'}`;
-    case 'organization.sso_disabled':
-      return `SSO disabled for organization: ${'data' in event && typeof event.data === 'object' && event.data !== null ? (event.data as any).provider || 'unknown' : 'unknown'}`;
+    case 'tenant.sso_configured':
+      return `SSO configured for tenant: ${'data' in event && typeof event.data === 'object' && event.data !== null ? (event.data as any).provider || 'unknown' : 'unknown'}`;
+    case 'tenant.sso_disabled':
+      return `SSO disabled for tenant: ${'data' in event && typeof event.data === 'object' && event.data !== null ? (event.data as any).provider || 'unknown' : 'unknown'}`;
     default:
       return `Event: ${type}`;
   }
@@ -293,8 +286,9 @@ export function mapEventToLog(event: AuditableEvent): CreateLogInput {
     if (event.metadata.sessionId) metadata.sessionId = event.metadata.sessionId as string;
   }
   
+  const tenantId = (event as { tenantId?: string }).tenantId ?? (event as { organizationId?: string }).organizationId;
   return {
-    organizationId: event.organizationId,
+    tenantId,
     userId: event.userId,
     action: event.type,
     category: getCategory(event.type),

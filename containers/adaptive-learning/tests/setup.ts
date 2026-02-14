@@ -113,7 +113,7 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
+// Mock @coder/shared (server imports initializeDatabase, connectDatabase, setupJWT, setupHealthCheck from here)
 vi.mock('@coder/shared', () => ({
   ServiceClient: vi.fn(() => ({
     get: vi.fn().mockResolvedValue({ data: {} }),
@@ -121,6 +121,9 @@ vi.mock('@coder/shared', () => ({
     put: vi.fn().mockResolvedValue({ data: {} }),
     delete: vi.fn().mockResolvedValue({ data: {} }),
   })),
+  initializeDatabase: vi.fn(),
+  connectDatabase: vi.fn().mockResolvedValue(undefined),
+  disconnectDatabase: vi.fn().mockResolvedValue(undefined),
   authenticateRequest: vi.fn(() => vi.fn()),
   tenantEnforcementMiddleware: vi.fn(() => vi.fn()),
   setupJWT: vi.fn(),

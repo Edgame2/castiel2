@@ -31,32 +31,26 @@ vi.mock('../../../src/utils/logger', () => ({
 
 describe('RetentionService', () => {
   let retentionService: RetentionService;
-  let mockPrisma: any;
+  let mockCosmosRepo: any;
 
   beforeEach(() => {
-    mockPrisma = {
-      audit_retention_policies: {
-        create: vi.fn(),
-        findMany: vi.fn(),
-        findFirst: vi.fn(),
-        findUnique: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-      },
-      audit_logs: {
-        findMany: vi.fn(),
-        deleteMany: vi.fn(),
-      },
+    mockCosmosRepo = {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
     };
 
-    retentionService = new RetentionService(mockPrisma);
+    retentionService = new RetentionService(mockCosmosRepo);
   });
 
   describe('getPolicy', () => {
-    it('should retrieve a policy by organization', async () => {
+    it('should retrieve a policy by tenant', async () => {
       const mockPolicy = {
         id: 'policy-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         category: null,
         severity: null,
         retentionDays: 90,
@@ -71,16 +65,16 @@ describe('RetentionService', () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(mockPrisma.audit_retention_policies.findFirst).mockResolvedValue(mockPolicy);
+      vi.mocked(mockCosmosRepo.findFirst).mockResolvedValue(mockPolicy);
 
       const result = await retentionService.getPolicy('org-1');
 
       expect(result).toBeDefined();
-      expect(result?.organizationId).toBe('org-1');
+      expect(result?.tenantId).toBe('org-1');
     });
 
     it('should return default policy when none found', async () => {
-      vi.mocked(mockPrisma.audit_retention_policies.findFirst).mockResolvedValue(null);
+      vi.mocked(mockCosmosRepo.findFirst).mockResolvedValue(null);
 
       const result = await retentionService.getPolicy('org-1');
 
@@ -93,14 +87,14 @@ describe('RetentionService', () => {
   describe('createPolicy', () => {
     it('should create a retention policy', async () => {
       const input = {
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         retentionDays: 90,
         deleteAfterDays: 90,
       };
 
       const mockPolicy = {
         id: 'policy-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         category: null,
         severity: null,
         retentionDays: 90,
@@ -115,22 +109,22 @@ describe('RetentionService', () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(mockPrisma.audit_retention_policies.create).mockResolvedValue(mockPolicy);
+      vi.mocked(mockCosmosRepo.create).mockResolvedValue(mockPolicy);
 
       const result = await retentionService.createPolicy(input, 'user-1');
 
       expect(result).toBeDefined();
-      expect(result.organizationId).toBe('org-1');
-      expect(mockPrisma.audit_retention_policies.create).toHaveBeenCalled();
+      expect(result.tenantId).toBe('org-1');
+      expect(mockCosmosRepo.create).toHaveBeenCalled();
     });
   });
 
   describe('listPolicies', () => {
-    it('should list policies for organization', async () => {
+    it('should list policies for tenant', async () => {
       const mockPolicies = [
         {
           id: 'policy-1',
-          organizationId: 'org-1',
+          tenantId: 'org-1',
           category: null,
           severity: null,
           retentionDays: 90,
@@ -146,12 +140,12 @@ describe('RetentionService', () => {
         },
       ];
 
-      vi.mocked(mockPrisma.audit_retention_policies.findMany).mockResolvedValue(mockPolicies);
+      vi.mocked(mockCosmosRepo.findMany).mockResolvedValue(mockPolicies);
 
       const result = await retentionService.listPolicies('org-1');
 
       expect(result).toHaveLength(1);
-      expect(result[0].organizationId).toBe('org-1');
+      expect(result[0].tenantId).toBe('org-1');
     });
   });
 
@@ -159,7 +153,7 @@ describe('RetentionService', () => {
     it('should update a retention policy', async () => {
       const existingPolicy = {
         id: 'policy-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         category: null,
         severity: null,
         retentionDays: 90,
@@ -180,9 +174,8 @@ describe('RetentionService', () => {
         deleteAfterDays: 120,
       };
 
-      // Mock findUnique to return existing policy
-      vi.mocked(mockPrisma.audit_retention_policies.findUnique).mockResolvedValue(existingPolicy);
-      vi.mocked(mockPrisma.audit_retention_policies.update).mockResolvedValue(updatedPolicy);
+      vi.mocked(mockCosmosRepo.findUnique).mockResolvedValue(existingPolicy);
+      vi.mocked(mockCosmosRepo.update).mockResolvedValue(updatedPolicy);
 
       const result = await retentionService.updatePolicy('policy-1', { retentionDays: 120 }, 'user-1', 'org-1');
 
@@ -193,7 +186,7 @@ describe('RetentionService', () => {
     it('should throw when policy belongs to another tenant', async () => {
       const existingPolicy = {
         id: 'policy-1',
-        organizationId: 'other-org',
+        tenantId: 'other-org',
         category: null,
         severity: null,
         retentionDays: 90,
@@ -207,12 +200,12 @@ describe('RetentionService', () => {
         updatedBy: 'user-1',
         updatedAt: new Date(),
       };
-      vi.mocked(mockPrisma.audit_retention_policies.findUnique).mockResolvedValue(existingPolicy);
+      vi.mocked(mockCosmosRepo.findUnique).mockResolvedValue(existingPolicy);
 
       await expect(
         retentionService.updatePolicy('policy-1', { retentionDays: 120 }, 'user-1', 'org-1')
       ).rejects.toThrow('Retention policy not found');
-      expect(mockPrisma.audit_retention_policies.update).not.toHaveBeenCalled();
+      expect(mockCosmosRepo.update).not.toHaveBeenCalled();
     });
   });
 
@@ -220,7 +213,7 @@ describe('RetentionService', () => {
     it('should delete a retention policy', async () => {
       const existingPolicy = {
         id: 'policy-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         category: null,
         severity: null,
         retentionDays: 90,
@@ -235,21 +228,18 @@ describe('RetentionService', () => {
         updatedAt: new Date(),
       };
 
-      // Mock findUnique to return existing policy
-      vi.mocked(mockPrisma.audit_retention_policies.findUnique).mockResolvedValue(existingPolicy);
-      vi.mocked(mockPrisma.audit_retention_policies.delete).mockResolvedValue({ id: 'policy-1' });
+      vi.mocked(mockCosmosRepo.findUnique).mockResolvedValue(existingPolicy);
+      vi.mocked(mockCosmosRepo.delete).mockResolvedValue(undefined);
 
       await retentionService.deletePolicy('policy-1', 'org-1');
 
-      expect(mockPrisma.audit_retention_policies.delete).toHaveBeenCalledWith({
-        where: { id: 'policy-1' },
-      });
+      expect(mockCosmosRepo.delete).toHaveBeenCalledWith('policy-1', 'org-1');
     });
 
     it('should throw when policy belongs to another tenant', async () => {
       const existingPolicy = {
         id: 'policy-1',
-        organizationId: 'other-org',
+        tenantId: 'other-org',
         category: null,
         severity: null,
         retentionDays: 90,
@@ -263,12 +253,12 @@ describe('RetentionService', () => {
         updatedBy: 'user-1',
         updatedAt: new Date(),
       };
-      vi.mocked(mockPrisma.audit_retention_policies.findUnique).mockResolvedValue(existingPolicy);
+      vi.mocked(mockCosmosRepo.findUnique).mockResolvedValue(existingPolicy);
 
       await expect(retentionService.deletePolicy('policy-1', 'org-1')).rejects.toThrow(
         'Retention policy not found'
       );
-      expect(mockPrisma.audit_retention_policies.delete).not.toHaveBeenCalled();
+      expect(mockCosmosRepo.delete).not.toHaveBeenCalled();
     });
   });
 });

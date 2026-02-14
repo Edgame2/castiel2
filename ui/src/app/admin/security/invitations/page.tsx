@@ -1,5 +1,5 @@
 /**
- * Admin: Pending invitations — GET /api/v1/organizations/:orgId/invitations (list),
+ * Admin: Pending invitations — GET /api/v1/tenants/:tenantId/invitations (list),
  * POST .../:invitationId/resend, DELETE .../:invitationId (cancel).
  */
 
@@ -23,14 +23,14 @@ type InvitationRow = {
 type ListResponse = { data?: InvitationRow[] };
 
 export default function AdminSecurityInvitationsPage() {
-  const [orgId, setOrgId] = useState('');
+  const [tenantId, setTenantId] = useState('');
   const [items, setItems] = useState<InvitationRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
 
   const fetchInvitations = useCallback(() => {
-    if (!getApiBaseUrl() || !orgId.trim()) {
+    if (!getApiBaseUrl() || !tenantId.trim()) {
       setItems([]);
       return;
     }
@@ -39,7 +39,7 @@ export default function AdminSecurityInvitationsPage() {
     const params = new URLSearchParams();
     params.set('status', 'pending');
     apiFetch(
-      `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/invitations?${params}`
+      `/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/invitations?${params}`
     )
       .then((r) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load invitations');
@@ -51,18 +51,18 @@ export default function AdminSecurityInvitationsPage() {
         setItems([]);
       })
       .finally(() => setLoading(false));
-  }, [orgId]);
+  }, [tenantId]);
 
   useEffect(() => {
-    if (orgId.trim()) fetchInvitations();
+    if (tenantId.trim()) fetchInvitations();
     else setItems([]);
-  }, [orgId, fetchInvitations]);
+  }, [tenantId, fetchInvitations]);
 
   const resend = (invitationId: string) => {
-    if (!getApiBaseUrl() || !orgId.trim() || actionId) return;
+    if (!getApiBaseUrl() || !tenantId.trim() || actionId) return;
     setActionId(invitationId);
     apiFetch(
-      `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/invitations/${encodeURIComponent(invitationId)}/resend`,
+      `/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/invitations/${encodeURIComponent(invitationId)}/resend`,
       { method: 'POST' }
     )
       .then((r) => {
@@ -74,11 +74,11 @@ export default function AdminSecurityInvitationsPage() {
   };
 
   const cancel = (invitationId: string) => {
-    if (!getApiBaseUrl() || !orgId.trim() || actionId) return;
+    if (!getApiBaseUrl() || !tenantId.trim() || actionId) return;
     if (!confirm('Cancel this invitation?')) return;
     setActionId(invitationId);
     apiFetch(
-      `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/invitations/${encodeURIComponent(invitationId)}`,
+      `/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/invitations/${encodeURIComponent(invitationId)}`,
       { method: 'DELETE' }
     )
       .then((r) => {
@@ -102,16 +102,16 @@ export default function AdminSecurityInvitationsPage() {
         <h1 className="text-xl font-semibold mb-4">Pending invitations</h1>
 
         <div className="rounded-lg border bg-white dark:bg-gray-900 p-4 mb-4">
-          <Label className="block mb-2">Organization ID</Label>
+          <Label className="block mb-2">Tenant ID</Label>
           <div className="flex gap-2">
             <Input
               type="text"
-              value={orgId}
-              onChange={(e) => setOrgId(e.target.value)}
-              placeholder="e.g. org-123"
+              value={tenantId}
+              onChange={(e) => setTenantId(e.target.value)}
+              placeholder="e.g. tenant UUID"
               className="flex-1 max-w-xs"
             />
-            <Button type="button" onClick={() => fetchInvitations()} disabled={!orgId.trim() || loading}>
+            <Button type="button" onClick={() => fetchInvitations()} disabled={!tenantId.trim() || loading}>
               {loading ? 'Loading…' : 'Load'}
             </Button>
           </div>
@@ -123,8 +123,8 @@ export default function AdminSecurityInvitationsPage() {
           </p>
         )}
 
-        {items.length === 0 && !loading && orgId.trim() && !error && (
-          <p className="text-sm text-gray-500">No pending invitations for this organization.</p>
+        {items.length === 0 && !loading && tenantId.trim() && !error && (
+          <p className="text-sm text-gray-500">No pending invitations for this tenant.</p>
         )}
 
         {items.length > 0 && (

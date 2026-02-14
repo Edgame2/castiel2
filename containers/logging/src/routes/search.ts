@@ -8,13 +8,13 @@ import { ZodError } from 'zod';
 import { logSearchSchema, aggregationSchema } from '../utils/validation';
 import { LogSearchParams, LogAggregationParams } from '../types';
 import { QueryContext } from '../services/QueryService';
-import { checkPermission, canAccessCrossOrg, isUserOnlyAccess, AuditPermission } from '../middleware/rbac';
+import { checkPermission, canAccessCrossTenant, isUserOnlyAccess, AuditPermission } from '../middleware/rbac';
 import { log } from '../utils/logger';
 
 interface AuthenticatedUser {
   id: string;
   email: string;
-  organizationId?: string;
+  tenantId?: string;
 }
 
 /**
@@ -24,19 +24,19 @@ async function buildQueryContext(user: AuthenticatedUser | undefined): Promise<Q
   if (!user) {
     return {
       userId: 'anonymous',
-      organizationId: undefined,
-      canAccessCrossOrg: false,
+      tenantId: undefined,
+      canAccessCrossTenant: false,
       ownActivityOnly: true,
     };
   }
   
-  const crossOrg = await canAccessCrossOrg(user.id);
+  const crossTenant = await canAccessCrossTenant(user.id);
   const ownOnly = isUserOnlyAccess(user);
   
   return {
     userId: user.id,
-    organizationId: user.organizationId,
-    canAccessCrossOrg: crossOrg,
+    tenantId: user.tenantId,
+    canAccessCrossTenant: crossTenant,
     ownActivityOnly: ownOnly,
   };
 }
@@ -90,7 +90,7 @@ export async function registerSearchRoutes(app: FastifyInstance): Promise<void> 
         ...params,
       };
       
-      // Execute search with org isolation applied by QueryService
+      // Execute search with tenant isolation applied by QueryService
       const result = await queryService.search(searchParams, context);
       
       // Log the search (audit of audit)
@@ -248,7 +248,7 @@ export async function registerSearchRoutes(app: FastifyInstance): Promise<void> 
       endDate: endDate ? new Date(endDate) : undefined,
     };
     
-    // Get multiple aggregations in parallel (with org isolation)
+    // Get multiple aggregations in parallel (with tenant isolation)
     const [
       totalCount,
       byCategory,

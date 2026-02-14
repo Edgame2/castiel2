@@ -26,7 +26,7 @@ export interface AlertCondition {
 
 export interface AlertRule {
   id: string;
-  organizationId: string | null;
+  tenantId: string | null;
   name: string;
   description: string | null;
   enabled: boolean;
@@ -40,7 +40,7 @@ export interface AlertRule {
 }
 
 export interface CreateAlertRuleInput {
-  organizationId?: string;
+  tenantId?: string;
   name: string;
   description?: string;
   type: AlertType;

@@ -16,7 +16,7 @@ describe('Validation Schemas', () => {
   describe('createLogSchema', () => {
     it('should validate a valid log input', () => {
       const input = {
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         userId: 'user-1',
         action: 'user.login',
         message: 'User logged in',
@@ -35,7 +35,7 @@ describe('Validation Schemas', () => {
 
     it('should require action', () => {
       const input = {
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         message: 'User logged in',
       };
 
@@ -46,7 +46,7 @@ describe('Validation Schemas', () => {
 
     it('should require message', () => {
       const input = {
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         action: 'user.login',
       };
 
@@ -57,7 +57,7 @@ describe('Validation Schemas', () => {
 
     it('should set default category and severity', () => {
       const input = {
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         action: 'user.login',
         message: 'User logged in',
       };
@@ -77,12 +77,12 @@ describe('Validation Schemas', () => {
       const input = {
         logs: [
           {
-            organizationId: 'org-1',
+            tenantId: 'org-1',
             action: 'user.login',
             message: 'User logged in',
           },
           {
-            organizationId: 'org-1',
+            tenantId: 'org-1',
             action: 'user.logout',
             message: 'User logged out',
           },
@@ -110,7 +110,7 @@ describe('Validation Schemas', () => {
     it('should limit to 1000 logs', () => {
       const input = {
         logs: Array(1001).fill({
-          organizationId: 'org-1',
+          tenantId: 'org-1',
           action: 'user.login',
           message: 'User logged in',
         }),

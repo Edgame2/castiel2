@@ -45,10 +45,7 @@ export interface LoggingConfig {
   };
   
   storage: {
-    provider: 'postgres' | 'elasticsearch' | 'cosmos';
-    postgres?: {
-      partition_by: 'month' | 'week' | 'day';
-    };
+    provider: 'cosmos';
   };
   
   archive?: {
@@ -166,7 +163,7 @@ export interface LoggingConfig {
 
 export interface OrganizationConfig {
   id: string;
-  organizationId?: string; // undefined = global config
+  tenantId?: string; // undefined = global config
   
   // Capture settings
   captureIpAddress: boolean;

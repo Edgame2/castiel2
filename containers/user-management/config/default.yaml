@@ -16,7 +16,6 @@ cosmos_db:
   database_id: ${COSMOS_DB_DATABASE_ID:-castiel}
   containers:
     users: user_users
-    organizations: user_organizations
     teams: user_teams
     roles: user_roles
     permissions: user_permissions
@@ -58,25 +57,18 @@ rabbitmq:
 # Feature Flags
 features:
   user_profiles: ${FEATURE_USER_PROFILES:-true}
-  organizations: ${FEATURE_ORGANIZATIONS:-true}
   teams: ${FEATURE_TEAMS:-true}
   rbac: ${FEATURE_RBAC:-true}
   invitations: ${FEATURE_INVITATIONS:-true}
   user_analytics: ${FEATURE_USER_ANALYTICS:-true}
 
-# Organization Settings
-organization:
-  max_members: ${ORG_MAX_MEMBERS:-1000}
-  allow_public_orgs: ${ALLOW_PUBLIC_ORGS:-false}
-  default_role: ${ORG_DEFAULT_ROLE:-member}
-
 # Team Settings
 team:
   max_members: ${TEAM_MAX_MEMBERS:-100}
-  max_teams_per_org: ${MAX_TEAMS_PER_ORG:-50}
+  max_teams_per_tenant: ${MAX_TEAMS_PER_TENANT:-50}
 
 # Invitation Settings
 invitation:
   expiration_days: ${INVITATION_EXPIRATION_DAYS:-7}
-  max_pending_per_org: ${MAX_PENDING_INVITATIONS:-100}
+  max_pending_per_tenant: ${MAX_PENDING_INVITATIONS:-100}
 

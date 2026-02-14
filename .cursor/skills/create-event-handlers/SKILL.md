@@ -1,11 +1,13 @@
 ---
 name: create-event-handlers
-description: Sets up RabbitMQ event publishers and consumers following ModuleImplementationGuide.md Section 9. RabbitMQ only (no Azure Service Bus). Creates publishers with DomainEvent (tenantId preferred), consumers with handlers, naming {domain}.{entity}.{action}, required fields (id, type, version, timestamp, tenantId, source, data). Use when adding event-driven communication, async workflows, or integrating via events.
+description: Sets up RabbitMQ event publishers and consumers following ModuleImplementationGuide.md Section 9. RabbitMQ only (no Azure Service Bus). Creates publishers with DomainEvent (tenantId only; no organizationId), consumers with handlers, naming {domain}.{entity}.{action}, required fields (id, type, version, timestamp, tenantId, source, data). Use when adding event-driven communication, async workflows, or integrating via events.
 ---
 
 # Create Event Handlers
 
 Sets up RabbitMQ event publishers and consumers following ModuleImplementationGuide.md Section 9.
+
+**Tenant-only:** Events use `tenantId` only for tenant context. Do not include `organizationId` in event payloads or in `createBaseEvent`; use `tenantId` only.
 
 ## Event Naming Convention
 
@@ -46,8 +48,7 @@ interface DomainEvent<T = unknown> {
   correlationId?: string;        // Request correlation
   
   // Context
-  tenantId?: string;             // Tenant context (PREFERRED; use for new modules)
-  organizationId?: string;       // DEPRECATED for new modules; prefer tenantId
+  tenantId: string;             // Tenant context (required; all users and data are scoped by tenant)
   userId?: string;               // Actor
   
   // Payload
@@ -295,7 +296,8 @@ rabbitmq:
 - [ ] Event consumer created (if consuming events)
 - [ ] Events follow naming convention: {domain}.{entity}.{action}
 - [ ] Events include all required fields (id, type, version, timestamp, source, data)
-- [ ] Events include tenantId when applicable (RabbitMQ only; no Azure Service Bus)
+- [ ] Events include tenantId when applicable (tenantId only; no organizationId in events)
+- [ ] RabbitMQ only; no Azure Service Bus
 - [ ] logs-events.md created (if events are logged)
 - [ ] notifications-events.md created (if events trigger notifications)
 - [ ] RabbitMQ config added to default.yaml

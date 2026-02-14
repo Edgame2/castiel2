@@ -6,7 +6,7 @@ import { LogCategory, LogSeverity } from './log.types';
 
 export interface RetentionPolicy {
   id: string;
-  organizationId: string | null;
+  tenantId: string | null;
   
   // Scope
   category: LogCategory | null;
@@ -32,7 +32,7 @@ export interface RetentionPolicy {
 }
 
 export interface CreateRetentionPolicyInput {
-  organizationId?: string;
+  tenantId?: string;
   category?: LogCategory;
   severity?: LogSeverity;
   retentionDays: number;
@@ -64,7 +64,7 @@ export enum ExportStatus {
 
 export interface ExportJob {
   id: string;
-  organizationId: string;
+  tenantId: string;
   format: ExportFormat;
   filters: Record<string, unknown>;
   status: ExportStatus;

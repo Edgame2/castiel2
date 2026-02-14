@@ -31,12 +31,9 @@ const mockStorage: IStorageProvider = {
   count: vi.fn(),
 } as any;
 
-const mockPrisma = {
-  audit_hash_checkpoints: {
-    create: vi.fn(),
-    findFirst: vi.fn(),
-    findMany: vi.fn(),
-  },
+const mockCosmosCheckpoints = {
+  create: vi.fn(),
+  findMany: vi.fn(),
 };
 
 describe('VerificationService', () => {
@@ -48,24 +45,23 @@ describe('VerificationService', () => {
     mockStorage.getLogsInRange.mockResolvedValue([]);
     mockStorage.getLastLog.mockResolvedValue(null);
     mockStorage.count.mockResolvedValue(0);
-    mockPrisma.audit_hash_checkpoints.create.mockImplementation((args: any) =>
+    mockCosmosCheckpoints.create.mockImplementation((args: any) =>
       Promise.resolve({
         id: 'cp-1',
-        checkpointTimestamp: args.data?.checkpointTimestamp ?? new Date(),
-        lastLogId: args.data?.lastLogId ?? '',
-        lastHash: args.data?.lastHash ?? '',
-        logCount: args.data?.logCount ?? BigInt(0),
-        status: args.data?.status ?? 'PENDING',
-        verifiedAt: args.data?.verifiedAt ?? null,
-        verifiedBy: args.data?.verifiedBy ?? null,
+        checkpointTimestamp: args.checkpointTimestamp ?? new Date(),
+        lastLogId: args.lastLogId ?? '',
+        lastHash: args.lastHash ?? '',
+        logCount: args.logCount ?? 0,
+        status: args.status ?? 'PENDING',
+        verifiedAt: args.verifiedAt ?? null,
+        verifiedBy: args.verifiedBy ?? null,
         createdAt: new Date(),
       })
     );
-    mockPrisma.audit_hash_checkpoints.findFirst.mockResolvedValue(null);
-    mockPrisma.audit_hash_checkpoints.findMany.mockResolvedValue([]);
+    mockCosmosCheckpoints.findMany.mockResolvedValue([]);
     service = new VerificationService({
       storageProvider: mockStorage,
-      prisma: mockPrisma as any,
+      cosmosCheckpoints: mockCosmosCheckpoints as any,
     });
   });
 
@@ -106,7 +102,7 @@ describe('VerificationService', () => {
       const result = await service.createCheckpoint();
       expect(result).toBeDefined();
       expect(result.lastLogId).toBe(lastLog.id);
-      expect(mockPrisma.audit_hash_checkpoints.create).toHaveBeenCalled();
+      expect(mockCosmosCheckpoints.create).toHaveBeenCalled();
     });
   });
 
@@ -118,14 +114,14 @@ describe('VerificationService', () => {
           checkpointTimestamp: new Date(),
           lastLogId: 'l1',
           lastHash: 'h1',
-          logCount: BigInt(5),
+          logCount: 5,
           status: 'VERIFIED',
           verifiedAt: new Date(),
           verifiedBy: null,
           createdAt: new Date(),
         },
       ];
-      mockPrisma.audit_hash_checkpoints.findMany.mockResolvedValue(rows);
+      mockCosmosCheckpoints.findMany.mockResolvedValue(rows);
       const result = await service.getVerificationHistory(10);
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('cp-1');

@@ -80,11 +80,15 @@ vi.mock('yaml', () => ({
   }),
 }));
 
-// Mock @coder/shared (single mock: actual + getContainer, DB helpers, auth, ServiceClient)
+// Mock @coder/shared (single mock: actual + getContainer, DB helpers, auth, ServiceClient, PolicyResolver)
 vi.mock('@coder/shared', async (importOriginal) => {
   const actual = (await importOriginal()) as object;
+  const MockPolicyResolver = vi.fn().mockImplementation(function (this: { getShardTypeAnalysisPolicy: ReturnType<typeof vi.fn> }) {
+    this.getShardTypeAnalysisPolicy = vi.fn().mockResolvedValue({});
+  });
   return {
     ...actual,
+    PolicyResolver: MockPolicyResolver,
     getContainer: vi.fn(() => ({
       items: {
         create: vi.fn(),

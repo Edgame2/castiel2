@@ -69,7 +69,7 @@ export async function registerExportRoutes(app: FastifyInstance): Promise<void> 
       } : undefined;
 
       const exportJob = await exportService.createExport(
-        user.organizationId,
+        user.tenantId,
         {
           format: body.format as ExportFormat,
           filters,
@@ -114,7 +114,7 @@ export async function registerExportRoutes(app: FastifyInstance): Promise<void> 
       const user = (request as any).user;
       const { id } = request.params as { id: string };
 
-      const exportJob = await exportService.getExport(id, user.organizationId);
+      const exportJob = await exportService.getExport(id, user.tenantId);
 
       if (!exportJob) {
         return reply.code(404).send({ error: 'Export not found' });
@@ -147,7 +147,7 @@ export async function registerExportRoutes(app: FastifyInstance): Promise<void> 
       const query = request.query as { limit?: string };
 
       const exports = await exportService.listExports(
-        user.organizationId,
+        user.tenantId,
         query.limit ? parseInt(query.limit, 10) : 50
       );
 
@@ -193,7 +193,7 @@ export async function registerExportRoutes(app: FastifyInstance): Promise<void> 
       const { id } = request.params as { id: string };
 
       // Get export job
-      const exportJob = await exportService.getExport(id, user.organizationId);
+      const exportJob = await exportService.getExport(id, user.tenantId);
 
       if (!exportJob) {
         return reply.code(404).send({
@@ -298,11 +298,11 @@ export async function registerExportRoutes(app: FastifyInstance): Promise<void> 
       const user = (request as any).user;
       const { id } = request.params as { id: string };
 
-      const cancelled = await exportService.cancelExport(id, user.organizationId);
+      const cancelled = await exportService.cancelExport(id, user.tenantId);
 
       if (!cancelled) {
         // Check if export exists
-        const exportJob = await exportService.getExport(id, user.organizationId);
+        const exportJob = await exportService.getExport(id, user.tenantId);
         if (!exportJob) {
           return reply.code(404).send({
             error: {

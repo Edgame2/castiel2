@@ -1,85 +1,61 @@
 /**
  * Retention Service
- * Manages retention policies and log lifecycle
- * Per ModuleImplementationGuide Section 6: Abstraction Layer
+ * Manages retention policies and log lifecycle (Cosmos DB only).
  */
 
-import { PrismaClient } from '.prisma/logging-client';
 import { RetentionPolicy, CreateRetentionPolicyInput, UpdateRetentionPolicyInput } from '../types/policy.types';
 import { getConfig } from '../config';
 import { log } from '../utils/logger';
+import type { CosmosRetentionPoliciesRepository } from '../data/cosmos/retention-policies';
+
+function defaultPolicy(): RetentionPolicy {
+  const config = getConfig();
+  return {
+    id: 'default',
+    tenantId: null,
+    category: null,
+    severity: null,
+    retentionDays: config.defaults.retention.default_days,
+    archiveAfterDays: null,
+    deleteAfterDays: config.defaults.retention.default_days,
+    minRetentionDays: config.defaults.retention.min_days,
+    maxRetentionDays: config.defaults.retention.max_days,
+    immutable: false,
+    createdBy: 'system',
+    createdAt: new Date(),
+    updatedBy: 'system',
+    updatedAt: new Date(),
+  } as RetentionPolicy;
+}
 
 export class RetentionService {
-  private prisma: PrismaClient | null;
+  private cosmosRepo: CosmosRetentionPoliciesRepository;
 
-  constructor(prisma: PrismaClient | null) {
-    this.prisma = prisma;
+  constructor(cosmosRepo: CosmosRetentionPoliciesRepository) {
+    this.cosmosRepo = cosmosRepo;
   }
 
   /**
-   * Get retention policy for organization and log type
+   * Get retention policy for tenant and log type
    */
   async getPolicy(
-    organizationId: string | null,
+    tenantId: string | null,
     category?: string,
     severity?: string
   ): Promise<RetentionPolicy | null> {
-    if (!this.prisma) {
-      const config = getConfig();
-      return {
-        id: 'default',
-        organizationId: null,
-        category: null,
-        severity: null,
-        retentionDays: config.defaults.retention.default_days,
-        archiveAfterDays: null,
-        deleteAfterDays: config.defaults.retention.default_days,
-        minRetentionDays: config.defaults.retention.min_days,
-        maxRetentionDays: config.defaults.retention.max_days,
-        immutable: false,
-        createdBy: 'system',
-        createdAt: new Date(),
-        updatedBy: 'system',
-        updatedAt: new Date(),
-      } as RetentionPolicy;
-    }
     try {
-      const policy = await this.prisma.audit_retention_policies.findFirst({
+      const policy = await this.cosmosRepo.findFirst({
         where: {
-          organizationId: organizationId || null,
-          category: (category as any) || null,
-          severity: (severity as any) || null,
+          tenantId: tenantId ?? null,
+          category: category ?? null,
+          severity: severity ?? null,
         },
-        orderBy: {
-          // Prefer org-specific over global
-          organizationId: organizationId ? 'asc' : 'desc',
-        },
+        orderBy: { tenantId: 'asc' },
       });
-
-      if (!policy) {
-        // Return default policy
-        const config = getConfig();
-        return {
-          id: 'default',
-          organizationId: null,
-          category: null,
-          severity: null,
-          retentionDays: config.defaults.retention.default_days,
-          archiveAfterDays: null,
-          deleteAfterDays: config.defaults.retention.default_days,
-          minRetentionDays: config.defaults.retention.min_days,
-          maxRetentionDays: config.defaults.retention.max_days,
-          immutable: false,
-          createdBy: 'system',
-          createdAt: new Date(),
-          updatedBy: 'system',
-          updatedAt: new Date(),
-        };
-      }
-
-      return this.mapToRetentionPolicy(policy);
+      if (!policy) return defaultPolicy();
+      return policy;
     } catch (error) {
-      log.error('Failed to get retention policy', error, { organizationId, category, severity });
+      log.error('Failed to get retention policy', error, { tenantId, category, severity });
       return null;
     }
   }
@@ -92,38 +68,31 @@ export class RetentionService {
     createdBy: string
   ): Promise<RetentionPolicy> {
     const config = getConfig();
-    
-    // Validate retention days
     const minDays = input.minRetentionDays ?? config.defaults.retention.min_days;
     const maxDays = input.maxRetentionDays ?? config.defaults.retention.max_days;
-    
     if (input.retentionDays < minDays || input.retentionDays > maxDays) {
       throw new Error(
         `Retention days must be between ${minDays} and ${maxDays}`
       );
     }
-    if (!this.prisma) throw new Error('Retention policies not available when using Cosmos DB');
-    const policy = await this.prisma.audit_retention_policies.create({
-      data: {
-        organizationId: input.organizationId || null,
-        category: input.category || null,
-        severity: input.severity || null,
-        retentionDays: input.retentionDays,
-        archiveAfterDays: input.archiveAfterDays || null,
-        deleteAfterDays: input.deleteAfterDays ?? input.retentionDays,
-        minRetentionDays: minDays,
-        maxRetentionDays: maxDays,
-        immutable: input.immutable ?? false,
-        createdBy,
-        updatedBy: createdBy,
-      },
-    });
 
-    return this.mapToRetentionPolicy(policy);
+    return this.cosmosRepo.create({
+      tenantId: input.tenantId ?? null,
+      category: input.category ?? null,
+      severity: input.severity ?? null,
+      retentionDays: input.retentionDays,
+      archiveAfterDays: input.archiveAfterDays ?? null,
+      deleteAfterDays: input.deleteAfterDays ?? input.retentionDays,
+      minRetentionDays: minDays,
+      maxRetentionDays: maxDays,
+      immutable: input.immutable ?? false,
+      createdBy,
+      updatedBy: createdBy,
+    });
   }
 
   /**
-   * Update retention policy (tenant-scoped: only if policy.organizationId matches tenantId).
+   * Update retention policy (tenant-scoped: only if policy.tenantId matches tenantId).
    */
   async updatePolicy(
     id: string,
@@ -131,205 +100,65 @@ export class RetentionService {
     updatedBy: string,
     tenantId: string
   ): Promise<RetentionPolicy> {
-    if (!this.prisma) throw new Error('Retention policies not available when using Cosmos DB');
-    const existing = await this.prisma.audit_retention_policies.findUnique({
-      where: { id },
-    });
-
-    if (!existing) {
-      throw new Error('Retention policy not found');
-    }
-
-    if (existing.organizationId !== tenantId) {
-      throw new Error('Retention policy not found');
-    }
-
-    if (existing.immutable) {
-      throw new Error('Cannot update immutable retention policy');
-    }
-
-    const config = getConfig();
-    const minDays = existing.minRetentionDays;
-    const maxDays = existing.maxRetentionDays;
-
+    const existing = await this.cosmosRepo.findUnique({ where: { id } });
+    if (!existing) throw new Error('Retention policy not found');
+    if (existing.tenantId !== tenantId) throw new Error('Retention policy not found');
+    if (existing.immutable) throw new Error('Cannot update immutable retention policy');
     if (input.retentionDays !== undefined) {
-      if (input.retentionDays < minDays || input.retentionDays > maxDays) {
+      if (input.retentionDays < existing.minRetentionDays || input.retentionDays > existing.maxRetentionDays) {
         throw new Error(
-          `Retention days must be between ${minDays} and ${maxDays}`
+          `Retention days must be between ${existing.minRetentionDays} and ${existing.maxRetentionDays}`
         );
       }
     }
-
-    const policy = await this.prisma.audit_retention_policies.update({
-      where: { id },
-      data: {
-        retentionDays: input.retentionDays,
-        archiveAfterDays: input.archiveAfterDays,
-        deleteAfterDays: input.deleteAfterDays,
-        immutable: input.immutable,
-        updatedBy,
-      },
+    return this.cosmosRepo.update(id, tenantId, {
+      retentionDays: input.retentionDays,
+      archiveAfterDays: input.archiveAfterDays,
+      deleteAfterDays: input.deleteAfterDays,
+      immutable: input.immutable,
+      updatedBy,
     });
-
-    return this.mapToRetentionPolicy(policy);
   }
 
   /**
-   * Delete retention policy (tenant-scoped: only if policy.organizationId matches tenantId).
+   * Delete retention policy (tenant-scoped: only if policy.tenantId matches tenantId).
    */
   async deletePolicy(id: string, tenantId: string): Promise<void> {
-    if (!this.prisma) throw new Error('Retention policies not available when using Cosmos DB');
-    const existing = await this.prisma.audit_retention_policies.findUnique({
-      where: { id },
-    });
-
-    if (!existing) {
-      throw new Error('Retention policy not found');
-    }
-
-    if (existing.organizationId !== tenantId) {
-      throw new Error('Retention policy not found');
-    }
-
-    if (existing.immutable) {
-      throw new Error('Cannot delete immutable retention policy');
-    }
-
-    await this.prisma.audit_retention_policies.delete({
-      where: { id },
-    });
+    const existing = await this.cosmosRepo.findUnique({ where: { id } });
+    if (!existing) throw new Error('Retention policy not found');
+    if (existing.tenantId !== tenantId) throw new Error('Retention policy not found');
+    if (existing.immutable) throw new Error('Cannot delete immutable retention policy');
+    await this.cosmosRepo.delete(id, tenantId);
   }
 
   /**
    * List retention policies
    */
-  async listPolicies(organizationId?: string): Promise<RetentionPolicy[]> {
-    if (!this.prisma) return [];
-    const where: Record<string, unknown> = {};
-    if (organizationId !== undefined) {
-      where.organizationId = organizationId || null;
-    }
-    const policies = await this.prisma.audit_retention_policies.findMany({
-      where,
+  async listPolicies(tenantId?: string): Promise<RetentionPolicy[]> {
+    return this.cosmosRepo.findMany({
+      where: tenantId !== undefined ? { tenantId: tenantId ?? null } : undefined,
       orderBy: [
-        { organizationId: 'asc' },
+        { tenantId: 'asc' },
         { category: 'asc' },
         { severity: 'asc' },
       ],
     });
-
-    return policies.map(p => this.mapToRetentionPolicy(p));
   }
 
   /**
-   * Get logs that should be deleted based on retention policies
+   * Get logs that should be deleted based on retention policies.
+   * Cosmos-only: returns [] (log deletion would use storage provider in a future implementation).
    */
-  async getLogsToDelete(organizationId?: string): Promise<{ logId: string; organizationId: string }[]> {
-    if (!this.prisma) return [];
-    const policies = await this.listPolicies(organizationId);
-    const logsToDelete: { logId: string; organizationId: string }[] = [];
-
-    for (const policy of policies) {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - policy.deleteAfterDays);
-
-      const where: any = {
-        timestamp: { lt: cutoffDate },
-        organizationId: policy.organizationId || undefined,
-      };
-
-      if (policy.category) {
-        where.category = policy.category;
-      }
-      if (policy.severity) {
-        where.severity = policy.severity;
-      }
-
-      const logs = await this.prisma.audit_logs.findMany({
-        where,
-        select: { id: true, organizationId: true },
-        take: 1000, // Process in batches
-      });
-
-      logsToDelete.push(...logs.map(l => ({
-        logId: l.id,
-        organizationId: l.organizationId,
-      })));
-    }
-
-    return logsToDelete;
+  async getLogsToDelete(_tenantId?: string): Promise<{ logId: string; tenantId: string }[]> {
+    return [];
   }
 
   /**
-   * Get logs that should be archived
+   * Get logs that should be archived.
+   * Cosmos-only: returns [] (archiving would use storage provider in a future implementation).
    */
-  async getLogsToArchive(organizationId?: string): Promise<{ logId: string; organizationId: string }[]> {
-    if (!this.prisma) return [];
-    const policies = await this.listPolicies(organizationId);
-    const logsToArchive: { logId: string; organizationId: string }[] = [];
-
-    for (const policy of policies) {
-      if (!policy.archiveAfterDays) {
-        continue;
-      }
-
-      const archiveDate = new Date();
-      archiveDate.setDate(archiveDate.getDate() - policy.archiveAfterDays);
-      
-      const deleteDate = new Date();
-      deleteDate.setDate(deleteDate.getDate() - policy.deleteAfterDays);
-
-      // Archive logs between archive date and delete date
-      const where: any = {
-        timestamp: {
-          gte: archiveDate,
-          lt: deleteDate,
-        },
-        organizationId: policy.organizationId || undefined,
-      };
-
-      if (policy.category) {
-        where.category = policy.category;
-      }
-      if (policy.severity) {
-        where.severity = policy.severity;
-      }
-
-      const logs = await this.prisma.audit_logs.findMany({
-        where,
-        select: { id: true, organizationId: true },
-        take: 1000, // Process in batches
-      });
-
-      logsToArchive.push(...logs.map((l) => ({
-        logId: l.id,
-        organizationId: l.organizationId,
-      })));
-    }
-
-    return logsToArchive;
-  }
-
-  /**
-   * Map Prisma model to RetentionPolicy type
-   */
-  private mapToRetentionPolicy(policy: any): RetentionPolicy {
-    return {
-      id: policy.id,
-      organizationId: policy.organizationId,
-      category: policy.category,
-      severity: policy.severity,
-      retentionDays: policy.retentionDays,
-      archiveAfterDays: policy.archiveAfterDays,
-      deleteAfterDays: policy.deleteAfterDays,
-      minRetentionDays: policy.minRetentionDays,
-      maxRetentionDays: policy.maxRetentionDays,
-      immutable: policy.immutable,
-      createdBy: policy.createdBy,
-      createdAt: policy.createdAt,
-      updatedBy: policy.updatedBy,
-      updatedAt: policy.updatedAt,
-    };
+  async getLogsToArchive(_tenantId?: string): Promise<{ logId: string; tenantId: string }[]> {
+    return [];
   }
 }
 

@@ -13,25 +13,25 @@ vi.mock('@coder/shared', () => ({
 describe('InvitationService', () => {
   let mockDb: {
     invitation: { findMany: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
-    organizationMembership: { findFirst: ReturnType<typeof vi.fn> };
+    membership: { findFirst: ReturnType<typeof vi.fn> };
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = {
       invitation: { findMany: vi.fn(), create: vi.fn() },
-      organizationMembership: { findFirst: vi.fn() },
+      membership: { findFirst: vi.fn() },
     };
     (getDatabaseClient as ReturnType<typeof vi.fn>).mockReturnValue(mockDb);
   });
 
   describe('listInvitations', () => {
-    it('returns invitations for organization', async () => {
+    it('returns invitations for tenant', async () => {
       mockDb.invitation.findMany.mockResolvedValue([
         {
           id: 'inv-1',
           email: 'a@b.com',
-          organizationId: 'org-1',
+          tenantId: 'tenant-1',
           status: 'pending',
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -45,13 +45,13 @@ describe('InvitationService', () => {
           lastResentAt: null,
           cancelledAt: null,
           invitedUserId: null,
-          organization: { id: 'org-1', name: 'Org', slug: 'org' },
+          tenant: { id: 'tenant-1', name: 'Tenant', slug: 'tenant' },
           role: { id: 'role-1', name: 'Member' },
           inviter: { id: 'user-1', email: 'u@b.com', name: 'U' },
         },
       ]);
 
-      const result = await listInvitations('org-1', {});
+      const result = await listInvitations('tenant-1', {});
 
       expect(mockDb.invitation.findMany).toHaveBeenCalled();
       expect(result).toHaveLength(1);

@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Tenant-scoped SSO (MASTER_RULES §11):** All SSO operations available under `/api/v1/auth/tenants/:tenantId/sso/*`: GET/PUT/POST config, POST test, POST disable, GET credentials, POST certificate/rotate. Use these paths instead of organization-scoped paths.
+- **SAML initiate:** POST `/api/v1/auth/sso/saml/initiate` body accepts `tenantId` (preferred); `organizationId` remains as deprecated alias.
+- **RBAC:** Tenant SSO routes use permission `tenants.sso.manage` with resourceType `tenant`. Permission is seeded by user-management and assigned to Admin role alongside deprecated `organizations.sso.manage`.
+
+### Deprecated
+- **Organization-scoped SSO:** `/api/v1/auth/organizations/:orgId/sso/*` (config, test, disable, credentials, certificate/rotate) is deprecated. Use `/api/v1/auth/tenants/:tenantId/sso/*` instead. Organization routes remain functional; removal scheduled for 2 versions after deprecation (see MASTER_RULES §1).
+
+### Added (existing)
 - **MFA (TOTP):** When `features.multi_factor_auth` (env `FEATURE_MFA`) is enabled: GET `/api/v1/auth/mfa/status`, POST `/api/v1/auth/mfa/enroll`, POST `/api/v1/auth/mfa/verify`, POST `/api/v1/auth/mfa/disable` (requires current TOTP code). `MfaService` and Cosmos container `auth_mfa_secrets` (partition key `/userId`). UI: settings enroll, verify, and disable flows; security page shows MFA status.
 - **MFA backup codes:** POST `/api/v1/auth/mfa/backup-codes/generate` (TOTP-gated), POST `/api/v1/auth/mfa/verify-backup` (one-time consume). Container `auth_mfa_backup_codes`. UI: security page generate flow; verify page accepts TOTP or backup code.
 

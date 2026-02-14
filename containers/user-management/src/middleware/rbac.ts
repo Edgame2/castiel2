@@ -11,7 +11,7 @@ import { log } from '../utils/logger';
 
 export interface PermissionCheck {
   permission: string;
-  resourceType?: 'project' | 'team' | 'user' | 'organization';
+  resourceType?: 'project' | 'team' | 'user' | 'tenant';
   resourceId?: string;
 }
 
@@ -40,28 +40,27 @@ export async function checkPermission(
     return false;
   }
 
-  // Extract organization ID from request
+  // Extract tenant ID from request
   const params = request.params as any;
-  const orgId = params?.orgId || params?.organizationId;
-  const organizationId = orgId || (check.resourceType === 'organization' ? check.resourceId : undefined) || (request as any).organizationId;
+  const tenantId = params?.tenantId || (check.resourceType === 'tenant' ? check.resourceId : undefined) || (request as any).tenantId;
 
-  if (!organizationId) {
-    reply.code(400).send({ error: 'Organization context required' });
+  if (!tenantId) {
+    reply.code(400).send({ error: 'Tenant context required' });
     return false;
   }
 
-  // Determine resource ID for scope checking (used for organization context)
+  // Determine resource ID for scope checking (used for tenant context)
   void (check.resourceId || params?.id || params?.projectId || params?.teamId || params?.userId);
 
   try {
     const db = getDatabaseClient() as unknown as {
-      organizationMembership: { findFirst: (args: unknown) => Promise<{ roleId: string; role: { isSuperAdmin: boolean } } | null> };
+      membership: { findFirst: (args: unknown) => Promise<{ roleId: string; role: { isSuperAdmin: boolean } } | null> };
       rolePermission: { findMany: (args: unknown) => Promise<Array<{ permission: { code: string } }>> };
     };
-    const membership = await db.organizationMembership.findFirst({
+    const membership = await db.membership.findFirst({
       where: {
         userId,
-        organizationId,
+        tenantId,
         status: 'active',
       },
       include: { role: true },
@@ -129,7 +128,7 @@ export async function checkPermission(
     // The logging service will consume user.* events automatically
     log.warn('Permission denied', {
       userId,
-      organizationId,
+      tenantId,
       permission: check.permission,
       resourceId: check.resourceId,
       service: 'user-management',
@@ -140,7 +139,7 @@ export async function checkPermission(
   } catch (error: any) {
     log.error('Error checking permission', error, {
       userId,
-      organizationId,
+      tenantId,
       permission: check.permission,
       service: 'user-management',
     });
@@ -157,13 +156,13 @@ export async function checkPermission(
  * @returns Fastify preHandler middleware function
  * 
  * @example
- * fastify.get('/api/v1/organizations/:orgId/roles', {
+ * fastify.get('/api/v1/tenants/:tenantId/roles', {
  *   preHandler: [authenticateRequest, requirePermission('roles.read')]
  * }, handler);
  */
 export function requirePermission(
   permission: string,
-  resourceType?: 'project' | 'team' | 'user' | 'organization'
+  resourceType?: 'project' | 'team' | 'user' | 'tenant'
 ) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     const params = request.params as any;
@@ -177,8 +176,8 @@ export function requirePermission(
       resourceId = params?.id || params?.teamId;
     } else if (resourceType === 'user') {
       resourceId = params?.id || params?.userId;
-    } else if (resourceType === 'organization') {
-      resourceId = params?.id || params?.orgId || params?.organizationId;
+    } else if (resourceType === 'tenant') {
+      resourceId = params?.id || params?.tenantId;
     } else {
       // Try to infer from params
       resourceId = params?.id || params?.projectId || params?.teamId || params?.userId;

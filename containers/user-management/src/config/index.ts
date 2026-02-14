@@ -119,23 +119,18 @@ export function loadConfig(): UserManagementConfig {
   const toInt = (v: unknown) => (typeof v === 'number' ? v : parseInt(String(v), 10));
   if (resolved.features) {
     if (resolved.features.user_profiles !== undefined) resolved.features.user_profiles = toBool(resolved.features.user_profiles);
-    if (resolved.features.organizations !== undefined) resolved.features.organizations = toBool(resolved.features.organizations);
     if (resolved.features.teams !== undefined) resolved.features.teams = toBool(resolved.features.teams);
     if (resolved.features.rbac !== undefined) resolved.features.rbac = toBool(resolved.features.rbac);
     if (resolved.features.invitations !== undefined) resolved.features.invitations = toBool(resolved.features.invitations);
     if (resolved.features.user_analytics !== undefined) resolved.features.user_analytics = toBool(resolved.features.user_analytics);
   }
-  if (resolved.organization) {
-    if (resolved.organization.max_members !== undefined) resolved.organization.max_members = toInt(resolved.organization.max_members);
-    if (resolved.organization.allow_public_orgs !== undefined) resolved.organization.allow_public_orgs = toBool(resolved.organization.allow_public_orgs);
-  }
   if (resolved.team) {
     if (resolved.team.max_members !== undefined) resolved.team.max_members = toInt(resolved.team.max_members);
-    if (resolved.team.max_teams_per_org !== undefined) resolved.team.max_teams_per_org = toInt(resolved.team.max_teams_per_org);
+    if (resolved.team.max_teams_per_tenant !== undefined) resolved.team.max_teams_per_tenant = toInt(resolved.team.max_teams_per_tenant);
   }
   if (resolved.invitation) {
     if (resolved.invitation.expiration_days !== undefined) resolved.invitation.expiration_days = toInt(resolved.invitation.expiration_days);
-    if (resolved.invitation.max_pending_per_org !== undefined) resolved.invitation.max_pending_per_org = toInt(resolved.invitation.max_pending_per_org);
+    if (resolved.invitation.max_pending_per_tenant !== undefined) resolved.invitation.max_pending_per_tenant = toInt(resolved.invitation.max_pending_per_tenant);
   }
   
   const ajv = new Ajv({ allErrors: true, useDefaults: true });

@@ -27,7 +27,7 @@ Single source of truth for each page/flow: method, gateway path, gateway mapping
 |------------|--------|-------------|------------------|
 | opportunities/page | GET | `/api/v1/shards?shardTypeName=c_opportunity&...` | `/api/v1/shards` → shard_manager |
 | opportunities/[id] | GET | `/api/v1/opportunities/:id/anomalies`, `/api/v1/remediation-workflows?opportunityId=` | `/api/v1` → risk_analytics; `/api/v1/remediation-workflows` → recommendations |
-| dashboard/page | GET | `/api/dashboard/api/v1/dashboards/manager/prioritized` | `/api/dashboard` → dashboard (stripPrefix) |
+| dashboard/page | GET | `/api/v1/dashboards/manager/prioritized` | `/api/v1/dashboards` → dashboard |
 
 ## Audit note (Phase 3)
 
@@ -45,6 +45,7 @@ Existing admin and settings pages use gateway paths per `.cursor/commands/endpoi
 | admin/feedback | Yes | Yes | Yes | Yes | Feedback types, config, aggregation; multiple API calls |
 | admin/decision-rules | Yes | Yes | Yes | Yes | Overview (rules, templates, conflicts counts); links to subpages |
 | admin/ml-models | Yes | Yes | Yes | Yes | Overview (models health, endpoints); links to subpages |
+| admin/action-catalog/categories | Yes | Yes | Yes | Yes | Card grid; first column link → detail; delete modal + toast |
 
 Remaining admin/settings list pages: to be audited in same way (apiFetch, loading, empty, 401, data table pattern).
 

@@ -38,21 +38,21 @@ describe('ApiKeyService', () => {
   });
 
   describe('listApiKeys', () => {
-    it('returns api key summaries for organization', async () => {
+    it('returns api key summaries for tenant', async () => {
       mockContainer.items.query = vi.fn().mockReturnValue({
         fetchAll: vi.fn().mockResolvedValue({
           resources: [
             {
               id: 'apikey_1',
               name: 'Key One',
-              organizationId: 'org-1',
+              tenantId: 'tenant-1',
               createdAt: '2025-01-01T00:00:00.000Z',
             },
           ],
         }),
       });
 
-      const result = await listApiKeys('org-1');
+      const result = await listApiKeys('tenant-1');
 
       expect(getContainer).toHaveBeenCalled();
       expect(result).toHaveLength(1);
@@ -63,7 +63,7 @@ describe('ApiKeyService', () => {
 
   describe('createApiKey', () => {
     it('creates api key and returns raw key once', async () => {
-      const result = await createApiKey('org-1', { name: 'New Key' }, 'user-1');
+      const result = await createApiKey('tenant-1', { name: 'New Key' }, 'user-1');
 
       expect(mockContainer.items.create).toHaveBeenCalled();
       expect(result).toBeDefined();

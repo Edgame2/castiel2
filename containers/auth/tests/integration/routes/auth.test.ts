@@ -92,6 +92,13 @@ describe('Authentication Routes', () => {
         findFirst: vi.fn().mockResolvedValue(null),
         create: vi.fn().mockResolvedValue({}),
       },
+      membership: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      tenant: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
     };
 
     (getDatabaseClient as any).mockReturnValue(mockDb);

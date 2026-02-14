@@ -1,5 +1,5 @@
 /**
- * Logout — POST /api/auth/logout via gateway (clears session cookies), then redirect to /login.
+ * Logout — POST /api/v1/auth/logout via gateway (clears session cookies), then redirect to /login.
  */
 
 'use client';
@@ -15,7 +15,7 @@ export default function LogoutPage() {
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch('/api/auth/logout', {
+    apiFetch('/api/v1/auth/logout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: '{}',

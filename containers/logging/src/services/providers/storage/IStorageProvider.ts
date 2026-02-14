@@ -30,7 +30,7 @@ export interface IStorageProvider {
   /**
    * Get a log by ID
    */
-  getById(id: string, organizationId?: string): Promise<AuditLog | null>;
+  getById(id: string, tenantId?: string): Promise<AuditLog | null>;
   
   /**
    * Search logs with filters
@@ -55,12 +55,12 @@ export interface IStorageProvider {
   /**
    * Get distinct values for a field (for filter dropdowns)
    */
-  getDistinctValues?(field: 'action' | 'source' | 'resourceType', organizationId?: string, limit?: number): Promise<string[]>;
+  getDistinctValues?(field: 'action' | 'source' | 'resourceType', tenantId?: string, limit?: number): Promise<string[]>;
   
   /**
    * Get the last log entry (for hash chain)
    */
-  getLastLog(organizationId?: string): Promise<AuditLog | null>;
+  getLastLog(tenantId?: string): Promise<AuditLog | null>;
   
   /**
    * Get logs by IDs (for verification)
@@ -80,7 +80,7 @@ export interface IStorageProvider {
   /**
    * Delete logs older than date (for retention)
    */
-  deleteOlderThan(date: Date, organizationId?: string): Promise<number>;
+  deleteOlderThan(date: Date, tenantId?: string): Promise<number>;
   
   /**
    * Health check - verify provider is operational
@@ -92,10 +92,13 @@ export interface IStorageProvider {
  * Storage provider configuration
  */
 export interface StorageProviderConfig {
-  provider: 'postgres' | 'elasticsearch' | 'cosmos';
+  provider: 'cosmos';
+
+  /** @deprecated Unused; logging uses Cosmos only. */
   postgres?: {
     partition_by: 'month' | 'week' | 'day';
   };
+  /** @deprecated Unused; logging uses Cosmos only. */
   elasticsearch?: {
     nodes: string[];
     index_prefix: string;

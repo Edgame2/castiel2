@@ -41,28 +41,24 @@ vi.mock('../../../src/utils/logger', () => ({
 
 describe('ConfigurationService', () => {
   let configService: ConfigurationService;
-  let mockPrisma: any;
+  let mockCosmosConfig: any;
 
   beforeEach(() => {
-    mockPrisma = {
-      audit_configurations: {
-        findFirst: vi.fn(),
-        findUnique: vi.fn(),
-        create: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-      },
+    mockCosmosConfig = {
+      findFirst: vi.fn(),
+      upsert: vi.fn(),
+      delete: vi.fn(),
     };
 
-    configService = new ConfigurationService(mockPrisma);
+    configService = new ConfigurationService(mockCosmosConfig);
     configService.clearCache(); // Clear cache between tests
   });
 
   describe('getOrganizationConfig', () => {
-    it('should retrieve organization configuration', async () => {
+    it('should retrieve tenant configuration', async () => {
       const mockConfig = {
         id: 'config-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         captureIpAddress: true,
         captureUserAgent: true,
         captureGeolocation: false,
@@ -74,17 +70,17 @@ describe('ConfigurationService', () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(mockPrisma.audit_configurations.findFirst).mockResolvedValue(mockConfig);
+      vi.mocked(mockCosmosConfig.findFirst).mockResolvedValue(mockConfig);
 
       const result = await configService.getOrganizationConfig('org-1');
 
       expect(result).toBeDefined();
-      expect(result?.organizationId).toBe('org-1');
+      expect(result?.tenantId).toBe('org-1');
       expect(result?.captureIpAddress).toBe(true);
     });
 
     it('should return null if no configuration exists', async () => {
-      vi.mocked(mockPrisma.audit_configurations.findFirst).mockResolvedValue(null);
+      vi.mocked(mockCosmosConfig.findFirst).mockResolvedValue(null);
 
       const result = await configService.getOrganizationConfig('org-1');
 
@@ -94,7 +90,7 @@ describe('ConfigurationService', () => {
     it('should fall back to global config when no org-specific config exists', async () => {
       const globalConfig = {
         id: 'global-1',
-        organizationId: null,
+        tenantId: null,
         captureIpAddress: true,
         captureUserAgent: true,
         captureGeolocation: false,
@@ -105,27 +101,27 @@ describe('ConfigurationService', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      vi.mocked(mockPrisma.audit_configurations.findFirst)
+      vi.mocked(mockCosmosConfig.findFirst)
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(globalConfig);
 
       const result = await configService.getOrganizationConfig('org-1');
 
       expect(result).toBeDefined();
-      expect(result?.organizationId).toBeUndefined();
+      expect(result?.tenantId == null).toBe(true); // global config has null/undefined org
       expect(result?.captureIpAddress).toBe(true);
-      expect(mockPrisma.audit_configurations.findFirst).toHaveBeenCalledWith({
-        where: { organizationId: 'org-1' },
+      expect(mockCosmosConfig.findFirst).toHaveBeenCalledWith({
+        where: { tenantId: 'org-1' },
       });
-      expect(mockPrisma.audit_configurations.findFirst).toHaveBeenCalledWith({
-        where: { organizationId: null },
+      expect(mockCosmosConfig.findFirst).toHaveBeenCalledWith({
+        where: { tenantId: null },
       });
     });
     
     it('should cache configuration', async () => {
       const mockConfig = {
         id: 'config-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         captureIpAddress: true,
         captureUserAgent: true,
         captureGeolocation: false,
@@ -137,7 +133,7 @@ describe('ConfigurationService', () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(mockPrisma.audit_configurations.findFirst).mockResolvedValue(mockConfig);
+      vi.mocked(mockCosmosConfig.findFirst).mockResolvedValue(mockConfig);
 
       // First call
       await configService.getOrganizationConfig('org-1');
@@ -145,22 +141,22 @@ describe('ConfigurationService', () => {
       await configService.getOrganizationConfig('org-1');
 
       // Should only query database once
-      expect(mockPrisma.audit_configurations.findFirst).toHaveBeenCalledTimes(1);
+      expect(mockCosmosConfig.findFirst).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('upsertOrganizationConfig', () => {
-    it('should create organization configuration when none exists', async () => {
+    it('should create tenant configuration when none exists', async () => {
       const updates = {
         captureIpAddress: false,
         redactSensitiveData: false,
       };
 
-      vi.mocked(mockPrisma.audit_configurations.findFirst).mockResolvedValue(null);
+      vi.mocked(mockCosmosConfig.findFirst).mockResolvedValue(null);
       
       const mockConfig = {
         id: 'config-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         captureIpAddress: false,
         captureUserAgent: true,
         captureGeolocation: false,
@@ -172,19 +168,19 @@ describe('ConfigurationService', () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(mockPrisma.audit_configurations.create).mockResolvedValue(mockConfig);
+      vi.mocked(mockCosmosConfig.upsert).mockResolvedValue(mockConfig);
 
       const result = await configService.upsertOrganizationConfig('org-1', updates);
 
       expect(result).toBeDefined();
       expect(result.captureIpAddress).toBe(false);
-      expect(mockPrisma.audit_configurations.create).toHaveBeenCalled();
+      expect(mockCosmosConfig.upsert).toHaveBeenCalled();
     });
     
-    it('should update organization configuration when one exists', async () => {
+    it('should update tenant configuration when one exists', async () => {
       const existingConfig = {
         id: 'config-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         captureIpAddress: true,
         captureUserAgent: true,
         captureGeolocation: false,
@@ -196,31 +192,31 @@ describe('ConfigurationService', () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(mockPrisma.audit_configurations.findFirst).mockResolvedValue(existingConfig);
+      vi.mocked(mockCosmosConfig.findFirst).mockResolvedValue(existingConfig);
       
       const updatedConfig = {
         ...existingConfig,
         captureIpAddress: false,
       };
 
-      vi.mocked(mockPrisma.audit_configurations.update).mockResolvedValue(updatedConfig);
+      vi.mocked(mockCosmosConfig.upsert).mockResolvedValue(updatedConfig);
 
       const result = await configService.upsertOrganizationConfig('org-1', { captureIpAddress: false });
 
       expect(result).toBeDefined();
       expect(result.captureIpAddress).toBe(false);
-      expect(mockPrisma.audit_configurations.update).toHaveBeenCalled();
+      expect(mockCosmosConfig.upsert).toHaveBeenCalled();
     });
   });
 
   describe('deleteOrganizationConfig', () => {
-    it('should delete organization configuration', async () => {
-      vi.mocked(mockPrisma.audit_configurations.delete).mockResolvedValue({});
+    it('should delete tenant configuration', async () => {
+      vi.mocked(mockCosmosConfig.delete).mockResolvedValue(undefined);
 
       await configService.deleteOrganizationConfig('org-1');
 
-      expect(mockPrisma.audit_configurations.delete).toHaveBeenCalledWith({
-        where: { organizationId: 'org-1' },
+      expect(mockCosmosConfig.delete).toHaveBeenCalledWith({
+        where: { tenantId: 'org-1' },
       });
     });
   });
@@ -229,7 +225,7 @@ describe('ConfigurationService', () => {
     it('should clear the cache', async () => {
       const mockConfig = {
         id: 'config-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         captureIpAddress: true,
         captureUserAgent: true,
         captureGeolocation: false,
@@ -241,7 +237,7 @@ describe('ConfigurationService', () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(mockPrisma.audit_configurations.findFirst).mockResolvedValue(mockConfig);
+      vi.mocked(mockCosmosConfig.findFirst).mockResolvedValue(mockConfig);
 
       // First call (caches)
       await configService.getOrganizationConfig('org-1');
@@ -252,7 +248,7 @@ describe('ConfigurationService', () => {
       // Second call (should query database again)
       await configService.getOrganizationConfig('org-1');
 
-      expect(mockPrisma.audit_configurations.findFirst).toHaveBeenCalledTimes(2);
+      expect(mockCosmosConfig.findFirst).toHaveBeenCalledTimes(2);
     });
   });
 });

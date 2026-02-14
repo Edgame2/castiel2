@@ -16,10 +16,10 @@ import { log } from '../utils/logger';
 export interface QueryContext {
   /** User making the query */
   userId: string;
-  /** User's organization ID */
-  organizationId?: string;
-  /** Whether user can access cross-org data (Super Admin) */
-  canAccessCrossOrg: boolean;
+  /** User's tenant ID (scope for log isolation) */
+  tenantId?: string;
+  /** Whether user can access cross-tenant data (Super Admin) */
+  canAccessCrossTenant: boolean;
   /** Whether user can only see own activity */
   ownActivityOnly: boolean;
 }
@@ -32,12 +32,12 @@ export class QueryService {
   }
 
   /**
-   * Search logs with advanced filtering and organization isolation
+   * Search logs with advanced filtering and tenant isolation
    */
   async search(params: LogSearchParams, context: QueryContext): Promise<LogSearchResult> {
     try {
-      // Apply organization isolation
-      const isolatedParams = this.applyOrgIsolation(params, context);
+      // Apply tenant isolation
+      const isolatedParams = this.applyTenantIsolation(params, context);
       
       log.debug('Searching logs', { params: isolatedParams, context });
       
@@ -53,8 +53,8 @@ export class QueryService {
    */
   async aggregate(params: LogAggregationParams, context: QueryContext): Promise<LogAggregation> {
     try {
-      // Apply organization isolation
-      const isolatedParams = this.applyOrgIsolationAgg(params, context);
+      // Apply tenant isolation
+      const isolatedParams = this.applyTenantIsolationAgg(params, context);
       
       return await this.storage.aggregate(isolatedParams);
     } catch (error) {
@@ -68,8 +68,8 @@ export class QueryService {
    */
   async count(params: Partial<LogSearchParams>, context: QueryContext): Promise<number> {
     try {
-      // Apply organization isolation
-      const isolatedParams = this.applyOrgIsolation(params as LogSearchParams, context);
+      // Apply tenant isolation
+      const isolatedParams = this.applyTenantIsolation(params as LogSearchParams, context);
       
       return await this.storage.count(isolatedParams);
     } catch (error) {
@@ -83,14 +83,14 @@ export class QueryService {
    */
   async getById(id: string, context: QueryContext): Promise<any | null> {
     try {
-      const auditLog = await this.storage.getById(id);
+      const auditLog = await this.storage.getById(id, context.tenantId);
       
       if (!auditLog) {
         return null;
       }
       
       // Check access
-      if (!this.canAccessLog(auditLog, context)) {
+      if (!this.canAccessLog({ tenantId: auditLog.tenantId, userId: auditLog.userId ?? undefined }, context)) {
         log.warn('Access denied to log', { logId: id, userId: context.userId });
         return null;
       }
@@ -103,67 +103,36 @@ export class QueryService {
   }
 
   /**
-   * Apply organization isolation to search params
+   * Apply tenant isolation to search params
    */
-  private applyOrgIsolation(params: LogSearchParams, context: QueryContext): LogSearchParams {
+  private applyTenantIsolation(params: LogSearchParams, context: QueryContext): LogSearchParams {
     const isolated = { ...params };
-    
-    // Super Admin can query any organization
-    if (context.canAccessCrossOrg) {
-      // Allow organizationId filter from params, or no filter (all orgs)
-      return isolated;
-    }
-    
-    // Regular users are restricted to their organization
-    if (!context.organizationId) {
-      // User has no org - they can only see system logs or logs they created
+    if (context.canAccessCrossTenant) return isolated;
+    if (!context.tenantId) {
       isolated.userId = context.userId;
       return isolated;
     }
-    
-    // Force organization isolation
-    isolated.organizationId = context.organizationId;
-    
-    // If user can only see own activity, add user filter
-    if (context.ownActivityOnly) {
-      isolated.userId = context.userId;
-    }
-    
+    isolated.tenantId = context.tenantId;
+    if (context.ownActivityOnly) isolated.userId = context.userId;
     return isolated;
   }
 
   /**
-   * Apply organization isolation to aggregation params
+   * Apply tenant isolation to aggregation params
    */
-  private applyOrgIsolationAgg(params: LogAggregationParams, context: QueryContext): LogAggregationParams {
+  private applyTenantIsolationAgg(params: LogAggregationParams, context: QueryContext): LogAggregationParams {
     const isolated = { ...params };
-    
-    // Super Admin can query any organization
-    if (context.canAccessCrossOrg) {
-      return isolated;
-    }
-    
-    // Regular users are restricted to their organization
-    if (context.organizationId) {
-      isolated.organizationId = context.organizationId;
-    }
-    
+    if (context.canAccessCrossTenant) return isolated;
+    if (context.tenantId) isolated.tenantId = context.tenantId;
     return isolated;
   }
 
   /**
    * Check if user can access a specific log
    */
-  private canAccessLog(auditLog: any, context: QueryContext): boolean {
-    // Super Admin can access any log
-    if (context.canAccessCrossOrg) {
-      return true;
-    }
-    
-    // User must be in the same organization
-    if (auditLog.organizationId !== context.organizationId) {
-      return false;
-    }
+  private canAccessLog(auditLog: { tenantId?: string; userId?: string }, context: QueryContext): boolean {
+    if (context.canAccessCrossTenant) return true;
+    if (auditLog.tenantId !== context.tenantId) return false;
     
     // If user can only see own activity, check user ID
     if (context.ownActivityOnly && auditLog.userId !== context.userId) {

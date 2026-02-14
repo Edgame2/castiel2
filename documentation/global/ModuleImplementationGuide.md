@@ -72,7 +72,7 @@ Every module MUST be designed with these principles:
 
 - Pluggable providers for external services
 - Feature flags for optional functionality
-- Configurable behavior per tenant/organization
+- Configurable behavior per tenant
 
 ### 1.4 Observability
 
@@ -82,6 +82,14 @@ Every module MUST be designed with these principles:
 - Structured logging
 - Metrics exposure
 - Audit trail for sensitive operations
+
+### 1.5 Tenant-only scope
+
+> **All users and data are scoped by tenant. The partition key for isolation is `tenantId`. There is no separate organization concept.**
+
+- Use `tenantId` only in APIs, events, and data models; do not use `organizationId`.
+- JWT and request context expose `tenantId` (e.g. X-Tenant-ID from gateway).
+- Cosmos DB partition keys use `tenantId` for tenant isolation.
 
 ---
 
@@ -94,7 +102,7 @@ Every module MUST be designed with these principles:
 | Module | Purpose |
 |--------|---------|
 | Authentication | Identity verification, sessions |
-| User Management | Users, orgs, teams, RBAC |
+| User Management | Users, teams, RBAC (tenant-scoped) |
 | Secret Management | Credential storage, encryption |
 | Logging | Audit trail, compliance |
 | Notification | Multi-channel message delivery |
@@ -379,7 +387,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  organizationId: string;
+  tenantId: string;
 }
 
 export interface UserReference {
@@ -625,7 +633,7 @@ info:
     
     ## Rate Limiting
     - 100 requests per minute per user
-    - 1000 requests per minute per organization
+    - 1000 requests per minute per tenant
 
 servers:
   - url: /api/v1
@@ -716,7 +724,7 @@ audit_alert_rules
 | Convention | Example |
 |------------|---------|
 | snake_case | `created_at`, `user_id` |
-| Foreign keys as `{entity}_id` | `organization_id`, `user_id` |
+| Foreign keys as `{entity}_id` | `tenant_id`, `user_id` |
 | Timestamps with `_at` suffix | `created_at`, `updated_at`, `deleted_at` |
 | Booleans as `is_` or `has_` | `is_active`, `has_password` |
 
@@ -732,10 +740,10 @@ CREATE TABLE module_entities (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- For multi-tenant tables
+-- For multi-tenant tables (Cosmos DB uses tenantId as partition key; SQL example for reference)
 CREATE TABLE module_entities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id UUID NOT NULL REFERENCES organizations(id),
+  tenant_id UUID NOT NULL,
   -- ... other columns ...
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -745,14 +753,14 @@ CREATE TABLE module_entities (
 ### 8.4 Indexing Rules
 
 ```sql
--- Always index foreign keys
-CREATE INDEX idx_entity_org_id ON module_entities(organization_id);
+-- Always index tenant and foreign keys
+CREATE INDEX idx_entity_tenant_id ON module_entities(tenant_id);
 
 -- Index columns used in WHERE clauses
 CREATE INDEX idx_entity_status ON module_entities(status);
 
 -- Composite indexes for common query patterns
-CREATE INDEX idx_entity_org_created ON module_entities(organization_id, created_at DESC);
+CREATE INDEX idx_entity_tenant_created ON module_entities(tenant_id, created_at DESC);
 ```
 
 ### 8.5 Migrations
@@ -858,9 +866,8 @@ interface DomainEvent<T = unknown> {
   source: string;                // Module that emitted
   correlationId?: string;        // Request correlation
   
-  // Context
-  tenantId?: string;             // Tenant context (PREFERRED for new modules)
-  organizationId?: string;       // DEPRECATED for new modules; prefer tenantId
+  // Context (tenant-only: use tenantId only; do not include organizationId)
+  tenantId: string;              // Tenant context (required; all users and data are scoped by tenant)
   userId?: string;               // Actor
   
   // Payload
@@ -1026,10 +1033,10 @@ Brief description of the events documented in this file.
       "type": "string",
       "description": "Request correlation ID (optional)"
     },
-    "organizationId": {
+    "tenantId": {
       "type": "string",
       "format": "uuid",
-      "description": "Tenant context (optional)"
+      "description": "Tenant context (required)"
     },
     "userId": {
       "type": "string",
@@ -1079,7 +1086,7 @@ interface {Entity}{Action}Event extends DomainEvent<{Entity}{Action}EventData> {
   "version": "1.0",
   "source": "module-name",
   "correlationId": "req_45678901-2345-2345-2345-234567890def",
-  "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+  "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
   "userId": "user_90123456-4567-4567-4567-456789012jkl",
   "data": {
     "field1": "example value",
@@ -1158,7 +1165,7 @@ consumer.on('{domain}.{entity}.{action}', async (event) => {
   "timestamp": "2025-01-22T10:00:00Z",
   "version": "1.0",
   "source": "notification-manager",
-  "organizationId": "org_789",
+  "tenantId": "tenant_789",
   "userId": "user_123",
   "data": {
     "notificationId": "notif_456",

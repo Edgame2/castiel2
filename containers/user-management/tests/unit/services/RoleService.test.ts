@@ -24,12 +24,12 @@ describe('RoleService', () => {
   });
 
   describe('listRoles', () => {
-    it('returns roles for organization', async () => {
+    it('returns roles for tenant', async () => {
       mockDb.role.findMany.mockResolvedValue([
         {
           id: 'role-1',
           name: 'Admin',
-          organizationId: 'org-1',
+          tenantId: 'tenant-1',
           isSuperAdmin: false,
           permissions: [],
           memberships: [],
@@ -44,7 +44,7 @@ describe('RoleService', () => {
         {
           id: 'role-2',
           name: 'Member',
-          organizationId: 'org-1',
+          tenantId: 'tenant-1',
           isSuperAdmin: false,
           permissions: [],
           memberships: [],
@@ -58,10 +58,10 @@ describe('RoleService', () => {
         },
       ]);
 
-      const result = await listRoles('org-1');
+      const result = await listRoles('tenant-1');
 
       expect(mockDb.role.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ organizationId: 'org-1' }) })
+        expect.objectContaining({ where: expect.objectContaining({ tenantId: 'tenant-1' }) })
       );
       expect(result).toHaveLength(2);
     });
@@ -72,7 +72,7 @@ describe('RoleService', () => {
       mockDb.role.findUnique.mockResolvedValue({
         id: 'role-1',
         name: 'Admin',
-        organizationId: 'org-1',
+        tenantId: 'tenant-1',
         isSuperAdmin: false,
         permissions: [],
         memberships: [],
@@ -85,7 +85,7 @@ describe('RoleService', () => {
         updatedAt: new Date(),
       });
 
-      const result = await getRole('org-1', 'role-1');
+      const result = await getRole('tenant-1', 'role-1');
 
       expect(mockDb.role.findUnique).toHaveBeenCalled();
       expect(result).not.toBeNull();
@@ -95,7 +95,7 @@ describe('RoleService', () => {
     it('returns null when role not found', async () => {
       mockDb.role.findUnique.mockResolvedValue(null);
 
-      const result = await getRole('org-1', 'missing');
+      const result = await getRole('tenant-1', 'missing');
 
       expect(result).toBeNull();
     });

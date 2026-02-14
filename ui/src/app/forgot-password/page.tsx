@@ -1,5 +1,5 @@
 /**
- * Forgot password — request reset link; POST /api/auth/forgot-password via gateway.
+ * Forgot password — request reset link; POST /api/v1/auth/forgot-password via gateway.
  * On success, shows generic message (no email enumeration). No redirect.
  */
 
@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
     setSuccessMessage(null);
     setLoading(true);
     try {
-      const res = await apiFetch('/api/auth/forgot-password', {
+      const res = await apiFetch('/api/v1/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: data.email }),

@@ -106,11 +106,11 @@ describe('UserManagementEventPublisher', () => {
   });
 
   describe('createBaseEvent', () => {
-    it('returns partial event with type, timestamp, userId, organizationId, actorId, data, metadata', () => {
+    it('returns partial event with type, timestamp, userId, tenantId, actorId, data, metadata', () => {
       const event = publisherModule.createBaseEvent(
         'user.profile_updated',
         'user-1',
-        'org-1',
+        'tenant-1',
         'corr-1',
         { userId: 'user-1', changes: {} }
       );
@@ -118,14 +118,14 @@ describe('UserManagementEventPublisher', () => {
       expect(event.type).toBe('user.profile_updated');
       expect(event.timestamp).toBeDefined();
       expect(event.userId).toBe('user-1');
-      expect(event.organizationId).toBe('org-1');
+      expect(event.tenantId).toBe('tenant-1');
       expect(event.actorId).toBe('user-1');
       expect(event.data).toEqual({ userId: 'user-1', changes: {} });
       expect(event.metadata).toEqual({ correlationId: 'corr-1' });
     });
 
     it('uses system as actorId when userId is undefined', () => {
-      const event = publisherModule.createBaseEvent('user.deactivated', undefined, 'org-1');
+      const event = publisherModule.createBaseEvent('user.deactivated', undefined, 'tenant-1');
       expect(event.actorId).toBe('system');
     });
   });
@@ -153,7 +153,7 @@ describe('UserManagementEventPublisher', () => {
       await publisherModule.publishEventSafely({
         type: 'user.profile_updated',
         timestamp: new Date().toISOString(),
-        organizationId: 'org-1',
+        tenantId: 'tenant-1',
         userId: 'user-1',
         data: {},
       } as any);
@@ -174,19 +174,19 @@ describe('UserManagementEventPublisher', () => {
       await publisherModule.publishEventSafely({
         type: 'user.profile_updated',
         timestamp: new Date().toISOString(),
-        organizationId: 'org-1',
+        tenantId: 'tenant-1',
         userId: 'user-1',
         data: { userId: 'user-1', changes: { name: 'New Name' } },
       } as any);
 
       expect(mockPublish).toHaveBeenCalledWith(
         'user.profile_updated',
-        'org-1',
+        'tenant-1',
         { userId: 'user-1', changes: { name: 'New Name' } }
       );
     });
 
-    it('uses global as tenantId when organizationId is undefined', async () => {
+    it('uses global as tenantId when tenantId is undefined', async () => {
       mockGetEventPublisher.mockReturnValue({ publish: mockPublish });
 
       await publisherModule.publishEventSafely({
@@ -205,7 +205,7 @@ describe('UserManagementEventPublisher', () => {
       await publisherModule.publishEventSafely({
         type: 'user.profile_updated',
         timestamp: new Date().toISOString(),
-        organizationId: 'org-1',
+        tenantId: 'tenant-1',
         userId: 'user-1',
         data: {},
       } as any);

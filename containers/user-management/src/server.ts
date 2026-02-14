@@ -38,7 +38,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       info: {
         title: 'User Management Service API',
         description: `
-          User management service for Castiel with organizations, teams, roles, and permissions.
+          User management service for Castiel. All users and data are scoped by tenant (tenantId).
           
           ## Authentication
           All endpoints (except health checks) require JWT authentication via Bearer token:
@@ -48,11 +48,9 @@ export async function buildApp(): Promise<FastifyInstance> {
           
           ## Features
           - **User Profiles**: User profile management and preferences
-          - **Organizations**: Multi-tenant organization management
-          - **Teams**: Team creation, membership, and hierarchy
+          - **Teams**: Team creation, membership, and hierarchy (tenant-scoped)
           - **RBAC**: Role-based access control with custom roles
-          - **Invitations**: User invitation system
-          - **Memberships**: Organization membership management
+          - **Invitations**: User invitation system (tenant-scoped)
         `,
         version: '1.0.0',
       },
@@ -64,11 +62,9 @@ export async function buildApp(): Promise<FastifyInstance> {
       ],
       tags: [
         { name: 'Users', description: 'User profile management' },
-        { name: 'Organizations', description: 'Organization management' },
-        { name: 'Teams', description: 'Team management' },
+        { name: 'Teams', description: 'Team management (tenant-scoped)' },
         { name: 'Roles', description: 'Role and permission management' },
         { name: 'Invitations', description: 'User invitation management' },
-        { name: 'Memberships', description: 'Organization membership management' },
         { name: 'Health', description: 'Health check endpoints' },
       ],
       components: {

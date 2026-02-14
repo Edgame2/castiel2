@@ -39,10 +39,10 @@ This document describes all events published by the User Management module that 
       "format": "uuid",
       "description": "User ID who was deactivated"
     },
-    "organizationId": {
+    "tenantId": {
       "type": "string",
       "format": "uuid",
-      "description": "Organization context (optional)"
+      "description": "Tenant context (optional)"
     },
     "actorId": {
       "type": "string",
@@ -108,10 +108,10 @@ This document describes all events published by the User Management module that 
       "format": "uuid",
       "description": "User ID who was reactivated"
     },
-    "organizationId": {
+    "tenantId": {
       "type": "string",
       "format": "uuid",
-      "description": "Organization context (optional)"
+      "description": "Tenant context (optional)"
     },
     "actorId": {
       "type": "string",
@@ -172,10 +172,10 @@ This document describes all events published by the User Management module that 
       "format": "uuid",
       "description": "User ID who was deleted"
     },
-    "organizationId": {
+    "tenantId": {
       "type": "string",
       "format": "uuid",
-      "description": "Organization context (optional)"
+      "description": "Tenant context (optional)"
     },
     "actorId": {
       "type": "string",
@@ -237,10 +237,10 @@ This document describes all events published by the User Management module that 
       "format": "uuid",
       "description": "User ID whose session was revoked"
     },
-    "organizationId": {
+    "tenantId": {
       "type": "string",
       "format": "uuid",
-      "description": "Organization context (optional)"
+      "description": "Tenant context (optional)"
     },
     "actorId": {
       "type": "string",
@@ -312,10 +312,10 @@ This document describes all events published by the User Management module that 
       "format": "uuid",
       "description": "User ID whose profile was updated"
     },
-    "organizationId": {
+    "tenantId": {
       "type": "string",
       "format": "uuid",
-      "description": "Organization context (optional)"
+      "description": "Tenant context (optional)"
     },
     "actorId": {
       "type": "string",
@@ -359,7 +359,7 @@ This document describes all events published by the User Management module that 
   "type": "user.profile_updated",
   "timestamp": "2025-01-22T10:00:00Z",
   "userId": "user_90123456-4567-4567-4567-456789012jkl",
-  "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+  "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
   "actorId": "user_90123456-4567-4567-4567-456789012jkl",
   "data": {
     "userId": "user_90123456-4567-4567-4567-456789012jkl",
@@ -368,105 +368,6 @@ This document describes all events published by the User Management module that 
       "firstName": "John",
       "lastName": "Doe"
     }
-  }
-}
-```
-
----
-
-### organization.created
-
-**Description**: Emitted when a new organization is created.
-
-**Triggered When**: 
-- User creates a new organization
-- System creates organization during setup
-
-**Event Type**: `organization.created`
-
-**Example Event**:
-
-```json
-{
-  "id": "evt_12345678-1234-1234-1234-123456789abc",
-  "type": "organization.created",
-  "timestamp": "2025-01-22T10:00:00Z",
-  "version": "1.0",
-  "source": "user-management",
-  "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
-  "userId": "user_90123456-4567-4567-4567-456789012jkl",
-  "data": {
-    "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
-    "name": "Acme Corp",
-    "createdBy": "user_90123456-4567-4567-4567-456789012jkl"
-  }
-}
-```
-
----
-
-### organization.member_joined
-
-**Description**: Emitted when a user joins an organization.
-
-**Triggered When**: 
-- User accepts an invitation
-- User is added directly to organization
-- User creates organization (auto-joins)
-
-**Event Type**: `organization.member_joined`
-
-**Example Event**:
-
-```json
-{
-  "id": "evt_12345678-1234-1234-1234-123456789abc",
-  "type": "organization.member_joined",
-  "timestamp": "2025-01-22T10:00:00Z",
-  "version": "1.0",
-  "source": "user-management",
-  "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
-  "userId": "user_90123456-4567-4567-4567-456789012jkl",
-  "data": {
-    "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
-    "userId": "user_90123456-4567-4567-4567-456789012jkl",
-    "email": "user@example.com",
-    "roleId": "role_12345678-1234-1234-1234-123456789abc",
-    "roleName": "member",
-    "invitationId": "inv_12345678-1234-1234-1234-123456789abc"
-  }
-}
-```
-
----
-
-### organization.member_removed
-
-**Description**: Emitted when a user is removed from an organization.
-
-**Triggered When**: 
-- Admin removes member from organization
-- User leaves organization voluntarily
-
-**Event Type**: `organization.member_removed`
-
-**Example Event**:
-
-```json
-{
-  "id": "evt_12345678-1234-1234-1234-123456789abc",
-  "type": "organization.member_removed",
-  "timestamp": "2025-01-22T10:00:00Z",
-  "version": "1.0",
-  "source": "user-management",
-  "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
-  "userId": "admin_12345678-1234-1234-1234-123456789abc",
-  "data": {
-    "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
-    "userId": "user_90123456-4567-4567-4567-456789012jkl",
-    "email": "user@example.com",
-    "removedBy": "admin_12345678-1234-1234-1234-123456789abc",
-    "reason": "No longer needed"
   }
 }
 ```
@@ -492,11 +393,11 @@ This document describes all events published by the User Management module that 
   "timestamp": "2025-01-22T10:00:00Z",
   "version": "1.0",
   "source": "user-management",
-  "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+  "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
   "userId": "admin_12345678-1234-1234-1234-123456789abc",
   "data": {
     "roleId": "role_12345678-1234-1234-1234-123456789abc",
-    "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+    "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
     "name": "Developer",
     "createdBy": "admin_12345678-1234-1234-1234-123456789abc"
   }
@@ -524,11 +425,11 @@ This document describes all events published by the User Management module that 
   "timestamp": "2025-01-22T10:00:00Z",
   "version": "1.0",
   "source": "user-management",
-  "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+  "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
   "userId": "user_90123456-4567-4567-4567-456789012jkl",
   "data": {
     "invitationId": "inv_12345678-1234-1234-1234-123456789abc",
-    "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+    "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
     "userId": "user_90123456-4567-4567-4567-456789012jkl",
     "email": "user@example.com",
     "acceptedAt": "2025-01-22T10:00:00Z"
@@ -573,5 +474,5 @@ This document describes all events published by the User Management module that 
 **Action Taken**:
 - Creates default user profile
 - Sets up default preferences
-- Assigns to default organization if applicable
+- Assigns to tenant from invitation
 

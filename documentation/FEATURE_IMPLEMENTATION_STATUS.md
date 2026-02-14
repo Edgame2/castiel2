@@ -20,10 +20,10 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Login (credentials) | ✅ Done | POST /api/auth/login; gateway public path |
+| Login (credentials) | ✅ Done | POST /api/v1/auth/login; gateway public path |
 | MFA (TOTP) | ✅ Done | Enroll, verify, disable; feature flag |
 | MFA backup codes | ✅ Done | Generate, verify, one-time consume |
-| Registration | ✅ Done | POST /api/auth/register |
+| Registration | ✅ Done | POST /api/v1/auth/register |
 | Password reset | ✅ Done | Forgot-password flow; token in query |
 | Email verification | ✅ Done | verify-email, resend |
 | OAuth (Google, GitHub) | ✅ Done | Callback flows |

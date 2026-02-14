@@ -94,7 +94,6 @@ export class ConfigurationService {
       input.tenantId,
       input.key,
       input.scope,
-      input.organizationId,
       input.teamId,
       input.projectId,
       input.environmentId
@@ -111,7 +110,6 @@ export class ConfigurationService {
       value: input.value,
       valueType,
       scope: input.scope,
-      organizationId: input.organizationId,
       teamId: input.teamId,
       projectId: input.projectId,
       environmentId: input.environmentId,
@@ -181,7 +179,6 @@ export class ConfigurationService {
     tenantId: string,
     key: string,
     scope?: ConfigurationScope,
-    organizationId?: string,
     teamId?: string,
     projectId?: string,
     environmentId?: string
@@ -200,11 +197,6 @@ export class ConfigurationService {
     if (scope) {
       query += ' AND c.scope = @scope';
       parameters.push({ name: '@scope', value: scope });
-    }
-
-    if (organizationId) {
-      query += ' AND c.organizationId = @organizationId';
-      parameters.push({ name: '@organizationId', value: organizationId });
     }
 
     if (teamId) {
@@ -251,14 +243,14 @@ export class ConfigurationService {
    * Returns the most specific value available, falling back to less specific scopes
    */
   async getValue(input: GetConfigurationValueInput): Promise<any> {
-    const { tenantId, key, scope, organizationId, teamId, projectId, environmentId } = input;
+    const { tenantId, key, scope, teamId, projectId, environmentId } = input;
 
-    // Try to get value in order of specificity: environment -> project -> team -> organization -> global
+    // Try to get value in order of specificity: environment -> project -> team -> organization (tenant) -> global
     const scopesToTry = [
-      { scope: ConfigurationScope.ENVIRONMENT, organizationId, teamId, projectId, environmentId },
-      { scope: ConfigurationScope.PROJECT, organizationId, teamId, projectId },
-      { scope: ConfigurationScope.TEAM, organizationId, teamId },
-      { scope: ConfigurationScope.ORGANIZATION, organizationId },
+      { scope: ConfigurationScope.ENVIRONMENT, teamId, projectId, environmentId },
+      { scope: ConfigurationScope.PROJECT, teamId, projectId },
+      { scope: ConfigurationScope.TEAM, teamId },
+      { scope: ConfigurationScope.ORGANIZATION },
       { scope: ConfigurationScope.GLOBAL },
     ];
 
@@ -268,7 +260,6 @@ export class ConfigurationService {
           tenantId,
           key,
           scopeConfig.scope,
-          scopeConfig.organizationId,
           scopeConfig.teamId,
           scopeConfig.projectId,
           scopeConfig.environmentId
@@ -372,7 +363,6 @@ export class ConfigurationService {
           input.tenantId,
           settingInput.key,
           settingInput.scope,
-          settingInput.organizationId,
           settingInput.teamId,
           settingInput.projectId,
           settingInput.environmentId
@@ -395,7 +385,6 @@ export class ConfigurationService {
             key: settingInput.key,
             value: settingInput.value,
             scope: settingInput.scope || ConfigurationScope.GLOBAL,
-            organizationId: settingInput.organizationId,
             teamId: settingInput.teamId,
             projectId: settingInput.projectId,
             environmentId: settingInput.environmentId,
@@ -418,7 +407,6 @@ export class ConfigurationService {
     tenantId: string,
     filters?: {
       scope?: ConfigurationScope;
-      organizationId?: string;
       teamId?: string;
       projectId?: string;
       environmentId?: string;
@@ -438,11 +426,6 @@ export class ConfigurationService {
     if (filters?.scope) {
       query += ' AND c.scope = @scope';
       parameters.push({ name: '@scope', value: filters.scope });
-    }
-
-    if (filters?.organizationId) {
-      query += ' AND c.organizationId = @organizationId';
-      parameters.push({ name: '@organizationId', value: filters.organizationId });
     }
 
     if (filters?.teamId) {

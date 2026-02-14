@@ -73,7 +73,7 @@ export class NotificationEngine {
     if (!options.skipRateLimit && this.rateLimiter) {
       const allowed = await this.rateLimiter.checkLimit(
         input.recipientId,
-        input.organizationId
+        input.tenantId
       );
       if (!allowed) {
         throw new Error('Rate limit exceeded');
@@ -84,13 +84,13 @@ export class NotificationEngine {
     const variables = await this.variableResolver.resolveVariables(
       options.eventData,
       input.recipientId,
-      input.organizationId
+          input.tenantId
     );
 
     // Determine routing
     const routingDecision = await this.routingEngine.routeNotification({
       userId: input.recipientId,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       teamId: input.teamId,
       projectId: input.projectId,
       criticality: input.criticality,
@@ -109,7 +109,7 @@ export class NotificationEngine {
           channel,
           'en', // Locale: use user preferences when available
           variables,
-          input.organizationId
+          input.tenantId
         );
 
         renderedContent[channel] = {
@@ -129,7 +129,7 @@ export class NotificationEngine {
     // Create notification record
     const notification = await this.db.notification_notifications.create({
       data: {
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         eventType: input.eventType,
         eventCategory: input.eventCategory,
         sourceModule: input.sourceModule,

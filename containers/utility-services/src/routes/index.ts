@@ -128,7 +128,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     // ===== NOTIFICATION ROUTES (from notification-manager) =====
 
     // Get notifications
-    fastify.get<{ Querystring: { userId?: string; organizationId?: string; read?: string; limit?: string; offset?: string } }>(
+    fastify.get<{ Querystring: { userId?: string; tenantId?: string; read?: string; limit?: string; offset?: string } }>(
       '/api/v1/notifications',
       {
         preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
@@ -145,7 +145,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           
           const notifications = await notificationService.getNotifications({
             userId: query.userId || user.id,
-            organizationId: query.organizationId || user.organizationId,
+            tenantId: query.tenantId || user.tenantId,
             read: query.read === 'true' ? true : query.read === 'false' ? false : undefined,
             limit: query.limit ? parseInt(query.limit, 10) : 50,
             offset: query.offset ? parseInt(query.offset, 10) : 0,
@@ -185,7 +185,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     );
 
     // Mark all notifications as read
-    fastify.put<{ Querystring: { organizationId?: string } }>(
+    fastify.put<{ Querystring: { tenantId?: string } }>(
       '/api/v1/notifications/read-all',
       {
         preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
@@ -202,7 +202,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           
           await notificationService.markAllAsRead({
             userId: user.id,
-            organizationId: query.organizationId || user.organizationId,
+            tenantId: query.tenantId || user.tenantId,
           });
           return reply.send({ success: true });
         } catch (error: any) {
@@ -267,7 +267,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const preferences = await preferenceService.getEffectivePreferences(
             scope,
             scopeId || '',
-            user.organizationId
+            user.tenantId
           );
 
           return reply.send({ data: preferences });
@@ -299,7 +299,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const preferences = await preferenceService.getEffectivePreferences(
             scope as PreferenceScope,
             effectiveScopeId || '',
-            user.organizationId
+            user.tenantId
           );
 
           return reply.send({ data: preferences });
@@ -332,7 +332,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const preference = await preferenceService.upsertPreference({
             scope: scope as PreferenceScope,
             scopeId: effectiveScopeId,
-            organizationId: user.organizationId,
+            tenantId: user.tenantId,
             channels: body.channels,
             categories: body.categories,
             quietHoursStart: body.quietHoursStart,
@@ -365,7 +365,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const { scope, scopeId } = request.params;
           
           const preferences = await preferenceService.listPreferences(
-            user.organizationId,
+            user.tenantId,
             scope as PreferenceScope
           );
           
@@ -393,7 +393,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
       {
         preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
         schema: {
-          description: 'List all preferences for organization',
+          description: 'List all preferences for tenant',
           tags: ['Preferences'],
           security: [{ bearerAuth: [] }],
         },
@@ -404,7 +404,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const query = request.query as any;
           
           const preferences = await preferenceService.listPreferences(
-            user.organizationId,
+            user.tenantId,
             query.scope as PreferenceScope | undefined
           );
 
@@ -419,7 +419,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
     // ===== TEMPLATE ROUTES (from notification-manager) =====
 
     // List templates
-    fastify.get<{ Querystring: { organizationId?: string; eventType?: string; channel?: string; locale?: string; enabled?: string } }>(
+    fastify.get<{ Querystring: { tenantId?: string; eventType?: string; channel?: string; locale?: string; enabled?: string } }>(
       '/api/v1/templates',
       {
         preHandler: [authenticateRequest(), tenantEnforcementMiddleware()],
@@ -435,7 +435,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const query = request.query as any;
           
           const templates = await templateService.listTemplates({
-            organizationId: query.organizationId || user.organizationId,
+            tenantId: query.tenantId || user.tenantId,
             eventType: query.eventType,
             channel: query.channel as NotificationChannel | undefined,
             locale: query.locale,
@@ -494,7 +494,7 @@ export async function registerRoutes(fastify: FastifyInstance, config: ReturnTyp
           const body = request.body as any;
           
           const template = await templateService.createTemplate({
-            organizationId: body.organizationId || user.organizationId,
+            tenantId: body.tenantId || user.tenantId,
             name: body.name,
             eventType: body.eventType,
             channel: body.channel,

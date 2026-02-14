@@ -7,6 +7,8 @@
 
 This document lists all Cosmos DB containers required by the platform. All containers use `/tenantId` as the partition key for tenant isolation. Container creation is **centralized**: run shard-manager with `bootstrap.ensure_cosmos_containers: true` (or run `scripts/ensure-platform-containers-and-shard-types.ts`) to ensure all containers exist before starting other services.
 
+**Platform isolation (tenant-only).** All users and data are scoped by tenant. The partition key for isolation is `tenantId`. There is no separate organization concept; APIs, events, and database queries use `tenantId` only.
+
 ## Container List (by service)
 
 Containers are defined in [containers/shard-manager/config/cosmos-containers.yaml](containers/shard-manager/config/cosmos-containers.yaml). Below is the reference by service.
@@ -15,7 +17,7 @@ Containers are defined in [containers/shard-manager/config/cosmos-containers.yam
 |---------|-------------------|---------------|--------|
 | shard-manager | shard_shards, shard_shard_types, shard_relationships, shard_links | /tenantId | |
 | auth | auth_sessions, auth_tokens, auth_providers, auth_password_resets, auth_email_verifications, auth_login_attempts, auth_sso_configs, auth_oauth2_clients, auth_mfa_secrets | /tenantId | |
-| user-management | user_users, user_organizations, user_teams, user_roles, user_permissions, user_invitations, user_memberships, user_api_keys | /tenantId | |
+| user-management | user_users, user_teams, user_roles, user_role_idp_mappings, user_tenant_invitations, user_tenant_join_requests, user_memberships, user_team_memberships, user_external_ids, user_api_keys | /tenantId | Tenant-scoped only; no organization container. |
 | risk-analytics | risk_evaluations, risk_snapshots, risk_predictions, risk_revenue_at_risk, risk_quotas, risk_warnings, risk_simulations, risk_competitor_tracking, competitors, risk_anomaly_alerts, risk_sentiment_trends, risk_win_loss_reasons, analytics_industry_benchmarks, risk_clusters, risk_association_rules, risk_account_health, risk_explanations, risk_global_feature_importance, risk_decisions, risk_rules, risk_sales_methodology, risk_tenant_ml_config | /tenantId | |
 | recommendations | recommendation_recommendations, recommendation_feedback, recommendation_feedback_aggregation, recommendation_config, recommendation_metrics, recommendation_remediation_workflows, recommendation_mitigation_actions | /tenantId | |
 | workflow-orchestrator | workflow_workflows, workflow_steps, workflow_executions, hitl_approvals | /tenantId | |

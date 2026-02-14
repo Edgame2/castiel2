@@ -1,5 +1,5 @@
 /**
- * Admin: User detail — GET /api/users/:id (gateway → user_management GET /api/v1/users/:id).
+ * Admin: User detail — GET /api/v1/users/:id (gateway → user_management).
  * Shows profile; sessions view/revoke only for current user (link to Settings → Security).
  */
 
@@ -38,7 +38,7 @@ export default function AdminSecurityUserDetailPage() {
     }
     setLoading(true);
     setError(null);
-    apiFetch(`/api/users/${encodeURIComponent(id)}`)
+    apiFetch(`/api/v1/users/${encodeURIComponent(id)}`)
       .then((r) => {
         if (r.status === 404) throw new Error('User not found');
         if (r.status === 403) throw new Error('Permission denied');

@@ -10,10 +10,10 @@ import { DomainEvent } from '@coder/shared';
 export function mapEventToNotificationInput(event: DomainEvent<any>): NotificationInput | null {
   const eventData = event.data || {};
   const userId = (event as any).userId ?? eventData?.userId ?? (eventData as any)?.userId;
-  const organizationId = (event as any).organizationId ?? eventData?.organizationId ?? (eventData as any)?.organizationId ?? event.tenantId;
+  const tenantId = (event as any).tenantId ?? eventData?.tenantId ?? (event as any).organizationId ?? eventData?.organizationId ?? event.tenantId;
 
-  if (!userId || !organizationId) {
-    return null; // Skip events without user/org context
+  if (!userId || !tenantId) {
+    return null; // Skip events without user/tenant context
   }
 
   // Map event type to notification input (auth module uses auth.user.* and auth.session.* etc.)
@@ -21,7 +21,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
     case 'auth.user.registered':
     case 'user.registered': {
       return {
-        organizationId,
+        tenantId,
         eventType: event.type,
         eventCategory: 'SYSTEM_ADMIN',
         sourceModule: 'user-management',
@@ -39,7 +39,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
     case 'auth.user.password_reset_requested':
     case 'user.password_reset_requested': {
       return {
-        organizationId,
+        tenantId,
         eventType: event.type,
         eventCategory: 'SECURITY',
         sourceModule: 'auth',
@@ -63,7 +63,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
     case 'auth.user.password_reset_success':
     case 'user.password_reset_success': {
       return {
-        organizationId,
+        tenantId,
         eventType: event.type,
         eventCategory: 'SECURITY',
         sourceModule: 'auth',
@@ -80,7 +80,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
     case 'auth.user.email_verification_requested':
     case 'user.email_verification_requested': {
       return {
-        organizationId,
+        tenantId,
         eventType: event.type,
         eventCategory: 'SYSTEM_ADMIN',
         sourceModule: 'user-management',
@@ -104,7 +104,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
     case 'auth.user.email_verified':
     case 'user.email_verified': {
       return {
-        organizationId,
+        tenantId,
         eventType: event.type,
         eventCategory: 'SYSTEM_ADMIN',
         sourceModule: 'user-management',
@@ -121,7 +121,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
     case 'auth.user.password_changed':
     case 'user.password_changed': {
       return {
-        organizationId,
+        tenantId,
         eventType: event.type,
         eventCategory: 'SECURITY',
         sourceModule: 'auth',
@@ -137,7 +137,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
 
     case 'planning.plan.created': {
       return {
-        organizationId,
+        tenantId,
         eventType: event.type,
         eventCategory: 'AI_PLANNING',
         sourceModule: 'planning',
@@ -154,7 +154,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
     case 'planning.plan.executed': {
       const status = eventData.status;
       return {
-        organizationId,
+        tenantId,
         eventType: event.type,
         eventCategory: 'AI_PLANNING',
         sourceModule: 'planning',
@@ -170,7 +170,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
 
     case 'ai.completion.completed': {
       return {
-        organizationId,
+        tenantId,
         eventType: event.type,
         eventCategory: 'AI_PLANNING',
         sourceModule: 'ai-service',
@@ -186,7 +186,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
 
     case 'ai.completion.failed': {
       return {
-        organizationId,
+        tenantId,
         eventType: event.type,
         eventCategory: 'AI_PLANNING',
         sourceModule: 'ai-service',
@@ -203,7 +203,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
     case 'usage.event.recorded': {
       if (eventData.eventType === 'quota.exceeded') {
         return {
-          organizationId,
+          tenantId,
           eventType: event.type,
           eventCategory: 'SYSTEM_ADMIN',
           sourceModule: 'usage-tracking',
@@ -220,7 +220,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
     case 'auth.session.revoked':
     case 'session.revoked': {
       return {
-        organizationId,
+        tenantId,
         eventType: event.type,
         eventCategory: 'SECURITY',
         sourceModule: 'auth',
@@ -237,7 +237,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
     case 'auth.sessions.bulk_revoked':
     case 'sessions.bulk_revoked': {
       return {
-        organizationId,
+        tenantId,
         eventType: event.type,
         eventCategory: 'SECURITY',
         sourceModule: 'auth',
@@ -252,7 +252,7 @@ export function mapEventToNotificationInput(event: DomainEvent<any>): Notificati
     default:
       // Generic notification for unhandled events
       return {
-        organizationId,
+        tenantId,
         eventType: event.type,
         eventCategory: 'SYSTEM_ADMIN',
         sourceModule: (typeof event.source === 'object' && event.source?.service) ? event.source.service : String(event.source ?? 'unknown'),

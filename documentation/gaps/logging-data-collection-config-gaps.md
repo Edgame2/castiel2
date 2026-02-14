@@ -11,7 +11,7 @@
 | Area | Current State | Gap |
 |------|---------------|-----|
 | **Event-level collection** | All consumed events are stored; no per-event-type toggle | No config to enable/disable collection by event type (e.g. `auth.login.success`, `user.profile_updated`) |
-| **Resource-type-level collection** | Not used as a filter before storage | No config to enable/disable by resource type (e.g. `user`, `organization`, `secret`) |
+| **Resource-type-level collection** | Not used as a filter before storage | No config to enable/disable by resource type (e.g. `user`, `tenant`, `secret`) |
 | **Category-level collection** | Category is derived in eventMapper; no filter | No config to enable/disable by audit category (ACTION, ACCESS, SECURITY, SYSTEM, CUSTOM) |
 | **Config file** | `defaults` covers capture/redaction/retention/hash_chain/alerts only | No `data_collection` section defining what to collect |
 | **Severity / wildcards** | Not used as filters | No enable/disable by severity; no wildcard support for event types |
@@ -53,7 +53,7 @@
 
 ### 2.2 Config File: Enable/Disable by Resource Type
 
-- **Requirement:** The config file MUST allow enabling or disabling data collection **per resource type** (e.g. `user`, `organization`, `team`, `role`, `invitation`, `secret`, `plan`, `notification`).
+- **Requirement:** The config file MUST allow enabling or disabling data collection **per resource type** (e.g. `user`, `tenant`, `team`, `role`, `invitation`, `secret`, `plan`, `notification`).
 - **Detail:**
   - Resource type = the value set in `CreateLogInput.resourceType` (from `extractResource(event)` in eventMapper). For events that don’t map to a resource, `resourceType` may be null/empty.
   - Same allowlist/denylist/explicit-per-item choice as for event types.
@@ -113,11 +113,11 @@ data_collection:
     SYSTEM:    false
     CUSTOM:    true
 
-  # Resource type: per resourceType (user, organization, team, role, invitation, secret, plan, notification, or null)
+  # Resource type: per resourceType (user, tenant, team, role, invitation, secret, plan, notification, or null)
   resource_type:
     default: true   # when resourceType is null or not listed
     user:          true
-    organization:  true
+    tenant:        true
     team:          true
     role:          true
     invitation:    true

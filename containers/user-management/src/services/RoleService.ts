@@ -1,13 +1,13 @@
 /**
  * Role Service
- * 
- * Manages custom roles within organizations.
+ *
+ * Manages custom roles within a tenant.
  * Per ModuleImplementationGuide Section 6
  */
 
 import { getDatabaseClient } from '@coder/shared';
 
-/** Prisma-like DB client shape used by this service (shared returns Cosmos Database) */
+/** DB client shape used by this service (shared returns Cosmos Database) */
 type RoleDb = {
   role: {
     findMany: (args: unknown) => Promise<unknown[]>;
@@ -15,8 +15,7 @@ type RoleDb = {
     create: (args: unknown) => Promise<unknown>;
     update: (args: unknown) => Promise<unknown>;
   };
-  organizationMembership: { findFirst: (args: unknown) => Promise<unknown> };
-  organization: { findUnique: (args: unknown) => Promise<unknown> };
+  membership: { findFirst: (args: unknown) => Promise<unknown> };
   permission: { findMany: (args: unknown) => Promise<unknown[]> };
   rolePermission: {
     createMany: (args: unknown) => Promise<unknown>;
@@ -43,7 +42,7 @@ const SYSTEM_ROLE_NAMES = ['Super Admin', 'Admin', 'Member', 'Viewer'];
  */
 export interface RoleDetails {
   id: string;
-  organizationId: string | null;
+  tenantId: string | null;
   name: string;
   description: string | null;
   isSystemRole: boolean;
@@ -63,16 +62,16 @@ export interface RoleDetails {
 }
 
 /**
- * List roles for an organization
+ * List roles for a tenant
  */
 export async function listRoles(
-  organizationId: string,
+  tenantId: string,
   includeSystemRoles: boolean = true
 ): Promise<RoleDetails[]> {
   const db = getDb();
   
   const where: Record<string, unknown> = {
-    organizationId,
+    tenantId,
     archivedAt: null,
   };
   
@@ -110,7 +109,7 @@ export async function listRoles(
     },
   })) as Array<{
     id: string;
-    organizationId: string | null;
+    tenantId: string | null;
     name: string;
     description: string | null;
     isSystemRole: boolean;
@@ -126,7 +125,7 @@ export async function listRoles(
   
   return roles.map((role) => ({
     id: role.id,
-    organizationId: role.organizationId,
+    tenantId: role.tenantId,
     name: role.name,
     description: role.description,
     isSystemRole: role.isSystemRole,
@@ -150,7 +149,7 @@ export async function listRoles(
  * Get role details
  */
 export async function getRole(
-  organizationId: string,
+  tenantId: string,
   roleId: string
 ): Promise<RoleDetails | null> {
   const db = getDb();
@@ -182,7 +181,7 @@ export async function getRole(
     },
   })) as {
     id: string;
-    organizationId: string | null;
+    tenantId: string | null;
     name: string;
     description: string | null;
     isSystemRole: boolean;
@@ -200,14 +199,14 @@ export async function getRole(
     return null;
   }
   
-  // Verify role belongs to organization
-  if (role.organizationId !== organizationId) {
+  // Verify role belongs to tenant
+  if (role.tenantId !== tenantId) {
     return null;
   }
   
   return {
     id: role.id,
-    organizationId: role.organizationId,
+    tenantId: role.tenantId,
     name: role.name,
     description: role.description,
     isSystemRole: role.isSystemRole,
@@ -231,7 +230,7 @@ export async function getRole(
  * Create a custom role
  */
 export async function createCustomRole(
-  organizationId: string,
+  tenantId: string,
   name: string,
   description: string | null,
   permissionIds: string[],
@@ -258,40 +257,32 @@ export async function createCustomRole(
     throw new Error(`Maximum ${MAX_PERMISSIONS_PER_ROLE} permissions per role`);
   }
   
-  // Check if user has permission to create roles
-  const membership = (await db.organizationMembership.findFirst({
+  // Check if user has membership in tenant (route enforces roles.role.create permission)
+  const membership = (await db.membership.findFirst({
     where: {
       userId: createdBy,
-      organizationId,
+      tenantId,
       status: 'active',
     },
     include: { role: true },
   })) as { role?: { isSuperAdmin?: boolean } } | null;
   
-  const organization = (await db.organization.findUnique({
-    where: { id: organizationId },
-    select: { ownerUserId: true },
-  })) as { ownerUserId?: string } | null;
-  
-  const isOwner = organization?.ownerUserId === createdBy;
-  const isSuperAdmin = membership?.role?.isSuperAdmin || false;
-  
-  if (!isOwner && !isSuperAdmin) {
-    throw new Error('Permission denied. Only organization owner or Super Admin can create roles.');
+  if (!membership) {
+    throw new Error('Permission denied. You must be a member of this tenant to create roles.');
   }
   
-  // Check if role name already exists in organization
+  // Check if role name already exists in tenant
   const existing = (await db.role.findUnique({
     where: {
-      organizationId_name: {
-        organizationId,
+      tenantId_name: {
+        tenantId,
         name: name.trim(),
       },
     },
   })) as { id: string } | null;
   
   if (existing) {
-    throw new Error(`Role with name "${name}" already exists in this organization`);
+    throw new Error(`Role with name "${name}" already exists in this tenant`);
   }
   
   // Validate all permissions exist and belong to system permissions
@@ -311,7 +302,7 @@ export async function createCustomRole(
   // Create role
   const role = (await db.role.create({
     data: {
-      organizationId,
+      tenantId,
       name: name.trim(),
       description: description?.trim() || null,
       isSystemRole: false,
@@ -334,7 +325,7 @@ export async function createCustomRole(
   }
   
   // Get role with permissions
-  const roleWithPermissions = await getRole(organizationId, role.id);
+  const roleWithPermissions = await getRole(tenantId, role.id);
   
   if (!roleWithPermissions) {
     throw new Error('Failed to retrieve created role');
@@ -347,7 +338,7 @@ export async function createCustomRole(
  * Update a custom role
  */
 export async function updateCustomRole(
-  organizationId: string,
+  tenantId: string,
   roleId: string,
   updates: {
     name?: string;
@@ -361,15 +352,15 @@ export async function updateCustomRole(
   // Get role
   const role = (await db.role.findUnique({
     where: { id: roleId },
-  })) as { id: string; organizationId: string | null; name: string; isSystemRole: boolean } | null;
+  })) as { id: string; tenantId: string | null; name: string; isSystemRole: boolean } | null;
   
   if (!role) {
     throw new Error('Role not found');
   }
   
-  // Verify role belongs to organization
-  if (role.organizationId !== organizationId) {
-    throw new Error('Role does not belong to this organization');
+  // Verify role belongs to tenant
+  if (role.tenantId !== tenantId) {
+    throw new Error('Role does not belong to this tenant');
   }
   
   // Cannot modify system roles
@@ -377,26 +368,18 @@ export async function updateCustomRole(
     throw new Error('Cannot modify system roles');
   }
   
-  // Check permission
-  const membership = (await db.organizationMembership.findFirst({
+  // Check permission (route enforces roles.role.update; must be member of tenant)
+  const membership = (await db.membership.findFirst({
     where: {
       userId: updatedBy,
-      organizationId,
+      tenantId,
       status: 'active',
     },
     include: { role: true },
   })) as { role?: { isSuperAdmin?: boolean } } | null;
   
-  const organization = (await db.organization.findUnique({
-    where: { id: organizationId },
-    select: { ownerUserId: true },
-  })) as { ownerUserId?: string } | null;
-  
-  const isOwner = organization?.ownerUserId === updatedBy;
-  const isSuperAdmin = membership?.role?.isSuperAdmin || false;
-  
-  if (!isOwner && !isSuperAdmin) {
-    throw new Error('Permission denied. Only organization owner or Super Admin can update roles.');
+  if (!membership) {
+    throw new Error('Permission denied. You must be a member of this tenant to update roles.');
   }
   
   // Prepare update data
@@ -420,15 +403,15 @@ export async function updateCustomRole(
     if (updates.name.trim() !== role.name) {
       const existing = (await db.role.findUnique({
         where: {
-          organizationId_name: {
-            organizationId,
+          tenantId_name: {
+            tenantId,
             name: updates.name.trim(),
           },
         },
       })) as { id: string } | null;
       
       if (existing) {
-        throw new Error(`Role with name "${updates.name}" already exists in this organization`);
+        throw new Error(`Role with name "${updates.name}" already exists in this tenant`);
       }
     }
     
@@ -484,7 +467,7 @@ export async function updateCustomRole(
   }
   
   // Get updated role
-  const updated = await getRole(organizationId, roleId);
+  const updated = await getRole(tenantId, roleId);
   
   if (!updated) {
     throw new Error('Failed to retrieve updated role');
@@ -497,7 +480,7 @@ export async function updateCustomRole(
  * Delete a custom role
  */
 export async function deleteCustomRole(
-  organizationId: string,
+  tenantId: string,
   roleId: string,
   deletedBy: string
 ): Promise<void> {
@@ -519,7 +502,7 @@ export async function deleteCustomRole(
     },
   })) as {
     id: string;
-    organizationId: string | null;
+    tenantId: string | null;
     isSystemRole: boolean;
     memberships: Array<{ id: string }>;
   } | null;
@@ -528,9 +511,9 @@ export async function deleteCustomRole(
     throw new Error('Role not found');
   }
   
-  // Verify role belongs to organization
-  if (role.organizationId !== organizationId) {
-    throw new Error('Role does not belong to this organization');
+  // Verify role belongs to tenant
+  if (role.tenantId !== tenantId) {
+    throw new Error('Role does not belong to this tenant');
   }
   
   // Cannot delete system roles
@@ -543,26 +526,18 @@ export async function deleteCustomRole(
     throw new Error(`Cannot delete role. ${role.memberships.length} user(s) are assigned to this role. Please reassign users first.`);
   }
   
-  // Check permission
-  const membership = (await db.organizationMembership.findFirst({
+  // Check permission (route enforces roles.role.delete; must be member of tenant)
+  const membership = (await db.membership.findFirst({
     where: {
       userId: deletedBy,
-      organizationId,
+      tenantId,
       status: 'active',
     },
     include: { role: true },
   })) as { role?: { isSuperAdmin?: boolean } } | null;
   
-  const organization = (await db.organization.findUnique({
-    where: { id: organizationId },
-    select: { ownerUserId: true },
-  })) as { ownerUserId?: string } | null;
-  
-  const isOwner = organization?.ownerUserId === deletedBy;
-  const isSuperAdmin = membership?.role?.isSuperAdmin || false;
-  
-  if (!isOwner && !isSuperAdmin) {
-    throw new Error('Permission denied. Only organization owner or Super Admin can delete roles.');
+  if (!membership) {
+    throw new Error('Permission denied. You must be a member of this tenant to delete roles.');
   }
   
   // Delete role (soft delete by archiving)
@@ -576,13 +551,13 @@ export async function deleteCustomRole(
 
 /**
  * List all system permissions (for role create/edit UI).
- * Caller must have access to the organization (enforced by route).
+ * Caller must have access to the tenant (enforced by route).
  *
- * @param _organizationId - Organization ID (for auth context; permissions are global)
+ * @param _tenantId - Tenant ID (for auth context; permissions are global)
  * @returns Promise resolving to array of permission summaries
  */
 export async function listPermissions(
-  _organizationId: string
+  _tenantId: string
 ): Promise<Array<{ id: string; code: string; displayName: string; description: string | null }>> {
   const db = getDb();
   const permissions = (await db.permission.findMany({
@@ -602,10 +577,10 @@ export async function listPermissions(
  * Get role permissions
  */
 export async function getRolePermissions(
-  organizationId: string,
+  tenantId: string,
   roleId: string
 ): Promise<Array<{ id: string; code: string; displayName: string; description: string | null }>> {
-  const role = await getRole(organizationId, roleId);
+  const role = await getRole(tenantId, roleId);
   
   if (!role) {
     throw new Error('Role not found');

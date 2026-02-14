@@ -6,7 +6,7 @@ Multi-channel notification service for Castiel. Consumes events from RabbitMQ an
 
 - Consumes all events from RabbitMQ
 - Creates notifications based on event types (see `src/consumers/eventMapper.ts`)
-- User and organization-scoped notifications
+- User and tenant-scoped notifications
 - **BI/risk (Plan §7.2):** `anomaly.detected` → in-app (and email for high severity). Payload must include `tenantId` and `ownerId` (opportunity OwnerId) for a notification to be created; otherwise the event is skipped.
 - Mark as read/unread
 - Delete notifications

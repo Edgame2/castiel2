@@ -171,7 +171,7 @@ export class DeliveryManager {
       
       const result = await inAppProvider.send({
         userId: notification.recipientId,
-        organizationId: notification.organizationId,
+        tenantId: notification.tenantId,
         notificationId,
         title: notification.title,
         body: notification.body,

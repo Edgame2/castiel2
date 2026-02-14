@@ -1,5 +1,5 @@
 /**
- * MFA verification — calls POST /api/auth/mfa/verify via gateway.
+ * MFA verification — calls POST /api/v1/auth/mfa/verify via gateway.
  * Use when already signed in to verify your authenticator app code (e.g. from Security).
  */
 
@@ -37,7 +37,7 @@ export default function MfaVerifyPage() {
     setError(null);
     setLoading(true);
     try {
-      const path = useBackupCode ? '/api/auth/mfa/verify-backup' : '/api/auth/mfa/verify';
+      const path = useBackupCode ? '/api/v1/auth/mfa/verify-backup' : '/api/v1/auth/mfa/verify';
       const res = await apiFetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

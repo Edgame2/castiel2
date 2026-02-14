@@ -79,7 +79,7 @@ This document provides a comprehensive overview of the technology stack used in 
 
 **React Context API**
 - **Purpose**: Global client state management
-- **Usage**: Authentication, organization, theme, i18n
+- **Usage**: Authentication, tenant context, theme, i18n
 
 **Zustand** (optional)
 - **Purpose**: Client state management

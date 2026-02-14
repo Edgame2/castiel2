@@ -8,14 +8,14 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { UnauthorizedError } from '../utils/errors';
 
 /**
- * User context from JWT
+ * User context from JWT.
+ * All users and data are scoped by tenantId only.
  */
 export interface AuthUser {
   id: string;
   userId: string;
   email: string;
   tenantId: string;
-  organizationId?: string;
   type?: string;
   iat?: number;
   exp?: number;
@@ -36,8 +36,7 @@ function mapPayloadToAuthUser(payload: any): AuthUser {
     id: payload.sub || payload.userId || payload.id,
     userId: payload.sub || payload.userId || payload.id,
     email: payload.email || '',
-    tenantId: payload.tenantId || payload.organizationId || '',
-    organizationId: payload.organizationId || payload.tenantId,
+    tenantId: payload.tenantId ?? '',
     type: payload.type || 'access',
     iat: payload.iat,
     exp: payload.exp,

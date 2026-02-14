@@ -1,7 +1,7 @@
 /**
  * Super Admin: Role management (W11 §10.1)
- * GET /api/v1/organizations/:orgId/roles via gateway (user_management).
- * Organization ID required (enter to load roles).
+ * GET /api/v1/tenants/:tenantId/roles via gateway (user_management).
+ * Tenant ID required (enter to load roles).
  */
 
 'use client';
@@ -44,7 +44,7 @@ interface PermissionRow {
 }
 
 export default function SecurityRolesPage() {
-  const [orgId, setOrgId] = useState('');
+  const [tenantId, setTenantId] = useState('');
   const [items, setItems] = useState<RoleRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,12 +78,12 @@ export default function SecurityRolesPage() {
   })();
 
   const fetchRoles = useCallback(async () => {
-    if (!getApiBaseUrl() || !orgId.trim()) return;
+    if (!getApiBaseUrl() || !tenantId.trim()) return;
     setLoading(true);
     setError(null);
     try {
       const res = await apiFetch(
-        `/api/v1/organizations/${encodeURIComponent(orgId.trim())}/roles?includeSystemRoles=true`
+        `/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/roles?includeSystemRoles=true`
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json: RolesResponse = await res.json();
@@ -95,16 +95,16 @@ export default function SecurityRolesPage() {
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [tenantId]);
 
   const openCreateForm = useCallback(async () => {
-    if (!getApiBaseUrl() || !orgId.trim()) return;
+    if (!getApiBaseUrl() || !tenantId.trim()) return;
     setCreateError(null);
     setCreatePermissionsLoading(true);
-    const encodedOrg = encodeURIComponent(orgId.trim());
+    const encodedOrg = encodeURIComponent(tenantId.trim());
     try {
       const res = await apiFetch(
-        `/api/v1/organizations/${encodedOrg}/permissions`
+        `/api/v1/tenants/${encodedOrg}/permissions`
       );
       if (!res.ok) throw new Error(`Permissions: HTTP ${res.status}`);
       const json: { data?: PermissionRow[] } = await res.json();
@@ -119,11 +119,11 @@ export default function SecurityRolesPage() {
     } finally {
       setCreatePermissionsLoading(false);
     }
-  }, [orgId]);
+  }, [tenantId]);
 
   const createRole = useCallback(async () => {
     const base = getApiBaseUrl().replace(/\/$/, '') || '';
-    if (!base || !orgId.trim()) return;
+    if (!base || !tenantId.trim()) return;
     const name = createName.trim();
     if (!name) {
       setCreateError('Name is required');
@@ -131,10 +131,10 @@ export default function SecurityRolesPage() {
     }
     setCreateSubmitting(true);
     setCreateError(null);
-    const encodedOrg = encodeURIComponent(orgId.trim());
+    const encodedOrg = encodeURIComponent(tenantId.trim());
     try {
       const res = await fetch(
-        `${base}/api/v1/organizations/${encodedOrg}/roles`,
+        `${base}/api/v1/tenants/${encodedOrg}/roles`,
         {
           method: 'POST',
           credentials: 'include',
@@ -162,7 +162,7 @@ export default function SecurityRolesPage() {
     } finally {
       setCreateSubmitting(false);
     }
-  }, [orgId, createName, createDescription, createPermissionIds, fetchRoles]);
+  }, [tenantId, createName, createDescription, createPermissionIds, fetchRoles]);
 
   useEffect(() => {
     document.title = 'Roles | Admin | Castiel';
@@ -184,7 +184,7 @@ export default function SecurityRolesPage() {
       </div>
       <h1 className="text-2xl font-bold mb-2">Role Management</h1>
       <p className="text-muted-foreground mb-4">
-        View roles for an organization. Enter organization ID and load (user-management §10.1).
+        View roles for an tenant. Enter tenant ID and load (user-management §10.1).
       </p>
       <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
         <Link href="/admin/security" className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">Overview</Link>
@@ -205,7 +205,7 @@ export default function SecurityRolesPage() {
           <section className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4">
             <h2 className="text-sm font-semibold mb-2">Pre-defined roles (§10.1)</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-              Reference list of standard roles. Load roles for an organization below to view and manage.
+              Reference list of standard roles. Load roles for an tenant below to view and manage.
             </p>
             <ul className="list-none space-y-2" aria-label="Pre-defined roles">
               <li className="flex items-center gap-2 rounded border border-gray-200 dark:border-gray-700 p-3">
@@ -231,22 +231,22 @@ export default function SecurityRolesPage() {
             </ul>
           </section>
           <div className="rounded-lg border bg-white dark:bg-gray-900 p-4 mb-4">
-            <Label className="block mb-2">Organization ID</Label>
+            <Label className="block mb-2">Tenant ID</Label>
             <div className="flex gap-2">
               <Input
                 type="text"
-                value={orgId}
-                onChange={(e) => setOrgId(e.target.value)}
+                value={tenantId}
+                onChange={(e) => setTenantId(e.target.value)}
                 placeholder="e.g. org-123"
                 className="flex-1 max-w-xs"
               />
-              <Button type="button" onClick={fetchRoles} disabled={!orgId.trim() || loading}>
+              <Button type="button" onClick={fetchRoles} disabled={!tenantId.trim() || loading}>
                 {loading ? 'Loading…' : 'Load roles'}
               </Button>
-              <Button type="button" variant="outline" onClick={fetchRoles} disabled={!orgId.trim() || loading} title="Refetch roles for current organization">
+              <Button type="button" variant="outline" onClick={fetchRoles} disabled={!tenantId.trim() || loading} title="Refetch roles for current tenant">
                 Refresh
               </Button>
-              <Button type="button" variant="outline" onClick={openCreateForm} disabled={!orgId.trim() || createPermissionsLoading}>
+              <Button type="button" variant="outline" onClick={openCreateForm} disabled={!tenantId.trim() || createPermissionsLoading}>
                 {createPermissionsLoading ? 'Loading…' : 'Create role'}
               </Button>
             </div>
@@ -373,7 +373,7 @@ export default function SecurityRolesPage() {
                         <td className="py-2 px-4">{row.userCount ?? '—'}</td>
                         <td className="py-2 px-4">
                           {row.id ? (
-                            <Link href={`/admin/security/roles/${row.id}?orgId=${encodeURIComponent(orgId)}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                            <Link href={`/admin/security/roles/${row.id}?tenantId=${encodeURIComponent(tenantId)}`} className="text-blue-600 dark:text-blue-400 hover:underline">
                               View
                             </Link>
                           ) : (
@@ -388,9 +388,9 @@ export default function SecurityRolesPage() {
             </div>
           )}
 
-          {!loading && orgId.trim() && items.length === 0 && !error && (
+          {!loading && tenantId.trim() && items.length === 0 && !error && (
             <div className="rounded-lg border bg-white dark:bg-gray-900 p-6">
-              <p className="text-sm text-gray-500">No roles returned for this organization.</p>
+              <p className="text-sm text-gray-500">No roles returned for this tenant.</p>
             </div>
           )}
         </>

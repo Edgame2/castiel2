@@ -5,24 +5,20 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AlertService } from '../../../src/services/AlertService';
-import { PrismaClient } from '.prisma/logging-client';
 import { IStorageProvider } from '../../../src/services/providers/storage/IStorageProvider';
-import { LogCategory, LogSeverity } from '../../../src/types';
 
 describe('AlertService', () => {
   let alertService: AlertService;
-  let mockPrisma: any;
+  let mockCosmosAlertRules: any;
   let mockStorage: IStorageProvider;
 
   beforeEach(() => {
-    mockPrisma = {
-      audit_alert_rules: {
-        create: vi.fn(),
-        findMany: vi.fn(),
-        findUnique: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-      },
+    mockCosmosAlertRules = {
+      create: vi.fn(),
+      findMany: vi.fn(),
+      findUniqueByIdAndTenant: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
     };
 
     mockStorage = {
@@ -37,13 +33,13 @@ describe('AlertService', () => {
       aggregate: vi.fn(),
     } as any;
 
-    alertService = new AlertService(mockPrisma, mockStorage);
+    alertService = new AlertService(mockStorage, mockCosmosAlertRules);
   });
 
   describe('createRule', () => {
     it('should create an alert rule', async () => {
       const input = {
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         name: 'Failed Login Alert',
         description: 'Alert on failed logins',
         type: 'PATTERN' as const,
@@ -63,7 +59,7 @@ describe('AlertService', () => {
         updatedBy: 'user-1',
       };
 
-      vi.mocked(mockPrisma.audit_alert_rules.create).mockResolvedValue(mockRule);
+      vi.mocked(mockCosmosAlertRules.create).mockResolvedValue(mockRule);
 
       const result = await alertService.createRule(input, 'user-1');
 
@@ -77,12 +73,12 @@ describe('AlertService', () => {
     it('should retrieve a rule by ID when tenant matches', async () => {
       const mockRule = {
         id: 'rule-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         name: 'Test Rule',
         enabled: true,
       };
 
-      vi.mocked(mockPrisma.audit_alert_rules.findUnique).mockResolvedValue(mockRule);
+      vi.mocked(mockCosmosAlertRules.findUniqueByIdAndTenant).mockResolvedValue(mockRule);
 
       const result = await alertService.getRule('rule-1', 'org-1');
 
@@ -91,14 +87,7 @@ describe('AlertService', () => {
     });
 
     it('should return null when rule belongs to another tenant', async () => {
-      const mockRule = {
-        id: 'rule-1',
-        organizationId: 'other-org',
-        name: 'Test Rule',
-        enabled: true,
-      };
-
-      vi.mocked(mockPrisma.audit_alert_rules.findUnique).mockResolvedValue(mockRule);
+      vi.mocked(mockCosmosAlertRules.findUniqueByIdAndTenant).mockResolvedValue(null);
 
       const result = await alertService.getRule('rule-1', 'org-1');
 
@@ -110,7 +99,7 @@ describe('AlertService', () => {
     it('should evaluate pattern-based rule', async () => {
       const rule = {
         id: 'rule-1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         name: 'Test Rule',
         enabled: true,
         type: 'PATTERN' as const,
@@ -124,7 +113,7 @@ describe('AlertService', () => {
         updatedBy: 'user-1',
       };
 
-      vi.mocked(mockPrisma.audit_alert_rules.findUnique).mockResolvedValue(rule);
+      vi.mocked(mockCosmosAlertRules.findUniqueByIdAndTenant).mockResolvedValue(rule);
       vi.mocked(mockStorage.search).mockResolvedValue({
         items: [{ id: 'log-1', action: 'auth.login.failed' }],
         total: 1,
@@ -139,7 +128,7 @@ describe('AlertService', () => {
     it('should evaluate threshold-based rule', async () => {
       const rule = {
         id: 'rule-2',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         name: 'Threshold Rule',
         enabled: true,
         type: 'THRESHOLD' as const,
@@ -155,7 +144,7 @@ describe('AlertService', () => {
         updatedBy: 'user-1',
       };
 
-      vi.mocked(mockPrisma.audit_alert_rules.findUnique).mockResolvedValue(rule);
+      vi.mocked(mockCosmosAlertRules.findUniqueByIdAndTenant).mockResolvedValue(rule);
       vi.mocked(mockStorage.search).mockResolvedValue({
         items: Array(5).fill({ id: 'log-1', action: 'auth.login.failed' }),
         total: 5,
@@ -170,7 +159,7 @@ describe('AlertService', () => {
     it('should return false for disabled rule', async () => {
       const rule = {
         id: 'rule-3',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         name: 'Disabled Rule',
         enabled: false,
         type: 'PATTERN' as const,
@@ -182,7 +171,7 @@ describe('AlertService', () => {
         updatedBy: 'user-1',
       };
 
-      vi.mocked(mockPrisma.audit_alert_rules.findUnique).mockResolvedValue(rule);
+      vi.mocked(mockCosmosAlertRules.findUniqueByIdAndTenant).mockResolvedValue(rule);
 
       const result = await alertService.evaluateRule('rule-3', 'org-1');
 

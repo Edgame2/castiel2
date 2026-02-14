@@ -10,7 +10,7 @@
 
 | Topic | Decision |
 |-------|----------|
-| **Auth** | Implemented in this UI (login, register, forgot-password, reset-password, verify-email, logout, accept-invitation). Pages call gateway `/api/auth/*` and redirect as needed. |
+| **Auth** | Implemented in this UI (login, register, forgot-password, reset-password, verify-email, logout, accept-invitation). Pages call gateway `/api/v1/auth/*` and redirect as needed. |
 | **MFA** | Full pages (enroll, verify). |
 | **User management** | Admin user detail `/admin/security/users/[id]` and tenant “my profile” `/settings/profile` — all required. |
 | **AI** | Expose ai-conversation, prompt-service, multi-modal in UI. Implemented: conversations, prompts, and multimodal pages (see §3.11–§3.13). |

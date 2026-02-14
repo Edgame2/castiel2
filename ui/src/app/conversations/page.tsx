@@ -1,6 +1,6 @@
 /**
- * Conversations list — GET /api/conversations (gateway → ai-conversation).
- * Create: POST /api/conversations. Links to /conversations/[id].
+ * Conversations list — GET /api/v1/conversations (gateway → ai-conversation).
+ * Create: POST /api/v1/conversations. Links to /conversations/[id].
  */
 
 'use client';
@@ -33,7 +33,7 @@ export default function ConversationsListPage() {
     }
     setLoading(true);
     setError(null);
-    apiFetch('/api/conversations?limit=50')
+    apiFetch('/api/v1/conversations?limit=50')
       .then((r) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load conversations');
         return r.json();
@@ -53,7 +53,7 @@ export default function ConversationsListPage() {
     if (!getApiBaseUrl() || creating) return;
     setCreating(true);
     setError(null);
-    apiFetch('/api/conversations', {
+    apiFetch('/api/v1/conversations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),

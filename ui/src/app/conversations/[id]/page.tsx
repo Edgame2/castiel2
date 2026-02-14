@@ -1,5 +1,5 @@
 /**
- * Single conversation (chat) — GET /api/conversations/:id, POST /api/conversations/:id/messages.
+ * Single conversation (chat) — GET /api/v1/conversations/:id, POST /api/v1/conversations/:id/messages.
  */
 
 'use client';
@@ -44,7 +44,7 @@ export default function ConversationDetailPage() {
     }
     setLoading(true);
     setError(null);
-    apiFetch(`/api/conversations/${id}?includeMessages=true&messageLimit=100`)
+    apiFetch(`/api/v1/conversations/${id}?includeMessages=true&messageLimit=100`)
       .then((r) => {
         if (r.status === 404) throw new Error('Conversation not found');
         if (!r.ok) throw new Error(r.statusText || 'Failed to load conversation');
@@ -67,7 +67,7 @@ export default function ConversationDetailPage() {
     const content = message.trim();
     if (!getApiBaseUrl() || !id || !content || sending) return;
     setSending(true);
-    apiFetch(`/api/conversations/${id}/messages`, {
+    apiFetch(`/api/v1/conversations/${id}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),

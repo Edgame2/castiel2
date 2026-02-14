@@ -59,7 +59,7 @@ export async function startEventConsumer() {
         if (notificationInput) {
           await notificationService.createNotification({
             userId: notificationInput.recipientId,
-            organizationId: notificationInput.organizationId,
+            tenantId: notificationInput.tenantId,
             type: notificationInput.eventType,
             title: notificationInput.title,
             message: notificationInput.body,

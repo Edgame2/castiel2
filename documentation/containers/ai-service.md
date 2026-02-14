@@ -26,12 +26,11 @@ Main entries from `config/default.yaml`:
 
 ### API
 
-- `POST /api/ai/completions` – Create completion
-- `GET /api/ai/models`, `GET /api/ai/models/:id`
-- `GET /api/ai/agents`, `GET /api/ai/agents/:id`, `POST /api/ai/agents/:id/execute`
+Client path is `/api/v1/...` per API_RULES. Service routes (see [containers/ai-service/openapi.yaml](../../containers/ai-service/openapi.yaml)):
+
+- Completions, models, agents (exact client path per gateway route and ENDPOINTS.md)
 - **Reasoning:** `POST /api/v1/reasoning/tasks` (CRUD for reasoning tasks)
 - **LLM CoT:** `POST /api/v1/llm/explain`, `/recommendations`, `/scenarios`, `/summary`, `/playbook`, `POST /api/v1/llm/reactivation/strategy`
-- See [containers/ai-service/openapi.yaml](../../containers/ai-service/openapi.yaml) if present.
 
 ### Events
 

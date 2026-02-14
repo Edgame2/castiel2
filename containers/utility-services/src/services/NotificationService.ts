@@ -3,7 +3,7 @@ import { NotFoundError } from '@coder/shared';
 
 export interface GetNotificationsInput {
   userId?: string;
-  organizationId?: string;
+  tenantId?: string;
   read?: boolean;
   limit?: number;
   offset?: number;
@@ -14,7 +14,7 @@ export class NotificationService {
 
   async createNotification(input: {
     userId?: string;
-    organizationId?: string;
+    tenantId?: string;
     type: string;
     title: string;
     message: string;
@@ -22,7 +22,7 @@ export class NotificationService {
     return await this.db.notification_notifications.create({
       data: {
         userId: input.userId,
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         type: input.type,
         title: input.title,
         message: input.message,
@@ -37,8 +37,8 @@ export class NotificationService {
       where.userId = input.userId;
     }
     
-    if (input.organizationId) {
-      where.organizationId = input.organizationId;
+    if (input.tenantId) {
+      where.tenantId = input.tenantId;
     }
     
     if (input.read !== undefined) {
@@ -82,14 +82,14 @@ export class NotificationService {
     });
   }
 
-  async markAllAsRead(input: { userId: string; organizationId?: string }) {
+  async markAllAsRead(input: { userId: string; tenantId?: string }) {
     const where: any = {
       userId: input.userId,
       read: false,
     };
     
-    if (input.organizationId) {
-      where.organizationId = input.organizationId;
+    if (input.tenantId) {
+      where.tenantId = input.tenantId;
     }
 
     return await this.db.notification_notifications.updateMany({

@@ -221,10 +221,10 @@ This document describes all events published by the [Module Name] module that ar
       "type": "string",
       "description": "Request correlation ID (optional)"
     },
-    "organizationId": {
+    "tenantId": {
       "type": "string",
       "format": "uuid",
-      "description": "Tenant context (optional)"
+      "description": "Tenant context (required)"
     },
     "userId": {
       "type": "string",
@@ -256,7 +256,7 @@ This document describes all events published by the [Module Name] module that ar
   "version": "1.0",
   "source": "[module-name]",
   "correlationId": "req_45678901-2345-2345-2345-234567890def",
-  "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+  "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
   "userId": "user_90123456-4567-4567-4567-456789012jkl",
   "data": {
     "resourceId": "res_12345678-1234-1234-1234-123456789abc"
@@ -307,7 +307,7 @@ This document describes all events published by the [Module Name] module that tr
   "timestamp": "2025-01-22T10:00:00Z",
   "version": "1.0",
   "source": "[module-name]",
-  "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+  "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
   "data": {
     "resourceId": "res_12345678-1234-1234-1234-123456789abc"
   }
@@ -340,7 +340,7 @@ info:
     
     ## Rate Limiting
     - 100 requests per minute per user
-    - 1000 requests per minute per organization
+    - 1000 requests per minute per tenant
 
 servers:
   - url: /api/v1

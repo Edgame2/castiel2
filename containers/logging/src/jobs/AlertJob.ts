@@ -2,14 +2,14 @@
  * Alert Job
  * Checks for alert conditions and triggers notifications
  * Per ModuleImplementationGuide Section 9: Event-Driven Communication
- * Supports Prisma (Postgres) or CosmosAlertRulesRepository (Cosmos DB).
+ * Uses CosmosAlertRulesRepository (Cosmos DB only).
  */
 
-import { PrismaClient, audit_alert_type } from '.prisma/logging-client';
 import { CronJob } from 'cron';
 import { IStorageProvider } from '../services/providers/storage/IStorageProvider';
 import { publishAlertTriggered } from '../events/publisher';
 import { log } from '../utils/logger';
+import { AlertType } from '../types/alert.types';
 import type { CosmosAlertRulesRepository } from '../data/cosmos/alert-rules';
 import type { AlertRuleRow } from '../data/cosmos/alert-rules';
 
@@ -24,7 +24,7 @@ export interface AlertCheckResult {
 export interface TriggeredAlert {
   ruleId: string;
   ruleName: string;
-  organizationId: string | null;
+  tenantId: string | null;
   triggeredAt: Date;
   matchCount: number;
   conditions: Record<string, unknown>;
@@ -51,17 +51,15 @@ interface AnomalyConditions {
 }
 
 export class AlertJob {
-  private prisma: PrismaClient | null;
   private storage: IStorageProvider;
-  private cosmosAlertRules: CosmosAlertRulesRepository | null;
+  private cosmosAlertRules: CosmosAlertRulesRepository;
   private cronJob: CronJob | null = null;
   private isRunning = false;
   private lastCheckTime: Date;
 
-  constructor(prisma: PrismaClient | null, storage: IStorageProvider, cosmosAlertRules?: CosmosAlertRulesRepository) {
-    this.prisma = prisma;
+  constructor(storage: IStorageProvider, cosmosAlertRules: CosmosAlertRulesRepository) {
     this.storage = storage;
-    this.cosmosAlertRules = cosmosAlertRules ?? null;
+    this.cosmosAlertRules = cosmosAlertRules;
     this.lastCheckTime = new Date(Date.now() - 60 * 1000);
   }
   
@@ -128,27 +126,10 @@ export class AlertJob {
     try {
       log.debug('Starting alert check', { from: checkStartTime, to: checkEndTime });
 
-      let rules: AlertRuleRow[];
-      if (this.cosmosAlertRules) {
-        rules = await this.cosmosAlertRules.findMany({ where: { enabled: true }, orderBy: { createdAt: 'desc' } });
-      } else if (this.prisma) {
-        try {
-          rules = (await this.prisma.audit_alert_rules.findMany({
-            where: { enabled: true },
-          })) as unknown as AlertRuleRow[];
-        } catch (dbError: unknown) {
-          const msg = dbError instanceof Error ? dbError.message : String(dbError);
-          if (msg.includes("Can't reach database") || msg.includes('localhost') || (dbError as { name?: string })?.name === 'PrismaClientInitializationError') {
-            log.debug('Alert job skipped: database unreachable', { error: msg });
-            this.lastCheckTime = checkEndTime;
-            result.durationMs = Date.now() - startTime;
-            return result;
-          }
-          throw dbError;
-        }
-      } else {
-        rules = [];
-      }
+      const rules = await this.cosmosAlertRules.findMany({
+        where: { enabled: true },
+        orderBy: { createdAt: 'desc' },
+      });
 
       result.rulesChecked = rules.length;
       if (rules.length === 0) {
@@ -161,24 +142,17 @@ export class AlertJob {
       for (const rule of rules) {
         try {
           const alert = await this.checkRule(
-            { ...rule, type: rule.type as audit_alert_type },
+            { ...rule, type: rule.type as AlertType },
             checkStartTime,
             checkEndTime
           );
           if (alert) {
             result.alertsTriggered++;
             result.alerts.push(alert);
-            if (this.cosmosAlertRules) {
-              await this.cosmosAlertRules.update({
-                where: { id: rule.id },
-                data: { updatedBy: 'alert-job' },
-              });
-            } else if (this.prisma) {
-              await this.prisma.audit_alert_rules.update({
-                where: { id: rule.id },
-                data: { updatedAt: new Date() },
-              });
-            }
+            await this.cosmosAlertRules.update({
+              where: { id: rule.id },
+              data: { updatedBy: 'alert-job' },
+            });
             await this.publishAlert(alert, { ...rule, notificationChannels: rule.notificationChannels ?? [] });
           }
         } catch (error: unknown) {
@@ -221,10 +195,10 @@ export class AlertJob {
   private async checkRule(
     rule: {
       id: string;
-      organizationId: string | null;
+      tenantId: string | null;
       name: string;
-      type: audit_alert_type;
-      conditions: any;
+      type: AlertType;
+      conditions: Record<string, unknown>;
     },
     startTime: Date,
     endTime: Date
@@ -249,7 +223,7 @@ export class AlertJob {
   
   /** Count logs via storage (works for both Postgres and Cosmos). */
   private async countLogs(params: {
-    organizationId?: string | null;
+    tenantId?: string | null;
     startDate?: Date;
     endDate?: Date;
     action?: string;
@@ -257,7 +231,7 @@ export class AlertJob {
     severity?: string;
   }): Promise<number> {
     return this.storage.count({
-      organizationId: params.organizationId ?? undefined,
+      tenantId: params.tenantId ?? undefined,
       startDate: params.startDate,
       endDate: params.endDate,
       action: params.action,
@@ -270,7 +244,7 @@ export class AlertJob {
    * Check pattern-based alert (e.g., specific action occurs)
    */
   private async checkPatternRule(
-    rule: { id: string; organizationId: string | null; name: string },
+    rule: { id: string; tenantId: string | null; name: string },
     conditions: { action?: string; category?: string; severity?: string; minCount?: number },
     startTime: Date,
     endTime: Date
@@ -279,8 +253,8 @@ export class AlertJob {
       timestamp: { gte: startTime, lte: endTime },
     };
     
-    if (rule.organizationId) {
-      where.organizationId = rule.organizationId;
+    if (rule.tenantId) {
+      where.tenantId = rule.tenantId;
     }
     if (conditions.action) {
       where.action = { contains: conditions.action, mode: 'insensitive' };
@@ -293,7 +267,7 @@ export class AlertJob {
     }
 
     const count = await this.countLogs({
-      organizationId: rule.organizationId ?? undefined,
+      tenantId: rule.tenantId ?? undefined,
       startDate: startTime,
       endDate: endTime,
       action: conditions.action,
@@ -306,7 +280,7 @@ export class AlertJob {
       return {
         ruleId: rule.id,
         ruleName: rule.name,
-        organizationId: rule.organizationId,
+        tenantId: rule.tenantId,
         triggeredAt: new Date(),
         matchCount: count,
         conditions,
@@ -320,7 +294,7 @@ export class AlertJob {
    * Check threshold-based alert (e.g., > N events in time window)
    */
   private async checkThresholdRule(
-    rule: { id: string; organizationId: string | null; name: string },
+    rule: { id: string; tenantId: string | null; name: string },
     conditions: { threshold: number; action?: string; category?: string; timeWindowMinutes?: number },
     startTime: Date,
     endTime: Date
@@ -334,8 +308,8 @@ export class AlertJob {
       timestamp: { gte: windowStart, lte: endTime },
     };
     
-    if (rule.organizationId) {
-      where.organizationId = rule.organizationId;
+    if (rule.tenantId) {
+      where.tenantId = rule.tenantId;
     }
     if (conditions.action) {
       where.action = { contains: conditions.action, mode: 'insensitive' };
@@ -345,7 +319,7 @@ export class AlertJob {
     }
 
     const count = await this.countLogs({
-      organizationId: rule.organizationId ?? undefined,
+      tenantId: rule.tenantId ?? undefined,
       startDate: windowStart,
       endDate: endTime,
       action: conditions.action,
@@ -356,7 +330,7 @@ export class AlertJob {
       return {
         ruleId: rule.id,
         ruleName: rule.name,
-        organizationId: rule.organizationId,
+        tenantId: rule.tenantId,
         triggeredAt: new Date(),
         matchCount: count,
         conditions: { ...conditions, threshold: conditions.threshold, actual: count },
@@ -371,7 +345,7 @@ export class AlertJob {
    * Simple implementation: checks if current volume is > N times the average
    */
   private async checkAnomalyRule(
-    rule: { id: string; organizationId: string | null; name: string },
+    rule: { id: string; tenantId: string | null; name: string },
     conditions: { multiplier?: number; baselineMinutes?: number },
     startTime: Date,
     endTime: Date
@@ -385,12 +359,12 @@ export class AlertJob {
     const baseWhere: any = {
       timestamp: { gte: baselineStart, lt: startTime },
     };
-    if (rule.organizationId) {
-      baseWhere.organizationId = rule.organizationId;
+    if (rule.tenantId) {
+      baseWhere.tenantId = rule.tenantId;
     }
 
     const baselineCount = await this.countLogs({
-      organizationId: rule.organizationId ?? undefined,
+      tenantId: rule.tenantId ?? undefined,
       startDate: baselineStart,
       endDate: startTime,
     });
@@ -401,12 +375,12 @@ export class AlertJob {
     const currentWhere: any = {
       timestamp: { gte: startTime, lte: endTime },
     };
-    if (rule.organizationId) {
-      currentWhere.organizationId = rule.organizationId;
+    if (rule.tenantId) {
+      currentWhere.tenantId = rule.tenantId;
     }
 
     const currentCount = await this.countLogs({
-      organizationId: rule.organizationId ?? undefined,
+      tenantId: rule.tenantId ?? undefined,
       startDate: startTime,
       endDate: endTime,
     });
@@ -418,7 +392,7 @@ export class AlertJob {
       return {
         ruleId: rule.id,
         ruleName: rule.name,
-        organizationId: rule.organizationId,
+        tenantId: rule.tenantId,
         triggeredAt: new Date(),
         matchCount: currentCount,
         conditions: {
@@ -444,7 +418,7 @@ export class AlertJob {
       await publishAlertTriggered({
         ruleId: alert.ruleId,
         ruleName: alert.ruleName,
-        organizationId: alert.organizationId || undefined,
+        tenantId: alert.tenantId || undefined,
         triggeredAt: alert.triggeredAt,
         matchCount: alert.matchCount,
         conditions: alert.conditions,

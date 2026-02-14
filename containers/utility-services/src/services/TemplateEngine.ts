@@ -36,10 +36,10 @@ export class TemplateEngine {
     channel: string,
     locale: string,
     data: TemplateData,
-    organizationId?: string
+    tenantId?: string
   ): Promise<RenderedTemplate> {
     // Try to load template from database
-    const template = await this.loadTemplate(templateName, eventType, channel, locale, organizationId);
+    const template = await this.loadTemplate(templateName, eventType, channel, locale, tenantId);
     
     if (!template) {
       // Fallback to default templates
@@ -78,7 +78,7 @@ export class TemplateEngine {
     eventType: string,
     channel: string,
     locale: string,
-    organizationId?: string
+    tenantId?: string
   ) {
     const template = await this.db.notification_templates.findFirst({
       where: {
@@ -86,12 +86,12 @@ export class TemplateEngine {
         eventType,
         channel,
         locale,
-        organizationId: organizationId || null,
+        tenantId: tenantId || null,
         enabled: true,
       },
       orderBy: {
-        // Prefer organization-specific templates over global
-        organizationId: organizationId ? 'asc' : 'desc',
+        // Prefer tenant-specific templates over global
+        tenantId: tenantId ? 'asc' : 'desc',
       },
     });
 

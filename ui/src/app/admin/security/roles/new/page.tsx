@@ -18,7 +18,7 @@ interface Permission {
 
 export default function AdminSecurityRoleNewPage() {
   const router = useRouter();
-  const [orgId, setOrgId] = useState('');
+  const [tenantId, setTenantId] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [permissionIds, setPermissionIds] = useState<string[]>([]);
@@ -28,17 +28,17 @@ export default function AdminSecurityRoleNewPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchPermissions = useCallback(() => {
-    if (!getApiBaseUrl() || !orgId.trim()) {
+    if (!getApiBaseUrl() || !tenantId.trim()) {
       setPermissions([]);
       return;
     }
     setPermsLoading(true);
-    apiFetch(`/api/v1/organizations/${encodeURIComponent(orgId.trim())}/permissions`)
+    apiFetch(`/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/permissions`)
       .then((r) => (r.ok ? r.json() : { data: [] }))
       .then((json: { data?: Permission[] }) => setPermissions(Array.isArray(json?.data) ? json.data : []))
       .catch(() => setPermissions([]))
       .finally(() => setPermsLoading(false));
-  }, [orgId]);
+  }, [tenantId]);
 
   useEffect(() => {
     fetchPermissions();
@@ -50,12 +50,12 @@ export default function AdminSecurityRoleNewPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const o = orgId.trim();
+    const o = tenantId.trim();
     const n = name.trim();
     if (!getApiBaseUrl() || !o || !n || submitting) return;
     setError(null);
     setSubmitting(true);
-    apiFetch(`/api/v1/organizations/${encodeURIComponent(o)}/roles`, {
+    apiFetch(`/api/v1/tenants/${encodeURIComponent(o)}/roles`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: n, description: description.trim() || null, permissionIds }),
@@ -65,8 +65,8 @@ export default function AdminSecurityRoleNewPage() {
         return r.json();
       })
       .then((data: { data?: { id: string } }) => {
-        if (data?.data?.id) router.push(`/admin/security/roles/${data.data.id}?orgId=${encodeURIComponent(o)}`);
-        else router.push(`/admin/security/roles?orgId=${o}`);
+        if (data?.data?.id) router.push(`/admin/security/roles/${data.data.id}?tenantId=${encodeURIComponent(o)}`);
+        else router.push(`/admin/security/roles?tenantId=${o}`);
       })
       .catch((e) => { if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e); setError(GENERIC_ERROR_MESSAGE); })
       .finally(() => setSubmitting(false));
@@ -88,8 +88,8 @@ export default function AdminSecurityRoleNewPage() {
         {error && <p className="text-sm text-red-600 dark:text-red-400 mb-4" role="alert">{error}</p>}
         <form onSubmit={handleSubmit} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
           <div>
-            <Label htmlFor="orgId" className="block mb-1">Organization ID</Label>
-            <Input id="orgId" type="text" value={orgId} onChange={(e) => setOrgId(e.target.value)} className="w-full" required />
+            <Label htmlFor="tenantId" className="block mb-1">Tenant ID</Label>
+            <Input id="tenantId" type="text" value={tenantId} onChange={(e) => setTenantId(e.target.value)} className="w-full" required />
           </div>
           <div>
             <Label htmlFor="name" className="block mb-1">Role name</Label>
@@ -118,10 +118,10 @@ export default function AdminSecurityRoleNewPage() {
                 ))}
               </div>
             )}
-            {!permsLoading && permissions.length === 0 && orgId.trim() && <p className="text-sm text-gray-500">No permissions found.</p>}
+            {!permsLoading && permissions.length === 0 && tenantId.trim() && <p className="text-sm text-gray-500">No permissions found.</p>}
           </div>
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting || !orgId.trim() || !name.trim()}>
+            <Button type="submit" disabled={submitting || !tenantId.trim() || !name.trim()}>
               {submitting ? 'Creating…' : 'Create role'}
             </Button>
             <Button variant="outline" asChild>

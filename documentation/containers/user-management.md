@@ -6,7 +6,7 @@ Full specification for the User Management container.
 
 ### Purpose
 
-User profiles, organizations, teams, RBAC, invitations, memberships, user analytics. Referenced by auth, shard-manager, pipeline-manager, document-manager, collaboration-service, analytics-service for user/org context. Consumes auth.login.*, user.registered.
+User profiles, tenants, teams, RBAC, invitations, memberships, user analytics. Referenced by auth, shard-manager, pipeline-manager, document-manager, collaboration-service, analytics-service for user/tenant context. Consumes auth.login.*, user.registered.
 
 ### Configuration
 
@@ -18,7 +18,7 @@ From `config/default.yaml`: server.port (3022), cosmos_db (user_*), services (au
 
 ### API
 
-Users, orgs, teams, roles, invitations, memberships. See [containers/user-management/openapi.yaml](../../containers/user-management/openapi.yaml) or docs.
+Users, tenants, teams, roles, invitations, memberships. See [containers/user-management/openapi.yaml](../../containers/user-management/openapi.yaml) or docs.
 
 ### Events
 
@@ -32,13 +32,13 @@ Users, orgs, teams, roles, invitations, memberships. See [containers/user-manage
 
 ### Cosmos DB containers
 
-user_* (partition key: tenantId/organizationId per schema). See config.
+user_* (partition key: tenantId). See config.
 
 ---
 
 ## 2. Architecture
 
-User, org, team, RBAC, invitation services, Cosmos, event publisher/consumer. [containers/user-management/README.md](../../containers/user-management/README.md) or docs.
+User, tenant, team, RBAC, invitation services, Cosmos, event publisher/consumer. [containers/user-management/README.md](../../containers/user-management/README.md) or docs.
 
 ---
 
@@ -50,7 +50,7 @@ User, org, team, RBAC, invitation services, Cosmos, event publisher/consumer. [c
 
 ## 4. Security / tenant isolation
 
-X-Tenant-ID and org-scoped data; partition key tenantId/org; RBAC enforced.
+X-Tenant-ID and tenant-scoped data; partition key tenantId; RBAC enforced.
 
 ---
 

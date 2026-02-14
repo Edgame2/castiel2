@@ -13,8 +13,6 @@
     "test:unit": "vitest run tests/unit",
     "test:int": "vitest run tests/integration",
     "lint": "eslint src --ext .ts",
-    "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
-    "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
     "test:integration": "vitest run tests/integration"
   },
   "dependencies": {
@@ -23,7 +21,6 @@
     "@fastify/oauth2": "^8.0.0",
     "@fastify/swagger": "^9.1.0",
     "@fastify/swagger-ui": "^5.0.0",
-    "@prisma/client": "^6.9.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "amqplib": "^0.10.5",
@@ -47,7 +44,6 @@
     "@types/node": "^25.0.5",
     "@types/ioredis": "^5.0.0",
     "@vitest/coverage-v8": "^4.0.0",
-    "prisma": "^6.9.0",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vitest": "^4.0.0"

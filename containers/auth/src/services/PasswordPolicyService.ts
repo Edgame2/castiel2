@@ -1,7 +1,7 @@
 /**
  * Password Policy Service
- * 
- * Manages organization-level password policies and validation
+ *
+ * Manages tenant-level password policies and validation.
  */
 
 import { getDatabaseClient } from '@coder/shared';
@@ -23,12 +23,11 @@ export interface PasswordValidationResult {
 }
 
 /**
- * Get password policy for an organization
+ * Get password policy for a tenant
  */
-export async function getPasswordPolicy(organizationId: string | null): Promise<PasswordPolicy> {
+export async function getPasswordPolicy(tenantId: string | null): Promise<PasswordPolicy> {
   const db = getDatabaseClient() as any;
 
-  // Default policy
   const defaultPolicy: PasswordPolicy = {
     minLength: 12,
     requireUppercase: true,
@@ -38,48 +37,48 @@ export async function getPasswordPolicy(organizationId: string | null): Promise<
     passwordHistoryCount: 5,
   };
 
-  if (!organizationId) {
+  if (!tenantId) {
     return defaultPolicy;
   }
 
-  const org = await db.organization.findUnique({
-    where: { id: organizationId },
-    select: {
-      passwordMinLength: true,
-      passwordRequireUppercase: true,
-      passwordRequireLowercase: true,
-      passwordRequireNumbers: true,
-      passwordRequireSpecial: true,
-      passwordHistoryCount: true,
-      passwordExpiryDays: true,
-    },
+  const tenant = await db.tenant.findUnique({
+    where: { id: tenantId },
   });
 
-  if (!org) {
+  if (!tenant) {
     return defaultPolicy;
   }
 
+  const t = tenant as {
+    passwordMinLength?: number;
+    passwordRequireUppercase?: boolean;
+    passwordRequireLowercase?: boolean;
+    passwordRequireNumbers?: boolean;
+    passwordRequireSpecial?: boolean;
+    passwordHistoryCount?: number;
+    passwordExpiryDays?: number;
+  };
   return {
-    minLength: org.passwordMinLength || defaultPolicy.minLength,
-    requireUppercase: org.passwordRequireUppercase ?? defaultPolicy.requireUppercase,
-    requireLowercase: org.passwordRequireLowercase ?? defaultPolicy.requireLowercase,
-    requireNumbers: org.passwordRequireNumbers ?? defaultPolicy.requireNumbers,
-    requireSpecial: org.passwordRequireSpecial ?? defaultPolicy.requireSpecial,
-    passwordHistoryCount: org.passwordHistoryCount || defaultPolicy.passwordHistoryCount,
-    passwordExpiryDays: org.passwordExpiryDays || undefined,
+    minLength: t.passwordMinLength || defaultPolicy.minLength,
+    requireUppercase: t.passwordRequireUppercase ?? defaultPolicy.requireUppercase,
+    requireLowercase: t.passwordRequireLowercase ?? defaultPolicy.requireLowercase,
+    requireNumbers: t.passwordRequireNumbers ?? defaultPolicy.requireNumbers,
+    requireSpecial: t.passwordRequireSpecial ?? defaultPolicy.requireSpecial,
+    passwordHistoryCount: t.passwordHistoryCount || defaultPolicy.passwordHistoryCount,
+    passwordExpiryDays: t.passwordExpiryDays || undefined,
   };
 }
 
 /**
- * Validate password against organization policy
+ * Validate password against tenant policy
  */
 export async function validatePassword(
   password: string,
   userId: string,
-  organizationId: string | null
+  tenantId: string | null
 ): Promise<PasswordValidationResult> {
   const errors: string[] = [];
-  const policy = await getPasswordPolicy(organizationId);
+  const policy = await getPasswordPolicy(tenantId);
 
   // Check minimum length
   if (password.length < policy.minLength) {
@@ -121,8 +120,8 @@ export async function validatePassword(
 /**
  * Check if user's password is expired
  */
-export async function isPasswordExpired(userId: string, organizationId: string | null): Promise<boolean> {
-  const policy = await getPasswordPolicy(organizationId);
+export async function isPasswordExpired(userId: string, tenantId: string | null): Promise<boolean> {
+  const policy = await getPasswordPolicy(tenantId);
 
   if (!policy.passwordExpiryDays) {
     return false; // No expiry
@@ -157,9 +156,9 @@ export async function isPasswordExpired(userId: string, organizationId: string |
  */
 export async function getDaysUntilPasswordExpiry(
   userId: string,
-  organizationId: string | null
+  tenantId: string | null
 ): Promise<number | null> {
-  const policy = await getPasswordPolicy(organizationId);
+  const policy = await getPasswordPolicy(tenantId);
 
   if (!policy.passwordExpiryDays) {
     return null; // No expiry

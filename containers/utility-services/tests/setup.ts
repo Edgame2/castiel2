@@ -140,8 +140,52 @@ vi.mock('@coder/shared/events', () => ({
   })),
 }));
 
-// Mock @coder/shared ServiceClient
-vi.mock('@coder/shared', () => ({
+// Mock @coder/shared (server imports initializeDatabase, connectDatabase, setupJWT, getDatabaseClient from here)
+vi.mock('@coder/shared', () => {
+  const mockDb = {
+    notification_notifications: {
+      create: vi.fn().mockResolvedValue({ id: 'n-1' }),
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+      findUnique: vi.fn().mockResolvedValue(null),
+      update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({}),
+      count: vi.fn().mockResolvedValue(0),
+      delete: vi.fn().mockResolvedValue({}),
+    },
+    notification_preferences: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      upsert: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+      delete: vi.fn().mockResolvedValue({}),
+    },
+    notification_templates: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+      delete: vi.fn().mockResolvedValue({}),
+    },
+    notification_escalation_chains: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+    },
+    notification_batches: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+      create: vi.fn().mockResolvedValue({ id: 'b-1' }),
+      update: vi.fn().mockResolvedValue({}),
+    },
+  };
+  return {
+  initializeDatabase: vi.fn(),
+  connectDatabase: vi.fn().mockResolvedValue(undefined),
+  getDatabaseClient: vi.fn(() => mockDb),
+  setupJWT: vi.fn().mockResolvedValue(undefined),
   ServiceClient: vi.fn(() => ({
     get: vi.fn().mockResolvedValue({ data: {} }),
     post: vi.fn().mockResolvedValue({ data: {} }),
@@ -149,13 +193,13 @@ vi.mock('@coder/shared', () => ({
     delete: vi.fn().mockResolvedValue({ data: {} }),
   })),
   authenticateRequest: vi.fn(() => async (req: any) => {
-    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123', organizationId: 'org-1' };
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
   }),
   tenantEnforcementMiddleware: vi.fn(() => async (req: any) => {
-    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123', organizationId: 'org-1' };
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
   }),
-  setupJWT: vi.fn(),
-}));
+  };
+});
 
 // Global test setup
 beforeAll(async () => {

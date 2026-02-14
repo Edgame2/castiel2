@@ -2,7 +2,7 @@
  * Preference Resolver
  * 
  * Resolves hierarchical notification preferences
- * Hierarchy: Global (config) → Organization → Team → Project → User
+ * Hierarchy: Global (config) → Tenant → Team → Project → User
  */
 
 import { getDatabaseClient } from '@coder/shared';
@@ -17,46 +17,29 @@ export class PreferenceResolver {
 
   /**
    * Resolve effective preferences for a user
-   * Returns merged preferences from all hierarchy levels
    */
   async resolvePreferences(
     userId: string,
-    organizationId: string,
+    tenantId: string,
     teamId?: string,
     projectId?: string
   ): Promise<ResolvedPreferences> {
-    // Start with global defaults from config
     const globalDefaults = this.getGlobalDefaults();
-    
-    // Merge organization preferences
-    const orgPrefs = await this.getPreferences('ORGANIZATION', organizationId, organizationId);
-    
-    // Merge team preferences if teamId provided
-    const teamPrefs = teamId 
-      ? await this.getPreferences('TEAM', teamId, organizationId)
-      : null;
-    
-    // Merge project preferences if projectId provided
-    const projectPrefs = projectId
-      ? await this.getPreferences('PROJECT', projectId, organizationId)
-      : null;
-    
-    // Merge user preferences (highest priority)
-    const userPrefs = await this.getPreferences('USER', userId, organizationId);
-    
-    // Merge in priority order (later overrides earlier)
+    const tenantPrefs = await this.getPreferences('TENANT', tenantId, tenantId);
+    const teamPrefs = teamId ? await this.getPreferences('TEAM', teamId, tenantId) : null;
+    const projectPrefs = projectId ? await this.getPreferences('PROJECT', projectId, tenantId) : null;
+    const userPrefs = await this.getPreferences('USER', userId, tenantId);
     const resolved = this.mergePreferences(
       globalDefaults,
-      orgPrefs,
+      tenantPrefs,
       teamPrefs,
       projectPrefs,
       userPrefs
     );
-
     return {
       ...resolved,
-      scope: userPrefs ? 'USER' : projectPrefs ? 'PROJECT' : teamPrefs ? 'TEAM' : 'ORGANIZATION',
-      scopeId: userPrefs ? userId : projectPrefs ? projectId : teamPrefs ? teamId : organizationId,
+      scope: userPrefs ? 'USER' : projectPrefs ? 'PROJECT' : teamPrefs ? 'TEAM' : 'TENANT',
+      scopeId: userPrefs ? userId : projectPrefs ? projectId : teamPrefs ? teamId : tenantId,
     };
   }
 
@@ -66,14 +49,14 @@ export class PreferenceResolver {
   private async getPreferences(
     scope: PreferenceScope,
     scopeId: string,
-    organizationId: string
+    tenantId: string
   ): Promise<NotificationPreferences | null> {
     const pref = await this.db.notification_preferences.findUnique({
       where: {
-        scope_scopeId_organizationId: {
+        scope_scopeId_tenantId: {
           scope,
           scopeId: scope === 'GLOBAL' ? null : scopeId,
-          organizationId: scope === 'GLOBAL' ? organizationId : organizationId,
+          tenantId,
         },
       },
     });

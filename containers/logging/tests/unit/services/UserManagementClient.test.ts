@@ -32,7 +32,7 @@ describe('UserManagementClient', () => {
       mockGet.mockResolvedValue({
         data: {
           userId: 'u1',
-          organizationId: 'org1',
+          tenantId: 't1',
           roles: [{ id: 'r1', name: 'Admin', permissions: ['read', 'write'] }],
           isSuperAdmin: false,
         },
@@ -59,8 +59,8 @@ describe('UserManagementClient', () => {
     });
   });
 
-  describe('getOrganizationUserRoles', () => {
-    it('returns org roles when fetch succeeds', async () => {
+  describe('getTenantUserRoles', () => {
+    it('returns tenant roles when fetch succeeds', async () => {
       const originalFetch = global.fetch;
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -68,15 +68,15 @@ describe('UserManagementClient', () => {
           Promise.resolve({
             data: {
               userId: 'u1',
-              organizationId: 'org1',
+              tenantId: 't1',
               roles: [{ id: 'r1', name: 'Member', permissions: ['read'] }],
-              isOrgAdmin: false,
+              isTenantAdmin: false,
             },
           }),
       });
-      const result = await client.getOrganizationUserRoles('u1', 'org1');
+      const result = await client.getTenantUserRoles('u1', 't1');
       expect(result.userId).toBe('u1');
-      expect(result.organizationId).toBe('org1');
+      expect(result.tenantId).toBe('t1');
       expect(result.roles).toHaveLength(1);
       global.fetch = originalFetch;
     });
@@ -84,9 +84,9 @@ describe('UserManagementClient', () => {
     it('returns default on 404', async () => {
       const originalFetch = global.fetch;
       global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 });
-      const result = await client.getOrganizationUserRoles('u1', 'org1');
+      const result = await client.getTenantUserRoles('u1', 't1');
       expect(result.roles).toEqual([]);
-      expect(result.isOrgAdmin).toBe(false);
+      expect(result.isTenantAdmin).toBe(false);
       global.fetch = originalFetch;
     });
   });

@@ -11,7 +11,7 @@ Authentication must be consistent so every request sends the same credentials an
 - **When to skip 401 redirect:** Use `skip401Redirect: true` only on routes where 401 is expected and shown in-page (e.g. login form, MFA step). On all other pages, 401 must trigger redirect to `/logout` so the user is not left on a broken page.
 - **Route protection:** Protected routes require an `accessToken` cookie. Middleware must run before rendering and redirect unauthenticated users to `/login` (and set `from` so they can return after login). Public routes: login, register, forgot-password, reset-password, verify-email, accept-invitation, logout, unauthorized.
 - **Logout:** The logout route must call the auth logout endpoint (to clear server session) and then clear or expire the `accessToken` (and `refreshToken`) cookie and redirect to `/login`.
-- **Canonical API paths:** Auth and user paths are defined by the API Gateway (e.g. `/api/auth/*`, `/api/users/*`). The gateway rewrites to service paths (e.g. `/api/v1/auth`, `/api/v1/users`). The UI must only call gateway paths; see `documentation/endpoints/ENDPOINTS.md` for the full list.
+- **Canonical API paths:** The client path is always `/api/v1/<service-path>`. The UI must only call gateway paths using `/api/v1/...` (e.g. `/api/v1/auth/login`, `/api/v1/users/me`). See `documentation/endpoints/ENDPOINTS.md` for the full list.
 
 ## API and Backend
 

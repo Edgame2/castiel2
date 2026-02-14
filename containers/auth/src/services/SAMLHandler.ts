@@ -13,7 +13,7 @@ import { getAccountService } from './AccountService';
 import { FastifyInstance } from 'fastify';
 
 export interface SAMLRequestOptions {
-  organizationId: string;
+  tenantId: string;
   relayState?: string;
 }
 
@@ -27,7 +27,7 @@ export interface SAMLResponseData {
  * Uses service-to-service authentication. Secret management URL must be set via config or SECRET_MANAGEMENT_SERVICE_URL; no default URL in code per .cursorrules.
  */
 async function getSSOCredentials(
-  organizationId: string,
+  tenantId: string,
   secretId: string
 ): Promise<{ certificate?: string; privateKey?: string }> {
   const config = loadConfig();
@@ -38,10 +38,9 @@ async function getSSOCredentials(
     );
   }
   const serviceAuthToken = process.env.SERVICE_AUTH_TOKEN || '';
-  
   if (!serviceAuthToken) {
     log.warn('SERVICE_AUTH_TOKEN not configured, cannot retrieve SSO credentials', {
-      organizationId,
+      tenantId,
       secretId,
       service: 'auth',
     });
@@ -55,14 +54,14 @@ async function getSSOCredentials(
         'Content-Type': 'application/json',
         'X-Service-Token': serviceAuthToken,
         'X-Requesting-Service': 'auth-service',
-        'X-Organization-Id': organizationId,
+        'X-Tenant-Id': tenantId,
       },
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       log.error('Failed to retrieve SSO credentials from secret management service', new Error(errorText), {
-        organizationId,
+        tenantId,
         secretId,
         status: response.status,
         service: 'auth',
@@ -72,7 +71,7 @@ async function getSSOCredentials(
 
     const result = await response.json() as {
       secretId: string;
-      organizationId: string;
+      tenantId?: string;
       credentials: {
         certificate?: string;
         privateKey?: string;
@@ -82,7 +81,7 @@ async function getSSOCredentials(
     };
 
     log.debug('SSO credentials retrieved from secret management service', {
-      organizationId,
+      tenantId,
       secretId,
       hasCertificate: !!result.credentials.certificate,
       hasPrivateKey: !!result.credentials.privateKey,
@@ -95,7 +94,7 @@ async function getSSOCredentials(
     };
   } catch (error: any) {
     log.error('Error retrieving SSO credentials from secret management service', error, {
-      organizationId,
+      tenantId,
       secretId,
       service: 'auth',
     });
@@ -107,38 +106,33 @@ async function getSSOCredentials(
  * Generate SAML authentication request
  */
 export async function generateSAMLRequest(
-  organizationId: string,
+  tenantId: string,
   relayState?: string
 ): Promise<{ samlRequest: string; redirectUrl: string; relayState: string }> {
   const db = getDatabaseClient() as any;
   const config = loadConfig();
 
-  // Get SSO configuration
-  const ssoConfig = await db.sSOConfiguration.findUnique({
-    where: { organizationId },
-    include: { organization: true },
+  const ssoConfig = await db.sSOConfiguration.findFirst({
+    where: { organizationId: tenantId },
   });
 
   if (!ssoConfig || !ssoConfig.isActive) {
-    throw new Error('SSO is not configured or not active for this organization');
+    throw new Error('SSO is not configured or not active for this tenant');
   }
 
-  // Get credentials from Secret Management Service
   let credentials: { certificate?: string; privateKey?: string } = {};
   if (ssoConfig.secretId) {
-    credentials = await getSSOCredentials(organizationId, ssoConfig.secretId);
+    credentials = await getSSOCredentials(tenantId, ssoConfig.secretId);
   }
 
   if (!credentials.certificate || !credentials.privateKey) {
     throw new Error('SSO credentials are incomplete');
   }
 
-  // Generate SAML request
-  // Note: In production, use a proper SAML library like 'samlify' or 'passport-saml'
-  // For now, we'll generate a basic SAML AuthnRequest XML and encode it
   const requestId = `_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
   const timestamp = new Date().toISOString();
-  const entityId = ssoConfig.entityId || ssoConfig.organization.slug;
+  const tenant = await db.tenant.findUnique({ where: { id: tenantId } });
+  const entityId = ssoConfig.entityId || (tenant as { slug?: string } | null)?.slug;
   if (!config.server?.base_url?.trim()) {
     throw new Error('SAML requires server.base_url to be set (config.server.base_url or BASE_URL env)');
   }
@@ -160,7 +154,7 @@ export async function generateSAMLRequest(
   // Encode to base64
   const samlRequestBase64 = Buffer.from(samlRequestXml).toString('base64');
 
-  const finalRelayState = relayState || `org:${organizationId}`;
+  const finalRelayState = relayState || `tenant:${tenantId}`;
 
   return {
     samlRequest: samlRequestBase64,
@@ -181,27 +175,23 @@ export async function processSAMLResponse(
 ): Promise<{ user: any; session: any }> {
   const db = getDatabaseClient() as any;
 
-  // Extract organization ID from relay state
-  const orgMatch = relayState.match(/org:([^:]+)/);
-  if (!orgMatch) {
+  const tenantMatch = relayState.match(/(?:tenant|org):([^:]+)/);
+  if (!tenantMatch) {
     throw new Error('Invalid relay state');
   }
-  const organizationId = orgMatch[1];
+  const tenantId = tenantMatch[1];
 
-  // Get SSO configuration
-  const ssoConfig = await db.sSOConfiguration.findUnique({
-    where: { organizationId },
-    include: { organization: true },
+  const ssoConfig = await db.sSOConfiguration.findFirst({
+    where: { organizationId: tenantId },
   });
 
   if (!ssoConfig || !ssoConfig.isActive) {
-    throw new Error('SSO is not configured or not active for this organization');
+    throw new Error('SSO is not configured or not active for this tenant');
   }
 
-  // Get credentials from Secret Management Service
   let credentials: { certificate?: string; privateKey?: string } = {};
   if (ssoConfig.secretId) {
-    credentials = await getSSOCredentials(organizationId, ssoConfig.secretId);
+    credentials = await getSSOCredentials(tenantId, ssoConfig.secretId);
   }
 
   if (!credentials.certificate) {
@@ -267,7 +257,7 @@ export async function processSAMLResponse(
       attributes: attributes,
     };
   } catch (error: any) {
-    log.error('SAML response validation/parsing failed', error, { organizationId, service: 'auth' });
+    log.error('SAML response validation/parsing failed', error, { tenantId, service: 'auth' });
     throw new Error('Invalid SAML response');
   }
 
@@ -295,15 +285,14 @@ export async function processSAMLResponse(
                samlAssertion.nameID;
 
   if (!user) {
-    // Check if user is invited to this organization
-    const invitation = await db.invitation.findFirst({
+    const invitation = await db.invitation?.findFirst?.({
       where: {
-        organizationId,
+        organizationId: tenantId,
         email,
         status: 'pending',
         expiresAt: { gt: new Date() },
       },
-    });
+    }) ?? null;
 
     // Generate username
     const baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9-]/g, '');
@@ -363,11 +352,10 @@ export async function processSAMLResponse(
         },
       });
 
-      // Create organization membership
-      await db.organizationMembership.create({
+      await db.membership.create({
         data: {
           userId: user.id,
-          organizationId,
+          tenantId,
           roleId: invitation.roleId,
           status: 'active',
           joinedAt: new Date(),
@@ -424,24 +412,21 @@ export async function processSAMLResponse(
     }
   }
 
-  // Check organization membership
-  const membership = await db.organizationMembership.findUnique({
+  const membership = await db.membership.findFirst({
     where: {
-      userId_organizationId: {
-        userId: user.id,
-        organizationId,
-      },
+      userId: user.id,
+      tenantId,
+      status: 'active',
     },
   });
 
-  if (!membership || membership.status !== 'active') {
-    throw new Error('User is not a member of this organization');
+  if (!membership || (membership as { status?: string }).status !== 'active') {
+    throw new Error('User is not a member of this tenant');
   }
 
-  // Create session with IP and user agent from request
   const { accessToken, refreshToken, sessionId } = await createSession(
     user.id,
-    organizationId,
+    tenantId,
     false,
     ipAddress || null,
     userAgent || null,

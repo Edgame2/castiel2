@@ -79,7 +79,7 @@ export class ScheduledNotificationJob {
 
         // Process notification
         const input: any = {
-          organizationId: notification.organizationId,
+          tenantId: notification.tenantId ?? (notification as { organizationId?: string }).organizationId,
           eventType: notification.eventType,
           eventCategory: notification.eventCategory,
           sourceModule: notification.sourceModule,

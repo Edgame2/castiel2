@@ -8,7 +8,6 @@ import { z } from 'zod';
 import { log } from '../utils/logger';
 
 const verifySchema = z.object({
-  organizationId: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
 });
@@ -30,7 +29,6 @@ export async function registerVerificationRoutes(app: FastifyInstance): Promise<
       body: {
         type: 'object',
         properties: {
-          organizationId: { type: 'string' },
           startDate: { type: 'string', format: 'date-time' },
           endDate: { type: 'string', format: 'date-time' },
         },
@@ -45,11 +43,11 @@ export async function registerVerificationRoutes(app: FastifyInstance): Promise<
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const body = verifySchema.parse(request.body);
 
       const result = await hashChainService.verifyChain(
-        body.organizationId || tenantId,
+        tenantId,
         body.startDate ? new Date(body.startDate) : undefined,
         body.endDate ? new Date(body.endDate) : undefined
       );
@@ -87,7 +85,7 @@ export async function registerVerificationRoutes(app: FastifyInstance): Promise<
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const body = request.body as {
         lastLogId: string;
         lastHash: string;
@@ -132,7 +130,7 @@ export async function registerVerificationRoutes(app: FastifyInstance): Promise<
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const query = request.query as { limit?: string };
 
       const checkpoints = await hashChainService.getCheckpoints(
@@ -171,7 +169,7 @@ export async function registerVerificationRoutes(app: FastifyInstance): Promise<
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const { id } = request.params as { id: string };
 
       const result = await hashChainService.verifySinceCheckpoint(id, tenantId);

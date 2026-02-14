@@ -352,7 +352,7 @@ describe('event publishing', () => {
       '[module].resource.created',
       expect.objectContaining({
         type: '[module].resource.created',
-        organizationId: 'tenant-123',
+        tenantId: 'tenant-123',
         data: expect.objectContaining({
           name: 'Test',
         }),

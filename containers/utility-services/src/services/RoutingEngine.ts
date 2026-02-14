@@ -22,7 +22,7 @@ import { getConfig } from '../config/index.js';
 
 export interface RoutingContext {
   userId: string;
-  organizationId: string;
+  tenantId: string;
   teamId?: string;
   projectId?: string;
   criticality: NotificationCriticality;
@@ -53,7 +53,7 @@ export class RoutingEngine {
     // Resolve user preferences
     const preferences = await this.preferenceResolver.resolvePreferences(
       context.userId,
-      context.organizationId,
+      context.tenantId,
       context.teamId,
       context.projectId
     );

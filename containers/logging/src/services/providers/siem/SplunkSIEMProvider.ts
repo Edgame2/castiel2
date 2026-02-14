@@ -136,7 +136,7 @@ export class SplunkSIEMProvider implements ISIEMProvider {
   private transformLog(logEntry: AuditLog): Record<string, unknown> {
     return {
       id: logEntry.id,
-      organizationId: logEntry.organizationId,
+      tenantId: logEntry.tenantId,
       userId: logEntry.userId,
       sessionId: logEntry.sessionId,
       ipAddress: logEntry.ipAddress,

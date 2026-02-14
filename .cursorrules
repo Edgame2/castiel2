@@ -1,8 +1,11 @@
 # Castiel - Cursor Rules
 
+Cross-cutting path and tenant rules: [documentation/rules/MASTER_RULES.md](documentation/rules/MASTER_RULES.md), [documentation/endpoints/API_RULES.md](documentation/endpoints/API_RULES.md).
+
 ## Core Principles
 - NEVER use hardcoded ports, URLs, or service addresses
 - ALWAYS use configuration files (YAML) for all settings
+- Use tenantId only; there is no organization. All users and data are scoped by tenant.
 - ALWAYS enforce tenant isolation at all layers (gateway, service, database)
 - ALWAYS include tenantId in all database queries (partition key)
 - NEVER import directly from another module's src/ folder
@@ -53,13 +56,13 @@
 ## Event-Driven Communication
 - Use RabbitMQ for inter-service communication (RabbitMQ only; no Azure Service Bus or other message brokers)
 - Events MUST include: id, type, version, timestamp, tenantId, source, data
-- Use tenantId for tenant context in events; prefer tenantId over organizationId in new code
+- Use tenantId only for tenant context in events; there is no organization. All users and data are scoped by tenant.
 - Event types follow pattern: {module}.{resource}.{action}
 - Document all published and consumed events
 
 ## Platform Conventions
 - Queuing: RabbitMQ only for events and job/batch triggers. Do not use Azure Service Bus, Event Grid, or other brokers.
-- Tenant context: Use tenantId in events, DB, and APIs. Prefer tenantId over organizationId in new code.
+- Tenant context: Use tenantId only in events, DB, and APIs. There is no organization; all users and data are scoped by tenant.
 
 ## When Working on BI Sales Risk
 - **Plans:** documentation/requirements/BI_SALES_RISK_IMPLEMENTATION_PLAN.md, BI_SALES_RISK_SHARD_SCHEMAS.md. **Also:** BI_SALES_RISK_FEATURE_PIPELINE_SPEC.md (buildVector, features), BI_SALES_RISK_DATA_LAKE_LAYOUT.md (paths, Parquet, outcome.outcome.recorded), BI_SALES_RISK_TRAINING_SCRIPTS_SPEC.md (Python in ml-service/scripts). See plan “Related Documentation.”

@@ -79,7 +79,7 @@ export class PromptService {
     }
 
     // Check if slug already exists
-    const existing = await this.getBySlug(input.tenantId, input.slug, input.organizationId).catch(() => null);
+    const existing = await this.getBySlug(input.tenantId, input.slug).catch(() => null);
     if (existing) {
       throw new BadRequestError(`Prompt template with slug '${input.slug}' already exists`);
     }
@@ -96,7 +96,6 @@ export class PromptService {
       version: 1,
       status: PromptStatus.DRAFT,
       isDefault: true,
-      organizationId: input.organizationId,
       tags: input.tags || [],
       metadata: input.metadata || {},
       createdAt: new Date(),
@@ -158,26 +157,19 @@ export class PromptService {
   }
 
   /**
-   * Get prompt template by slug
+   * Get prompt template by slug (tenant-scoped only)
    */
-  async getBySlug(tenantId: string, slug: string, organizationId?: string): Promise<PromptTemplate> {
+  async getBySlug(tenantId: string, slug: string): Promise<PromptTemplate> {
     if (!tenantId || !slug) {
       throw new BadRequestError('tenantId and slug are required');
     }
 
     const container = getContainer(this.promptContainerName) as any;
-    let query = 'SELECT * FROM c WHERE c.tenantId = @tenantId AND c.slug = @slug';
+    const query = 'SELECT * FROM c WHERE c.tenantId = @tenantId AND c.slug = @slug';
     const parameters: any[] = [
       { name: '@tenantId', value: tenantId },
       { name: '@slug', value: slug },
     ];
-
-    // Prefer organization-specific override
-    if (organizationId) {
-      query += ' ORDER BY c.organizationId DESC';
-    } else {
-      query += ' AND (c.organizationId = null OR c.organizationId = undefined)';
-    }
 
     try {
       const { resources } = await (container.items as any)
@@ -191,10 +183,7 @@ export class PromptService {
       if (items.length === 0) {
         throw new NotFoundError('Prompt template with slug', slug);
       }
-
-      // Return organization-specific if available, otherwise default
-      const orgSpecific = items.find((r: PromptTemplate) => r.organizationId === organizationId);
-      return orgSpecific || items[0];
+      return items[0];
     } catch (error: any) {
       if (error instanceof NotFoundError) {
         throw error;
@@ -305,7 +294,6 @@ export class PromptService {
     filters?: {
       category?: string;
       status?: PromptStatus;
-      organizationId?: string;
       limit?: number;
       continuationToken?: string;
     }
@@ -326,15 +314,6 @@ export class PromptService {
     if (filters?.status) {
       query += ' AND c.status = @status';
       parameters.push({ name: '@status', value: filters.status });
-    }
-
-    if (filters?.organizationId !== undefined) {
-      if (filters.organizationId) {
-        query += ' AND c.organizationId = @organizationId';
-        parameters.push({ name: '@organizationId', value: filters.organizationId });
-      } else {
-        query += ' AND (c.organizationId = null OR c.organizationId = undefined)';
-      }
     }
 
     query += ' ORDER BY c.slug ASC';
@@ -362,7 +341,7 @@ export class PromptService {
    * Render prompt with variables
    */
   async render(input: RenderPromptInput): Promise<string> {
-    const prompt = await this.getBySlug(input.tenantId, input.slug, input.organizationId);
+    const prompt = await this.getBySlug(input.tenantId, input.slug);
 
     // Get specific version if requested
     let content = prompt.content;

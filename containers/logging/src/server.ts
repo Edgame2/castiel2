@@ -7,7 +7,6 @@ import './instrumentation';
 
 import { randomUUID } from 'crypto';
 import Fastify, { FastifyInstance } from 'fastify';
-import { PrismaClient } from '.prisma/logging-client';
 import { setupJWT, initializeDatabase, connectDatabase } from '@coder/shared';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
@@ -23,21 +22,17 @@ import { ConfigurationService } from './services/ConfigurationService';
 import { createSIEMProvider } from './services/providers/siem/SIEMProviderFactory';
 import { RetentionService } from './services/RetentionService';
 import { AuditEventConsumer, DataLakeCollector, MLAuditConsumer } from './events';
-import { RetentionJob, ArchiveJob, AlertJob, PartitionJob } from './jobs';
+import { AlertJob } from './jobs';
 import { createArchiveProvider } from './services/providers/archive';
 import { log } from './utils/logger';
 
 // Global instances
 let app: FastifyInstance | null = null;
-let prisma: PrismaClient | null = null;
 let ingestionService: IngestionService | null = null;
 let eventConsumer: AuditEventConsumer | null = null;
 let dataLakeCollector: DataLakeCollector | null = null;
 let mlAuditConsumer: MLAuditConsumer | null = null;
-let retentionJob: RetentionJob | null = null;
-let archiveJob: ArchiveJob | null = null;
 let alertJob: AlertJob | null = null;
-let partitionJob: PartitionJob | null = null;
 
 /**
  * Build the Fastify application
@@ -68,7 +63,7 @@ export async function buildApp(): Promise<FastifyInstance> {
           \`\`\`
           
           ## Features
-          - **Multi-tenant**: Organization-isolated logs with Super Admin cross-org access
+          - **Multi-tenant**: Tenant-isolated logs with Super Admin cross-tenant access
           - **Tamper Evidence**: Hash chain verification for audit integrity
           - **Retention Policies**: Configurable per log type, category, and severity
           - **Export**: CSV/JSON export for auditors
@@ -89,7 +84,7 @@ export async function buildApp(): Promise<FastifyInstance> {
         { name: 'Search', description: 'Log search and filtering' },
         { name: 'Export', description: 'Log export functionality' },
         { name: 'Policies', description: 'Retention policy management' },
-        { name: 'Configuration', description: 'Organization configuration' },
+        { name: 'Configuration', description: 'Tenant audit configuration' },
         { name: 'Alerts', description: 'Alert rule management' },
         { name: 'Verification', description: 'Hash chain verification' },
         { name: 'Health', description: 'Health check endpoints' },
@@ -116,43 +111,32 @@ export async function buildApp(): Promise<FastifyInstance> {
     transformStaticCSP: (header) => header,
   });
   
-  const useCosmos = config.storage?.provider === 'cosmos' && config.cosmos_db?.endpoint && config.cosmos_db?.key && config.cosmos_db?.containers;
-
-  if (useCosmos) {
-    initializeDatabase({
-      endpoint: config.cosmos_db!.endpoint,
-      key: config.cosmos_db!.key,
-      database: config.cosmos_db!.database_id,
-      containers: config.cosmos_db!.containers,
-    });
-    await connectDatabase();
-    log.info('Cosmos DB initialized (storage provider)');
-    prisma = null;
-  } else {
-    prisma = new PrismaClient({
-      datasources: {
-        db: {
-          url: config.database?.url || 'postgresql://localhost:5432/logging',
-        },
-      },
-    });
+  // Logging module requires Cosmos DB only (no Postgres)
+  if (config.storage?.provider !== 'cosmos' || !config.cosmos_db?.endpoint || !config.cosmos_db?.key || !config.cosmos_db?.containers) {
+    throw new Error('Logging module requires Cosmos DB: set storage.provider to "cosmos" and configure cosmos_db (endpoint, key, containers).');
+  }
+  const containers = config.cosmos_db.containers;
+  if (!containers.audit_logs) {
+    throw new Error('cosmos_db.containers.audit_logs is required.');
   }
 
-  const auditLogsContainer = useCosmos ? config.cosmos_db!.containers!.audit_logs : undefined;
+  initializeDatabase({
+    endpoint: config.cosmos_db.endpoint,
+    key: config.cosmos_db.key,
+    database: config.cosmos_db.database_id,
+    containers: config.cosmos_db.containers,
+  });
+  await connectDatabase();
+  log.info('Cosmos DB initialized');
+
   const storageProvider = createStorageProvider(
-    { provider: config.storage.provider, postgres: config.storage.postgres },
-    prisma,
-    auditLogsContainer
+    { provider: config.storage.provider },
+    containers.audit_logs
   );
 
-  let configService: ConfigurationService;
-  if (useCosmos && config.cosmos_db!.containers!.audit_configurations) {
-    const { CosmosConfigurationRepository } = await import('./data/cosmos/configuration');
-    const cosmosConfigRepo = new CosmosConfigurationRepository(config.cosmos_db!.containers!.audit_configurations);
-    configService = new ConfigurationService(null, cosmosConfigRepo);
-  } else {
-    configService = new ConfigurationService(prisma!);
-  }
+  const { CosmosConfigurationRepository } = await import('./data/cosmos/configuration');
+  const cosmosConfigRepo = new CosmosConfigurationRepository(containers.audit_configurations);
+  const configService = new ConfigurationService(cosmosConfigRepo);
   const getOrganizationConfig = async (orgId: string) => {
     return configService.getOrganizationConfig(orgId);
   };
@@ -181,24 +165,30 @@ export async function buildApp(): Promise<FastifyInstance> {
   const { ExportService } = await import('./services/ExportService');
   const { AlertService } = await import('./services/AlertService');
 
-  const retentionService = new RetentionService(prisma);
-  const hashChainService = new HashChainService(prisma, storageProvider);
+  const { CosmosRetentionPoliciesRepository } = await import('./data/cosmos/retention-policies');
+  const cosmosRetentionRepo = new CosmosRetentionPoliciesRepository(containers.audit_retention_policies);
+  const retentionService = new RetentionService(cosmosRetentionRepo);
+
+  const { CosmosHashCheckpointsRepository } = await import('./data/cosmos/hash-checkpoints');
+  const cosmosCheckpointsRepo = new CosmosHashCheckpointsRepository(containers.audit_hash_checkpoints);
+  const hashChainService = new HashChainService(storageProvider, cosmosCheckpointsRepo);
   const queryService = new QueryService(storageProvider);
-  const exportService = new ExportService(prisma, storageProvider);
+  const { CosmosExportsRepository } = await import('./data/cosmos/exports');
+  const cosmosExportsRepo = new CosmosExportsRepository(containers.audit_exports);
+  const exportService = new ExportService(storageProvider, cosmosExportsRepo);
 
   let alertService: InstanceType<typeof AlertService>;
   let cosmosAlertRulesRepository: import('./data/cosmos/alert-rules').CosmosAlertRulesRepository | undefined;
-  if (useCosmos && config.cosmos_db!.containers!.audit_alert_rules) {
+  if (containers.audit_alert_rules) {
     const { CosmosAlertRulesRepository } = await import('./data/cosmos/alert-rules');
-    cosmosAlertRulesRepository = new CosmosAlertRulesRepository(config.cosmos_db!.containers!.audit_alert_rules);
-    alertService = new AlertService(null, storageProvider, cosmosAlertRulesRepository);
+    cosmosAlertRulesRepository = new CosmosAlertRulesRepository(containers.audit_alert_rules);
+    alertService = new AlertService(storageProvider, cosmosAlertRulesRepository);
   } else {
-    alertService = new AlertService(prisma, storageProvider);
+    throw new Error('cosmos_db.containers.audit_alert_rules is required.');
   }
 
   (fastify as any).storageProvider = storageProvider;
   (fastify as any).ingestionService = ingestionService;
-  (fastify as any).prisma = prisma;
   (fastify as any).configService = configService;
   (fastify as any).hashChainService = hashChainService;
   (fastify as any).queryService = queryService;
@@ -290,14 +280,6 @@ export async function start(): Promise<void> {
     await setupJWT(app as any, { secret: process.env.JWT_SECRET || '' });
     log.info('JWT authentication configured');
     
-    // Connect to database (skip when storage is Cosmos - Postgres not used)
-    if (config.storage?.provider !== 'cosmos' && prisma) {
-      await prisma.$connect();
-      log.info('Connected to database');
-    } else if (config.storage?.provider === 'cosmos') {
-      log.info('Skipping Postgres connect (storage is Cosmos)');
-    }
-    
     // Start event consumer (if RabbitMQ is configured)
     if (config.rabbitmq.url && ingestionService) {
       try {
@@ -367,46 +349,15 @@ export async function start(): Promise<void> {
     // Start background jobs (after server is ready)
     const storageProvider = (app as any).storageProvider;
     
-    // Retention job
-    if (config.jobs.retention.enabled && prisma) {
-      retentionJob = new RetentionJob(prisma, storageProvider);
-      retentionJob.start(config.jobs.retention.schedule);
-      log.info('Retention job started', { schedule: config.jobs.retention.schedule });
-    }
+    // Retention job and Archive job require Prisma; not started in Cosmos-only mode.
+    // Partition job is Postgres-specific; not started.
 
-    // Archive job (with optional archive provider)
-    if (config.jobs.archive.enabled && prisma) {
-      archiveJob = new ArchiveJob(prisma, storageProvider);
-      
-      // Configure archive provider if settings exist
-      if (config.archive?.enabled && config.archive?.provider) {
-        try {
-          const { createArchiveProvider } = await import('./services/providers/archive/ArchiveProviderFactory');
-          const archiveProvider = createArchiveProvider(config.archive);
-          archiveJob.setArchiveProvider(archiveProvider);
-        } catch (error) {
-          log.warn('Failed to configure archive provider', { error });
-        }
-      }
-      
-      archiveJob.start(config.jobs.archive.schedule);
-      log.info('Archive job started', { schedule: config.jobs.archive.schedule });
-    }
-
-    // Alert job (runs with Cosmos or Prisma)
-    if (config.jobs.alerts.enabled && (prisma || (app as any).cosmosAlertRulesRepository)) {
+    // Alert job (Cosmos)
+    if (config.jobs.alerts.enabled && (app as any).cosmosAlertRulesRepository) {
       const cosmosRepo = (app as any).cosmosAlertRulesRepository;
-      alertJob = new AlertJob(prisma ?? null, storageProvider, cosmosRepo);
+      alertJob = new AlertJob(storageProvider, cosmosRepo);
       alertJob.start(config.jobs.alerts.schedule);
       log.info('Alert job started', { schedule: config.jobs.alerts.schedule });
-    }
-
-    // Partition job
-    if (config.jobs.partition.enabled && prisma) {
-      const partitionBy = config.storage.postgres?.partition_by || 'month';
-      partitionJob = new PartitionJob(prisma, partitionBy, 12);
-      partitionJob.start(config.jobs.partition.schedule);
-      log.info('Partition job started', { schedule: config.jobs.partition.schedule });
     }
   } catch (error) {
     log.error('Failed to start server', error);
@@ -420,18 +371,8 @@ export async function start(): Promise<void> {
 export async function shutdown(): Promise<void> {
   log.info('Shutting down...');
   
-  // Stop background jobs
-  if (retentionJob) {
-    retentionJob.stop();
-  }
-  if (archiveJob) {
-    archiveJob.stop();
-  }
   if (alertJob) {
     alertJob.stop();
-  }
-  if (partitionJob) {
-    partitionJob.stop();
   }
 
   // Stop event consumers
@@ -454,12 +395,7 @@ export async function shutdown(): Promise<void> {
   if (app) {
     await app.close();
   }
-  
-  // Disconnect database
-  if (prisma) {
-    await prisma.$disconnect();
-  }
-  
+
   log.info('Shutdown complete');
 }
 

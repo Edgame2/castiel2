@@ -36,7 +36,7 @@
 | API key issuance or validation | **Implemented** |
 | Service / machine-to-machine auth | **Implemented** (user-scoped API keys) |
 
-**Detail:** When `features.api_keys` is enabled (env `FEATURE_API_KEYS`, default false): POST `/api/v1/auth/api-keys` (JWT only, body `{ name, expiresInDays? }`) creates a key; response includes `key` (format `ak_<id>_<secret>`) once. GET `/api/v1/auth/api-keys` lists keys for the current user (id, name, createdAt, expiresAt; no secrets). DELETE `/api/v1/auth/api-keys/:id` revokes a key (own keys only). Keys are validated via `Authorization: Bearer ak_...` or `X-API-Key`; auth middleware sets `request.user.id` and `request.organizationId` (tenantId). Storage: Cosmos container `auth_api_keys` (partition key `/id`).
+**Detail:** When `features.api_keys` is enabled (env `FEATURE_API_KEYS`, default false): POST `/api/v1/auth/api-keys` (JWT only, body `{ name, expiresInDays? }`) creates a key; response includes `key` (format `ak_<id>_<secret>`) once. GET `/api/v1/auth/api-keys` lists keys for the current user (id, name, createdAt, expiresAt; no secrets). DELETE `/api/v1/auth/api-keys/:id` revokes a key (own keys only). Keys are validated via `Authorization: Bearer ak_...` or `X-API-Key`; auth middleware sets `request.user.id` and `request.tenantId`. Storage: Cosmos container `auth_api_keys` (partition key `/id`).
 
 ### 1.3 Rate Limiting
 

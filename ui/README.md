@@ -50,12 +50,14 @@ npm start
 ### Environment Variables
 
 - `PORT`: Server port (default: 3000)
-- `NEXT_PUBLIC_API_BASE_URL`: API Gateway URL (required; e.g. http://localhost:3001). All API calls go directly from the browser to this URL.
+- `NEXT_PUBLIC_API_BASE_URL`: API Gateway URL (required; e.g. http://localhost:3001). All API calls go directly from the browser to this URL. For a minimal setup, create a `.env` file with `NEXT_PUBLIC_API_BASE_URL=<gateway URL>`.
 - `NODE_ENV`: Environment (development/production)
 
 ### API Communication
 
 All API calls go directly from the browser to the gateway. Set `NEXT_PUBLIC_API_BASE_URL` to the gateway URL. The gateway must allow CORS from the UI origin.
+
+**Auth and user-management:** Authentication (register, login, forgot/reset password, verify email) and user-management (profile, sessions, org members/roles/api-keys) require `NEXT_PUBLIC_API_BASE_URL` to point at the API Gateway. In production, use the **public** gateway URL (e.g. the same host as the UI or your gateway host). Using `http://localhost:3001` when the UI is served from another host sends API requests to the client machine, not the server. To run against a different gateway (e.g. staging), change only this variable and rebuild.
 
 ## Project Structure
 

@@ -1,5 +1,5 @@
 /**
- * Login page — shadcn form; calls POST /api/auth/login via gateway.
+ * Login page — shadcn form; calls POST /api/v1/auth/login via gateway.
  * On success, cookies are set by auth service and user is redirected to /dashboard.
  */
 
@@ -53,7 +53,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await apiFetch("/api/auth/login", {
+      const res = await apiFetch("/api/v1/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -98,7 +98,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await apiFetch("/api/auth/login/complete-mfa", {
+      const res = await apiFetch("/api/v1/auth/login/complete-mfa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mfaSessionId, code }),

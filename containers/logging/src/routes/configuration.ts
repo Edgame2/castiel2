@@ -56,16 +56,15 @@ export async function registerConfigurationRoutes(app: FastifyInstance): Promise
     throw new Error('ConfigurationService not available');
   }
 
-  // Get organization configuration
   app.get('/configuration', {
     schema: {
-      description: 'Get organization configuration',
+      description: 'Get tenant configuration',
       tags: ['Configuration'],
       summary: 'Get config',
       security: [{ bearerAuth: [] }],
       response: {
         200: {
-          description: 'Organization configuration',
+          description: 'Tenant audit configuration',
           type: 'object',
         },
       },
@@ -73,7 +72,7 @@ export async function registerConfigurationRoutes(app: FastifyInstance): Promise
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
 
       const config = await configService.getOrganizationConfig(tenantId);
 
@@ -84,10 +83,9 @@ export async function registerConfigurationRoutes(app: FastifyInstance): Promise
     }
   });
 
-  // Update organization configuration
   app.put('/configuration', {
     schema: {
-      description: 'Update organization configuration',
+      description: 'Update tenant configuration',
       tags: ['Configuration'],
       summary: 'Update config',
       security: [{ bearerAuth: [] }],
@@ -113,7 +111,7 @@ export async function registerConfigurationRoutes(app: FastifyInstance): Promise
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
       const body = updateConfigSchema.parse(request.body);
 
       const config = await configService.upsertOrganizationConfig(
@@ -128,10 +126,9 @@ export async function registerConfigurationRoutes(app: FastifyInstance): Promise
     }
   });
 
-  // Delete organization configuration (revert to defaults)
   app.delete('/configuration', {
     schema: {
-      description: 'Delete organization configuration (revert to defaults)',
+      description: 'Delete tenant configuration (revert to defaults)',
       tags: ['Configuration'],
       summary: 'Delete config',
       security: [{ bearerAuth: [] }],
@@ -144,7 +141,7 @@ export async function registerConfigurationRoutes(app: FastifyInstance): Promise
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const tenantId = user.tenantId ?? user.organizationId;
+      const tenantId = user.tenantId;
 
       await configService.deleteOrganizationConfig(tenantId);
 

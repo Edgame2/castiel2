@@ -4,7 +4,6 @@
  */
 
 export * from './IStorageProvider';
-export * from './PostgresProvider';
 export * from './ProviderFactory';
 
 

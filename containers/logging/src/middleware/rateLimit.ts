@@ -32,7 +32,7 @@ export async function rateLimitMiddleware(
     return; // Rate limiting disabled
   }
 
-  // Get identifier (user ID, IP address, or organization ID)
+  // Get identifier (user ID, IP address, or tenant ID)
   const user = (request as any).user;
   const identifier = user?.id || request.ip || 'anonymous';
   const key = `${request.method}:${request.url}:${identifier}`;

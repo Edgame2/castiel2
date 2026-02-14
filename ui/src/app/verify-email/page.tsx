@@ -1,5 +1,5 @@
 /**
- * Verify email — token from query (?token=...). Calls GET /api/auth/verify-email?token= via gateway.
+ * Verify email — token from query (?token=...). Calls GET /api/v1/auth/verify-email?token= via gateway.
  * On success or error, shows message and link to login.
  */
 
@@ -26,7 +26,7 @@ function VerifyEmailContent() {
     let cancelled = false;
     setStatus('loading');
     setMessage(null);
-    apiFetch(`/api/auth/verify-email?token=${encodeURIComponent(tokenFromUrl)}`, { skip401Redirect: true })
+    apiFetch(`/api/v1/auth/verify-email?token=${encodeURIComponent(tokenFromUrl)}`, { skip401Redirect: true })
       .then(async (res) => {
         if (cancelled) return;
         const data = await res.json().catch(() => ({}));

@@ -49,31 +49,31 @@ describe('DashboardService', () => {
 
   describe('createDashboard', () => {
     it('creates dashboard and returns result', async () => {
-      const created = { id: 'd1', name: 'My Dashboard', config: {}, organizationId: 'o1' };
+      const created = { id: 'd1', name: 'My Dashboard', config: {}, tenantId: 't1' };
       mockCreate.mockResolvedValue(created);
       const result = await service.createDashboard({
         name: 'My Dashboard',
         config: {},
-        organizationId: 'o1',
+        tenantId: 't1',
       });
       expect(result).toEqual(created);
       expect(mockCreate).toHaveBeenCalledWith({
         data: {
           name: 'My Dashboard',
           config: {},
-          organizationId: 'o1',
+          tenantId: 't1',
         },
       });
     });
   });
 
   describe('listDashboards', () => {
-    it('returns dashboards with optional organizationId filter', async () => {
-      const dashboards = [{ id: 'd1', name: 'D1', organizationId: 'o1' }];
+    it('returns dashboards with optional tenantId filter', async () => {
+      const dashboards = [{ id: 'd1', name: 'D1', tenantId: 't1' }];
       mockFindMany.mockResolvedValue(dashboards);
-      const result = await service.listDashboards({ organizationId: 'o1' });
+      const result = await service.listDashboards({ tenantId: 't1' });
       expect(result).toEqual(dashboards);
-      expect(mockFindMany).toHaveBeenCalledWith({ where: { organizationId: 'o1' } });
+      expect(mockFindMany).toHaveBeenCalledWith({ where: { tenantId: 't1' } });
     });
 
     it('returns all dashboards when no filter', async () => {

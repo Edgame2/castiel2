@@ -13,14 +13,14 @@ vi.mock('@coder/shared', () => ({
 describe('TeamService', () => {
   let mockDb: {
     team: { findUnique: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
-    organizationMembership: { findFirst: ReturnType<typeof vi.fn> };
+    membership: { findFirst: ReturnType<typeof vi.fn> };
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = {
       team: { findUnique: vi.fn(), create: vi.fn() },
-      organizationMembership: { findFirst: vi.fn() },
+      membership: { findFirst: vi.fn() },
     };
     (getDatabaseClient as ReturnType<typeof vi.fn>).mockReturnValue(mockDb);
   });
@@ -31,7 +31,7 @@ describe('TeamService', () => {
       mockDb.team.findUnique.mockResolvedValue({
         id: teamId,
         name: 'Team One',
-        organizationId: 'org-1',
+        tenantId: 'tenant-1',
         createdAt: new Date('2025-01-01'),
         members: [{ userId: 'user-1' }],
       });
@@ -55,16 +55,16 @@ describe('TeamService', () => {
   });
 
   describe('createTeam', () => {
-    it('creates team when user is org member', async () => {
-      mockDb.organizationMembership.findFirst.mockResolvedValue({ id: 'mem-1' });
+    it('creates team when user is tenant member', async () => {
+      mockDb.membership.findFirst.mockResolvedValue({ id: 'mem-1' });
       mockDb.team.create.mockResolvedValue({
         id: 'team-new',
         name: 'New Team',
-        organizationId: 'org-1',
+        tenantId: 'tenant-1',
         createdAt: new Date(),
       });
 
-      const result = await createTeam('org-1', 'user-1', 'New Team');
+      const result = await createTeam('tenant-1', 'user-1', 'New Team');
 
       expect(mockDb.team.create).toHaveBeenCalled();
       expect(result).toBeDefined();

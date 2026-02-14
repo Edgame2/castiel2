@@ -1,7 +1,7 @@
 /**
  * Cosmos DB Storage Provider
  * Implements IStorageProvider using Azure Cosmos DB (shared database, /tenantId partition).
- * Uses organizationId as tenantId for audit logs.
+ * Partition key is tenantId for audit logs.
  */
 
 import { getContainer } from '@coder/shared/database';
@@ -33,16 +33,15 @@ export class CosmosProvider implements IStorageProvider {
     return getContainer(this.containerName);
   }
 
-  /** Cosmos partition key: tenantId (we use organizationId as tenantId for audit logs). */
-  private partitionKey(organizationId: string): string {
-    return organizationId;
+  /** Cosmos partition key: tenantId */
+  private partitionKey(tenantId: string): string {
+    return tenantId;
   }
 
   private toDoc(log: AuditLog): Record<string, unknown> {
     return {
       id: log.id,
-      tenantId: log.organizationId,
-      organizationId: log.organizationId,
+      tenantId: log.tenantId,
       timestamp: log.timestamp.toISOString(),
       receivedAt: log.receivedAt.toISOString(),
       userId: log.userId,
@@ -68,7 +67,7 @@ export class CosmosProvider implements IStorageProvider {
   private mapToAuditLog(doc: Record<string, unknown>): AuditLog {
     return {
       id: doc.id as string,
-      organizationId: (doc.organizationId ?? doc.tenantId) as string,
+      tenantId: (doc.tenantId ?? doc.organizationId) as string,
       timestamp: new Date(doc.timestamp as string),
       receivedAt: new Date(doc.receivedAt as string),
       userId: (doc.userId as string) ?? null,
@@ -95,7 +94,7 @@ export class CosmosProvider implements IStorageProvider {
     const container = this.getContainer();
     const doc = this.toDoc(auditLog);
     await container.items.create(doc, {
-      partitionKey: this.partitionKey(auditLog.organizationId),
+      partitionKey: this.partitionKey(auditLog.tenantId),
     } as Record<string, unknown>);
     return auditLog;
   }
@@ -105,17 +104,17 @@ export class CosmosProvider implements IStorageProvider {
     for (const auditLog of logs) {
       const doc = this.toDoc(auditLog);
       await container.items.create(doc, {
-        partitionKey: this.partitionKey(auditLog.organizationId),
+        partitionKey: this.partitionKey(auditLog.tenantId),
       } as Record<string, unknown>);
     }
     return logs;
   }
 
-  async getById(id: string, organizationId?: string): Promise<AuditLog | null> {
+  async getById(id: string, tenantId?: string): Promise<AuditLog | null> {
     const container = this.getContainer();
-    if (organizationId) {
+    if (tenantId) {
       try {
-        const { resource } = await container.item(id, this.partitionKey(organizationId)).read();
+        const { resource } = await container.item(id, this.partitionKey(tenantId)).read();
         return resource ? this.mapToAuditLog(resource as Record<string, unknown>) : null;
       } catch (err: unknown) {
         if ((err as { code?: number })?.code === 404) return null;
@@ -131,9 +130,9 @@ export class CosmosProvider implements IStorageProvider {
   async search(params: LogSearchParams): Promise<LogSearchResult> {
     const conditions: string[] = ['1=1'];
     const parameters: { name: string; value: unknown }[] = [];
-    if (params.organizationId) {
-      conditions.push('c.tenantId = @orgId');
-      parameters.push({ name: '@orgId', value: params.organizationId });
+    if (params.tenantId) {
+      conditions.push('c.tenantId = @tenantId');
+      parameters.push({ name: '@tenantId', value: params.tenantId });
     }
     if (params.userId) {
       conditions.push('c.userId = @userId');
@@ -212,9 +211,9 @@ export class CosmosProvider implements IStorageProvider {
   async aggregate(params: LogAggregationParams): Promise<LogAggregation> {
     const conditions: string[] = ['1=1'];
     const parameters: { name: string; value: unknown }[] = [];
-    if (params.organizationId) {
-      conditions.push('c.tenantId = @orgId');
-      parameters.push({ name: '@orgId', value: params.organizationId });
+    if (params.tenantId) {
+      conditions.push('c.tenantId = @tenantId');
+      parameters.push({ name: '@tenantId', value: params.tenantId });
     }
     if (params.startDate) {
       conditions.push('c.timestamp >= @startDate');
@@ -239,13 +238,13 @@ export class CosmosProvider implements IStorageProvider {
     return { field, buckets };
   }
 
-  async getLastLog(organizationId?: string): Promise<AuditLog | null> {
+  async getLastLog(tenantId?: string): Promise<AuditLog | null> {
     const container = this.getContainer();
     const conditions: string[] = ['1=1'];
     const parameters: { name: string; value: unknown }[] = [];
-    if (organizationId) {
-      conditions.push('c.tenantId = @orgId');
-      parameters.push({ name: '@orgId', value: organizationId });
+    if (tenantId) {
+      conditions.push('c.tenantId = @tenantId');
+      parameters.push({ name: '@tenantId', value: tenantId });
     }
     const where = conditions.join(' AND ');
     const { resources } = await container.items
@@ -288,9 +287,9 @@ export class CosmosProvider implements IStorageProvider {
   async count(params: Partial<LogSearchParams>): Promise<number> {
     const conditions: string[] = ['1=1'];
     const parameters: { name: string; value: unknown }[] = [];
-    if (params.organizationId) {
-      conditions.push('c.tenantId = @orgId');
-      parameters.push({ name: '@orgId', value: params.organizationId });
+    if (params.tenantId) {
+      conditions.push('c.tenantId = @tenantId');
+      parameters.push({ name: '@tenantId', value: params.tenantId });
     }
     if (params.startDate) {
       conditions.push('c.timestamp >= @startDate');
@@ -307,13 +306,13 @@ export class CosmosProvider implements IStorageProvider {
     return Number(resources?.[0] ?? 0);
   }
 
-  async deleteOlderThan(date: Date, organizationId?: string): Promise<number> {
+  async deleteOlderThan(date: Date, tenantId?: string): Promise<number> {
     const container = this.getContainer();
     const conditions: string[] = ['c.timestamp < @date'];
     const parameters: { name: string; value: unknown }[] = [{ name: '@date', value: date.toISOString() }];
-    if (organizationId) {
-      conditions.push('c.tenantId = @orgId');
-      parameters.push({ name: '@orgId', value: organizationId });
+    if (tenantId) {
+      conditions.push('c.tenantId = @tenantId');
+      parameters.push({ name: '@tenantId', value: tenantId });
     }
     const where = conditions.join(' AND ');
     const { resources } = await container.items
@@ -347,9 +346,9 @@ export class CosmosProvider implements IStorageProvider {
   ): Promise<{ buckets: { timestamp: string; count: number }[] }> {
     const conditions: string[] = ['1=1'];
     const parameters: { name: string; value: unknown }[] = [];
-    if (params.organizationId) {
-      conditions.push('c.tenantId = @orgId');
-      parameters.push({ name: '@orgId', value: params.organizationId });
+    if (params.tenantId) {
+      conditions.push('c.tenantId = @tenantId');
+      parameters.push({ name: '@tenantId', value: params.tenantId });
     }
     if (params.startDate) {
       conditions.push('c.timestamp >= @startDate');
@@ -397,14 +396,14 @@ export class CosmosProvider implements IStorageProvider {
 
   async getDistinctValues(
     field: 'action' | 'source' | 'resourceType',
-    organizationId?: string,
+    tenantId?: string,
     limit = 100
   ): Promise<string[]> {
     const conditions: string[] = ['c.' + field + ' != null'];
     const parameters: { name: string; value: unknown }[] = [];
-    if (organizationId) {
-      conditions.push('c.tenantId = @orgId');
-      parameters.push({ name: '@orgId', value: organizationId });
+    if (tenantId) {
+      conditions.push('c.tenantId = @tenantId');
+      parameters.push({ name: '@tenantId', value: tenantId });
     }
     const where = conditions.join(' AND ');
     const { resources } = await this.getContainer().items

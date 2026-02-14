@@ -1,6 +1,6 @@
 /**
  * Admin: Data collection config (view-only + search). Plan §2.9.
- * GET /api/logging/api/v1/config/data-collection (gateway → logging). No edit in UI; config is YAML/env.
+ * GET /api/v1/config/data-collection (gateway → logging). No edit in UI; config is YAML/env.
  */
 
 'use client';
@@ -33,7 +33,7 @@ export default function SystemLoggingConfigPage() {
     }
     setLoading(true);
     setError(null);
-    const path = `/api/logging/api/v1/config/data-collection${search ? `?search=${encodeURIComponent(search)}` : ''}`;
+    const path = `/api/v1/config/data-collection${search ? `?search=${encodeURIComponent(search)}` : ''}`;
     apiFetch(path)
       .then((r: Response) => {
         if (!r.ok) throw new Error(r.statusText || 'Failed to load config');

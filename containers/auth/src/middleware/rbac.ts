@@ -11,7 +11,7 @@ import { log } from '../utils/logger';
 
 export interface PermissionCheck {
   permission: string;
-  resourceType?: 'project' | 'team' | 'user' | 'organization';
+  resourceType?: 'project' | 'team' | 'user' | 'organization' | 'tenant';
   resourceId?: string;
 }
 
@@ -40,33 +40,33 @@ export async function checkPermission(
     return false;
   }
 
-  // Extract organization ID from request
   const params = request.params as any;
-  const orgId = params?.orgId || params?.organizationId;
-  const organizationId = orgId || (check.resourceType === 'organization' ? check.resourceId : undefined) || (request as any).organizationId;
+  const orgId = params?.orgId || params?.organizationId || params?.tenantId;
+  const tenantId =
+    orgId ||
+    (check.resourceType === 'organization' || check.resourceType === 'tenant' ? check.resourceId : undefined) ||
+    (request as any).tenantId;
 
-  if (!organizationId) {
-    reply.code(400).send({ error: 'Organization context required' });
+  if (!tenantId) {
+    reply.code(400).send({ error: 'Tenant context required' });
     return false;
   }
 
-  // Determine resource ID for scope checking
   const resourceId = check.resourceId || params?.id || params?.projectId || params?.teamId || params?.userId;
 
   try {
     const db = getDatabaseClient() as any;
-    
-    // Check if user is Super Admin (bypass all permissions)
-    const membership = await db.organizationMembership.findFirst({
+    const membership = await db.membership.findFirst({
       where: {
         userId,
-        organizationId,
+        tenantId,
         status: 'active',
       },
       include: { role: true },
     });
 
-    if (membership?.role.isSuperAdmin) {
+    const m = membership as { roleId?: string; role?: { isSuperAdmin?: boolean } } | null;
+    if (m?.role?.isSuperAdmin) {
       return true;
     }
 
@@ -75,10 +75,10 @@ export async function checkPermission(
       return false;
     }
 
-    // Get role permissions
+    const roleId = (membership as { roleId?: string }).roleId;
     const rolePermissions = await db.rolePermission.findMany({
       where: {
-        roleId: membership.roleId,
+        roleId,
       },
       include: {
         permission: true,
@@ -124,10 +124,9 @@ export async function checkPermission(
       }
     }
 
-    // Permission denied - log for audit
     log.warn('Permission denied', {
       userId,
-      organizationId,
+      tenantId,
       permission: check.permission,
       resourceId: check.resourceId,
       service: 'auth',
@@ -138,7 +137,7 @@ export async function checkPermission(
   } catch (error: any) {
     log.error('Error checking permission', error, {
       userId,
-      organizationId,
+      tenantId,
       permission: check.permission,
       service: 'auth',
     });
@@ -155,13 +154,18 @@ export async function checkPermission(
  * @returns Fastify preHandler middleware function
  * 
  * @example
+ * // Tenant-scoped (preferred)
+ * fastify.get('/api/v1/auth/tenants/:tenantId/sso/config', {
+ *   preHandler: [authenticateRequest, requirePermission('tenants.sso.manage', 'tenant')]
+ * }, handler);
+ * // Organization-scoped (deprecated)
  * fastify.get('/api/v1/auth/organizations/:orgId/sso/config', {
  *   preHandler: [authenticateRequest, requirePermission('organizations.sso.manage', 'organization')]
  * }, handler);
  */
 export function requirePermission(
   permission: string,
-  resourceType?: 'project' | 'team' | 'user' | 'organization'
+  resourceType?: 'project' | 'team' | 'user' | 'organization' | 'tenant'
 ) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     const params = request.params as any;
@@ -176,7 +180,9 @@ export function requirePermission(
     } else if (resourceType === 'user') {
       resourceId = params?.id || params?.userId;
     } else if (resourceType === 'organization') {
-      resourceId = params?.id || params?.orgId || params?.organizationId;
+      resourceId = params?.id || params?.orgId || params?.organizationId || params?.tenantId;
+    } else if (resourceType === 'tenant') {
+      resourceId = params?.tenantId || params?.orgId || params?.organizationId;
     } else {
       // Try to infer from params
       resourceId = params?.id || params?.projectId || params?.teamId || params?.userId;

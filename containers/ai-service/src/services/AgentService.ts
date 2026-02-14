@@ -6,7 +6,6 @@ const AGENTS_CONTAINER = 'ai_agents';
 export interface ListAgentsInput {
   tenantId: string;
   userId: string;
-  organizationId?: string;
   projectId?: string;
   scope?: string;
   limit?: number;
@@ -16,7 +15,7 @@ export interface ListAgentsInput {
 export interface ExecuteAgentInput {
   agentId: string;
   userId: string;
-  organizationId?: string;
+  tenantId?: string;
   input?: unknown;
   context?: unknown;
 }

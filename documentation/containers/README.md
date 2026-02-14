@@ -82,7 +82,7 @@ Single source of truth for all runtime containers: purpose, integration, and lin
 | Container | Purpose | Key dependencies | Storage | Events | Doc |
 |-----------|---------|------------------|---------|--------|-----|
 | **auth** | User authentication: email/password, Google/GitHub OAuth, SAML/SSO, JWT issue/refresh, sessions, MFA, password reset. | user-management, notification-manager, secret-management | Cosmos DB (auth_*) | Publishes to RabbitMQ; notification-manager consumes (e.g. password reset, verification) | [auth.md](./auth.md) |
-| **user-management** | User profiles, organizations, teams, RBAC, invitations, memberships, user analytics. | auth, logging, notification-manager, secret-management | Cosmos DB (user_*) | Publishes lifecycle events | [user-management.md](./user-management.md) |
+| **user-management** | User profiles, tenants, teams, RBAC, invitations, memberships, user analytics. | auth, logging, notification-manager, secret-management | Cosmos DB (user_*) | Publishes lifecycle events | [user-management.md](./user-management.md) |
 
 ### 3.3 Core Platform Services
 
@@ -103,7 +103,7 @@ Single source of truth for all runtime containers: purpose, integration, and lin
 | **ml-service** | ML model management, feature store, training jobs, predictions: win probability, risk scoring, LSTM risk trajectory, anomaly, revenue forecasting, recommendations. Azure ML Managed Endpoints when configured. | shard-manager, risk-analytics, ai-service | Cosmos DB (ml_*) | Publishes ml.prediction.completed; logging consumes | [ml-service.md](./ml-service.md) |
 | **forecasting** | Forecast decomposition, consensus, commitment, pipeline health. Risk-adjusted and ML forecasts (calls risk-analytics and ml-service). | risk-analytics, ml-service, pipeline-manager | Cosmos DB (forecast_*) | Publishes forecast.completed; recommendations consumes | [forecasting.md](./forecasting.md) |
 | **recommendations** | Mitigation ranking, remediation workflows, next-best-action. | risk-analytics, ml-service, shard-manager, adaptive-learning | Cosmos DB (recommendations_data) | Consumes opportunity.updated, integration.opportunity.updated, risk.evaluation.completed, forecast.completed, shard.updated, workflow.recommendation.requested | [recommendations.md](./recommendations.md) |
-| **dashboard** | Dashboard CRUD, widget management, organization-scoped dashboards; executive/manager/board views, prioritized opportunities, portfolio drill-down. | risk-analytics, forecasting, analytics-service, shard-manager, cache-service | Cosmos DB | — | [dashboard.md](./dashboard.md) |
+| **dashboard** | Dashboard CRUD, widget management, tenant-scoped dashboards; executive/manager/board views, prioritized opportunities, portfolio drill-down. | risk-analytics, forecasting, analytics-service, shard-manager, cache-service | Cosmos DB | — | [dashboard.md](./dashboard.md) |
 | **workflow-orchestrator** | Batch job scheduler (node-cron): publishes workflow.job.trigger to queue bi_batch_jobs. HITL approvals, workflow execution. | risk-analytics (BatchJobWorker consumes) | Cosmos DB (workflow_*, hitl_approvals) | Publishes workflow.job.trigger (risk-snapshot-backfill, outcome-sync, industry-benchmarks, risk-clustering, account-health, propagation, model-monitoring); consumes shard.updated, integration.opportunity.updated | [workflow-orchestrator.md](./workflow-orchestrator.md) |
 
 ### 3.5 Data Foundation (Shards and Pipeline)

@@ -341,8 +341,8 @@ Single reference for all containers: list, description, features, and dependenci
 ---
 
 ### user-management
-- **Description:** Users, organizations, teams, RBAC, invitations, memberships.
-- **Features:** Users, orgs, teams, roles, invitations, memberships; consumes `auth.login.*`, `user.registered`.
+- **Description:** Users, tenants, teams, RBAC, invitations, memberships.
+- **Features:** Users, tenants, teams, roles, invitations, memberships; consumes `auth.login.*`, `user.registered`.
 - **Dependencies:** auth, logging, notification (notification-manager), secret-management.
 
 ---

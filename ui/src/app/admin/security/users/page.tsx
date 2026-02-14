@@ -1,6 +1,6 @@
 /**
  * Super Admin: User management (W11 §10.2)
- * GET /api/v1/organizations/:orgId/member-count, member-limit, members via gateway (user_management).
+ * GET /api/v1/users?tenantId=... via gateway (user_management).
  */
 
 'use client';
@@ -21,16 +21,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
 
-interface MemberCountResponse {
-  data?: { memberCount?: number };
-}
-
-interface MemberLimitResponse {
-  data?: { memberCount?: number; memberLimit?: number; isAtLimit?: boolean };
-}
-
 interface MemberRow {
   userId: string;
+  id?: string;
   email?: string | null;
   name?: string | null;
   roleName: string;
@@ -38,20 +31,18 @@ interface MemberRow {
   joinedAt: string;
 }
 
-interface MembersResponse {
-  data?: MemberRow[];
+interface UsersResponse {
+  data?: { users?: MemberRow[] };
 }
 
 export default function SecurityUsersPage() {
-  const [orgId, setOrgId] = useState('');
-  const [memberCount, setMemberCount] = useState<number | null>(null);
-  const [memberLimit, setMemberLimit] = useState<number | null>(null);
-  const [isAtLimit, setIsAtLimit] = useState<boolean | null>(null);
+  const [tenantId, setTenantId] = useState('');
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'' | 'userId' | 'email' | 'name' | 'roleName' | 'status' | 'joinedAt'>('');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const memberCount = members.length;
 
   const sorted = (() => {
     if (!sortBy || members.length === 0) return members;
@@ -79,41 +70,25 @@ export default function SecurityUsersPage() {
   }, []);
 
   const fetchSummary = useCallback(async () => {
-    if (!getApiBaseUrl() || !orgId.trim()) return;
+    if (!getApiBaseUrl() || !tenantId.trim()) return;
     setLoading(true);
     setError(null);
-    setMemberCount(null);
-    setMemberLimit(null);
-    setIsAtLimit(null);
     setMembers([]);
-    const encoded = encodeURIComponent(orgId.trim());
+    const params = new URLSearchParams({ tenantId: tenantId.trim() });
     try {
-      const [countRes, limitRes, membersRes] = await Promise.all([
-        apiFetch(`/api/v1/organizations/${encoded}/member-count`),
-        apiFetch(`/api/v1/organizations/${encoded}/member-limit`),
-        apiFetch(`/api/v1/organizations/${encoded}/members`),
-      ]);
-      if (!countRes.ok) throw new Error(`member-count: HTTP ${countRes.status}`);
-      if (!limitRes.ok) throw new Error(`member-limit: HTTP ${limitRes.status}`);
-      if (!membersRes.ok) throw new Error(`members: HTTP ${membersRes.status}`);
-      const countJson: MemberCountResponse = await countRes.json();
-      const limitJson: MemberLimitResponse = await limitRes.json();
-      const membersJson: MembersResponse = await membersRes.json();
-      setMemberCount(countJson?.data?.memberCount ?? limitJson?.data?.memberCount ?? null);
-      setMemberLimit(limitJson?.data?.memberLimit ?? null);
-      setIsAtLimit(limitJson?.data?.isAtLimit ?? null);
-      setMembers(Array.isArray(membersJson?.data) ? membersJson.data : []);
+      const res = await apiFetch(`/api/v1/users?${params}`);
+      if (!res.ok) throw new Error(`users: HTTP ${res.status}`);
+      const json: UsersResponse = await res.json();
+      const users = json?.data?.users ?? [];
+      setMembers(Array.isArray(users) ? users.map((u) => ({ ...u, userId: u.userId ?? (u as any).id ?? '' })) : []);
     } catch (e) {
       if (typeof process !== "undefined" && process.env.NODE_ENV === "development") console.error(e);
       setError(GENERIC_ERROR_MESSAGE);
-      setMemberCount(null);
-      setMemberLimit(null);
-      setIsAtLimit(null);
       setMembers([]);
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [tenantId]);
   const apiBaseUrl = getApiBaseUrl();
 
   return (
@@ -127,7 +102,7 @@ export default function SecurityUsersPage() {
       </div>
       <h1 className="text-2xl font-bold mb-2">User Management</h1>
       <p className="text-muted-foreground mb-4">
-        Organization member summary and list (count, limit, members). Enter organization ID and load (§10.2).
+        Tenant member list. Enter tenant ID and load (§10.2).
       </p>
       <nav className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
         <Link href="/admin/security" className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">Overview</Link>
@@ -146,14 +121,14 @@ export default function SecurityUsersPage() {
       {apiBaseUrl && (
         <>
           <div className="rounded-lg border bg-card p-4 mb-4">
-            <Label htmlFor="admin-users-org-id" className="block mb-2">Organization ID</Label>
+            <Label htmlFor="admin-users-tenant-id" className="block mb-2">Tenant ID</Label>
             <div className="flex gap-2 flex-wrap">
               <Input
-                id="admin-users-org-id"
+                id="admin-users-tenant-id"
                 type="text"
-                value={orgId}
-                onChange={(e) => setOrgId(e.target.value)}
-                placeholder="e.g. org-123"
+                value={tenantId}
+                onChange={(e) => setTenantId(e.target.value)}
+                placeholder="e.g. tenant UUID"
                 className="flex-1 max-w-xs"
                 aria-required="true"
               />
@@ -163,23 +138,23 @@ export default function SecurityUsersPage() {
               <Button
                 type="button"
                 onClick={fetchSummary}
-                disabled={!orgId.trim() || loading}
+                disabled={!tenantId.trim() || loading}
               >
-                {loading ? 'Loading…' : 'Load summary'}
+                {loading ? 'Loading…' : 'Load users'}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={fetchSummary}
-                disabled={!orgId.trim() || loading}
-                title="Refetch member summary for current organization"
+                disabled={!tenantId.trim() || loading}
+                title="Refetch users for current tenant"
               >
                 Refresh
               </Button>
             </div>
           </div>
 
-          {loading && orgId.trim() && (
+          {loading && tenantId.trim() && (
             <div className="rounded-lg border bg-white dark:bg-gray-900 mb-4 overflow-hidden">
               <div className="p-4 space-y-3">
                 <div className="flex gap-4 mb-4">
@@ -204,14 +179,12 @@ export default function SecurityUsersPage() {
             </div>
           )}
 
-          {!loading && orgId.trim() && !error && (memberCount !== null || memberLimit !== null || members.length > 0) && (
+          {!loading && tenantId.trim() && !error && members.length > 0 && (
             <>
               <div className="rounded-lg border bg-white dark:bg-gray-900 p-6 mb-4">
                 <h2 className="text-lg font-semibold mb-3">Member summary</h2>
-                <div className="text-sm space-y-2">
-                  {memberCount !== null && <p><strong>Member count:</strong> {memberCount}</p>}
-                  {memberLimit !== null && <p><strong>Member limit:</strong> {memberLimit}</p>}
-                  {isAtLimit !== null && <p><strong>At limit:</strong> {isAtLimit ? 'Yes' : 'No'}</p>}
+                <div className="text-sm">
+                  <p><strong>Member count:</strong> {memberCount}</p>
                 </div>
               </div>
               {members.length > 0 ? (
@@ -279,7 +252,7 @@ export default function SecurityUsersPage() {
               ) : (
                 <EmptyState
                   title="No members"
-                  description="No members in this organization. Invite users to get started."
+                  description="No members in this tenant. Invite users to get started."
                   action={{ label: 'Invite user', href: '/admin/security/users/invite' }}
                 />
               )}

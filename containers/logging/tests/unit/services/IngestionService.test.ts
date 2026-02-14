@@ -56,7 +56,7 @@ describe('IngestionService', () => {
       healthCheck: vi.fn(),
     } as any;
 
-    // Mock organization config
+    // Mock tenant config
     mockGetOrgConfig = vi.fn().mockResolvedValue(null);
 
     ingestionService = new IngestionService({
@@ -68,7 +68,7 @@ describe('IngestionService', () => {
   describe('ingest', () => {
     it('should ingest a single log entry', async () => {
       const input: CreateLogInput = {
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         userId: 'user-1',
         action: 'user.login',
         message: 'User logged in',
@@ -80,28 +80,28 @@ describe('IngestionService', () => {
 
       expect(result).toBeDefined();
       expect(result.id).toBeDefined();
-      expect(result.organizationId).toBe('org-1');
+      expect(result.tenantId).toBe('org-1');
       expect(result.action).toBe('user.login');
     });
 
-    it('should require organization ID', async () => {
+    it('should require tenant ID', async () => {
       const input: CreateLogInput = {
         action: 'user.login',
         message: 'User logged in',
       };
 
-      await expect(ingestionService.ingest(input)).rejects.toThrow('Organization ID is required');
+      await expect(ingestionService.ingest(input)).rejects.toThrow('Tenant ID is required');
     });
 
     it('should merge context with input', async () => {
       const input: CreateLogInput = {
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         action: 'user.login',
         message: 'User logged in',
       };
 
       const context = {
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         userId: 'user-1',
         ipAddress: '127.0.0.1',
         userAgent: 'test-agent',
@@ -116,22 +116,20 @@ describe('IngestionService', () => {
 
     it('should store immediately when buffering is disabled', async () => {
       const input: CreateLogInput = {
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         action: 'user.login',
         message: 'User logged in',
       };
 
       await ingestionService.ingest(input);
 
-      // Should call storage.store immediately
       expect(mockStorage.store).toHaveBeenCalled();
-      // Buffer should be empty
       expect(ingestionService.getBufferSize()).toBe(0);
     });
 
     it('should generate a hash for the log entry', async () => {
       const input: CreateLogInput = {
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         action: 'user.login',
         message: 'User logged in',
       };
@@ -139,12 +137,12 @@ describe('IngestionService', () => {
       const result = await ingestionService.ingest(input);
 
       expect(result.hash).toBeDefined();
-      expect(result.hash.length).toBe(64); // SHA-256 hash length
+      expect(result.hash.length).toBe(64);
     });
 
     it('should set default category and severity', async () => {
       const input: CreateLogInput = {
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         action: 'user.login',
         message: 'User logged in',
       };
@@ -160,12 +158,12 @@ describe('IngestionService', () => {
     it('should ingest multiple log entries', async () => {
       const inputs: CreateLogInput[] = [
         {
-          organizationId: 'org-1',
+          tenantId: 'org-1',
           action: 'user.login',
           message: 'User logged in',
         },
         {
-          organizationId: 'org-1',
+          tenantId: 'org-1',
           action: 'user.logout',
           message: 'User logged out',
         },
@@ -178,10 +176,10 @@ describe('IngestionService', () => {
       expect(results[1].action).toBe('user.logout');
     });
 
-    it('should skip entries without organization ID', async () => {
+    it('should skip entries without tenant ID', async () => {
       const inputs: CreateLogInput[] = [
         {
-          organizationId: 'org-1',
+          tenantId: 'org-1',
           action: 'user.login',
           message: 'User logged in',
         },
@@ -200,12 +198,12 @@ describe('IngestionService', () => {
     it('should generate unique IDs for each log', async () => {
       const inputs: CreateLogInput[] = [
         {
-          organizationId: 'org-1',
+          tenantId: 'org-1',
           action: 'user.login',
           message: 'User 1 logged in',
         },
         {
-          organizationId: 'org-1',
+          tenantId: 'org-1',
           action: 'user.login',
           message: 'User 2 logged in',
         },
@@ -228,14 +226,13 @@ describe('IngestionService', () => {
   describe('getBufferSize', () => {
     it('should return 0 when buffering is disabled', async () => {
       const input: CreateLogInput = {
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         action: 'user.login',
         message: 'User logged in',
       };
 
       await ingestionService.ingest(input);
 
-      // When buffering is disabled, logs are stored immediately
       expect(ingestionService.getBufferSize()).toBe(0);
     });
   });

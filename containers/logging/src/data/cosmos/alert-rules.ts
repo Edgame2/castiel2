@@ -1,5 +1,5 @@
 /**
- * Cosmos DB access for audit_alert_rules. Partition key: tenantId (organizationId or 'global').
+ * Cosmos DB access for audit_alert_rules. Partition key: tenantId (or 'global').
  */
 
 import { getContainer } from '@coder/shared/database';
@@ -10,7 +10,6 @@ const PARTITION_GLOBAL = 'global';
 export interface AlertRuleDoc {
   id: string;
   tenantId: string;
-  organizationId: string | null;
   name: string;
   description: string | null;
   enabled: boolean;
@@ -25,7 +24,7 @@ export interface AlertRuleDoc {
 
 export interface AlertRuleRow {
   id: string;
-  organizationId: string | null;
+  tenantId: string | null;
   name: string;
   description: string | null;
   enabled: boolean;
@@ -38,14 +37,14 @@ export interface AlertRuleRow {
   updatedAt: Date;
 }
 
-function tenantId(organizationId: string | null): string {
-  return organizationId ?? PARTITION_GLOBAL;
+function toPartitionKey(tenantIdVal: string | null): string {
+  return tenantIdVal ?? PARTITION_GLOBAL;
 }
 
 function toRow(doc: AlertRuleDoc): AlertRuleRow {
   return {
     id: doc.id,
-    organizationId: doc.organizationId,
+    tenantId: doc.tenantId === PARTITION_GLOBAL ? null : doc.tenantId,
     name: doc.name,
     description: doc.description,
     enabled: doc.enabled,
@@ -66,16 +65,16 @@ export class CosmosAlertRulesRepository {
     return getContainer(this.containerName);
   }
 
-  async findMany(args: { where?: { enabled?: boolean; organizationId?: string | null }; orderBy?: { createdAt: string } }): Promise<AlertRuleRow[]> {
+  async findMany(args: { where?: { enabled?: boolean; tenantId?: string | null }; orderBy?: { createdAt: string } }): Promise<AlertRuleRow[]> {
     const conditions: string[] = ['1=1'];
     const parameters: { name: string; value: unknown }[] = [];
     if (args.where?.enabled !== undefined) {
       conditions.push('c.enabled = @enabled');
       parameters.push({ name: '@enabled', value: args.where.enabled });
     }
-    if (args.where?.organizationId !== undefined) {
+    if (args.where?.tenantId !== undefined) {
       conditions.push('c.tenantId = @tenantId');
-      parameters.push({ name: '@tenantId', value: args.where.organizationId ?? PARTITION_GLOBAL });
+      parameters.push({ name: '@tenantId', value: args.where.tenantId ?? PARTITION_GLOBAL });
     }
     const order = args.orderBy?.createdAt === 'desc' ? 'DESC' : 'ASC';
     const { resources } = await this.getContainer().items
@@ -98,8 +97,8 @@ export class CosmosAlertRulesRepository {
   }
 
   /** Get rule by id within tenant partition (tenant-scoped). */
-  async findUniqueByIdAndTenant(id: string, organizationId: string): Promise<AlertRuleRow | null> {
-    const pk = tenantId(organizationId);
+  async findUniqueByIdAndTenant(id: string, tenantIdVal: string): Promise<AlertRuleRow | null> {
+    const pk = toPartitionKey(tenantIdVal);
     const { resources } = await this.getContainer().items
       .query(
         {
@@ -115,7 +114,7 @@ export class CosmosAlertRulesRepository {
   async create(args: {
     data: {
       id?: string;
-      organizationId: string | null;
+      tenantId: string | null;
       name: string;
       description: string | null;
       enabled: boolean;
@@ -130,8 +129,7 @@ export class CosmosAlertRulesRepository {
     const now = new Date().toISOString();
     const doc: AlertRuleDoc = {
       id,
-      tenantId: tenantId(args.data.organizationId),
-      organizationId: args.data.organizationId,
+      tenantId: toPartitionKey(args.data.tenantId),
       name: args.data.name,
       description: args.data.description,
       enabled: args.data.enabled,
@@ -150,12 +148,11 @@ export class CosmosAlertRulesRepository {
   async update(args: { where: { id: string }; data: Partial<AlertRuleRow> & { updatedBy: string } }): Promise<AlertRuleRow> {
     const existing = await this.findUnique({ where: { id: args.where.id } });
     if (!existing) throw new Error('Alert rule not found');
-    const pk = tenantId(existing.organizationId);
+    const pk = toPartitionKey(existing.tenantId);
     const now = new Date().toISOString();
     const doc: AlertRuleDoc = {
       id: existing.id,
       tenantId: pk,
-      organizationId: existing.organizationId,
       name: args.data.name ?? existing.name,
       description: args.data.description !== undefined ? args.data.description : existing.description,
       enabled: args.data.enabled !== undefined ? args.data.enabled : existing.enabled,
@@ -174,6 +171,6 @@ export class CosmosAlertRulesRepository {
   async delete(args: { where: { id: string } }): Promise<void> {
     const existing = await this.findUnique({ where: { id: args.where.id } });
     if (!existing) return;
-    await this.getContainer().item(existing.id, tenantId(existing.organizationId)).delete();
+    await this.getContainer().item(existing.id, toPartitionKey(existing.tenantId)).delete();
   }
 }

@@ -7,6 +7,8 @@ description: Verifies tenant isolation is enforced at all layers (gateway, servi
 
 Verifies tenant isolation is enforced at all layers (gateway, service, database).
 
+**Tenant-only:** Use `tenantId` only; there is no organization. All users and data are scoped by tenant. Do not use or validate `organizationId`; APIs, events, and database partition keys use `tenantId` only.
+
 ## Multi-Layer Validation
 
 Reference: .cursorrules (Security Requirements), ModuleImplementationGuide.md Section 11
@@ -139,7 +141,7 @@ log.info('Resource created', {
 - [ ] All log entries include tenantId
 - [ ] Error logs include tenantId
 - [ ] Audit logs include tenantId
-- [ ] Event logs include tenantId (organizationId field)
+- [ ] Event logs include tenantId
 
 ## Validation Scripts
 
@@ -197,10 +199,10 @@ grep -r "ServiceClient\|client\.(get|post|put|delete)" src/ --exclude-dir=node_m
 - [ ] All log entries include tenantId
 - [ ] Error logs include tenantId
 - [ ] Audit logs include tenantId
-- [ ] Events include organizationId (tenantId) field
+- [ ] Events include tenantId field
 
 ### Events
-- [ ] All published events include organizationId (tenantId)
+- [ ] All published events include tenantId
 - [ ] Event consumers validate tenantId before processing
 
 ## Testing Tenant Isolation
@@ -244,20 +246,23 @@ it('should return 400 without X-Tenant-ID header', async () => {
 
 ## Common Violations
 
-1. **Missing tenantId in queries**
+1. **Using organizationId**
+   - Use `tenantId` only; there is no organization. Replace any `organizationId` with `tenantId`.
+
+2. **Missing tenantId in queries**
    - Always include `c.tenantId = @tenantId` in WHERE clause
 
-2. **Missing tenantId in service methods**
+3. **Missing tenantId in service methods**
    - tenantId should be first parameter
 
-3. **Missing X-Tenant-ID in service calls**
+4. **Missing X-Tenant-ID in service calls**
    - Always include in headers
 
-4. **Missing tenantId in logs**
+5. **Missing tenantId in logs**
    - Always include tenantId for traceability
 
-5. **Missing tenantId in events**
-   - Always include organizationId field
+6. **Missing tenantId in events**
+   - Always include tenantId field
 
 ## Quick Validation
 
@@ -267,4 +272,4 @@ Run these checks before deployment:
 2. **No routes without tenantId**: All routes extract and validate tenantId
 3. **No service calls without tenantId**: All service calls include X-Tenant-ID
 4. **No logs without tenantId**: All logs include tenantId
-5. **No events without tenantId**: All events include organizationId
+5. **No events without tenantId**: All events include tenantId

@@ -40,9 +40,7 @@ rabbitmq:
   queue: test_queue
   bindings: []
 storage:
-  provider: postgres
-  postgres:
-    partition_by: month
+  provider: cosmos
 archive:
   enabled: false
   provider: local
@@ -145,100 +143,6 @@ vi.mock('amqplib', () => ({
     close: vi.fn(),
   }),
 }));
-
-// Mock Prisma Client
-vi.mock('.prisma/logging-client', () => {
-  const mockPrismaClient = vi.fn(() => ({
-    $connect: vi.fn(),
-    $disconnect: vi.fn(),
-    audit_logs: {
-      create: vi.fn(),
-      createMany: vi.fn(),
-      findFirst: vi.fn(),
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      count: vi.fn(),
-      delete: vi.fn(),
-      deleteMany: vi.fn(),
-      update: vi.fn(),
-      aggregate: vi.fn(),
-      groupBy: vi.fn(),
-    },
-    audit_retention_policies: {
-      create: vi.fn(),
-      findFirst: vi.fn(),
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-    },
-    audit_alert_rules: {
-      create: vi.fn(),
-      findFirst: vi.fn(),
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-    },
-    audit_hash_checkpoints: {
-      create: vi.fn(),
-      findFirst: vi.fn(),
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-    },
-    audit_configurations: {
-      create: vi.fn(),
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-      upsert: vi.fn(),
-      delete: vi.fn(),
-    },
-    audit_exports: {
-      create: vi.fn(),
-      findFirst: vi.fn(),
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-    },
-    $queryRaw: vi.fn(),
-    $executeRaw: vi.fn(),
-  }));
-
-  return {
-    PrismaClient: mockPrismaClient,
-    audit_log_category: {
-      ACTION: 'ACTION',
-      ACCESS: 'ACCESS',
-      SECURITY: 'SECURITY',
-      SYSTEM: 'SYSTEM',
-      CUSTOM: 'CUSTOM',
-    },
-    audit_log_severity: {
-      DEBUG: 'DEBUG',
-      INFO: 'INFO',
-      WARN: 'WARN',
-      ERROR: 'ERROR',
-      CRITICAL: 'CRITICAL',
-    },
-    audit_export_status: {
-      PENDING: 'PENDING',
-      PROCESSING: 'PROCESSING',
-      COMPLETED: 'COMPLETED',
-      FAILED: 'FAILED',
-      CANCELLED: 'CANCELLED',
-    },
-    audit_export_format: {
-      CSV: 'CSV',
-      JSON: 'JSON',
-    },
-    audit_alert_type: {
-      PATTERN: 'PATTERN',
-      THRESHOLD: 'THRESHOLD',
-      ANOMALY: 'ANOMALY',
-    },
-  };
-});
 
 // Mock @coder/shared
 vi.mock('@coder/shared', () => ({

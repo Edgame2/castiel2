@@ -31,7 +31,7 @@ export class IngestionService {
   private buffer: AuditLog[] = [];
   private flushTimer: NodeJS.Timeout | null = null;
   private lastHash: string | null = null;
-  private lastHashOrg: string | null = null;
+  private lastHashTenant: string | null = null;
   
   constructor(deps: IngestionServiceDeps) {
     this.storage = deps.storageProvider;
@@ -46,28 +46,22 @@ export class IngestionService {
    * Ingest a single log entry
    */
   async ingest(input: CreateLogInput, context?: {
-    organizationId?: string;
+    tenantId?: string;
     userId?: string;
     sessionId?: string;
     ipAddress?: string;
     userAgent?: string;
   }): Promise<AuditLog> {
     const config = getConfig();
-    
-    // Merge context with input
-    const organizationId = input.organizationId || context?.organizationId;
-    if (!organizationId) {
-      throw new Error('Organization ID is required');
+    const tenantId = input.tenantId || context?.tenantId;
+    if (!tenantId) {
+      throw new Error('Tenant ID is required');
     }
-    
-    // Get organization config for redaction settings
-    const orgConfig = await this.getOrgConfig(organizationId);
-    
-    // Process the log entry
+    const orgConfig = await this.getOrgConfig(tenantId);
     const processedLog = await this.processLogEntry(
       {
         ...input,
-        organizationId,
+        tenantId,
         userId: input.userId || context?.userId,
         sessionId: input.sessionId || context?.sessionId,
         ipAddress: input.ipAddress || context?.ipAddress,
@@ -103,26 +97,23 @@ export class IngestionService {
    * Ingest multiple log entries
    */
   async ingestBatch(inputs: CreateLogInput[], context?: {
-    organizationId?: string;
+    tenantId?: string;
     userId?: string;
     sessionId?: string;
   }): Promise<AuditLog[]> {
     const config = getConfig();
     const results: AuditLog[] = [];
-    
     for (const input of inputs) {
-      const organizationId = input.organizationId || context?.organizationId;
-      if (!organizationId) {
-        log.warn('Skipping log entry without organization ID', { action: input.action });
+      const tenantId = input.tenantId || context?.tenantId;
+      if (!tenantId) {
+        log.warn('Skipping log entry without tenant ID', { action: input.action });
         continue;
       }
-      
-      const orgConfig = await this.getOrgConfig(organizationId);
-      
+      const orgConfig = await this.getOrgConfig(tenantId);
       const processedLog = await this.processLogEntry(
         {
           ...input,
-          organizationId,
+          tenantId,
           userId: input.userId || context?.userId,
           sessionId: input.sessionId || context?.sessionId,
         },
@@ -155,7 +146,7 @@ export class IngestionService {
    * Process a log entry (redaction, hash generation)
    */
   private async processLogEntry(
-    input: CreateLogInput & { organizationId: string },
+    input: CreateLogInput & { tenantId: string },
     orgConfig: OrganizationConfig | null,
     config: ReturnType<typeof getConfig>
   ): Promise<AuditLog> {
@@ -185,20 +176,16 @@ export class IngestionService {
     let previousHash: string | null = null;
     
     if (hashChainEnabled) {
-      // If same org as last hash, use cached value
-      if (this.lastHashOrg === input.organizationId && this.lastHash) {
+      if (this.lastHashTenant === input.tenantId && this.lastHash) {
         previousHash = this.lastHash;
       } else {
-        // Fetch from storage
-        const lastLog = await this.storage.getLastLog(input.organizationId);
+        const lastLog = await this.storage.getLastLog(input.tenantId);
         previousHash = lastLog?.hash || null;
       }
     }
-    
-    // Build the log entry
     const logEntry: Omit<AuditLog, 'hash' | 'createdAt'> = {
       id,
-      organizationId: input.organizationId,
+      tenantId: input.tenantId,
       timestamp: now,
       receivedAt: now,
       userId: input.userId || null,
@@ -223,10 +210,9 @@ export class IngestionService {
       ? generateLogHash(logEntry, previousHash, config.defaults.hash_chain.algorithm)
       : randomUUID(); // Use UUID as placeholder if hash chain disabled
     
-    // Update cached hash
     if (hashChainEnabled) {
       this.lastHash = hash;
-      this.lastHashOrg = input.organizationId;
+      this.lastHashTenant = input.tenantId;
     }
     
     return {

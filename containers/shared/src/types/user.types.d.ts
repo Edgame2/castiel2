@@ -3,13 +3,13 @@
  * @module @coder/shared/types/user
  */
 /**
- * User interface
+ * User interface.
+ * Users and all platform data are scoped by tenantId.
  */
 export interface User {
     id: string;
     email: string;
     name: string;
-    organizationId: string;
     tenantId: string;
     createdAt: string;
     updatedAt: string;

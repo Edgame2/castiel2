@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { apiFetch, getApiBaseUrl, GENERIC_ERROR_MESSAGE } from '@/lib/api';
+import { toast } from 'sonner';
 
 type CategoryType = 'risk' | 'recommendation' | 'both';
 
@@ -287,8 +288,10 @@ export default function ActionCatalogCategoriesPage() {
       if (!res.ok) throw new Error((data?.error?.message as string) || `HTTP ${res.status}`);
       closeModal();
       await fetchCategories();
+      toast.success('Category deleted.');
     } catch (e) {
       setFormError(GENERIC_ERROR_MESSAGE);
+      toast.error(GENERIC_ERROR_MESSAGE);
     } finally {
       setFormSaving(false);
     }

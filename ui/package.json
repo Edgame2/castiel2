@@ -8,6 +8,7 @@
     "dev": "next dev -p 3000",
     "build": "next build --webpack",
     "build:clean": "rm -rf .next && next build --webpack",
+    "build:revimize-dev": "NEXT_PUBLIC_API_BASE_URL=https://api.revimize-dev.com next build --webpack",
     "start": "next start",
     "analyze": "ANALYZE=true npm run build",
     "lint": "eslint .",

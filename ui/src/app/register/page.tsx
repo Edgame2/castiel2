@@ -1,5 +1,5 @@
 /**
- * Registration page — email, password, optional name; calls POST /api/auth/register via gateway.
+ * Registration page — email, password, optional name; calls POST /api/v1/auth/register via gateway.
  * On success, cookies are set and user is redirected to /dashboard.
  */
 
@@ -47,7 +47,7 @@ export default function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await apiFetch('/api/auth/register', {
+      const res = await apiFetch('/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -24,14 +24,14 @@ export class BatchProcessor {
    * Create batch for digest notifications
    */
   async createBatch(
-    organizationId: string,
+    tenantId: string,
     digestType: DigestType,
     scheduledFor: Date,
     notificationIds: string[]
   ): Promise<string> {
     const batch = await this.db.notification_batches.create({
       data: {
-        organizationId,
+        tenantId,
         name: `${digestType} Digest - ${scheduledFor.toISOString()}`,
         digestType,
         scheduledFor,
@@ -115,7 +115,7 @@ export class BatchProcessor {
       const digestContent = this.generateDigestContent(notifications, batch.digestType);
 
       const digestInput: NotificationInput = {
-        organizationId: batch.organizationId,
+        tenantId: (batch as { tenantId?: string }).tenantId ?? (batch as { organizationId?: string }).organizationId,
         eventType: `notification.digest.${batch.digestType.toLowerCase()}`,
         eventCategory: 'SYSTEM_ADMIN',
         sourceModule: 'notification-manager',

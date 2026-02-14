@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Dashboard Service module provides dashboard management for Castiel, including dashboard CRUD operations, widget management, and organization-scoped dashboards.
+The Dashboard Service module provides dashboard management for Castiel, including dashboard CRUD operations, widget management, and tenant-scoped dashboards.
 
 ## Database Architecture
 

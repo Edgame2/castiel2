@@ -66,6 +66,16 @@ describe('SAMLHandler', () => {
           ssoUrl: 'https://idp.example.com/sso',
           organization: { slug: 'org1' },
         }),
+        findFirst: vi.fn().mockResolvedValue({
+          organizationId: 'org-1',
+          isActive: true,
+          secretId: 'secret-1',
+          entityId: 'entity-1',
+          ssoUrl: 'https://idp.example.com/sso',
+        }),
+      },
+      tenant: {
+        findUnique: vi.fn().mockResolvedValue({ id: 'org-1', slug: 'org1' }),
       },
     } as any);
   });
@@ -99,7 +109,7 @@ describe('SAMLHandler', () => {
     await expect(generateSAMLRequest('org-1')).resolves.toMatchObject({
       samlRequest: expect.any(String),
       redirectUrl: 'https://idp.example.com/sso',
-      relayState: 'org:org-1',
+      relayState: 'tenant:org-1',
     });
   });
 });

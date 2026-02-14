@@ -1,16 +1,14 @@
 /**
  * Invitation Routes
- * 
- * API endpoints for managing organization invitations.
- * Per ModuleImplementationGuide Section 7
- * 
+ * Tenant-scoped invitation management.
+ *
  * Endpoints:
- * - POST /api/v1/organizations/:orgId/invitations - Create invitation
- * - GET /api/v1/organizations/:orgId/invitations - List invitations
- * - POST /api/v1/organizations/:orgId/invitations/:invitationId/resend - Resend invitation
- * - DELETE /api/v1/organizations/:orgId/invitations/:invitationId - Cancel invitation
+ * - POST /api/v1/tenants/:tenantId/invitations - Create invitation
+ * - GET /api/v1/tenants/:tenantId/invitations - List invitations
+ * - POST /api/v1/tenants/:tenantId/invitations/:invitationId/resend - Resend invitation
+ * - DELETE /api/v1/tenants/:tenantId/invitations/:invitationId - Cancel invitation
  * - POST /api/v1/invitations/:token/accept - Accept invitation (public endpoint)
- * - POST /api/v1/organizations/:orgId/invitations/bulk - Bulk invite
+ * - POST /api/v1/tenants/:tenantId/invitations/bulk - Bulk invite
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
@@ -25,17 +23,17 @@ import { UserManagementEvent } from '../types/events';
 export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<void> {
   // Create invitation
   fastify.post(
-    '/api/v1/organizations/:orgId/invitations',
+    '/api/v1/tenants/:tenantId/invitations',
     {
       preHandler: [
         authenticateRequest,
-        requirePermission('users.user.invite', 'organization'),
+        requirePermission('users.user.invite', 'tenant'),
       ],
     },
     (async (
       request: FastifyRequest<{
         Params: {
-          orgId: string;
+          tenantId: string;
         };
         Body: {
           email?: string; // Optional for link-based invitations
@@ -54,7 +52,7 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           return;
         }
 
-        const { orgId } = request.params;
+        const tenantId = request.params.tenantId;
         const { email, roleId, message, invitationType = 'email', metadata } = request.body;
 
         // Email is required for email-type invitations
@@ -69,7 +67,7 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
         }
 
         const invitation = await invitationService.createInvitation(
-          orgId,
+          tenantId,
           email || '',
           roleId,
           requestUser.id,
@@ -81,9 +79,9 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
         // Publish invitation.created event (notification service will consume it for email sending)
         const metadata_event = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('invitation.created', requestUser.id, orgId, undefined, {
+          ...createBaseEvent('invitation.created', requestUser.id, tenantId, undefined, {
             invitationId: invitation.id,
-            organizationId: orgId,
+            tenantId,
             email: invitation.email,
             invitationType,
             expiresAt: invitation.expiresAt.toISOString(),
@@ -96,8 +94,8 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
 
         reply.code(201).send({ data: invitation });
       } catch (error: any) {
-        const params = request.params as { orgId?: string };
-        log.error('Create invitation error', error, { route: '/api/v1/organizations/:orgId/invitations', userId: (request as any).user?.id, organizationId: params?.orgId, service: 'user-management' });
+        const params = request.params as { tenantId?: string };
+        log.error('Create invitation error', error, { route: '/api/v1/tenants/:tenantId/invitations', userId: (request as any).user?.id, tenantId: params?.tenantId, service: 'user-management' });
 
         if (error.message.includes('not found')) {
           reply.code(404).send({ error: error.message });
@@ -129,17 +127,17 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
 
   // List invitations
   fastify.get(
-    '/api/v1/organizations/:orgId/invitations',
+    '/api/v1/tenants/:tenantId/invitations',
     {
       preHandler: [
         authenticateRequest,
-        requirePermission('users.user.invite', 'organization'),
+        requirePermission('users.user.invite', 'tenant'),
       ],
     },
     (async (
       request: FastifyRequest<{
         Params: {
-          orgId: string;
+          tenantId: string;
         };
         Querystring: {
           status?: 'pending' | 'accepted' | 'expired' | 'cancelled';
@@ -155,7 +153,7 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           return;
         }
 
-        const { orgId } = request.params;
+        const tenantId = request.params.tenantId;
         const { status, email } = request.query;
 
         const filters: invitationService.InvitationFilters = {};
@@ -166,12 +164,12 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           filters.email = email;
         }
 
-        const invitations = await invitationService.listInvitations(orgId, filters);
+        const invitations = await invitationService.listInvitations(tenantId, filters);
 
         return { data: invitations };
       } catch (error: any) {
-        const params = request.params as { orgId?: string };
-        log.error('List invitations error', error, { route: '/api/v1/organizations/:orgId/invitations', userId: (request as any).user?.id, organizationId: params?.orgId, service: 'user-management' });
+        const params = request.params as { tenantId?: string };
+        log.error('List invitations error', error, { route: '/api/v1/tenants/:tenantId/invitations', userId: (request as any).user?.id, tenantId: params?.tenantId, service: 'user-management' });
         reply.code(500).send({
           error: 'Failed to list invitations',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -183,17 +181,17 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
 
   // Resend invitation
   fastify.post(
-    '/api/v1/organizations/:orgId/invitations/:invitationId/resend',
+    '/api/v1/tenants/:tenantId/invitations/:invitationId/resend',
     {
       preHandler: [
         authenticateRequest,
-        requirePermission('users.user.invite', 'organization'),
+        requirePermission('users.user.invite', 'tenant'),
       ],
     },
     (async (
       request: FastifyRequest<{
         Params: {
-          orgId: string;
+          tenantId: string;
           invitationId: string;
         };
       }>,
@@ -214,11 +212,12 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
         );
 
         // Publish invitation.resent event (notification service will consume it for email sending)
+        const tenantIdResent = (invitation as { tenantId?: string }).tenantId;
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('invitation.resent', requestUser.id, invitation.organizationId, undefined, {
+          ...createBaseEvent('invitation.resent', requestUser.id, tenantIdResent, undefined, {
             invitationId: invitation.id,
-            organizationId: invitation.organizationId,
+            tenantId: tenantIdResent,
             email: invitation.email,
             resendCount: invitation.resendCount,
             resentBy: requestUser.id,
@@ -230,8 +229,8 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
 
         return { data: invitation };
       } catch (error: any) {
-        const params = request.params as { orgId?: string; invitationId?: string };
-        log.error('Resend invitation error', error, { route: '/api/v1/organizations/:orgId/invitations/:invitationId/resend', userId: (request as any).user?.id, organizationId: params?.orgId, invitationId: params?.invitationId, service: 'user-management' });
+        const params = request.params as { tenantId?: string; invitationId?: string };
+        log.error('Resend invitation error', error, { route: '/api/v1/tenants/:tenantId/invitations/:invitationId/resend', userId: (request as any).user?.id, tenantId: params?.tenantId, invitationId: params?.invitationId, service: 'user-management' });
 
         if (error.message.includes('not found')) {
           reply.code(404).send({ error: error.message });
@@ -263,17 +262,17 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
 
   // Cancel invitation
   fastify.delete(
-    '/api/v1/organizations/:orgId/invitations/:invitationId',
+    '/api/v1/tenants/:tenantId/invitations/:invitationId',
     {
       preHandler: [
         authenticateRequest,
-        requirePermission('users.user.invite', 'organization'),
+        requirePermission('users.user.invite', 'tenant'),
       ],
     },
     (async (
       request: FastifyRequest<{
         Params: {
-          orgId: string;
+          tenantId: string;
           invitationId: string;
         };
       }>,
@@ -289,12 +288,12 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
         const { invitationId } = request.params;
 
         // Get invitation info before cancellation for audit log (Prisma client - see server for DB wiring)
-        const db = getDatabaseClient() as unknown as { invitation: { findUnique: (args: unknown) => Promise<{ id: string; organizationId: string; email: string } | null> } };
+        const db = getDatabaseClient() as unknown as { invitation: { findUnique: (args: unknown) => Promise<{ id: string; tenantId?: string; email: string } | null> } };
         const invitation = await db.invitation.findUnique({
           where: { id: invitationId },
           select: {
             id: true,
-            organizationId: true,
+            tenantId: true,
             email: true,
           },
         });
@@ -304,14 +303,16 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           return;
         }
 
+        const tenantIdCancel = (invitation as { tenantId?: string }).tenantId;
+
         await invitationService.cancelInvitation(invitationId, requestUser.id);
 
         // Publish invitation.cancelled event (logging service will consume it)
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('invitation.cancelled', requestUser.id, invitation.organizationId, undefined, {
+          ...createBaseEvent('invitation.cancelled', requestUser.id, tenantIdCancel, undefined, {
             invitationId: invitation.id,
-            organizationId: invitation.organizationId,
+            tenantId: tenantIdCancel,
             email: invitation.email,
             cancelledBy: requestUser.id,
           }),
@@ -322,8 +323,8 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
 
         return { message: 'Invitation cancelled successfully' };
       } catch (error: any) {
-        const params = request.params as { orgId?: string; invitationId?: string };
-        log.error('Cancel invitation error', error, { route: '/api/v1/organizations/:orgId/invitations/:invitationId', userId: (request as any).user?.id, organizationId: params?.orgId, invitationId: params?.invitationId, service: 'user-management' });
+        const params = request.params as { tenantId?: string; invitationId?: string };
+        log.error('Cancel invitation error', error, { route: '/api/v1/tenants/:tenantId/invitations/:invitationId', userId: (request as any).user?.id, tenantId: params?.tenantId, invitationId: params?.invitationId, service: 'user-management' });
 
         if (error.message.includes('not found')) {
           reply.code(404).send({ error: error.message });
@@ -376,32 +377,33 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
         }
 
         const db = getDatabaseClient() as unknown as {
-          organizationMembership: { findFirst: (args: unknown) => Promise<unknown>; create: (args: unknown) => Promise<unknown> };
+          membership: { findFirst: (args: unknown) => Promise<unknown>; create: (args: unknown) => Promise<unknown> };
           invitation: { update: (args: unknown) => Promise<unknown> };
         };
 
         // If userId provided, user is already registered
         if (userId) {
           // Check if user is already a member
-          const existingMembership = await db.organizationMembership.findFirst({
+          const tenantIdAccept = invitation.tenantId;
+          const existingMembership = await db.membership.findFirst({
             where: {
               userId,
-              organizationId: invitation.organizationId,
+              tenantId: tenantIdAccept,
               status: 'active',
               deletedAt: null,
             },
           });
 
           if (existingMembership) {
-            reply.code(409).send({ error: 'User is already a member of this organization' });
+            reply.code(409).send({ error: 'User is already a member of this tenant' });
             return;
           }
 
           // Create membership
-          await db.organizationMembership.create({
+          await db.membership.create({
             data: {
               userId,
-              organizationId: invitation.organizationId,
+              tenantId: tenantIdAccept,
               roleId: invitation.roleId,
               status: 'active',
               joinedAt: new Date(),
@@ -421,9 +423,9 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           // Publish invitation.accepted event (logging service will consume it)
           const metadata = extractEventMetadata(request);
           await publishEventSafely({
-            ...createBaseEvent('invitation.accepted', userId, invitation.organizationId, undefined, {
+            ...createBaseEvent('invitation.accepted', userId, tenantIdAccept, undefined, {
               invitationId: invitation.id,
-              organizationId: invitation.organizationId,
+              tenantId: tenantIdAccept,
               userId,
               roleId: invitation.roleId,
             }),
@@ -440,7 +442,7 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
             data: {
               invitation: {
                 id: invitation.id,
-                organization: invitation.organization,
+                tenant: invitation.tenant,
                 role: invitation.role,
                 message: invitation.message,
               },
@@ -473,17 +475,17 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
 
   // Bulk invite
   fastify.post(
-    '/api/v1/organizations/:orgId/invitations/bulk',
+    '/api/v1/tenants/:tenantId/invitations/bulk',
     {
       preHandler: [
         authenticateRequest,
-        requirePermission('users.user.invite', 'organization'),
+        requirePermission('users.user.invite', 'tenant'),
       ],
     },
     (async (
       request: FastifyRequest<{
         Params: {
-          orgId: string;
+          tenantId: string;
         };
         Body: {
           invitations: Array<{
@@ -502,7 +504,7 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           return;
         }
 
-        const { orgId } = request.params;
+        const tenantId = request.params.tenantId;
         const { invitations } = request.body;
 
         if (!Array.isArray(invitations) || invitations.length === 0) {
@@ -521,7 +523,7 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
         for (const inv of invitations) {
           try {
             const invitation = await invitationService.createInvitation(
-              orgId,
+              tenantId,
               inv.email,
               inv.roleId,
               requestUser.id,
@@ -538,9 +540,9 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
             // Publish invitation.created event for each
             const metadata = extractEventMetadata(request);
             await publishEventSafely({
-              ...createBaseEvent('invitation.created', requestUser.id, orgId, undefined, {
+              ...createBaseEvent('invitation.created', requestUser.id, tenantId, undefined, {
                 invitationId: invitation.id,
-                organizationId: orgId,
+                tenantId,
                 email: invitation.email,
                 invitationType: 'email',
                 expiresAt: invitation.expiresAt.toISOString(),
@@ -570,8 +572,8 @@ export async function setupInvitationRoutes(fastify: FastifyInstance): Promise<v
           },
         };
       } catch (error: any) {
-        const params = request.params as { orgId?: string };
-        log.error('Bulk invite error', error, { route: '/api/v1/organizations/:orgId/invitations/bulk', userId: (request as any).user?.id, organizationId: params?.orgId, service: 'user-management' });
+        const params = request.params as { tenantId?: string };
+        log.error('Bulk invite error', error, { route: '/api/v1/tenants/:tenantId/invitations/bulk', userId: (request as any).user?.id, tenantId: params?.tenantId, service: 'user-management' });
         reply.code(500).send({
           error: 'Failed to create bulk invitations',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,

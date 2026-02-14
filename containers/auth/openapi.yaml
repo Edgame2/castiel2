@@ -104,7 +104,7 @@ paths:
                 code: { type: string, description: "TOTP 6-digit or 8-char backup code" }
       responses:
         '200':
-          description: Sign-in complete; same body as login (user, accessToken, refreshToken, sessionId, organizationId)
+          description: Sign-in complete; same body as login (user, accessToken, refreshToken, sessionId, tenantId)
         '400':
           description: mfaSessionId or code missing
         '401':

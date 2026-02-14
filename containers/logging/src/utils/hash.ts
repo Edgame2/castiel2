@@ -17,7 +17,7 @@ export function generateLogHash(
   const hashInput = {
     previousHash,
     id: log.id,
-    organizationId: log.organizationId,
+    tenantId: log.tenantId,
     timestamp: log.timestamp.toISOString(),
     userId: log.userId,
     action: log.action,
@@ -45,7 +45,7 @@ export function verifyLogHash(
   const expectedHash = generateLogHash(
     {
       id: log.id,
-      organizationId: log.organizationId,
+      tenantId: log.tenantId,
       timestamp: log.timestamp,
       receivedAt: log.receivedAt,
       userId: log.userId,

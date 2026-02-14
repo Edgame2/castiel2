@@ -1,17 +1,15 @@
 /**
  * Role Routes
- * 
- * API endpoints for managing roles and permissions.
- * Per ModuleImplementationGuide Section 7
- * 
+ * Tenant-scoped roles and permissions.
+ *
  * Endpoints:
- * - GET /api/v1/organizations/:orgId/roles - List roles
- * - GET /api/v1/organizations/:orgId/roles/:roleId - Get role details
- * - POST /api/v1/organizations/:orgId/roles - Create custom role
- * - PUT /api/v1/organizations/:orgId/roles/:roleId - Update custom role
- * - DELETE /api/v1/organizations/:orgId/roles/:roleId - Delete custom role
- * - GET /api/v1/organizations/:orgId/roles/:roleId/permissions - Get role permissions
- * - GET /api/v1/organizations/:orgId/permissions - List all permissions (for role create/edit UI)
+ * - GET /api/v1/tenants/:tenantId/roles - List roles
+ * - GET /api/v1/tenants/:tenantId/roles/:roleId - Get role details
+ * - POST /api/v1/tenants/:tenantId/roles - Create custom role
+ * - PUT /api/v1/tenants/:tenantId/roles/:roleId - Update custom role
+ * - DELETE /api/v1/tenants/:tenantId/roles/:roleId - Delete custom role
+ * - GET /api/v1/tenants/:tenantId/roles/:roleId/permissions - Get role permissions
+ * - GET /api/v1/tenants/:tenantId/permissions - List all permissions (for role create/edit UI)
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
@@ -25,17 +23,17 @@ import { UserManagementEvent } from '../types/events';
 export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
   // List roles
   fastify.get(
-    '/api/v1/organizations/:orgId/roles',
+    '/api/v1/tenants/:tenantId/roles',
     {
       preHandler: [
         authenticateRequest,
-        requirePermission('roles.role.view', 'organization'),
+        requirePermission('roles.role.view', 'tenant'),
       ],
     },
     (async (
       request: FastifyRequest<{
         Params: {
-          orgId: string;
+          tenantId: string;
         };
         Querystring: {
           includeSystemRoles?: string;
@@ -50,15 +48,15 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
           return;
         }
 
-        const { orgId } = request.params;
+        const tenantId = request.params.tenantId;
         const includeSystemRoles = request.query.includeSystemRoles !== 'false';
 
-        const roles = await roleService.listRoles(orgId, includeSystemRoles);
+        const roles = await roleService.listRoles(tenantId, includeSystemRoles);
 
         return { data: roles };
       } catch (error: any) {
-        const params = request.params as { orgId?: string };
-        log.error('List roles error', error, { route: '/api/v1/organizations/:orgId/roles', userId: (request as any).user?.id, organizationId: params?.orgId, service: 'user-management' });
+        const params = request.params as { tenantId?: string };
+        log.error('List roles error', error, { route: '/api/v1/tenants/:tenantId/roles', userId: (request as any).user?.id, tenantId: params?.tenantId, service: 'user-management' });
         reply.code(500).send({
           error: 'Failed to list roles',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -70,16 +68,16 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
 
   // List all permissions (for role create/edit UI)
   fastify.get(
-    '/api/v1/organizations/:orgId/permissions',
+    '/api/v1/tenants/:tenantId/permissions',
     {
       preHandler: [
         authenticateRequest,
-        requirePermission('roles.role.view', 'organization'),
+        requirePermission('roles.role.view', 'tenant'),
       ],
     },
     (async (
       request: FastifyRequest<{
-        Params: { orgId: string };
+        Params: { tenantId: string };
       }>,
       reply: FastifyReply
     ) => {
@@ -89,12 +87,12 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
           reply.code(401).send({ error: 'Not authenticated' });
           return;
         }
-        const { orgId } = request.params;
-        const permissions = await roleService.listPermissions(orgId);
+        const tenantId = request.params.tenantId;
+        const permissions = await roleService.listPermissions(tenantId);
         return { data: permissions };
       } catch (error: any) {
-        const params = request.params as { orgId?: string };
-        log.error('List permissions error', error, { route: '/api/v1/organizations/:orgId/permissions', userId: (request as any).user?.id, organizationId: params?.orgId, service: 'user-management' });
+        const params = request.params as { tenantId?: string };
+        log.error('List permissions error', error, { route: '/api/v1/tenants/:tenantId/permissions', userId: (request as any).user?.id, tenantId: params?.tenantId, service: 'user-management' });
         reply.code(500).send({
           error: 'Failed to list permissions',
           details: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -106,17 +104,17 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Get role details
   fastify.get(
-    '/api/v1/organizations/:orgId/roles/:roleId',
+    '/api/v1/tenants/:tenantId/roles/:roleId',
     {
       preHandler: [
         authenticateRequest,
-        requirePermission('roles.role.view', 'organization'),
+        requirePermission('roles.role.view', 'tenant'),
       ],
     },
     (async (
       request: FastifyRequest<{
         Params: {
-          orgId: string;
+          tenantId: string;
           roleId: string;
         };
       }>,
@@ -129,9 +127,9 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
           return;
         }
 
-        const { orgId, roleId } = request.params;
+        const { tenantId, roleId } = request.params;
 
-        const role = await roleService.getRole(orgId, roleId);
+        const role = await roleService.getRole(tenantId, roleId);
 
         if (!role) {
           reply.code(404).send({ error: 'Role not found' });
@@ -140,8 +138,8 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
 
         return { data: role };
       } catch (error: any) {
-        const params = request.params as { orgId?: string; roleId?: string };
-        log.error('Get role error', error, { route: '/api/v1/organizations/:orgId/roles/:roleId', userId: (request as any).user?.id, organizationId: params?.orgId, roleId: params?.roleId, service: 'user-management' });
+        const params = request.params as { tenantId?: string; roleId?: string };
+        log.error('Get role error', error, { route: '/api/v1/tenants/:tenantId/roles/:roleId', userId: (request as any).user?.id, tenantId: params?.tenantId, roleId: params?.roleId, service: 'user-management' });
 
         if (error.message.includes('not found')) {
           reply.code(404).send({ error: error.message });
@@ -159,17 +157,17 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Create custom role
   fastify.post(
-    '/api/v1/organizations/:orgId/roles',
+    '/api/v1/tenants/:tenantId/roles',
     {
       preHandler: [
         authenticateRequest,
-        requirePermission('roles.role.create', 'organization'),
+        requirePermission('roles.role.create', 'tenant'),
       ],
     },
     (async (
       request: FastifyRequest<{
         Params: {
-          orgId: string;
+          tenantId: string;
         };
         Body: {
           name: string;
@@ -186,7 +184,7 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
           return;
         }
 
-        const { orgId } = request.params;
+        const tenantId = request.params.tenantId;
         const { name, description, permissionIds } = request.body;
 
         if (!name || name.trim().length === 0) {
@@ -200,7 +198,7 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
         }
 
         const role = await roleService.createCustomRole(
-          orgId,
+          tenantId,
           name,
           description || null,
           permissionIds,
@@ -210,9 +208,9 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
         // Publish role.created event (logging service will consume it)
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('role.created', requestUser.id, orgId, undefined, {
+          ...createBaseEvent('role.created', requestUser.id, tenantId, undefined, {
             roleId: role.id,
-            organizationId: orgId,
+            tenantId,
             name: role.name,
             permissionCount: permissionIds.length,
             createdBy: requestUser.id,
@@ -224,8 +222,8 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
 
         reply.code(201).send({ data: role });
       } catch (error: any) {
-        const params = request.params as { orgId?: string };
-        log.error('Create role error', error, { route: '/api/v1/organizations/:orgId/roles', userId: (request as any).user?.id, organizationId: params?.orgId, service: 'user-management' });
+        const params = request.params as { tenantId?: string };
+        log.error('Create role error', error, { route: '/api/v1/tenants/:tenantId/roles', userId: (request as any).user?.id, tenantId: params?.tenantId, service: 'user-management' });
 
         if (error.message.includes('already exists') || error.message.includes('system role name')) {
           reply.code(409).send({ error: error.message });
@@ -258,17 +256,17 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Update custom role
   fastify.put(
-    '/api/v1/organizations/:orgId/roles/:roleId',
+    '/api/v1/tenants/:tenantId/roles/:roleId',
     {
       preHandler: [
         authenticateRequest,
-        requirePermission('roles.role.update', 'organization'),
+        requirePermission('roles.role.update', 'tenant'),
       ],
     },
     (async (
       request: FastifyRequest<{
         Params: {
-          orgId: string;
+          tenantId: string;
           roleId: string;
         };
         Body: {
@@ -286,7 +284,7 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
           return;
         }
 
-        const { orgId, roleId } = request.params;
+        const { tenantId, roleId } = request.params;
         const updates = request.body;
 
         if (Object.keys(updates).length === 0) {
@@ -300,14 +298,14 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
         }
 
         // Get before state for audit logging
-        const beforeRole = await roleService.getRole(orgId, roleId);
+        const beforeRole = await roleService.getRole(tenantId, roleId);
         if (!beforeRole) {
           reply.code(404).send({ error: 'Role not found' });
           return;
         }
 
         const role = await roleService.updateCustomRole(
-          orgId,
+          tenantId,
           roleId,
           updates,
           requestUser.id
@@ -316,9 +314,9 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
         // Publish role.updated event (logging service will consume it)
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('role.updated', requestUser.id, orgId, undefined, {
+          ...createBaseEvent('role.updated', requestUser.id, tenantId, undefined, {
             roleId: role.id,
-            organizationId: orgId,
+            tenantId,
             changes: updates,
           }),
           timestamp: new Date().toISOString(),
@@ -328,8 +326,8 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
 
         return { data: role };
       } catch (error: any) {
-        const params = request.params as { orgId?: string; roleId?: string };
-        log.error('Update role error', error, { route: '/api/v1/organizations/:orgId/roles/:roleId', userId: (request as any).user?.id, organizationId: params?.orgId, roleId: params?.roleId, service: 'user-management' });
+        const params = request.params as { tenantId?: string; roleId?: string };
+        log.error('Update role error', error, { route: '/api/v1/tenants/:tenantId/roles/:roleId', userId: (request as any).user?.id, tenantId: params?.tenantId, roleId: params?.roleId, service: 'user-management' });
 
         if (error.message.includes('not found')) {
           reply.code(404).send({ error: error.message });
@@ -364,17 +362,17 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Delete custom role
   fastify.delete(
-    '/api/v1/organizations/:orgId/roles/:roleId',
+    '/api/v1/tenants/:tenantId/roles/:roleId',
     {
       preHandler: [
         authenticateRequest,
-        requirePermission('roles.role.delete', 'organization'),
+        requirePermission('roles.role.delete', 'tenant'),
       ],
     },
     (async (
       request: FastifyRequest<{
         Params: {
-          orgId: string;
+          tenantId: string;
           roleId: string;
         };
       }>,
@@ -387,23 +385,23 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
           return;
         }
 
-        const { orgId, roleId } = request.params;
+        const { tenantId, roleId } = request.params;
 
         // Get role info before deletion for audit log
-        const role = await roleService.getRole(orgId, roleId);
+        const role = await roleService.getRole(tenantId, roleId);
         if (!role) {
           reply.code(404).send({ error: 'Role not found' });
           return;
         }
 
-        await roleService.deleteCustomRole(orgId, roleId, requestUser.id);
+        await roleService.deleteCustomRole(tenantId, roleId, requestUser.id);
 
         // Publish role.deleted event (logging service will consume it)
         const metadata = extractEventMetadata(request);
         await publishEventSafely({
-          ...createBaseEvent('role.deleted', requestUser.id, orgId, undefined, {
+          ...createBaseEvent('role.deleted', requestUser.id, tenantId, undefined, {
             roleId: role.id,
-            organizationId: orgId,
+            tenantId,
             name: role.name,
             deletedBy: requestUser.id,
           }),
@@ -414,8 +412,8 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
 
         return { message: 'Role deleted successfully' };
       } catch (error: any) {
-        const params = request.params as { orgId?: string; roleId?: string };
-        log.error('Delete role error', error, { route: '/api/v1/organizations/:orgId/roles/:roleId', userId: (request as any).user?.id, organizationId: params?.orgId, roleId: params?.roleId, service: 'user-management' });
+        const params = request.params as { tenantId?: string; roleId?: string };
+        log.error('Delete role error', error, { route: '/api/v1/tenants/:tenantId/roles/:roleId', userId: (request as any).user?.id, tenantId: params?.tenantId, roleId: params?.roleId, service: 'user-management' });
 
         if (error.message.includes('not found')) {
           reply.code(404).send({ error: error.message });
@@ -443,17 +441,17 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
 
   // Get role permissions
   fastify.get(
-    '/api/v1/organizations/:orgId/roles/:roleId/permissions',
+    '/api/v1/tenants/:tenantId/roles/:roleId/permissions',
     {
       preHandler: [
         authenticateRequest,
-        requirePermission('roles.role.view', 'organization'),
+        requirePermission('roles.role.view', 'tenant'),
       ],
     },
     (async (
       request: FastifyRequest<{
         Params: {
-          orgId: string;
+          tenantId: string;
           roleId: string;
         };
       }>,
@@ -466,14 +464,14 @@ export async function setupRoleRoutes(fastify: FastifyInstance): Promise<void> {
           return;
         }
 
-        const { orgId, roleId } = request.params;
+        const { tenantId, roleId } = request.params;
 
-        const permissions = await roleService.getRolePermissions(orgId, roleId);
+        const permissions = await roleService.getRolePermissions(tenantId, roleId);
 
         return { data: permissions };
       } catch (error: any) {
-        const params = request.params as { orgId?: string; roleId?: string };
-        log.error('Get role permissions error', error, { route: '/api/v1/organizations/:orgId/roles/:roleId/permissions', userId: (request as any).user?.id, organizationId: params?.orgId, roleId: params?.roleId, service: 'user-management' });
+        const params = request.params as { tenantId?: string; roleId?: string };
+        log.error('Get role permissions error', error, { route: '/api/v1/tenants/:tenantId/roles/:roleId/permissions', userId: (request as any).user?.id, tenantId: params?.tenantId, roleId: params?.roleId, service: 'user-management' });
 
         if (error.message.includes('not found')) {
           reply.code(404).send({ error: error.message });

@@ -9,7 +9,7 @@ import { getConfig } from '../../../config';
 
 export interface SendInAppOptions {
   userId: string;
-  organizationId: string;
+  tenantId: string;
   notificationId: string;
   title: string;
   body: string;
@@ -50,7 +50,7 @@ export class InAppProvider {
         timestamp: new Date().toISOString(),
         version: '1.0',
         source: 'notification-manager',
-        organizationId: options.organizationId,
+        tenantId: options.tenantId,
         userId: options.userId,
         data: {
           notificationId: options.notificationId,
@@ -66,7 +66,7 @@ export class InAppProvider {
 
       await this.publisher.publish(
         'notification.inapp.delivered',
-        options.organizationId,
+        options.tenantId,
         event.data
       );
 

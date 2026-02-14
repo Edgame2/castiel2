@@ -18,16 +18,16 @@ export interface UserRole {
 
 export interface UserRolesResponse {
   userId: string;
-  organizationId?: string;
+  tenantId?: string;
   roles: UserRole[];
   isSuperAdmin: boolean;
 }
 
-export interface OrganizationUserRole {
+export interface TenantUserRole {
   userId: string;
-  organizationId: string;
+  tenantId: string;
   roles: UserRole[];
-  isOrgAdmin: boolean;
+  isTenantAdmin: boolean;
 }
 
 /**
@@ -69,7 +69,7 @@ export class UserManagementClient {
       
       return {
         userId: data.data?.userId || userId,
-        organizationId: data.data?.organizationId,
+        tenantId: data.data?.tenantId ?? (data.data as { organizationId?: string }).organizationId,
         roles: data.data?.roles || [],
         isSuperAdmin: data.data?.isSuperAdmin || false,
       };
@@ -94,18 +94,15 @@ export class UserManagementClient {
   }
 
   /**
-   * Get user's roles for a specific organization
+   * Get user's roles for a specific tenant
    * @param userId - User ID
-   * @param organizationId - Organization ID
-   * @returns Organization-specific roles
+   * @param tenantId - Tenant ID
+   * @returns Tenant-specific roles
    */
-  async getOrganizationUserRoles(
-    userId: string,
-    organizationId: string
-  ): Promise<OrganizationUserRole> {
+  async getTenantUserRoles(userId: string, tenantId: string): Promise<TenantUserRole> {
     try {
-      const url = `${this.baseUrl}/api/v1/organizations/${organizationId}/users/${userId}/roles`;
-      
+      const url = `${this.baseUrl}/api/v1/tenants/${tenantId}/users/${userId}/roles`;
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -115,34 +112,34 @@ export class UserManagementClient {
 
       if (!response.ok) {
         if (response.status === 404) {
-          log.warn('User-organization relationship not found', { userId, organizationId });
+          log.warn('User-tenant relationship not found', { userId, tenantId });
           return {
             userId,
-            organizationId,
+            tenantId,
             roles: [],
-            isOrgAdmin: false,
+            isTenantAdmin: false,
           };
         }
         throw new Error(`User Management API error: ${response.status} ${response.statusText}`);
       }
 
       const data = (await response.json()) as {
-        data?: { userId?: string; organizationId?: string; roles?: UserRole[]; isOrgAdmin?: boolean };
+        data?: { userId?: string; tenantId?: string; organizationId?: string; roles?: UserRole[]; isOrgAdmin?: boolean; isTenantAdmin?: boolean };
       };
       return {
         userId: data.data?.userId || userId,
-        organizationId: data.data?.organizationId || organizationId,
+        tenantId: data.data?.tenantId ?? data.data?.organizationId ?? tenantId,
         roles: data.data?.roles || [],
-        isOrgAdmin: data.data?.isOrgAdmin || false,
+        isTenantAdmin: data.data?.isTenantAdmin ?? data.data?.isOrgAdmin ?? false,
       };
     } catch (error) {
-      log.error('Failed to fetch organization user roles', error, { userId, organizationId });
+      log.error('Failed to fetch tenant user roles', error, { userId, tenantId });
       // Return default response on error (fail secure - no permissions)
       return {
         userId,
-        organizationId,
+        tenantId,
         roles: [],
-        isOrgAdmin: false,
+        isTenantAdmin: false,
       };
     }
   }
@@ -151,13 +148,13 @@ export class UserManagementClient {
    * Check if user has a specific permission
    * @param userId - User ID
    * @param permission - Permission to check
-   * @param organizationId - Optional organization ID for org-scoped permissions
+   * @param tenantId - Optional tenant ID for tenant-scoped permissions
    * @returns True if user has permission
    */
   async hasPermission(
     userId: string,
     permission: string,
-    organizationId?: string
+    tenantId?: string
   ): Promise<boolean> {
     try {
       // Get user roles
@@ -175,19 +172,15 @@ export class UserManagementClient {
         }
       }
 
-      // Check organization-specific roles if organizationId provided
-      if (organizationId) {
-        const orgRoles = await this.getOrganizationUserRoles(userId, organizationId);
-        
-        // Org Admin typically has most permissions within their org
-        if (orgRoles.isOrgAdmin) {
-          // Check if permission is org-scoped (not requiring super admin)
+      // Check tenant-specific roles if tenantId provided
+      if (tenantId) {
+        const tenantRoles = await this.getTenantUserRoles(userId, tenantId);
+        if (tenantRoles.isTenantAdmin) {
           if (!permission.includes('.all') && !permission.includes('_all')) {
             return true;
           }
         }
-
-        for (const role of orgRoles.roles) {
+        for (const role of tenantRoles.roles) {
           if (role.permissions.includes(permission) || role.permissions.includes('*')) {
             return true;
           }
@@ -196,7 +189,7 @@ export class UserManagementClient {
 
       return false;
     } catch (error) {
-      log.error('Failed to check user permission', error, { userId, permission, organizationId });
+      log.error('Failed to check user permission', error, { userId, permission, tenantId });
       // Fail secure - deny permission on error
       return false;
     }

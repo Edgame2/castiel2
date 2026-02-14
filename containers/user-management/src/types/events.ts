@@ -15,7 +15,7 @@ export interface BaseEvent {
   version?: string; // Event schema version
   source?: string; // Module that emitted
   correlationId?: string; // Request correlation
-  organizationId?: string; // Tenant context
+  tenantId?: string; // Tenant context
   userId?: string; // Actor
   actorId?: string; // Actor (alias for userId)
   data: Record<string, any>; // Event-specific data
@@ -90,71 +90,13 @@ export interface UserSessionRevokedEvent extends BaseEvent {
 }
 
 /**
- * Organization created event
- */
-export interface OrganizationCreatedEvent extends BaseEvent {
-  type: 'organization.created';
-  data: {
-    organizationId: string;
-    name: string;
-    slug: string;
-    createdBy: string;
-  };
-}
-
-/**
- * Organization updated event
- */
-export interface OrganizationUpdatedEvent extends BaseEvent {
-  type: 'organization.updated';
-  data: {
-    organizationId: string;
-    changes: Record<string, any>;
-  };
-}
-
-/**
- * Organization deleted event
- */
-export interface OrganizationDeletedEvent extends BaseEvent {
-  type: 'organization.deleted';
-  data: {
-    organizationId: string;
-    name?: string;
-    deletedBy: string;
-  };
-}
-
-/**
- * Organization settings updated event
- */
-export interface OrganizationSettingsUpdatedEvent extends BaseEvent {
-  type: 'organization.settings_updated';
-  data: {
-    organizationId: string;
-    changes: Record<string, any>;
-  };
-}
-
-/**
- * Organization security settings updated event
- */
-export interface OrganizationSecuritySettingsUpdatedEvent extends BaseEvent {
-  type: 'organization.security_settings_updated';
-  data: {
-    organizationId: string;
-    changes: Record<string, any>;
-  };
-}
-
-/**
  * Team created event
  */
 export interface TeamCreatedEvent extends BaseEvent {
   type: 'team.created';
   data: {
     teamId: string;
-    organizationId?: string;
+    tenantId?: string;
     name: string;
     parentTeamId?: string;
     createdBy: string;
@@ -168,7 +110,7 @@ export interface TeamUpdatedEvent extends BaseEvent {
   type: 'team.updated';
   data: {
     teamId: string;
-    organizationId?: string;
+    tenantId?: string;
     changes: Record<string, any>;
   };
 }
@@ -180,7 +122,7 @@ export interface TeamDeletedEvent extends BaseEvent {
   type: 'team.deleted';
   data: {
     teamId: string;
-    organizationId?: string;
+    tenantId?: string;
     name?: string;
     deletedBy: string;
   };
@@ -193,7 +135,7 @@ export interface TeamMemberAddedEvent extends BaseEvent {
   type: 'team.member_added';
   data: {
     teamId: string;
-    organizationId?: string;
+    tenantId?: string;
     userId: string;
     role: string;
     addedBy: string;
@@ -207,7 +149,7 @@ export interface TeamMemberRemovedEvent extends BaseEvent {
   type: 'team.member_removed';
   data: {
     teamId: string;
-    organizationId?: string;
+    tenantId?: string;
     userId: string;
     removedBy: string;
   };
@@ -220,7 +162,7 @@ export interface RoleCreatedEvent extends BaseEvent {
   type: 'role.created';
   data: {
     roleId: string;
-    organizationId: string;
+    tenantId: string;
     name: string;
     permissionCount: number;
     createdBy: string;
@@ -234,7 +176,7 @@ export interface RoleUpdatedEvent extends BaseEvent {
   type: 'role.updated';
   data: {
     roleId: string;
-    organizationId: string;
+    tenantId: string;
     changes: Record<string, any>;
   };
 }
@@ -246,7 +188,7 @@ export interface RoleDeletedEvent extends BaseEvent {
   type: 'role.deleted';
   data: {
     roleId: string;
-    organizationId: string;
+    tenantId: string;
     name?: string;
     deletedBy: string;
   };
@@ -259,7 +201,7 @@ export interface InvitationCreatedEvent extends BaseEvent {
   type: 'invitation.created';
   data: {
     invitationId: string;
-    organizationId: string;
+    tenantId: string;
     email: string;
     invitationType: 'email' | 'link';
     expiresAt: string;
@@ -274,7 +216,7 @@ export interface InvitationResentEvent extends BaseEvent {
   type: 'invitation.resent';
   data: {
     invitationId: string;
-    organizationId: string;
+    tenantId: string;
     email: string;
     resendCount: number;
     resentBy: string;
@@ -288,7 +230,7 @@ export interface InvitationCancelledEvent extends BaseEvent {
   type: 'invitation.cancelled';
   data: {
     invitationId: string;
-    organizationId: string;
+    tenantId: string;
     email: string;
     cancelledBy: string;
   };
@@ -301,7 +243,7 @@ export interface InvitationAcceptedEvent extends BaseEvent {
   type: 'invitation.accepted';
   data: {
     invitationId: string;
-    organizationId: string;
+    tenantId: string;
     userId: string;
     roleId: string;
   };
@@ -316,11 +258,6 @@ export type UserManagementEvent =
   | UserReactivatedEvent
   | UserDeletedEvent
   | UserSessionRevokedEvent
-  | OrganizationCreatedEvent
-  | OrganizationUpdatedEvent
-  | OrganizationDeletedEvent
-  | OrganizationSettingsUpdatedEvent
-  | OrganizationSecuritySettingsUpdatedEvent
   | TeamCreatedEvent
   | TeamUpdatedEvent
   | TeamDeletedEvent

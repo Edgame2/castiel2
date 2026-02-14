@@ -6,7 +6,7 @@ Full specification for the Dashboard container.
 
 ### Purpose
 
-Dashboard CRUD, widget management, organization-scoped dashboards; executive/manager/board views, prioritized opportunities, portfolio drill-down, view recording, widget cache.
+Dashboard CRUD, widget management, tenant-scoped dashboards; executive/manager/board views, prioritized opportunities, portfolio drill-down, view recording, widget cache.
 
 ### Configuration
 

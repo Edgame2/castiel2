@@ -1,12 +1,8 @@
 /**
  * Alert Service
- * Manages alert rules and detection
- * Per ModuleImplementationGuide Section 6: Abstraction Layer
- * Supports Prisma (Postgres) or CosmosAlertRulesRepository (Cosmos DB).
+ * Manages alert rules and detection (Cosmos DB only).
  */
 
-import { randomUUID } from 'crypto';
-import { PrismaClient } from '.prisma/logging-client';
 import { IStorageProvider } from './providers/storage/IStorageProvider';
 import { LogSearchParams } from '../types/log.types';
 import { log } from '../utils/logger';
@@ -14,7 +10,7 @@ import type { CosmosAlertRulesRepository } from '../data/cosmos/alert-rules';
 
 export interface AlertRule {
   id: string;
-  organizationId: string | null;
+  tenantId: string | null;
   name: string;
   description: string | null;
   enabled: boolean;
@@ -28,7 +24,7 @@ export interface AlertRule {
 }
 
 export interface CreateAlertRuleInput {
-  organizationId?: string;
+  tenantId?: string;
   name: string;
   description?: string;
   enabled?: boolean;
@@ -46,14 +42,12 @@ export interface UpdateAlertRuleInput {
 }
 
 export class AlertService {
-  private prisma: PrismaClient | null;
   private storage: IStorageProvider;
-  private cosmosAlertRules: CosmosAlertRulesRepository | null;
+  private cosmosAlertRules: CosmosAlertRulesRepository;
 
-  constructor(prisma: PrismaClient | null, storage: IStorageProvider, cosmosAlertRules?: CosmosAlertRulesRepository) {
-    this.prisma = prisma;
+  constructor(storage: IStorageProvider, cosmosAlertRules: CosmosAlertRulesRepository) {
     this.storage = storage;
-    this.cosmosAlertRules = cosmosAlertRules ?? null;
+    this.cosmosAlertRules = cosmosAlertRules;
   }
 
   /**
@@ -63,37 +57,19 @@ export class AlertService {
     input: CreateAlertRuleInput,
     createdBy: string
   ): Promise<AlertRule> {
-    if (this.cosmosAlertRules) {
-      const rule = await this.cosmosAlertRules.create({
-        data: {
-          organizationId: input.organizationId ?? null,
-          name: input.name,
-          description: input.description ?? null,
-          enabled: input.enabled ?? true,
-          type: input.type,
-          conditions: input.conditions,
-          notificationChannels: input.notificationChannels ?? [],
-          createdBy,
-          updatedBy: createdBy,
-        },
-      });
-      return this.mapToAlertRule(rule);
-    }
-    const rule = await this.prisma!.audit_alert_rules.create({
+    const rule = await this.cosmosAlertRules.create({
       data: {
-        id: randomUUID(),
-        organizationId: input.organizationId || null,
+        tenantId: input.tenantId ?? null,
         name: input.name,
-        description: input.description || null,
+        description: input.description ?? null,
         enabled: input.enabled ?? true,
-        type: input.type as any,
-        conditions: input.conditions as any,
-        notificationChannels: (input.notificationChannels || []) as any,
+        type: input.type,
+        conditions: input.conditions,
+        notificationChannels: input.notificationChannels ?? [],
         createdBy,
         updatedBy: createdBy,
       },
     });
-
     return this.mapToAlertRule(rule);
   }
 
@@ -101,15 +77,8 @@ export class AlertService {
    * Get an alert rule (tenant-scoped).
    */
   async getRule(id: string, tenantId: string): Promise<AlertRule | null> {
-    if (this.cosmosAlertRules) {
-      const rule = await this.cosmosAlertRules.findUniqueByIdAndTenant(id, tenantId);
-      return rule ? this.mapToAlertRule(rule) : null;
-    }
-    const rule = await this.prisma!.audit_alert_rules.findUnique({
-      where: { id },
-    });
-    if (!rule || rule.organizationId !== tenantId) return null;
-    return this.mapToAlertRule(rule);
+    const rule = await this.cosmosAlertRules.findUniqueByIdAndTenant(id, tenantId);
+    return rule ? this.mapToAlertRule(rule) : null;
   }
 
   /**
@@ -123,32 +92,17 @@ export class AlertService {
   ): Promise<AlertRule> {
     const existing = await this.getRule(id, tenantId);
     if (!existing) throw new Error('Alert rule not found');
-    if (this.cosmosAlertRules) {
-      const rule = await this.cosmosAlertRules.update({
-        where: { id },
-        data: {
-          name: input.name,
-          description: input.description,
-          enabled: input.enabled,
-          conditions: input.conditions,
-          notificationChannels: input.notificationChannels,
-          updatedBy,
-        },
-      });
-      return this.mapToAlertRule(rule);
-    }
-    const rule = await this.prisma!.audit_alert_rules.update({
+    const rule = await this.cosmosAlertRules.update({
       where: { id },
       data: {
         name: input.name,
         description: input.description,
         enabled: input.enabled,
-        conditions: input.conditions as any,
-        notificationChannels: input.notificationChannels as any,
+        conditions: input.conditions,
+        notificationChannels: input.notificationChannels,
         updatedBy,
       },
     });
-
     return this.mapToAlertRule(rule);
   }
 
@@ -158,32 +112,15 @@ export class AlertService {
   async deleteRule(id: string, tenantId: string): Promise<void> {
     const existing = await this.getRule(id, tenantId);
     if (!existing) throw new Error('Alert rule not found');
-    if (this.cosmosAlertRules) {
-      await this.cosmosAlertRules.delete({ where: { id } });
-      return;
-    }
-    await this.prisma!.audit_alert_rules.delete({
-      where: { id },
-    });
+    await this.cosmosAlertRules.delete({ where: { id } });
   }
 
   /**
    * List alert rules
    */
-  async listRules(organizationId?: string): Promise<AlertRule[]> {
-    if (this.cosmosAlertRules) {
-      const rules = await this.cosmosAlertRules.findMany({
-        where: organizationId !== undefined ? { organizationId: organizationId ?? null } : undefined,
-        orderBy: { createdAt: 'desc' },
-      });
-      return rules.map((r) => this.mapToAlertRule(r));
-    }
-    const where: Record<string, unknown> = {};
-    if (organizationId !== undefined) {
-      where.organizationId = organizationId || null;
-    }
-    const rules = await this.prisma!.audit_alert_rules.findMany({
-      where,
+  async listRules(tenantId?: string): Promise<AlertRule[]> {
+    const rules = await this.cosmosAlertRules.findMany({
+      where: tenantId !== undefined ? { tenantId: tenantId ?? null } : undefined,
       orderBy: { createdAt: 'desc' },
     });
     return rules.map((r) => this.mapToAlertRule(r));
@@ -225,7 +162,7 @@ export class AlertService {
     
     // Build search params from conditions
     const searchParams: LogSearchParams = {
-      organizationId: rule.organizationId || undefined,
+      tenantId: rule.tenantId || undefined,
       limit: 1, // Just check if any match
       offset: 0,
     };
@@ -265,7 +202,7 @@ export class AlertService {
     const startDate = new Date(now.getTime() - timeWindow * 1000);
 
     const searchParams: LogSearchParams = {
-      organizationId: rule.organizationId || undefined,
+      tenantId: rule.tenantId || undefined,
       startDate,
       endDate: now,
       limit: threshold + 1, // Only fetch enough to check threshold
@@ -302,7 +239,7 @@ export class AlertService {
     
     // Build search params for baseline period
     const baselineParams: LogSearchParams = {
-      organizationId: rule.organizationId || undefined,
+      tenantId: rule.tenantId || undefined,
       startDate: baselineStart,
       endDate: checkStart,
       limit: 1, // We only need count
@@ -311,7 +248,7 @@ export class AlertService {
     
     // Build search params for current period
     const currentParams: LogSearchParams = {
-      organizationId: rule.organizationId || undefined,
+      tenantId: rule.tenantId || undefined,
       startDate: checkStart,
       endDate: now,
       limit: 1, // We only need count
@@ -366,12 +303,12 @@ export class AlertService {
   }
 
   /**
-   * Map Prisma model to AlertRule type
+   * Map repository model to AlertRule type
    */
   private mapToAlertRule(rule: any): AlertRule {
     return {
       id: rule.id,
-      organizationId: rule.organizationId,
+      tenantId: rule.tenantId,
       name: rule.name,
       description: rule.description,
       enabled: rule.enabled,

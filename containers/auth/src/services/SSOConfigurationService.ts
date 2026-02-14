@@ -1,7 +1,7 @@
 /**
  * SSO Configuration Service
  * 
- * Manages SSO configuration for organizations, integrating with Secret Management Service
+ * Manages SSO configuration for tenants, integrating with Secret Management Service
  * for secure credential storage.
  */
 
@@ -49,7 +49,7 @@ export interface SSOCredentials {
  * Complete SSO Configuration Input
  */
 export interface CreateSSOConfigurationInput {
-  organizationId: string;
+  tenantId: string;
   enabled: boolean;
   provider: SSOProvider;
   enforce?: boolean;
@@ -81,7 +81,7 @@ export class SSOConfigurationService {
     try {
       // 1. Store credentials in Secret Management Service
       secretId = await this.storeSSOCredentials(
-        input.organizationId,
+        input.tenantId,
         input.provider,
         input.credentials,
         input.createdBy
@@ -91,12 +91,12 @@ export class SSOConfigurationService {
       const ssoConfig = await db.sSOConfiguration.upsert({
         where: {
           organizationId_provider: {
-            organizationId: input.organizationId,
+            organizationId: input.tenantId,
             provider: input.provider,
           },
         },
         create: {
-          organizationId: input.organizationId,
+          organizationId: input.tenantId,
           provider: input.provider,
           entityId: input.config.entityId,
           ssoUrl: input.config.ssoUrl,
@@ -105,7 +105,8 @@ export class SSOConfigurationService {
           authnContext: input.config.authnContext,
           attributeMappings: input.config.attributeMappings as any,
           secretId,
-          isActive: true,
+          isActive: input.enabled,
+          ssoEnforce: input.enforce || false,
           createdBy: input.createdBy,
         },
         update: {
@@ -116,28 +117,14 @@ export class SSOConfigurationService {
           authnContext: input.config.authnContext,
           attributeMappings: input.config.attributeMappings as any,
           secretId,
+          isActive: input.enabled,
+          ssoEnforce: input.enforce ?? false,
           updatedAt: new Date(),
         },
       });
 
-      // 3. Update organization SSO settings
-      await db.organization.update({
-        where: { id: input.organizationId },
-        data: {
-          ssoEnabled: input.enabled,
-          ssoProvider: input.provider,
-          ssoEnforce: input.enforce || false,
-          ssoSecretId: secretId,
-          ssoMetadata: {
-            entityId: input.config.entityId,
-            ssoUrl: input.config.ssoUrl,
-            sloUrl: input.config.sloUrl,
-          } as any,
-        },
-      });
-
       log.info('SSO configuration created/updated', {
-        organizationId: input.organizationId,
+        tenantId: input.tenantId,
         provider: input.provider,
         secretId,
         service: 'auth',
@@ -151,15 +138,15 @@ export class SSOConfigurationService {
       // Cleanup: If secret was created but database operations failed, try to delete the secret
       if (secretId) {
         try {
-          await this.secretClient.deleteSSOSecret(secretId, input.organizationId);
+          await this.secretClient.deleteSSOSecret(secretId, input.tenantId);
           log.info('Cleaned up SSO secret after configuration failure', {
-            organizationId: input.organizationId,
+            tenantId: input.tenantId,
             secretId,
             service: 'auth',
           });
         } catch (cleanupError: any) {
           log.error('Failed to cleanup SSO secret after configuration failure', cleanupError, {
-            organizationId: input.organizationId,
+            tenantId: input.tenantId,
             secretId,
             service: 'auth',
           });
@@ -173,36 +160,26 @@ export class SSOConfigurationService {
   /**
    * Get SSO configuration (non-sensitive data only)
    */
-  async getSSOConfiguration(organizationId: string, provider?: SSOProvider): Promise<any | null> {
+  async getSSOConfiguration(tenantId: string, provider?: SSOProvider): Promise<any | null> {
     const db = getDatabaseClient() as any;
 
-    const where: any = { organizationId };
+    const where: any = { organizationId: tenantId };
     if (provider) {
       where.provider = provider;
     }
 
     const config = await db.sSOConfiguration.findFirst({
       where,
-      include: {
-        organization: {
-          select: {
-            ssoEnabled: true,
-            ssoProvider: true,
-            ssoEnforce: true,
-          },
-        },
-      },
     });
 
     if (!config) {
       return null;
     }
 
-    // Get certificate expiration info
     let certificateExpiration: any = undefined;
     try {
       if (config.secretId) {
-        const expirationInfo = await this.getCertificateExpiration(config.secretId, organizationId);
+        const expirationInfo = await this.getCertificateExpiration(config.secretId, tenantId);
         if (expirationInfo) {
           certificateExpiration = {
             expiresAt: expirationInfo.expiresAt,
@@ -215,18 +192,20 @@ export class SSOConfigurationService {
     } catch (error: any) {
       log.warn('Failed to get certificate expiration info', {
         error: error.message,
-        organizationId,
+        tenantId,
         secretId: config.secretId,
         service: 'auth',
       });
     }
 
+    const c = config as { ssoEnforce?: boolean };
     return {
       id: config.id,
       organizationId: config.organizationId,
+      tenantId: config.organizationId,
       provider: config.provider,
-      enabled: config.organization.ssoEnabled,
-      enforce: config.organization.ssoEnforce,
+      enabled: config.isActive,
+      enforce: c.ssoEnforce ?? false,
       config: {
         provider: config.provider,
         entityId: config.entityId,
@@ -248,7 +227,7 @@ export class SSOConfigurationService {
    * Get SSO credentials from Secret Management Service (service-to-service only)
    */
   async getSSOCredentials(
-    organizationId: string,
+    tenantId: string,
     serviceToken?: string,
     requestingService?: string
   ): Promise<{
@@ -257,18 +236,17 @@ export class SSOConfigurationService {
     config: SSOConfigurationData;
   }> {
     // Get SSO configuration to find secret ID
-    const ssoConfig = await this.getSSOConfiguration(organizationId);
+    const ssoConfig = await this.getSSOConfiguration(tenantId);
     if (!ssoConfig || !ssoConfig.secretId) {
       throw new Error('SSO not configured for this organization');
     }
 
     // Retrieve credentials from Secret Management Service
     try {
-      const secret = await this.secretClient.getSSOSecret(ssoConfig.secretId, organizationId);
+      const secret = await this.secretClient.getSSOSecret(ssoConfig.secretId, tenantId);
 
-      // Log secret access for audit
       log.info('SSO credentials retrieved from Secret Management Service', {
-        organizationId,
+        tenantId,
         secretId: ssoConfig.secretId,
         provider: ssoConfig.provider,
         service: 'auth',
@@ -282,7 +260,7 @@ export class SSOConfigurationService {
     } catch (error: any) {
       log.error('Failed to retrieve SSO credentials from Secret Management Service', {
         error: error.message,
-        organizationId,
+        tenantId,
         secretId: ssoConfig.secretId,
         service: 'auth',
       });
@@ -291,41 +269,29 @@ export class SSOConfigurationService {
   }
 
   /**
-   * Disable SSO for organization
+   * Disable SSO for tenant
    */
-  async disableSSO(organizationId: string, userId: string): Promise<void> {
+  async disableSSO(tenantId: string, userId: string): Promise<void> {
     const db = getDatabaseClient() as any;
 
-    await db.organization.update({
-      where: { id: organizationId },
-      data: {
-        ssoEnabled: false,
-        ssoProvider: null,
-        ssoEnforce: false,
-        ssoSecretId: null,
-        ssoMetadata: null,
-      },
-    });
-
-    // Mark SSO configurations as inactive
     await db.sSOConfiguration.updateMany({
-      where: { organizationId },
+      where: { organizationId: tenantId },
       data: { isActive: false },
     });
 
-    log.info('SSO disabled for organization', { organizationId, userId, service: 'auth' });
+    log.info('SSO disabled for tenant', { tenantId, userId, service: 'auth' });
   }
 
   /**
    * Delete SSO configuration
    */
-  async deleteSSOConfiguration(organizationId: string, provider: SSOProvider, userId: string): Promise<void> {
+  async deleteSSOConfiguration(tenantId: string, provider: SSOProvider, userId: string): Promise<void> {
     const db = getDatabaseClient() as any;
 
     const config = await db.sSOConfiguration.findUnique({
       where: {
         organizationId_provider: {
-          organizationId,
+          organizationId: tenantId,
           provider,
         },
       },
@@ -335,48 +301,34 @@ export class SSOConfigurationService {
       throw new Error('SSO configuration not found');
     }
 
-    // Delete secret from Secret Management Service
     try {
-      await this.secretClient.deleteSSOSecret(config.secretId, organizationId);
-      
+      await this.secretClient.deleteSSOSecret(config.secretId, tenantId);
       log.info('SSO secret deleted from Secret Management Service', {
-        organizationId,
+        tenantId,
         secretId: config.secretId,
         service: 'auth',
       });
     } catch (error: any) {
       log.warn('Failed to delete SSO secret from Secret Management Service', {
         error: error.message,
-        organizationId,
+        tenantId,
         secretId: config.secretId,
         service: 'auth',
       });
-      // Continue with database deletion even if secret deletion fails
     }
 
-    // Delete SSO configuration
     await db.sSOConfiguration.delete({
       where: { id: config.id },
     });
 
-    // Update organization if this was the active SSO
-    const org = await db.organization.findUnique({
-      where: { id: organizationId },
-      select: { ssoProvider: true },
-    });
-
-    if (org?.ssoProvider === provider) {
-      await this.disableSSO(organizationId, userId);
-    }
-
-    log.info('SSO configuration deleted', { organizationId, provider, userId, service: 'auth' });
+    log.info('SSO configuration deleted', { tenantId, provider, userId, service: 'auth' });
   }
 
   /**
    * Rotate SSO certificate
    */
   async rotateCertificate(
-    organizationId: string,
+    tenantId: string,
     secretId: string,
     newCertificate: string,
     newPrivateKey?: string,
@@ -391,10 +343,10 @@ export class SSOConfigurationService {
         newCertificate,
         newPrivateKey,
         gracePeriodHours,
-      }, organizationId);
+      }, tenantId);
 
       log.info('SSO certificate rotated', {
-        organizationId,
+        tenantId,
         secretId,
         rotatedAt: response.rotatedAt,
         service: 'auth',
@@ -404,7 +356,7 @@ export class SSOConfigurationService {
     } catch (error: any) {
       log.error('Failed to rotate SSO certificate', {
         error: error.message,
-        organizationId,
+        tenantId,
         secretId,
         service: 'auth',
       });
@@ -417,7 +369,7 @@ export class SSOConfigurationService {
    */
   async getCertificateExpiration(
     secretId: string,
-    organizationId?: string
+    tenantId?: string
   ): Promise<{
     expiresAt?: string;
     daysUntilExpiration?: number;
@@ -425,13 +377,13 @@ export class SSOConfigurationService {
     isExpiringSoon: boolean;
   } | null> {
     try {
-      const response = await this.secretClient.getCertificateExpiration(secretId, organizationId);
+      const response = await this.secretClient.getCertificateExpiration(secretId, tenantId);
       return response;
     } catch (error: any) {
       log.warn('Failed to get certificate expiration', {
         error: error.message,
         secretId,
-        organizationId,
+        tenantId,
         service: 'auth',
       });
       return null;
@@ -442,21 +394,20 @@ export class SSOConfigurationService {
    * Store SSO credentials in Secret Management Service
    */
   private async storeSSOCredentials(
-    organizationId: string,
+    tenantId: string,
     provider: SSOProvider,
     credentials: SSOCredentials,
     createdBy: string
   ): Promise<string> {
     try {
       const response = await this.secretClient.createSSOSecret({
-        organizationId,
+        tenantId,
         provider,
         credentials: credentials as ClientSSOCredentials,
       });
 
-      // Log secret access for audit
       log.info('SSO credentials stored in Secret Management Service', {
-        organizationId,
+        tenantId,
         provider,
         secretId: response.secretId,
         service: 'auth',
@@ -466,7 +417,7 @@ export class SSOConfigurationService {
     } catch (error: any) {
       log.error('Failed to store SSO credentials in Secret Management Service', {
         error: error.message,
-        organizationId,
+        tenantId,
         provider,
         service: 'auth',
       });

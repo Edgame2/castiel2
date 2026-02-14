@@ -88,31 +88,31 @@ This document describes all events published by the User Management module that 
 
 ---
 
-### organization.member_joined
+### tenant.member_joined
 
-**Description**: Emitted when a user joins an organization. Triggers welcome notification.
+**Description**: Emitted when a user joins a tenant. Triggers welcome notification.
 
 **Triggered When**: 
 - User accepts an invitation
-- User is added directly to organization
+- User is added directly to tenant
 
-**Event Type**: `organization.member_joined`
+**Event Type**: `tenant.member_joined`
 
-**Notification Triggered**: Welcome to organization email
+**Notification Triggered**: Welcome to tenant email
 
 **Example Event**:
 
 ```json
 {
   "id": "evt_12345678-1234-1234-1234-123456789abc",
-  "type": "organization.member_joined",
+  "type": "tenant.member_joined",
   "timestamp": "2025-01-22T10:00:00Z",
   "version": "1.0",
   "source": "user-management",
-  "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+  "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
   "userId": "user_90123456-4567-4567-4567-456789012jkl",
   "data": {
-    "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+    "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
     "userId": "user_90123456-4567-4567-4567-456789012jkl",
     "email": "user@example.com",
     "roleId": "role_12345678-1234-1234-1234-123456789abc",
@@ -123,7 +123,7 @@ This document describes all events published by the User Management module that 
 
 ---
 
-### organization.member_role_changed
+### tenant.member_role_changed
 
 **Description**: Emitted when a member's role is changed. Triggers notification about role change.
 
@@ -131,7 +131,7 @@ This document describes all events published by the User Management module that 
 - Admin changes member's role
 - Role is updated via API
 
-**Event Type**: `organization.member_role_changed`
+**Event Type**: `tenant.member_role_changed`
 
 **Notification Triggered**: Role change notification email
 
@@ -140,14 +140,14 @@ This document describes all events published by the User Management module that 
 ```json
 {
   "id": "evt_12345678-1234-1234-1234-123456789abc",
-  "type": "organization.member_role_changed",
+  "type": "tenant.member_role_changed",
   "timestamp": "2025-01-22T10:00:00Z",
   "version": "1.0",
   "source": "user-management",
-  "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+  "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
   "userId": "admin_12345678-1234-1234-1234-123456789abc",
   "data": {
-    "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+    "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
     "userId": "user_90123456-4567-4567-4567-456789012jkl",
     "oldRoleId": "role_12345678-1234-1234-1234-123456789abc",
     "oldRoleName": "member",
@@ -160,15 +160,15 @@ This document describes all events published by the User Management module that 
 
 ---
 
-### organization.member_removed
+### tenant.member_removed
 
-**Description**: Emitted when a user is removed from an organization. Triggers notification.
+**Description**: Emitted when a user is removed from a tenant. Triggers notification.
 
 **Triggered When**: 
-- Admin removes member from organization
-- User leaves organization voluntarily
+- Admin removes member from tenant
+- User leaves tenant voluntarily
 
-**Event Type**: `organization.member_removed`
+**Event Type**: `tenant.member_removed`
 
 **Notification Triggered**: 
 - Member removal notification (if removed by admin)
@@ -197,11 +197,11 @@ This document describes all events published by the User Management module that 
   "timestamp": "2025-01-22T10:00:00Z",
   "version": "1.0",
   "source": "user-management",
-  "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+  "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
   "userId": "admin_12345678-1234-1234-1234-123456789abc",
   "data": {
     "invitationId": "inv_12345678-1234-1234-1234-123456789abc",
-    "organizationId": "org_78901234-3456-3456-3456-345678901ghi",
+    "tenantId": "tenant_78901234-3456-3456-3456-345678901ghi",
     "email": "newuser@example.com",
     "invitationType": "email",
     "expiresAt": "2025-01-29T10:00:00Z",

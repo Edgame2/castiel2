@@ -31,7 +31,7 @@ export async function preferenceRoutes(fastify: FastifyInstance) {
       const preferences = await preferenceService.getEffectivePreferences(
         scope,
         scopeId || '',
-        user.organizationId
+        user.tenantId
       );
 
       reply.send({ data: preferences });
@@ -51,7 +51,7 @@ export async function preferenceRoutes(fastify: FastifyInstance) {
       const preferences = await preferenceService.getEffectivePreferences(
         scope as PreferenceScope,
         effectiveScopeId || '',
-        user.organizationId
+        user.tenantId
       );
 
       reply.send({ data: preferences });
@@ -72,7 +72,7 @@ export async function preferenceRoutes(fastify: FastifyInstance) {
       const preference = await preferenceService.upsertPreference({
         scope: scope as PreferenceScope,
         scopeId: effectiveScopeId,
-        organizationId: user.organizationId,
+        tenantId: user.tenantId,
         channels: body.channels,
         categories: body.categories,
         quietHoursStart: body.quietHoursStart,
@@ -94,7 +94,7 @@ export async function preferenceRoutes(fastify: FastifyInstance) {
       
       // Find preference ID
       const preferences = await preferenceService.listPreferences(
-        user.organizationId,
+        user.tenantId,
         scope as PreferenceScope
       );
       
@@ -114,14 +114,14 @@ export async function preferenceRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // List all preferences for organization
+  // List all preferences for tenant
   fastify.get('/list/all', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
       const query = request.query as any;
       
       const preferences = await preferenceService.listPreferences(
-        user.organizationId,
+        user.tenantId,
         query.scope as PreferenceScope | undefined
       );
 

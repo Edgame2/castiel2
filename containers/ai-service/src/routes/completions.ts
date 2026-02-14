@@ -33,12 +33,12 @@ export async function completionRoutes(fastify: FastifyInstance) {
       const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const model = body.model || 'gpt-4';
 
-      const tenantId = (user as any).tenantId || user.organizationId || '';
+      const tenantId = (user as any).tenantId || '';
       // Publish event: completion started
       await eventPublisher.publish('ai.completion.started', tenantId, {
         requestId,
         model,
-        organizationId: user.organizationId,
+        tenantId,
         userId: user.id,
         timestamp: new Date(),
       });
@@ -52,7 +52,7 @@ export async function completionRoutes(fastify: FastifyInstance) {
           temperature: body.temperature,
           maxTokens: body.maxTokens,
           stream: body.stream,
-          organizationId: user.organizationId,
+          tenantId: (user as any).tenantId,
           userId: user.id,
         });
 
@@ -64,7 +64,7 @@ export async function completionRoutes(fastify: FastifyInstance) {
           model,
           tokensUsed: completion.usage?.totalTokens || 0,
           durationMs,
-          organizationId: user.organizationId,
+          tenantId,
           timestamp: new Date(),
         });
 
@@ -78,7 +78,7 @@ export async function completionRoutes(fastify: FastifyInstance) {
           model,
           error: msg,
           durationMs,
-          organizationId: user.organizationId,
+          tenantId,
           timestamp: new Date(),
         });
         throw error;

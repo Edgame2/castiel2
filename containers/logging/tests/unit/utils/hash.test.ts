@@ -9,7 +9,7 @@ import { LogCategory, LogSeverity, AuditLog } from '../../../src/types';
 describe('Hash Utilities', () => {
   const mockLogEntry = {
     id: 'test-id-1',
-    organizationId: 'org-1',
+    tenantId: 'tenant-1',
     timestamp: new Date('2025-01-22T10:00:00Z'),
     receivedAt: new Date('2025-01-22T10:00:00Z'),
     userId: 'user-1',

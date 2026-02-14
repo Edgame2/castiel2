@@ -92,7 +92,7 @@ async function auditLogAccess(
       resourceType: 'audit_log',
       resourceId: params.id,
     }, {
-      organizationId: user.organizationId,
+      tenantId: user.tenantId,
       userId: user.id,
       ipAddress: request.ip,
       userAgent: request.headers['user-agent'],

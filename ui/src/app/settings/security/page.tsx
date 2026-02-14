@@ -1,6 +1,6 @@
 /**
  * Account security — sessions (list, revoke), MFA, and API keys (auth-service user keys).
- * GET/DELETE/POST /api/users/me/sessions, /api/auth/mfa/*, /api/auth/api-keys via gateway.
+ * GET/DELETE/POST /api/v1/users/me/sessions, /api/v1/auth/mfa/*, /api/v1/auth/api-keys via gateway.
  */
 
 'use client';
@@ -58,7 +58,7 @@ export default function SecurityPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiFetch('/api/users/me/sessions');
+      const res = await apiFetch('/api/v1/users/me/sessions');
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error as string) || `HTTP ${res.status}`);
@@ -75,7 +75,7 @@ export default function SecurityPage() {
 
   const fetchMfaStatus = useCallback(async () => {
     try {
-      const res = await apiFetch('/api/auth/mfa/status');
+      const res = await apiFetch('/api/v1/auth/mfa/status');
       if (res.status === 403) {
         setMfaEnrolled(null);
         return;
@@ -94,7 +94,7 @@ export default function SecurityPage() {
   const fetchApiKeys = useCallback(async () => {
     setApiKeysLoading(true);
     try {
-      const res = await apiFetch('/api/auth/api-keys');
+      const res = await apiFetch('/api/v1/auth/api-keys');
       if (res.status === 403) {
         setApiKeysEnabled(false);
         setApiKeys([]);
@@ -130,7 +130,7 @@ export default function SecurityPage() {
     setRevoking(sessionId);
     setError(null);
     try {
-      const res = await apiFetch(`/api/users/me/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/v1/users/me/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error((j?.error as string) || `HTTP ${res.status}`);
@@ -149,7 +149,7 @@ export default function SecurityPage() {
     setRevokeAllOthers(true);
     setError(null);
     try {
-      const res = await apiFetch('/api/users/me/sessions/revoke-all-others', {
+      const res = await apiFetch('/api/v1/users/me/sessions/revoke-all-others', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
@@ -177,7 +177,7 @@ export default function SecurityPage() {
     setBackupCodesError(null);
     setBackupCodesLoading(true);
     try {
-      const res = await apiFetch('/api/auth/mfa/backup-codes/generate', {
+      const res = await apiFetch('/api/v1/auth/mfa/backup-codes/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),
@@ -217,7 +217,7 @@ export default function SecurityPage() {
     setDisableMfaError(null);
     setDisableMfaLoading(true);
     try {
-      const res = await apiFetch('/api/auth/mfa/disable', {
+      const res = await apiFetch('/api/v1/auth/mfa/disable', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code }),
@@ -268,7 +268,7 @@ export default function SecurityPage() {
       const body: { name: string; expiresInDays?: number } = { name };
       const days = createKeyExpires.trim() ? parseInt(createKeyExpires.trim(), 10) : undefined;
       if (days != null && !Number.isNaN(days) && days > 0) body.expiresInDays = days;
-      const res = await apiFetch('/api/auth/api-keys', {
+      const res = await apiFetch('/api/v1/auth/api-keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -301,7 +301,7 @@ export default function SecurityPage() {
     setRevokingKeyId(id);
     setCreateKeyError(null);
     try {
-      const res = await apiFetch(`/api/auth/api-keys/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/v1/auth/api-keys/${encodeURIComponent(id)}`, { method: 'DELETE' });
       if (res.status === 404) {
         setCreateKeyError('API key not found.');
         return;

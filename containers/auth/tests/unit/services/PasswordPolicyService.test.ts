@@ -17,13 +17,13 @@ describe('PasswordPolicyService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockDb = {
-      organization: { findUnique: vi.fn().mockResolvedValue(null) },
+      tenant: { findUnique: vi.fn().mockResolvedValue(null) },
     };
     vi.mocked(getDatabaseClient).mockReturnValue(mockDb);
   });
 
   describe('getPasswordPolicy', () => {
-    it('should return default policy when organizationId null', async () => {
+    it('should return default policy when tenantId null', async () => {
       const policy = await getPasswordPolicy(null);
       expect(policy.minLength).toBe(12);
       expect(policy.requireUppercase).toBe(true);
@@ -33,13 +33,13 @@ describe('PasswordPolicyService', () => {
       expect(policy.passwordHistoryCount).toBe(5);
     });
 
-    it('should return default when organization not found', async () => {
-      const policy = await getPasswordPolicy('org-1');
+    it('should return default when tenant not found', async () => {
+      const policy = await getPasswordPolicy('tenant-1');
       expect(policy.minLength).toBe(12);
     });
 
-    it('should return org policy when organization exists', async () => {
-      mockDb.organization.findUnique.mockResolvedValueOnce({
+    it('should return tenant policy when tenant exists', async () => {
+      mockDb.tenant.findUnique.mockResolvedValueOnce({
         passwordMinLength: 10,
         passwordRequireUppercase: true,
         passwordRequireLowercase: true,
@@ -48,7 +48,7 @@ describe('PasswordPolicyService', () => {
         passwordHistoryCount: 3,
         passwordExpiryDays: null,
       });
-      const policy = await getPasswordPolicy('org-1');
+      const policy = await getPasswordPolicy('tenant-1');
       expect(policy.minLength).toBe(10);
       expect(policy.passwordHistoryCount).toBe(3);
     });

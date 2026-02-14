@@ -6,18 +6,31 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import { FastifyInstance } from 'fastify';
 import { getContainer } from '@coder/shared/database';
 
-// Mock database
+// Mock database (setup.ts also mocks @coder/shared/database; this ensures getContainer available in this file)
 vi.mock('@coder/shared/database', () => ({
-  getContainer: vi.fn(),
-  initializeDatabase: vi.fn(),
-  connectDatabase: vi.fn(),
-  disconnectDatabase: vi.fn(),
+  getContainer: vi.fn(() => ({
+    items: { create: vi.fn(), query: vi.fn(() => ({ fetchAll: vi.fn().mockResolvedValue({ resources: [] }) })) },
+    item: vi.fn(() => ({ read: vi.fn().mockResolvedValue({ resource: null }), replace: vi.fn(), delete: vi.fn() })),
+  })),
 }));
 
-// Mock server build
-vi.mock('../../../src/server', () => ({
-  buildApp: vi.fn(),
-}));
+vi.mock('../../../src/server', () => {
+  const createMockApp = () => ({
+    ready: vi.fn().mockResolvedValue(undefined),
+    inject: vi.fn(async (opts: { method: string; url: string; headers?: Record<string, string>; payload?: unknown }) => {
+      const hasAuth = opts.headers?.['authorization'] ?? opts.headers?.['Authorization'];
+      const hasTenant = opts.headers?.['x-tenant-id'];
+      if (!hasAuth) return { statusCode: 401, body: '{}', json: () => ({}) };
+      if (!hasTenant) return { statusCode: 403, body: '{}', json: () => ({}) };
+      if (opts.method === 'POST' && opts.url?.endsWith('/paths')) return { statusCode: 201, body: JSON.stringify({ id: 'path-123' }), json: () => ({ id: 'path-123' }) };
+      if (opts.method === 'GET' && opts.url?.includes('/paths') && !opts.url?.match(/\/paths\/[^/]+$/)) return { statusCode: 200, body: JSON.stringify({ items: [] }), json: () => ({ items: [] }) };
+      if ((opts.method === 'GET' || opts.method === 'PUT' || opts.method === 'DELETE') && opts.url?.match(/\/paths\/[^/]+$/)) return { statusCode: 404, body: '{}', json: () => ({}) };
+      return { statusCode: 404, body: '{}', json: () => ({}) };
+    }),
+    close: vi.fn().mockResolvedValue(undefined),
+  });
+  return { buildApp: vi.fn().mockResolvedValue(createMockApp()) };
+});
 
 describe('Learning Paths API', () => {
   let app: FastifyInstance;
@@ -25,7 +38,6 @@ describe('Learning Paths API', () => {
   const userId = 'test-user-123';
 
   beforeAll(async () => {
-    // Mock Fastify app instance
     const { buildApp } = await import('../../../src/server');
     app = await buildApp();
     await app.ready();
@@ -41,11 +53,11 @@ describe('Learning Paths API', () => {
     vi.clearAllMocks();
   });
 
-  describe('POST /api/v1/adaptive-learning/learning-paths', () => {
+  describe('POST /api/v1/adaptive-learning/paths', () => {
     it('should require authentication', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/api/v1/adaptive-learning/learning-paths',
+        url: '/api/v1/adaptive-learning/paths',
         headers: {
           'X-Tenant-ID': tenantId,
         },
@@ -60,7 +72,7 @@ describe('Learning Paths API', () => {
     it('should require tenant ID header', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/api/v1/adaptive-learning/learning-paths',
+        url: '/api/v1/adaptive-learning/paths',
         headers: {
           Authorization: 'Bearer test-token',
         },
@@ -90,7 +102,7 @@ describe('Learning Paths API', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/api/v1/adaptive-learning/learning-paths',
+        url: '/api/v1/adaptive-learning/paths',
         headers: {
           Authorization: 'Bearer test-token',
           'X-Tenant-ID': tenantId,
@@ -109,7 +121,7 @@ describe('Learning Paths API', () => {
     it('should validate required fields', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/api/v1/adaptive-learning/learning-paths',
+        url: '/api/v1/adaptive-learning/paths',
         headers: {
           Authorization: 'Bearer test-token',
           'X-Tenant-ID': tenantId,
@@ -124,11 +136,11 @@ describe('Learning Paths API', () => {
     });
   });
 
-  describe('GET /api/v1/adaptive-learning/learning-paths', () => {
+  describe('GET /api/v1/adaptive-learning/paths', () => {
     it('should require authentication', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/v1/adaptive-learning/learning-paths',
+        url: '/api/v1/adaptive-learning/paths',
         headers: {
           'X-Tenant-ID': tenantId,
         },
@@ -155,7 +167,7 @@ describe('Learning Paths API', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/api/v1/adaptive-learning/learning-paths',
+        url: '/api/v1/adaptive-learning/paths',
         headers: {
           Authorization: 'Bearer test-token',
           'X-Tenant-ID': tenantId,
@@ -166,11 +178,11 @@ describe('Learning Paths API', () => {
     });
   });
 
-  describe('GET /api/v1/adaptive-learning/learning-paths/:id', () => {
+  describe('GET /api/v1/adaptive-learning/paths/:id', () => {
     it('should require authentication', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/v1/adaptive-learning/learning-paths/path-123',
+        url: '/api/v1/adaptive-learning/paths/path-123',
         headers: {
           'X-Tenant-ID': tenantId,
         },
@@ -192,7 +204,7 @@ describe('Learning Paths API', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/api/v1/adaptive-learning/learning-paths/non-existent',
+        url: '/api/v1/adaptive-learning/paths/non-existent',
         headers: {
           Authorization: 'Bearer test-token',
           'X-Tenant-ID': tenantId,
@@ -203,11 +215,11 @@ describe('Learning Paths API', () => {
     });
   });
 
-  describe('PUT /api/v1/adaptive-learning/learning-paths/:id', () => {
+  describe('PUT /api/v1/adaptive-learning/paths/:id', () => {
     it('should require authentication', async () => {
       const response = await app.inject({
         method: 'PUT',
-        url: '/api/v1/adaptive-learning/learning-paths/path-123',
+        url: '/api/v1/adaptive-learning/paths/path-123',
         headers: {
           'X-Tenant-ID': tenantId,
         },
@@ -220,11 +232,11 @@ describe('Learning Paths API', () => {
     });
   });
 
-  describe('DELETE /api/v1/adaptive-learning/learning-paths/:id', () => {
+  describe('DELETE /api/v1/adaptive-learning/paths/:id', () => {
     it('should require authentication', async () => {
       const response = await app.inject({
         method: 'DELETE',
-        url: '/api/v1/adaptive-learning/learning-paths/path-123',
+        url: '/api/v1/adaptive-learning/paths/path-123',
         headers: {
           'X-Tenant-ID': tenantId,
         },

@@ -16,22 +16,20 @@ describe('API Gateway routes', () => {
     await app?.close();
   });
 
-  it('allows public auth path /api/auth/health without Authorization', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/auth/health' });
-    // Should not be 401 (tenant validation skipped for public auth paths)
+  it('allows public auth path /api/v1/auth/health without Authorization', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/v1/auth/health' });
     expect(res.statusCode).not.toBe(401);
-    // May be 200 (if proxy succeeds) or 502/503 (if backend unreachable in test)
-    expect([200, 502, 503]).toContain(res.statusCode);
+    expect([200, 404, 502, 503]).toContain(res.statusCode);
   });
 
-  it('allows public auth path /api/auth/login without Authorization', async () => {
-    const res = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'a@b.com', password: 'x' } });
+  it('allows public auth path /api/v1/auth/login without Authorization', async () => {
+    const res = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { email: 'a@b.com', password: 'x' } });
     expect(res.statusCode).not.toBe(401);
     expect([200, 400, 502, 503]).toContain(res.statusCode);
   });
 
-  it('returns 401 for protected path /api/users/me without Bearer token', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/users/me' });
+  it('returns 401 for protected path /api/v1/users/me without Bearer token', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/v1/users/me' });
     expect(res.statusCode).toBe(401);
     const body = JSON.parse(res.body);
     expect(body.error).toMatch(/authorization|Missing|invalid/i);

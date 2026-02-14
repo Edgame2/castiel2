@@ -47,7 +47,7 @@ export async function logAuditAction(
 ): Promise<void> {
   const user = (request as any).user;
   const userId = user?.id || metadata?.userId;
-  const organizationId = (request as any).organizationId || metadata?.projectId;
+  const tenantId = (request as any).tenantId || metadata?.projectId;
   const resourceId = metadata?.resourceId;
   
   const loggingService = getLoggingService();

@@ -54,7 +54,7 @@ describe('CompletionService', () => {
       const input = {
         messages: [{ role: 'user', content: 'Hello' }],
         model: 'gpt-4',
-        organizationId: 'org-123',
+        tenantId: 'tenant-123',
         userId: 'user-123',
       };
 
@@ -68,7 +68,7 @@ describe('CompletionService', () => {
       const input = {
         messages: [{ role: 'user', content: 'Hello' }],
         model: 'gpt-4',
-        organizationId: 'org-123',
+        tenantId: 'tenant-123',
         userId: 'user-123',
       };
       mockOpenaiPost.mockRejectedValueOnce(new Error('Provider error'));
@@ -82,7 +82,7 @@ describe('CompletionService', () => {
       const input = {
         messages: [{ role: 'user', content: 'Hello' }],
         model: 'gpt-4',
-        organizationId: 'org-123',
+        tenantId: 'tenant-123',
         userId: 'user-123',
       };
 

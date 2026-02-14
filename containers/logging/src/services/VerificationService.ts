@@ -1,27 +1,27 @@
 /**
  * Verification Service
- * Handles hash chain verification for tamper-evident logging
+ * Handles hash chain verification for tamper-evident logging (Cosmos DB only).
  */
 
-import { PrismaClient } from '.prisma/logging-client';
 import { IStorageProvider } from './providers/storage/IStorageProvider';
 import { AuditLog, VerificationResult, VerificationStatus, HashCheckpoint } from '../types';
 import { verifyHashChain, verifyLogHash } from '../utils/hash';
 import { log } from '../utils/logger';
 import { getConfig } from '../config';
+import type { CosmosHashCheckpointsRepository } from '../data/cosmos/hash-checkpoints';
 
 interface VerificationServiceDeps {
   storageProvider: IStorageProvider;
-  prisma: PrismaClient;
+  cosmosCheckpoints: CosmosHashCheckpointsRepository;
 }
 
 export class VerificationService {
   private storage: IStorageProvider;
-  private prisma: PrismaClient;
+  private cosmosCheckpoints: CosmosHashCheckpointsRepository;
 
   constructor(deps: VerificationServiceDeps) {
     this.storage = deps.storageProvider;
-    this.prisma = deps.prisma;
+    this.cosmosCheckpoints = deps.cosmosCheckpoints;
   }
 
   /**
@@ -89,97 +89,88 @@ export class VerificationService {
    */
   async createCheckpoint(): Promise<HashCheckpoint> {
     const lastLog = await this.storage.getLastLog();
-    
     if (!lastLog) {
       throw new Error('No logs found to create checkpoint');
     }
-
     const totalCount = await this.storage.count({});
-    
-    const checkpoint = await this.prisma.audit_hash_checkpoints.create({
-      data: {
-        checkpointTimestamp: new Date(),
-        lastLogId: lastLog.id,
-        lastHash: lastLog.hash,
-        logCount: BigInt(totalCount),
-        status: 'PENDING',
-      },
+
+    const row = await this.cosmosCheckpoints.create({
+      tenantId: null,
+      checkpointTimestamp: new Date(),
+      lastLogId: lastLog.id,
+      lastHash: lastLog.hash,
+      logCount: totalCount,
+      verifiedBy: null,
+      status: 'PENDING',
+      verifiedAt: null,
     });
-
-    log.info('Checkpoint created', { checkpointId: checkpoint.id, lastLogId: lastLog.id });
-
-    return this.mapCheckpoint(checkpoint);
+    log.info('Checkpoint created', { checkpointId: row.id, lastLogId: lastLog.id });
+    return this.mapRowToCheckpoint(row);
   }
 
   /**
    * Verify from last checkpoint to now
    */
   async verifyFromLastCheckpoint(userId?: string): Promise<VerificationResult & { checkpointId: string }> {
-    // Get the last verified checkpoint
-    const lastCheckpoint = await this.prisma.audit_hash_checkpoints.findFirst({
+    const rows = await this.cosmosCheckpoints.findMany({
       where: { status: 'VERIFIED' },
       orderBy: { checkpointTimestamp: 'desc' },
+      take: 1,
     });
-
+    const lastCheckpoint = rows.length ? this.mapRowToCheckpoint(rows[0]) : null;
     const startTime = lastCheckpoint?.checkpointTimestamp || new Date(0);
     const result = await this.verifyRange(startTime, new Date());
 
-    // Create a new checkpoint with results
-    const checkpoint = await this.prisma.audit_hash_checkpoints.create({
-      data: {
-        checkpointTimestamp: new Date(),
-        lastLogId: result.lastValidHash ? (await this.storage.getLastLog())?.id || '' : '',
-        lastHash: result.lastValidHash,
-        logCount: BigInt(result.checkedLogs),
-        status: result.status,
-        verifiedAt: result.verifiedAt,
-        verifiedBy: userId,
-      },
+    const lastLog = result.lastValidHash ? (await this.storage.getLastLog())?.id || '' : '';
+    const row = await this.cosmosCheckpoints.create({
+      tenantId: null,
+      checkpointTimestamp: new Date(),
+      lastLogId: lastLog,
+      lastHash: result.lastValidHash,
+      logCount: result.checkedLogs,
+      verifiedBy: userId ?? null,
+      status: result.status,
+      verifiedAt: result.verifiedAt,
     });
-
-    return {
-      ...result,
-      checkpointId: checkpoint.id,
-    };
+    return { ...result, checkpointId: row.id };
   }
 
   /**
    * Get verification history
    */
   async getVerificationHistory(limit = 20): Promise<HashCheckpoint[]> {
-    const checkpoints = await this.prisma.audit_hash_checkpoints.findMany({
+    const rows = await this.cosmosCheckpoints.findMany({
       orderBy: { checkpointTimestamp: 'desc' },
       take: limit,
     });
-
-    return checkpoints.map(this.mapCheckpoint);
+    return rows.map(r => this.mapRowToCheckpoint(r));
   }
 
   /**
    * Get the last checkpoint
    */
   async getLastCheckpoint(): Promise<HashCheckpoint | null> {
-    const checkpoint = await this.prisma.audit_hash_checkpoints.findFirst({
+    const rows = await this.cosmosCheckpoints.findMany({
       orderBy: { checkpointTimestamp: 'desc' },
+      take: 1,
     });
-
-    return checkpoint ? this.mapCheckpoint(checkpoint) : null;
+    return rows.length ? this.mapRowToCheckpoint(rows[0]) : null;
   }
 
   /**
-   * Map Prisma checkpoint to domain type
+   * Map Cosmos row to domain type
    */
-  private mapCheckpoint(checkpoint: any): HashCheckpoint {
+  private mapRowToCheckpoint(row: { id: string; checkpointTimestamp: Date; lastLogId: string; lastHash: string; logCount: number; verifiedAt: Date | null; verifiedBy: string | null; status: string; createdAt: Date }): HashCheckpoint {
     return {
-      id: checkpoint.id,
-      checkpointTimestamp: checkpoint.checkpointTimestamp,
-      lastLogId: checkpoint.lastLogId,
-      lastHash: checkpoint.lastHash,
-      logCount: checkpoint.logCount,
-      verifiedAt: checkpoint.verifiedAt,
-      verifiedBy: checkpoint.verifiedBy,
-      status: checkpoint.status as VerificationStatus,
-      createdAt: checkpoint.createdAt,
+      id: row.id,
+      checkpointTimestamp: row.checkpointTimestamp,
+      lastLogId: row.lastLogId,
+      lastHash: row.lastHash,
+      logCount: BigInt(row.logCount),
+      verifiedAt: row.verifiedAt,
+      verifiedBy: row.verifiedBy,
+      status: row.status as VerificationStatus,
+      createdAt: row.createdAt,
     };
   }
 }

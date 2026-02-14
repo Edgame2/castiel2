@@ -12,7 +12,7 @@ import { log } from '../utils/logger';
 interface AuthenticatedUser {
   id: string;
   email: string;
-  organizationId?: string;
+  tenantId?: string;
 }
 
 export async function registerLogRoutes(app: FastifyInstance): Promise<void> {
@@ -65,9 +65,8 @@ export async function registerLogRoutes(app: FastifyInstance): Promise<void> {
       // Validate input
       const input = createLogSchema.parse(request.body);
       
-      // Get context from auth
       const context = {
-        organizationId: user?.organizationId,
+        tenantId: user?.tenantId,
         userId: user?.id,
         ipAddress: request.ip,
         userAgent: request.headers['user-agent'],
@@ -155,9 +154,8 @@ export async function registerLogRoutes(app: FastifyInstance): Promise<void> {
       // Validate input
       const { logs } = batchLogSchema.parse(request.body);
       
-      // Get context from auth
       const context = {
-        organizationId: user?.organizationId,
+        tenantId: user?.tenantId,
         userId: user?.id,
       };
       
@@ -207,7 +205,7 @@ export async function registerLogRoutes(app: FastifyInstance): Promise<void> {
     
     const logEntry = await storageProvider.getById(
       request.params.id,
-      user?.organizationId
+      user?.tenantId
     );
     
     if (!logEntry) {

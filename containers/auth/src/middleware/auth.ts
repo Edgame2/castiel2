@@ -65,7 +65,7 @@ export async function authenticateRequest(
             email: '',
             name: undefined,
           } as AuthenticatedUser;
-          (request as any).organizationId = result.tenantId;
+          (request as any).tenantId = result.tenantId;
           (request as any).apiKeyAuth = true;
           log.debug('Request authenticated via API key', { userId: result.userId, route: request.url, service: 'auth' });
           return;
@@ -111,28 +111,27 @@ export async function authenticateRequest(
       return;
     }
 
-    log.debug('User authenticated successfully', { 
-      route: request.url, 
-      userId: user.id, 
+    const tenantId = sessionData.tenantId;
+    log.debug('User authenticated successfully', {
+      route: request.url,
+      userId: user.id,
       email: user.email,
       sessionId: sessionData.sessionId,
-      organizationId: sessionData.organizationId,
+      tenantId,
       service: 'auth',
     });
 
-    // Attach user and context to request
+    // Attach user and context to request (tenant-only)
     (request as any).user = {
       id: user.id,
       email: user.email,
       name: user.name || undefined,
     } as AuthenticatedUser;
-    
-    // Attach session and organization context
     if (sessionData.sessionId) {
       (request as any).sessionId = sessionData.sessionId;
     }
-    if (sessionData.organizationId) {
-      (request as any).organizationId = sessionData.organizationId;
+    if (tenantId) {
+      (request as any).tenantId = tenantId;
     }
   } catch (error: any) {
     log.error('Unexpected authentication error', error, { route: request.url, method: request.method, service: 'auth' });
@@ -161,7 +160,7 @@ export async function optionalAuth(
             email: '',
             name: undefined,
           } as AuthenticatedUser;
-          (request as any).organizationId = result.tenantId;
+          (request as any).tenantId = result.tenantId;
           (request as any).apiKeyAuth = true;
         }
       }
@@ -185,12 +184,12 @@ export async function optionalAuth(
             email: user.email,
             name: user.name || undefined,
           } as AuthenticatedUser;
-
           if (sessionData.sessionId) {
             (request as any).sessionId = sessionData.sessionId;
           }
-          if (sessionData.organizationId) {
-            (request as any).organizationId = sessionData.organizationId;
+          const tenantId = sessionData.tenantId;
+          if (tenantId) {
+            (request as any).tenantId = tenantId;
           }
         }
       }

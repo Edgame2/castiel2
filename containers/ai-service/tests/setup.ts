@@ -137,10 +137,10 @@ vi.mock('@coder/shared', () => ({
     close: vi.fn(),
   })),
   authenticateRequest: vi.fn(() => async (req: any) => {
-    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123', organizationId: 'org-1' };
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
   }),
   tenantEnforcementMiddleware: vi.fn(() => async (req: any) => {
-    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123', organizationId: 'org-1' };
+    req.user = req.user || { id: 'user-1', tenantId: req.headers?.['x-tenant-id'] || 'tenant-123' };
   }),
   setupJWT: vi.fn(),
   setupHealthCheck: vi.fn(),

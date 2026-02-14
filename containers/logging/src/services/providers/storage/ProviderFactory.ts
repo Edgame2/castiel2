@@ -1,36 +1,22 @@
 /**
  * Storage Provider Factory
  * Per ModuleImplementationGuide Section 6.4
+ * Logging module uses Cosmos DB only (no Postgres).
  */
 
-import { PrismaClient } from '.prisma/logging-client';
 import { IStorageProvider, StorageProviderConfig } from './IStorageProvider';
-import { PostgresProvider } from './PostgresProvider';
 import { CosmosProvider } from './CosmosProvider';
 
 /**
- * Create a storage provider based on configuration.
- * When config.provider is 'cosmos', prisma may be null and cosmosAuditLogsContainer must be set.
+ * Create a storage provider. Only Cosmos is supported.
  */
 export function createStorageProvider(
   config: StorageProviderConfig,
-  prisma: PrismaClient | null,
-  cosmosAuditLogsContainer?: string
+  cosmosAuditLogsContainer: string
 ): IStorageProvider {
-  switch (config.provider) {
-    case 'postgres':
-      if (!prisma) throw new Error('Prisma client required for postgres storage provider');
-      return new PostgresProvider(prisma, config);
-
-    case 'elasticsearch':
-      throw new Error('Elasticsearch provider not yet implemented');
-
-    case 'cosmos':
-      if (!cosmosAuditLogsContainer) throw new Error('cosmos_db.containers.audit_logs required for Cosmos storage');
-      return new CosmosProvider(cosmosAuditLogsContainer, config);
-
-    default:
-      throw new Error(`Unknown storage provider: ${config.provider}`);
+  if (config.provider !== 'cosmos') {
+    throw new Error(`Logging module requires Cosmos DB; set storage.provider to 'cosmos'. Got: ${config.provider}`);
   }
+  return new CosmosProvider(cosmosAuditLogsContainer, config);
 }
 

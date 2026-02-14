@@ -7,6 +7,7 @@ This directory contains the exhaustive list of all Castiel API endpoints.
 | File | Description |
 |------|-------------|
 | [ENDPOINTS.md](./ENDPOINTS.md) | Full endpoint list with implementation status (Fully / Partial / Stub / Missing) |
+| [API_RULES.md](./API_RULES.md) | **Path convention:** client path = gateway path = `/api/v1/...`; rules for Gateway, UI, and ENDPOINTS.md. Run `pnpm run check:api-rules` to enforce; CI should run it. |
 
 ## Status Legend
 

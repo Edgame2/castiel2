@@ -1,6 +1,6 @@
 /**
- * Admin: Invite user — POST /api/v1/organizations/:orgId/invitations (gateway → user_management).
- * Requires orgId, email, roleId; optional message.
+ * Admin: Invite user — POST /api/v1/tenants/:tenantId/invitations (gateway → user_management).
+ * Requires tenantId, email, roleId; optional message.
  */
 
 'use client';
@@ -25,7 +25,7 @@ type RoleOption = { id: string; name?: string };
 type RolesResponse = { data?: RoleOption[] };
 
 export default function AdminSecurityUserInvitePage() {
-  const [orgId, setOrgId] = useState('');
+  const [tenantId, setTenantId] = useState('');
   const [email, setEmail] = useState('');
   const [roleId, setRoleId] = useState('');
   const [message, setMessage] = useState('');
@@ -36,12 +36,12 @@ export default function AdminSecurityUserInvitePage() {
   const [success, setSuccess] = useState(false);
 
   const fetchRoles = useCallback(() => {
-    if (!getApiBaseUrl() || !orgId.trim()) {
+    if (!getApiBaseUrl() || !tenantId.trim()) {
       setRoles([]);
       return;
     }
     setRolesLoading(true);
-    apiFetch(`/api/v1/organizations/${encodeURIComponent(orgId.trim())}/roles`)
+    apiFetch(`/api/v1/tenants/${encodeURIComponent(tenantId.trim())}/roles`)
       .then((r) => {
         if (!r.ok) return { data: [] };
         return r.json();
@@ -49,7 +49,7 @@ export default function AdminSecurityUserInvitePage() {
       .then((json: RolesResponse) => setRoles(Array.isArray(json?.data) ? json.data : []))
       .catch(() => setRoles([]))
       .finally(() => setRolesLoading(false));
-  }, [orgId]);
+  }, [tenantId]);
 
   useEffect(() => {
     fetchRoles();
@@ -57,13 +57,13 @@ export default function AdminSecurityUserInvitePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const o = orgId.trim();
+    const o = tenantId.trim();
     const em = email.trim();
     const r = roleId.trim();
     if (!getApiBaseUrl() || !o || !em || !r || submitting) return;
     setSubmitError(null);
     setSubmitting(true);
-    apiFetch(`/api/v1/organizations/${encodeURIComponent(o)}/invitations`, {
+    apiFetch(`/api/v1/tenants/${encodeURIComponent(o)}/invitations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -109,8 +109,8 @@ export default function AdminSecurityUserInvitePage() {
 
         <form onSubmit={handleSubmit} className="border rounded-lg p-6 dark:border-gray-700 space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="orgId">Organization ID</Label>
-            <Input id="orgId" type="text" value={orgId} onChange={(e) => setOrgId(e.target.value)} className="w-full" required />
+            <Label htmlFor="tenantId">Tenant ID</Label>
+            <Input id="tenantId" type="text" value={tenantId} onChange={(e) => setTenantId(e.target.value)} className="w-full" required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -148,7 +148,7 @@ export default function AdminSecurityUserInvitePage() {
             <Textarea id="message" value={message} onChange={(e) => setMessage(e.target.value)} rows={2} className="w-full" />
           </div>
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting || !orgId.trim() || !email.trim() || !roleId.trim()}>
+            <Button type="submit" disabled={submitting || !tenantId.trim() || !email.trim() || !roleId.trim()}>
               {submitting ? 'Sending…' : 'Send invitation'}
             </Button>
             <Button asChild variant="outline">

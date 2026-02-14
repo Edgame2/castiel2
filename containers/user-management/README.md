@@ -1,15 +1,13 @@
 # User Management Module
 
-User profiles, organizations, teams, roles, and permissions management service for Castiel.
+User profiles, teams, roles, and permissions management service for Castiel. All users and data are scoped by tenant (tenantId).
 
 ## Features
 
 - **User Profiles**: User profile management, preferences, and settings
-- **Organizations**: Multi-tenant organization management
-- **Teams**: Team creation, membership, and hierarchy
+- **Teams**: Team creation, membership, and hierarchy (tenant-scoped)
 - **RBAC**: Role-based access control with custom roles and permissions
-- **Invitations**: User invitation system with expiration and tracking
-- **Memberships**: Organization membership management
+- **Invitations**: User invitation system with expiration and tracking (tenant-scoped)
 - **User Analytics**: User activity tracking and insights
 
 ## Quick Start
@@ -38,13 +36,12 @@ cp config/default.yaml config/local.yaml
 The module uses Azure Cosmos DB NoSQL (shared database with prefixed containers). Ensure the following containers exist:
 
 - `user_users` - User accounts and profiles
-- `user_organizations` - Organization definitions
-- `user_teams` - Team definitions
+- `user_teams` - Team definitions (partition key: tenantId)
 - `user_roles` - User roles and permissions
 - `user_role_idp_mappings` - Role to IdP mappings
 - `user_tenant_invitations` - Tenant invitations (TTL: 7 days)
 - `user_tenant_join_requests` - Join requests
-- `user_organization_memberships` - Organization memberships
+- `user_memberships` - Tenant membership records
 - `user_team_memberships` - Team memberships
 - `user_external_ids` - External user ID mappings
 
@@ -61,18 +58,15 @@ npm run build
 npm start
 ```
 
-### Seed: Revimize Tenant + Super Admin
+### Seed: Default Tenant + Super Admin
 
-To bootstrap the **Revimize** tenant with a Super Admin user:
+To bootstrap a default tenant with a Super Admin user:
 
-1. **Existing user** (user registered first): Set `SEED_SUPER_ADMIN_EMAIL=edouard.gamelin@revimize.com` and restart user-management. The seed promotes that user to Super Admin in the Revimize org.
+1. Set `SEED_DEFAULT_TENANT_ID` to your tenant ID (or leave unset to use a new UUID).
+2. **Existing user**: Set `SEED_SUPER_ADMIN_EMAIL=<email>`. The seed promotes that user to Super Admin in the default tenant.
+3. **Create user + tenant** (one-shot): Set `SEED_SUPER_ADMIN_EMAIL` and `SEED_SUPER_ADMIN_PASSWORD`. The seed creates the default tenant, the user, and membership.
 
-2. **Create user + tenant** (one-shot bootstrap): Set both:
-   - `SEED_SUPER_ADMIN_EMAIL=edouard.gamelin@revimize.com`
-   - `SEED_SUPER_ADMIN_PASSWORD=YourSecurePassword`
-   Restart user-management. The seed creates the Revimize org, the user, and membership.
-
-After seeding: **log out and log in again** to get a token with `tenantId`/`organizationId` (required for `/api/v1/integrations` and other protected routes).
+After seeding: **log out and log in again** to get a token with `tenantId` (required for protected routes).
 
 ## Configuration Reference
 
@@ -83,7 +77,6 @@ After seeding: **log out and log in again** to get a token with `tenantId`/`orga
 | cosmos_db.endpoint | string | - | Cosmos DB endpoint URL (required) |
 | cosmos_db.key | string | - | Cosmos DB access key (required) |
 | cosmos_db.database_id | string | castiel | Cosmos DB database ID (shared database) |
-| organization.max_members | number | 1000 | Maximum members per organization |
 | team.max_members | number | 100 | Maximum members per team |
 | invitation.expiration_days | number | 7 | Invitation expiration in days |
 
@@ -97,21 +90,17 @@ See [OpenAPI Specification](./openapi.yaml)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/users` | List users (tenant/org-scoped; requires organizationId) |
+| GET | `/api/v1/users` | List users (tenant-scoped; query `tenantId`) |
 | GET | `/api/v1/users/me` | Get current user profile |
 | GET | `/api/v1/users/:id` | Get user profile by id (tenant + RBAC) |
 | PUT | `/api/v1/users/me` | Update current user profile |
-| PUT | `/api/v1/users/:id` | Admin update user profile (same org or Super Admin) |
-| GET | `/api/v1/organizations` | List organizations |
-| POST | `/api/v1/organizations` | Create organization |
-| GET | `/api/v1/organizations/:id` | Get organization |
-| PUT | `/api/v1/organizations/:id` | Update organization |
-| GET | `/api/v1/teams` | List teams |
-| POST | `/api/v1/teams` | Create team |
-| GET | `/api/v1/roles` | List roles |
-| POST | `/api/v1/roles` | Create role |
-| GET | `/api/v1/invitations` | List invitations |
-| POST | `/api/v1/invitations` | Create invitation |
+| PUT | `/api/v1/users/:id` | Admin update user profile (same tenant or Super Admin) |
+| GET | `/api/v1/tenants/:tenantId/teams` | List teams for tenant |
+| POST | `/api/v1/tenants/:tenantId/teams` | Create team |
+| GET | `/api/v1/tenants/:tenantId/roles` | List roles for tenant |
+| POST | `/api/v1/tenants/:tenantId/roles` | Create role |
+| GET | `/api/v1/tenants/:tenantId/invitations` | List invitations for tenant |
+| POST | `/api/v1/tenants/:tenantId/invitations` | Create invitation |
 | GET | `/health` | Liveness check |
 | GET | `/ready` | Readiness check |
 
@@ -129,14 +118,6 @@ For detailed event documentation including schemas and examples, see:
 | `user.competency_added` | User competency added |
 | `user.competency_verified` | User competency verified |
 | `user.account_deleted` | User account deleted |
-| `organization.created` | Organization created |
-| `organization.updated` | Organization updated |
-| `organization.deleted` | Organization deleted |
-| `organization.member_joined` | Member joined organization |
-| `organization.member_role_changed` | Member role changed |
-| `organization.member_removed` | Member removed from organization |
-| `organization.settings_updated` | Organization settings updated |
-| `organization.sso_configured` | SSO configured for organization |
 | `team.created` | Team created |
 | `team.updated` | Team updated |
 | `team.deleted` | Team deleted |
@@ -180,7 +161,7 @@ npm run lint:fix   # Fix linting issues
 - **Authentication**: For user authentication and session management
 - **Logging**: For audit logging
 - **Notification**: For invitation emails and notifications
-- **Secret Management**: For storing organization secrets (future)
+- **Secret Management**: For storing tenant secrets (future)
 
 ## License
 

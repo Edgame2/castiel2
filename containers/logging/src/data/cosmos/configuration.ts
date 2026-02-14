@@ -1,6 +1,6 @@
 /**
  * Cosmos DB access for audit_configurations.
- * Partition key: tenantId (organizationId or 'global' for null org).
+ * Partition key: tenantId (tenantId or 'global' for null).
  */
 
 import { getContainer } from '@coder/shared/database';
@@ -12,7 +12,6 @@ const PARTITION_GLOBAL = 'global';
 export interface ConfigurationDoc {
   id: string;
   tenantId: string;
-  organizationId: string | null;
   captureIpAddress: boolean;
   captureUserAgent: boolean;
   captureGeolocation: boolean;
@@ -24,14 +23,14 @@ export interface ConfigurationDoc {
   updatedAt: string;
 }
 
-function tenantId(organizationId: string | null | undefined): string {
-  return organizationId ?? PARTITION_GLOBAL;
+function toPartitionKey(tenantIdVal: string | null | undefined): string {
+  return tenantIdVal ?? PARTITION_GLOBAL;
 }
 
 function toConfig(doc: ConfigurationDoc): OrganizationConfig {
   return {
     id: doc.id,
-    organizationId: doc.organizationId ?? undefined,
+    tenantId: doc.tenantId === PARTITION_GLOBAL ? undefined : doc.tenantId,
     captureIpAddress: doc.captureIpAddress,
     captureUserAgent: doc.captureUserAgent,
     captureGeolocation: doc.captureGeolocation,
@@ -51,8 +50,8 @@ export class CosmosConfigurationRepository {
     return getContainer(this.containerName);
   }
 
-  async findFirst(args: { where: { organizationId: string | null } }): Promise<OrganizationConfig | null> {
-    const pk = tenantId(args.where.organizationId);
+  async findFirst(args: { where: { tenantId: string | null } }): Promise<OrganizationConfig | null> {
+    const pk = toPartitionKey(args.where.tenantId);
     const { resources } = await this.getContainer().items
       .query({
         query: 'SELECT * FROM c WHERE c.tenantId = @tenantId',
@@ -62,15 +61,14 @@ export class CosmosConfigurationRepository {
     return resources?.length ? toConfig(resources[0] as ConfigurationDoc) : null;
   }
 
-  async upsert(organizationId: string | undefined, data: Record<string, unknown>): Promise<OrganizationConfig> {
-    const pk = tenantId(organizationId);
-    const existing = await this.findFirst({ where: { organizationId: organizationId ?? null } });
+  async upsert(tenantIdVal: string | undefined, data: Record<string, unknown>): Promise<OrganizationConfig> {
+    const pk = toPartitionKey(tenantIdVal);
+    const existing = await this.findFirst({ where: { tenantId: tenantIdVal ?? null } });
     const now = new Date().toISOString();
     const id = existing?.id ?? randomUUID();
     const doc: ConfigurationDoc = {
       id,
       tenantId: pk,
-      organizationId: organizationId ?? null,
       captureIpAddress: (data.captureIpAddress as boolean) ?? true,
       captureUserAgent: (data.captureUserAgent as boolean) ?? true,
       captureGeolocation: (data.captureGeolocation as boolean) ?? false,
@@ -85,10 +83,10 @@ export class CosmosConfigurationRepository {
     return toConfig(doc);
   }
 
-  async delete(args: { where: { organizationId: string | null } }): Promise<void> {
+  async delete(args: { where: { tenantId: string | null } }): Promise<void> {
     const config = await this.findFirst({ where: args.where });
     if (!config) return;
-    const pk = tenantId(args.where.organizationId);
+    const pk = toPartitionKey(args.where.tenantId);
     await this.getContainer().item(config.id, pk).delete();
   }
 }

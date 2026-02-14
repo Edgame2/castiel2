@@ -30,7 +30,7 @@ export class VariableResolver {
   async resolveVariables(
     eventData: any,
     recipientId: string,
-    organizationId: string
+    tenantId: string
   ): Promise<TemplateData> {
     const variables: TemplateData = {
       // Event data

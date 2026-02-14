@@ -5,14 +5,14 @@
  */
 import { FastifyRequest, FastifyReply } from 'fastify';
 /**
- * User context from JWT
+ * User context from JWT.
+ * All users and data are scoped by tenantId only.
  */
 export interface AuthUser {
     id: string;
     userId: string;
     email: string;
     tenantId: string;
-    organizationId?: string;
     type?: string;
     iat?: number;
     exp?: number;

@@ -36,7 +36,7 @@ describe('Configuration', () => {
         queue: 'logging_service',
         bindings: [],
       },
-      storage: { provider: 'postgres', postgres: { partition_by: 'month' } },
+      storage: { provider: 'cosmos' },
       defaults: {
         capture: { ip_address: true, user_agent: true, geolocation: false },
         redaction: { enabled: true, patterns: [] },

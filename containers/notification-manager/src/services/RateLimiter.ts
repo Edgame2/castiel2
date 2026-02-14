@@ -1,7 +1,7 @@
 /**
  * Rate Limiter
  * 
- * Enforces rate limits per user and organization
+ * Enforces rate limits per user and tenant
  * Will be fully implemented in Phase 4 with Redis
  */
 
@@ -14,7 +14,7 @@ export class RateLimiter {
   /**
    * Check if request is within rate limit
    */
-  async checkLimit(userId: string, organizationId: string): Promise<boolean> {
+  async checkLimit(userId: string, tenantId: string): Promise<boolean> {
     const userLimit = this.config.notification.defaults.rate_limit_per_user || 100;
     const orgLimit = this.config.notification.defaults.rate_limit_per_org || 1000;
 
@@ -26,7 +26,7 @@ export class RateLimiter {
     }
 
     // Check org limit
-    const orgKey = `org:${organizationId}`;
+    const orgKey = `tenant:${tenantId}`;
     const orgCount = this.getCount(orgKey);
     if (orgCount >= orgLimit) {
       return false;

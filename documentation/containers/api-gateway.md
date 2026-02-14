@@ -26,17 +26,15 @@ Main entries from `config/default.yaml`:
 
 ### API
 
-Gateway does not expose its own OpenAPI; it proxies. Route mappings (from container README):
+Gateway does not expose its own OpenAPI; it proxies. Client path is always `/api/v1/...` per [API_RULES.md](../../endpoints/API_RULES.md). Route mappings (from container README):
 
-- `/api/auth/*` → Auth Service
-- `/api/users/*` → User Management
-- `/api/secrets/*` → Secret Management
-- `/api/logging/*` → Logging
-- `/api/notifications/*` → Notification Manager
-- `/api/ai/*` → AI Service
-- `/api/embeddings/*` → Embeddings
-- `/api/dashboard/*` → Dashboard  
-(plus risk-analytics, risk-catalog, recommendations, integration-manager, integration-processors, ml-service, configuration-service, adaptive-learning as configured)
+- `/api/v1/auth` → Auth Service
+- `/api/v1/users` → User Management
+- `/api/v1/secrets` → Secret Management (pathRewrite to backend)
+- `/api/v1/logs`, `/api/v1/export`, `/api/v1/config` → Logging
+- `/api/v1/notifications`, `/api/v1/preferences`, `/api/v1/templates` → Notification Manager
+- `/api/v1/dashboards` → Dashboard
+- (plus `/api/v1/*` for risk-analytics, risk-catalog, recommendations, integration-manager, ml-service, configuration-service, adaptive-learning, prompts, conversations, etc. as configured)
 
 ### Events
 

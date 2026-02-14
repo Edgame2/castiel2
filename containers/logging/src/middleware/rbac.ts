@@ -4,7 +4,6 @@
  */
 
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaClient } from '.prisma/logging-client';
 import { log } from '../utils/logger';
 import { getUserManagementClient } from '../services/UserManagementClient';
 
@@ -68,7 +67,7 @@ const ROLE_PERMISSIONS: Record<string, AuditPermission[]> = {
 export async function checkPermission(
   userId: string,
   permission: AuditPermission,
-  organizationId?: string
+  tenantId?: string
 ): Promise<boolean> {
   try {
     const userManagementClient = getUserManagementClient();
@@ -77,7 +76,7 @@ export async function checkPermission(
     const hasPermission = await userManagementClient.hasPermission(
       userId,
       permission,
-      organizationId
+      tenantId
     );
     
     if (hasPermission) {
@@ -93,9 +92,9 @@ export async function checkPermission(
     }
     
     // Org Admin check
-    if (organizationId) {
-      const isOrgAdmin = await checkOrgAdmin(userId, organizationId);
-      if (isOrgAdmin && ROLE_PERMISSIONS.ORG_ADMIN.includes(permission)) {
+    if (tenantId) {
+      const isTenantAdmin = await checkTenantAdmin(userId, tenantId);
+      if (isTenantAdmin && ROLE_PERMISSIONS.ORG_ADMIN.includes(permission)) {
         return true;
       }
     }
@@ -107,7 +106,7 @@ export async function checkPermission(
     
     return false;
   } catch (error) {
-    log.error('Permission check failed', error, { userId, permission, organizationId });
+    log.error('Permission check failed', error, { userId, permission, tenantId });
     // Fail secure - deny permission on error
     return false;
   }
@@ -130,16 +129,16 @@ async function checkSuperAdmin(userId: string): Promise<boolean> {
 }
 
 /**
- * Check if user is Org Admin
+ * Check if user is Tenant Admin
  * Falls back to User Management service if available
  */
-async function checkOrgAdmin(userId: string, organizationId: string): Promise<boolean> {
+async function checkTenantAdmin(userId: string, tenantId: string): Promise<boolean> {
   try {
     const userManagementClient = getUserManagementClient();
-    const orgRoles = await userManagementClient.getOrganizationUserRoles(userId, organizationId);
-    return orgRoles.isOrgAdmin;
+    const tenantRoles = await userManagementClient.getTenantUserRoles(userId, tenantId);
+    return tenantRoles.isTenantAdmin;
   } catch (error) {
-    log.debug('Failed to check org admin status, using fallback', { userId, organizationId, error });
+    log.debug('Failed to check tenant admin status, using fallback', { userId, tenantId, error });
     // Fallback: return false if User Management is unavailable
     return false;
   }
@@ -165,14 +164,14 @@ export function requirePermission(permission: AuditPermission) {
     const hasPermission = await checkPermission(
       user.id,
       permission,
-      user.organizationId
+      user.tenantId
     );
     
     if (!hasPermission) {
       log.warn('Permission denied', {
         userId: user.id,
         permission,
-        organizationId: user.organizationId,
+        tenantId: user.tenantId,
       });
       
       reply.code(403).send({
@@ -187,22 +186,22 @@ export function requirePermission(permission: AuditPermission) {
 }
 
 /**
- * Check if user can access cross-organization data
+ * Check if user can access cross-tenant data
  */
-export async function canAccessCrossOrg(userId: string): Promise<boolean> {
+export async function canAccessCrossTenant(userId: string): Promise<boolean> {
   try {
     const userManagementClient = getUserManagementClient();
     const userRoles = await userManagementClient.getUserRoles(userId);
     
-    // Super Admin can access cross-org data
+    // Super Admin can access cross-tenant data
     if (userRoles.isSuperAdmin) {
       return true;
     }
     
-    // Check for specific cross-org permission
+    // Check for specific cross-tenant permission
     return checkPermission(userId, AuditPermission.LOGS_READ_ALL);
   } catch (error) {
-    log.debug('Failed to check cross-org access, using fallback', { userId, error });
+    log.debug('Failed to check cross-tenant access, using fallback', { userId, error });
     // Fallback: use permission check
     return checkPermission(userId, AuditPermission.LOGS_READ_ALL);
   }
@@ -211,7 +210,7 @@ export async function canAccessCrossOrg(userId: string): Promise<boolean> {
 /**
  * Check if user can only see own activity
  */
-export function isUserOnlyAccess(user: { id: string; organizationId?: string }): boolean {
+export function isUserOnlyAccess(user: { id: string; tenantId?: string }): boolean {
   // Regular users can only see their own activity
   // This would be determined by role check
   // For now, assume everyone can see all org logs if they have LOGS_READ

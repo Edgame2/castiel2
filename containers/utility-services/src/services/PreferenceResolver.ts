@@ -19,33 +19,33 @@ export class PreferenceResolver {
    */
   async resolvePreferences(
     userId: string,
-    organizationId: string,
+    tenantId: string,
     teamId?: string,
     projectId?: string
   ): Promise<ResolvedPreferences> {
     // Start with global defaults from config
     const globalDefaults = this.getGlobalDefaults();
     
-    // Merge organization preferences
-    const orgPrefs = await this.getPreferences('ORGANIZATION', organizationId, organizationId);
+    // Merge tenant preferences
+    const tenantPrefs = await this.getPreferences('ORGANIZATION', tenantId, tenantId);
     
     // Merge team preferences if teamId provided
     const teamPrefs = teamId 
-      ? await this.getPreferences('TEAM', teamId, organizationId)
+      ? await this.getPreferences('TEAM', teamId, tenantId)
       : null;
     
     // Merge project preferences if projectId provided
     const projectPrefs = projectId
-      ? await this.getPreferences('PROJECT', projectId, organizationId)
+      ? await this.getPreferences('PROJECT', projectId, tenantId)
       : null;
     
     // Merge user preferences (highest priority)
-    const userPrefs = await this.getPreferences('USER', userId, organizationId);
+    const userPrefs = await this.getPreferences('USER', userId, tenantId);
     
     // Merge in priority order (later overrides earlier)
     const resolved = this.mergePreferences(
       globalDefaults,
-      orgPrefs,
+      tenantPrefs,
       teamPrefs,
       projectPrefs,
       userPrefs
@@ -54,7 +54,7 @@ export class PreferenceResolver {
     return {
       ...resolved,
       scope: userPrefs ? 'USER' : projectPrefs ? 'PROJECT' : teamPrefs ? 'TEAM' : 'ORGANIZATION',
-      scopeId: userPrefs ? userId : projectPrefs ? projectId : teamPrefs ? teamId : organizationId,
+      scopeId: userPrefs ? userId : projectPrefs ? projectId : teamPrefs ? teamId : tenantId,
     };
   }
 
@@ -64,14 +64,14 @@ export class PreferenceResolver {
   private async getPreferences(
     scope: PreferenceScope,
     scopeId: string,
-    organizationId: string
+    tenantId: string
   ): Promise<NotificationPreferences | null> {
     const pref = await this.db.notification_preferences.findUnique({
       where: {
-        scope_scopeId_organizationId: {
+        scope_scopeId_tenantId: {
           scope,
           scopeId: scope === 'GLOBAL' ? null : scopeId,
-          organizationId: scope === 'GLOBAL' ? organizationId : organizationId,
+          tenantId,
         },
       },
     });

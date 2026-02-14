@@ -21,7 +21,7 @@ server:
   host: ${HOST:-0.0.0.0}
 
 # Cosmos DB Configuration (shared database, prefixed containers)
-# Partition key for all containers: /tenantId (use organizationId as tenantId where applicable)
+# Partition key for all containers: /tenantId
 cosmos_db:
   endpoint: ${COSMOS_DB_ENDPOINT}
   key: ${COSMOS_DB_KEY}
@@ -34,7 +34,7 @@ cosmos_db:
     audit_hash_checkpoints: logging_audit_hash_checkpoints
     audit_exports: logging_audit_exports
 
-# Legacy database.url (only used when storage.provider is postgres)
+# Legacy (unused; logging uses Cosmos only)
 database:
   url: ${DATABASE_URL:-}
   pool_size: 20

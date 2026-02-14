@@ -13,7 +13,7 @@
 | **UI**         | Good       | Config schema optional; README mentions hardcoded port |
 | **user-management** | Partial | No X-Tenant-ID validation on routes; test coverage sparse |
 | **auth**       | Partial    | Runtime URL fallbacks; gateway blocks public auth routes |
-| **api-gateway**| Partial    | Tenant middleware applied to /api/auth (blocks login); no tests |
+| **api-gateway**| Partial    | Tenant middleware applied to /api/v1/auth (blocks login); no tests |
 
 ---
 
@@ -61,8 +61,8 @@
 ### 2.3 Tenant Isolation
 
 - **X-Tenant-ID:** Not validated or used on routes. Routes rely on `authenticateRequest` and `(request as any).user`; no check that the request’s tenant (from gateway) matches the resource.
-- **Data:** ApiKeyService uses `organizationId` as partition key. OrganizationService uses Prisma-like API (getDatabaseClient); org list is user-scoped, not explicitly tenant-header-scoped.
-- **Gap:** When called via gateway with X-Tenant-ID, user-management does not enforce that the user’s context (e.g. current org) matches X-Tenant-ID. Risk: cross-tenant access if gateway is bypassed or misconfigured.
+- **Data:** ApiKeyService and user-management use tenantId as partition key; data is tenant-scoped.
+- **Gap:** When called via gateway with X-Tenant-ID, user-management does not enforce that the user’s context (e.g. current tenant) matches X-Tenant-ID. Risk: cross-tenant access if gateway is bypassed or misconfigured.
 
 ### 2.4 Tests
 
@@ -98,7 +98,7 @@
 
 ### 3.4 Tenant
 
-- tenantId/organizationId appear in events and SSO/SecretManagement; no route-level X-Tenant-ID enforcement (auth is pre-login for many routes). Acceptable if gateway is sole entry and auth public routes are excluded from tenant check.
+- tenantId appears in events and SSO/SecretManagement; no route-level X-Tenant-ID enforcement (auth is pre-login for many routes). Acceptable if gateway is sole entry and auth public routes are excluded from tenant check.
 
 ### 3.5 Tests
 
@@ -126,15 +126,15 @@
 
 ### 4.3 Tenant Validation
 
-- **Behavior:** tenantValidationMiddleware extracts tenantId (or organizationId) from JWT, validates UUID, injects X-Tenant-ID. Applied to all `/api/*` in `routes/index.ts` (single catch-all with preHandler).
+- **Behavior:** tenantValidationMiddleware extracts tenantId from JWT, validates UUID, injects X-Tenant-ID. Applied to all `/api/*` in `routes/index.ts` (single catch-all with preHandler).
 - **Critical gap:** Public auth routes are under `/api/*` and do not send a Bearer token. So:
-  - `POST /api/auth/login`
-  - `POST /api/auth/register`
-  - `GET /api/auth/google/callback`, `/api/auth/oauth/github/callback`
+  - `POST /api/v1/auth/login`
+  - `POST /api/v1/auth/register`
+  - `GET /api/v1/auth/google/callback`, `/api/v1/auth/oauth/github/callback`
   - `GET /api/v1/auth/sso/saml/callback`
   - Password reset, etc.  
   All get **401 Unauthorized** from the gateway before reaching the auth service.
-- **Recommendation:** Skip tenant validation for public auth paths (e.g. `/api/auth/login`, `/api/auth/register`, `/api/auth/*/callback`, `/api/v1/auth/sso/*`, password-reset). Allow unauthenticated access only for these paths; keep tenant validation for all other `/api/*`.
+- **Recommendation:** Skip tenant validation for public auth paths (e.g. `/api/v1/auth/login`, `/api/v1/auth/register`, `/api/v1/auth/*/callback`, `/api/v1/auth/sso/*`, password-reset). Allow unauthenticated access only for these paths; keep tenant validation for all other `/api/*`.
 
 ### 4.4 Rate Limiting / Proxy
 

@@ -19,7 +19,7 @@ export interface EscalationLevel {
 
 export interface EscalationChain {
   id: string;
-  organizationId: string;
+  tenantId: string;
   name: string;
   levels: EscalationLevel[];
   enabled: boolean;
@@ -98,7 +98,7 @@ export class EscalationManager {
 
     // Create escalated notification
     const escalatedInput: NotificationInput = {
-      organizationId: notification.organizationId,
+      tenantId: notification.tenantId,
       eventType: `${notification.eventType}.escalated`,
       eventCategory: notification.eventCategory as any,
       sourceModule: notification.sourceModule,
@@ -147,7 +147,7 @@ export class EscalationManager {
 
     return {
       id: chain.id,
-      organizationId: chain.organizationId,
+      tenantId: chain.tenantId,
       name: chain.name,
       levels: chain.levels as any as EscalationLevel[],
       enabled: chain.enabled,
@@ -158,14 +158,14 @@ export class EscalationManager {
    * Create escalation chain
    */
   async createEscalationChain(
-    organizationId: string,
+    tenantId: string,
     name: string,
     levels: EscalationLevel[],
     description?: string
   ): Promise<EscalationChain> {
     const chain = await this.db.notification_escalation_chains.create({
       data: {
-        organizationId,
+        tenantId,
         name,
         description: description || null,
         levels: levels as any,
@@ -175,7 +175,7 @@ export class EscalationManager {
 
     return {
       id: chain.id,
-      organizationId: chain.organizationId,
+      tenantId: chain.tenantId,
       name: chain.name,
       levels: chain.levels as any as EscalationLevel[],
       enabled: chain.enabled,

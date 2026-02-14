@@ -132,9 +132,9 @@ export class AuditEventConsumer {
       event.timestamp = new Date();
     }
     
-    // Skip if no organization ID and not a global event
-    if (!event.organizationId && !routingKey.startsWith('system.')) {
-      log.warn('Event missing organizationId, skipping', { 
+    const eventTenantId = (event as { tenantId?: string }).tenantId ?? (event as { organizationId?: string }).organizationId;
+    if (!eventTenantId && !routingKey.startsWith('system.')) {
+      log.warn('Event missing tenantId, skipping', { 
         type: event.type, 
         routingKey,
       });
@@ -147,19 +147,18 @@ export class AuditEventConsumer {
     if (config.data_collection && !isCollectionEnabled(logInput, config.data_collection)) {
       log.debug('Event skipped by data_collection filter', {
         type: event.type,
-        organizationId: event.organizationId,
+        tenantId: eventTenantId,
       });
       return;
     }
-    // Ingest the log
     await this.ingestionService.ingest(logInput, {
-      organizationId: event.organizationId,
+      tenantId: eventTenantId,
       userId: event.userId,
     });
     
     log.debug('Event processed', { 
       type: event.type, 
-      organizationId: event.organizationId,
+      tenantId: eventTenantId,
     });
   }
   

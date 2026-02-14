@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Notification Manager module provides multi-channel notification service for Castiel, consuming events from RabbitMQ and creating notifications for users and organizations.
+The Notification Manager module provides multi-channel notification service for Castiel, consuming events from RabbitMQ and creating notifications for users and tenants.
 
 ## Database Architecture
 

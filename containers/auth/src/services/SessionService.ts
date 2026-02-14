@@ -11,7 +11,7 @@
  * - Concurrent session limits (max 10 sessions per user)
  * - Session validation and refresh
  * - Session revocation
- * - Organization context in sessions
+ * - Tenant context in sessions
  */
 
 import { randomBytes, createHash } from 'crypto';
@@ -93,22 +93,22 @@ export function generateDeviceFingerprint(
 }
 
 /**
- * Session data structure
+ * Session data structure (tenant-only).
  */
 export interface SessionData {
   userId: string;
-  organizationId?: string;
+  tenantId?: string;
   roleId?: string;
   isSuperAdmin?: boolean;
   sessionId: string;
-  secretId: string; // For JWT secret rotation
+  secretId: string;
 }
 
 /**
- * Create a new session for a user
- * 
+ * Create a new session for a user (tenant-scoped).
+ *
  * @param userId - User ID
- * @param organizationId - Organization ID (optional, can be set later)
+ * @param tenantId - Tenant ID (optional, can be set later)
  * @param isRememberMe - Whether to use long-lived refresh token
  * @param ipAddress - IP address of the client
  * @param userAgent - User agent string
@@ -118,7 +118,7 @@ export interface SessionData {
  */
 export async function createSession(
   userId: string,
-  organizationId: string | null,
+  tenantId: string | null,
   isRememberMe: boolean,
   ipAddress: string | null,
   userAgent: string | null,
@@ -126,39 +126,28 @@ export async function createSession(
   fastify: FastifyInstance
 ): Promise<{ accessToken: string; refreshToken: string; sessionId: string }> {
   const db = getDatabaseClient() as any;
-  
-  // Get user's role in organization if provided
+
   let roleId: string | undefined;
   let isSuperAdmin = false;
-  
-  if (organizationId) {
-    const membership = await db.organizationMembership.findFirst({
+
+  if (tenantId) {
+    const membership = await db.membership.findFirst({
       where: {
         userId,
-        organizationId,
+        tenantId,
         status: 'active',
       },
       include: { role: true },
     });
-    
+
     if (membership) {
-      roleId = membership.roleId;
-      isSuperAdmin = membership.role.isSuperAdmin || false;
+      const m = membership as { roleId?: string; role?: { isSuperAdmin?: boolean } };
+      roleId = m.roleId;
+      isSuperAdmin = m.role?.isSuperAdmin || false;
     }
   }
-  
-  // Get organization session limits if organizationId is provided
-  let maxSessions = MAX_CONCURRENT_SESSIONS;
-  if (organizationId) {
-    const org = await db.organization.findUnique({
-      where: { id: organizationId },
-      select: { maxSessionsPerUser: true },
-    });
-    
-    if (org && org.maxSessionsPerUser) {
-      maxSessions = org.maxSessionsPerUser;
-    }
-  }
+
+  const maxSessions = MAX_CONCURRENT_SESSIONS;
 
   // Enforce concurrent session limit
   const activeSessionCount = await db.session.count({
@@ -210,11 +199,9 @@ export async function createSession(
   // Get location from IP (async, but don't block on it)
   const locationInfo: LocationInfo = await getLocationFromIP(ipAddress).catch((): LocationInfo => ({}));
   
-  // Create session data for JWT claims (tenantId alias for gateway/services expecting it)
-  const sessionData: SessionData & { tenantId?: string } = {
+  const sessionData: SessionData = {
     userId,
-    organizationId: organizationId || undefined,
-    tenantId: organizationId || undefined,
+    tenantId: tenantId || undefined,
     roleId,
     isSuperAdmin,
     sessionId,
@@ -257,9 +244,9 @@ export async function createSession(
     data: {
       id: sessionId,
       userId,
-      token: sessionId, // Store session ID as token identifier
+      token: sessionId,
       refreshToken,
-      organizationId,
+      tenantId,
       deviceInfo: deviceFingerprint, // Legacy field
       deviceName: deviceInfo.name,
       deviceType: deviceInfo.type,
@@ -322,9 +309,10 @@ export async function refreshSession(
     if (cached) {
       try {
         const session = JSON.parse(cached);
+        const tid = (session as { tenantId?: string }).tenantId;
         sessionData = {
           userId: session.userId,
-          organizationId: session.organizationId,
+          tenantId: tid,
           roleId: session.roleId,
           isSuperAdmin: session.isSuperAdmin,
           sessionId: session.sessionId,
@@ -335,41 +323,37 @@ export async function refreshSession(
         log.warn('Failed to parse cached session data', { sessionId, service: 'auth' });
       }
     }
-    
+
     if (!sessionData) {
-      // Fallback to database
+      // Fallback to database (flat session; resolve membership separately)
       const session = await db.session.findUnique({
         where: { id: sessionId },
-        include: {
-          user: {
-            include: {
-              organizationMemberships: {
-                where: { status: 'active' },
-                include: { role: true },
-              },
-            },
-          },
-        },
       });
-      
-      if (!session || session.expiresAt < new Date() || session.revokedAt) {
+
+      const exp = session ? (session as { expiresAt?: Date }).expiresAt : undefined;
+      const rev = session ? (session as { revokedAt?: Date }).revokedAt : undefined;
+      if (!session || (exp != null && exp < new Date()) || rev != null) {
         return null;
       }
-      
-      // Get current organization membership
-      const membership = session.organizationId
-        ? session.user.organizationMemberships.find(
-            (m: { organizationId: string }) => m.organizationId === session.organizationId
-          )
-        : null;
-      
+
+      const sid = session as { id: string; userId?: string; tenantId?: string };
+      const userIdFromSession = sid.userId ?? (session as { partitionKey?: string }).partitionKey;
+      const tid = sid.tenantId;
+      let membership: { roleId?: string; role?: { isSuperAdmin?: boolean } } | null = null;
+      if (tid && userIdFromSession) {
+        membership = await db.membership.findFirst({
+          where: { userId: userIdFromSession, tenantId: tid, status: 'active' },
+          include: { role: true },
+        }) as { roleId?: string; role?: { isSuperAdmin?: boolean } } | null;
+      }
+
       sessionData = {
-        userId: session.userId,
-        organizationId: session.organizationId || undefined,
+        userId: userIdFromSession!,
+        tenantId: tid || undefined,
         roleId: membership?.roleId,
-        isSuperAdmin: membership?.role.isSuperAdmin || false,
-        sessionId: session.id,
-        secretId: 'current', // Default to current
+        isSuperAdmin: membership?.role?.isSuperAdmin || false,
+        sessionId: sid.id,
+        secretId: 'current',
       };
     }
     
@@ -478,53 +462,49 @@ export async function validateSession(
           log.error('Error updating session activity', error as Error, { sessionId, service: 'auth' });
         });
         
+        const tid = (session as { tenantId?: string }).tenantId;
         return {
           userId: session.userId,
-          organizationId: session.organizationId,
+          tenantId: tid,
           roleId: session.roleId,
           isSuperAdmin: session.isSuperAdmin,
           sessionId: session.sessionId,
           secretId: session.secretId,
         };
       } catch (parseError) {
-        // Corrupted cache data, fall through to database
         log.warn('Failed to parse cached session data', { sessionId, service: 'auth' });
       }
     }
-    
-    // Fallback to database
+
     if (!sessionId) return null;
     const db = getDatabaseClient() as any;
     const session = await db.session.findUnique({
       where: { id: sessionId },
-      include: {
-        user: {
-          include: {
-            organizationMemberships: {
-              where: { status: 'active' },
-              include: { role: true },
-            },
-          },
-        },
-      },
     });
-    
-    if (!session || session.expiresAt < new Date() || session.revokedAt) {
+
+    const exp = session ? (session as { expiresAt?: Date }).expiresAt : undefined;
+    const rev = session ? (session as { revokedAt?: Date }).revokedAt : undefined;
+    if (!session || (exp != null && exp < new Date()) || rev != null) {
       return null;
     }
-    
-    const membership = session.organizationId
-      ? session.user.organizationMemberships.find(
-          (m: { organizationId: string; roleId?: string; role?: { isSuperAdmin?: boolean } }) => m.organizationId === session.organizationId
-        )
-      : null;
-    
+
+    const sid = session as { id: string; userId?: string; tenantId?: string; partitionKey?: string };
+    const userIdFromSession = sid.userId ?? sid.partitionKey;
+    const tid = sid.tenantId;
+    let membership: { roleId?: string; role?: { isSuperAdmin?: boolean } } | null = null;
+    if (tid && userIdFromSession) {
+      membership = await db.membership.findFirst({
+        where: { userId: userIdFromSession, tenantId: tid, status: 'active' },
+        include: { role: true },
+      }) as { roleId?: string; role?: { isSuperAdmin?: boolean } } | null;
+    }
+
     return {
-      userId: session.userId,
-      organizationId: session.organizationId || undefined,
+      userId: userIdFromSession!,
+      tenantId: tid || undefined,
       roleId: membership?.roleId,
-      isSuperAdmin: membership?.role.isSuperAdmin || false,
-      sessionId: session.id,
+      isSuperAdmin: membership?.role?.isSuperAdmin || false,
+      sessionId: sid.id,
       secretId: 'current',
     };
   } catch (error) {
@@ -613,74 +593,68 @@ async function updateSessionActivity(sessionId: string): Promise<void> {
 }
 
 /**
- * Switch organization in session
- * 
+ * Switch tenant in session
+ *
  * @param sessionId - Session ID
- * @param organizationId - New organization ID
+ * @param tenantId - New tenant ID
  */
-export async function switchSessionOrganization(
+export async function switchSessionTenant(
   sessionId: string,
-  organizationId: string
+  tenantId: string
 ): Promise<SessionData | null> {
   const db = getDatabaseClient() as any;
-  
-  // Get session
+
   const session = await db.session.findUnique({
     where: { id: sessionId },
-    include: {
-      user: {
-        include: {
-          organizationMemberships: {
-            where: { status: 'active', organizationId },
-            include: { role: true },
-          },
-        },
-      },
-    },
   });
-  
-  if (!session || session.expiresAt < new Date() || session.revokedAt) {
+
+  const exp = session ? (session as { expiresAt?: Date }).expiresAt : undefined;
+  const rev = session ? (session as { revokedAt?: Date }).revokedAt : undefined;
+  if (!session || (exp != null && exp < new Date()) || rev != null) {
     return null;
   }
-  
-  const membership = session.user.organizationMemberships[0];
+
+  const userIdFromSession = (session as { userId?: string }).userId ?? (session as { partitionKey?: string }).partitionKey;
+  const membership = await db.membership.findFirst({
+    where: { userId: userIdFromSession!, tenantId, status: 'active' },
+    include: { role: true },
+  });
+
   if (!membership) {
-    return null; // User not member of organization
+    return null; // User not member of tenant
   }
-  
-  // Update session
+
+  const m = membership as { roleId?: string; role?: { isSuperAdmin?: boolean } };
   await db.session.update({
     where: { id: sessionId },
-    data: { organizationId },
+    data: { tenantId },
   });
-  
-  // Update Redis cache
+
   const redisKey = cacheKeys.sessionData(sessionId);
   const cached = await redis.get(redisKey);
   if (cached) {
     try {
       const sessionData = JSON.parse(cached);
-      sessionData.organizationId = organizationId;
-      sessionData.roleId = membership.roleId;
-      sessionData.isSuperAdmin = membership.role.isSuperAdmin || false;
-      
+      sessionData.tenantId = tenantId;
+      sessionData.roleId = m.roleId;
+      sessionData.isSuperAdmin = m.role?.isSuperAdmin || false;
+
       const ttl = await redis.ttl(redisKey);
       if (ttl > 0) {
         await redis.setex(redisKey, ttl, JSON.stringify(sessionData));
       }
     } catch (parseError) {
-      // Corrupted cache data, delete it so it can be regenerated
-      log.warn('Failed to parse cached session data during organization switch', { sessionId, service: 'auth' });
+      log.warn('Failed to parse cached session data during tenant switch', { sessionId, service: 'auth' });
       await redis.del(redisKey);
     }
   }
-  
+
   return {
-    userId: session.userId,
-    organizationId,
-    roleId: membership.roleId,
-    isSuperAdmin: membership.role.isSuperAdmin || false,
-    sessionId: session.id,
+    userId: userIdFromSession!,
+    tenantId,
+    roleId: m.roleId,
+    isSuperAdmin: m.role?.isSuperAdmin || false,
+    sessionId: (session as { id: string }).id,
     secretId: 'current',
   };
 }
